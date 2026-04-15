@@ -1,0 +1,183 @@
+import React,{useState} from 'react';
+import {useApp} from './context/AppContext';
+import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
+import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
+import AuthPage from './pages/AuthPage';
+import LockedPage from './pages/LockedPage';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage} from './pages/admin/AdminPages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage} from './pages/office/OfficePages';
+
+const MENUS={
+  admin:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'stores',icon:IC.store,label:'Maduka'},
+    {id:'tokens',icon:IC.key,label:'Tokens'},
+    {id:'promo',icon:IC.gift,label:'Mawakala'},
+    {id:'tickets',icon:IC.bell,label:'Tickets'},
+    {id:'broadcast',icon:IC.send,label:'Broadcast'},
+    {id:'security',icon:IC.shield,label:'Security'},
+    {id:'settings',icon:IC.gear,label:'Mipangilio'},
+  ],
+  office:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'products',icon:IC.box,label:'Bidhaa'},
+    {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'returns',icon:IC.refresh,label:'Rudisha'},
+    {id:'reports',icon:IC.chart,label:'Ripoti'},
+    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
+    {id:'employees',icon:IC.users,label:'Wafanyakazi'},
+    {id:'customers',icon:IC.people,label:'Wateja'},
+    {id:'support',icon:IC.send,label:'Msaada'},
+    {id:'notifications',icon:IC.bell,label:'Arifa'},
+  ],
+  employee:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
+    {id:'customers',icon:IC.people,label:'Wateja'},
+    {id:'support',icon:IC.send,label:'Msaada'},
+    {id:'notifications',icon:IC.bell,label:'Arifa'},
+  ],
+};
+
+function ReceiptModal({sale,bizName,footer,onClose}){
+  if(!sale)return null;
+  return <Modal open={!!sale} onClose={onClose} title="Risiti">
+    <div style={{fontFamily:'monospace',fontSize:13,lineHeight:1.8}}>
+      <div style={{textAlign:'center',borderBottom:'2px dashed #ccc',paddingBottom:12,marginBottom:12}}>
+        <div style={{fontSize:18,fontWeight:700}}>{bizName||'Duka Langu'}</div>
+        <div style={{fontSize:11,color:'#888'}}>Risiti #{sale.id?.slice(0,8).toUpperCase()}</div>
+      </div>
+      <div style={{fontSize:11,color:'#666',marginBottom:8}}>Tarehe: {fmtDate(sale.created_at)} | {sale.seller_name||'-'}</div>
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+        <thead><tr style={{borderBottom:'1px solid #ddd'}}><th style={{textAlign:'left',padding:'4px 0'}}>Bidhaa</th><th style={{textAlign:'center'}}>Qty</th><th style={{textAlign:'right'}}>Jumla</th></tr></thead>
+        <tbody>{sale.items?.map((i,k)=><tr key={k} style={{borderBottom:'1px dotted #eee'}}><td style={{padding:'4px 0'}}>{i.name}</td><td style={{textAlign:'center'}}>{i.qty}</td><td style={{textAlign:'right'}}>{(i.qty*i.price).toLocaleString()}</td></tr>)}</tbody>
+      </table>
+      {sale.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#F59E0B',marginTop:8}}><span>Punguzo:</span><span>-TZS {sale.discount?.toLocaleString()}</span></div>}
+      <div style={{borderTop:'2px dashed #ccc',marginTop:8,paddingTop:8,display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:16}}><span>JUMLA:</span><span>TZS {sale.total?.toLocaleString()}</span></div>
+      <div style={{marginTop:4,fontSize:12,color:'#64748B'}}>Malipo: <Badge color="#3B82F6">{sale.payment_method}</Badge></div>
+      {sale.customer_name&&<div style={{fontSize:12,color:'#64748B'}}>Mteja: {sale.customer_name}</div>}
+      <div style={{textAlign:'center',marginTop:16,fontSize:11,color:'#999'}}>{footer||'Asante kwa kununua! Karibu tena'}</div>
+    </div>
+    <div style={{display:'flex',gap:8,marginTop:16,flexWrap:'wrap'}}>
+      <Btn v="outline" onClick={()=>exportReceiptPDF(sale,bizName,footer)}>{IC.file} PDF</Btn>
+      <Btn v="blue" onClick={()=>shareWhatsApp(sale,bizName)}>{IC.send} WhatsApp</Btn>
+      <Btn v="ghost" onClick={()=>window.print()}>{IC.file} Print</Btn>
+    </div>
+  </Modal>;
+}
+
+export default function App(){
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked}=useApp();
+  const[page,setPage]=useState('dashboard');
+  const[sidebar,setSidebar]=useState(false);
+  const[receipt,setReceipt]=useState(null);
+
+  if(!user)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword}/>;
+  if(user.role!=='admin'&&biz&&isExpired())return <LockedPage/>;
+
+  const role=user.role;
+  // Add branches menu ONLY if canUseBranches
+  let menu=[...MENUS[role]||MENUS.employee];
+  if(role==='office'&&canUseBranches){
+    const branchItem={id:'branches',icon:IC.store,label:'Matawi'};
+    if(!menu.find(m=>m.id==='branches')){menu.splice(1,0,branchItem)}
+  }
+
+  const unread=notifications.filter(n=>!n.is_read).length;
+  const trial=biz&&!biz.token_active?daysLeft():null;
+  const myBranches=getBranches();
+
+  const renderPage=()=>{
+    if(role==='admin'){
+      switch(page){
+        case'stores':return <StoresPage/>;case'tokens':return <TokensPage/>;
+        case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
+        case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
+        case'tickets':return <TicketsPage/>;
+        default:return <AdminDashboard/>;
+      }
+    }
+    switch(page){
+      case'branches':return canUseBranches&&role==='office'?<BranchesPage/>:null;
+      case'products':return role==='office'?<ProductsPage/>:null;
+      case'sales':return <SalesPage onDone={setReceipt}/>;
+      case'returns':return role==='office'?<ReturnsPage/>:null;
+      case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
+      case'expenses':return <ExpensesPage/>;
+      case'employees':return role==='office'?<EmployeesPage/>:null;
+      case'customers':return <CustomersPage/>;
+      case'support':return <SupportPage/>;
+      case'notifications':return <NotifsPage/>;
+      default:return <OfficeDash onReceipt={setReceipt}/>;
+    }
+  };
+
+  return <div style={{display:'flex',minHeight:'100vh',background:'#F1F5F9',fontFamily:"'Inter',system-ui,sans-serif"}}>
+    <NotifPopup items={popups} onDismiss={id=>setPopups(p=>p.filter(n=>n.id!==id))} onClear={()=>setPopups([])}/>
+    <ReceiptModal sale={receipt} bizName={biz?.name} footer={biz?.receipt_footer} onClose={()=>setReceipt(null)}/>
+    {sidebar&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:5000}} onClick={()=>setSidebar(false)}/>}
+
+    {/* Sidebar */}
+    <div className={`sidebar ${sidebar?'open':''}`} style={{width:240,background:'linear-gradient(180deg,#0B7A3B 0%,#065F2E 100%)',color:'#fff',display:'flex',flexDirection:'column',position:'fixed',left:0,top:0,bottom:0,zIndex:5001,transition:'transform .3s'}}>
+      <div style={{padding:'16px 14px',borderBottom:'1px solid rgba(255,255,255,.15)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <img src="/logo-white.png" alt="Logo" style={{width:36,height:36,objectFit:'contain'}}/>
+          <div><div style={{fontSize:15,fontWeight:800}}>Duka Langu</div><div style={{fontSize:9,opacity:.7}}>Together for the better</div></div>
+        </div>
+        <div style={{marginTop:6}}><OnlineStatus isOnline={online}/></div>
+      </div>
+
+      {/* Branch selector in sidebar */}
+      {role==='office'&&canUseBranches&&myBranches.length>0&&<div style={{padding:'6px 10px',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+        <select value={activeBranch||''} onChange={e=>setActiveBranch(e.target.value||null)} style={{width:'100%',padding:'5px 8px',borderRadius:6,border:'none',background:'rgba(255,255,255,.15)',color:'#fff',fontSize:11,outline:'none'}}>
+          <option value="">Matawi Yote</option>
+          {myBranches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+      </div>}
+      {/* Employee: show locked branch name */}
+      {role==='employee'&&isEmployeeLocked&&<div style={{padding:'6px 10px',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+        <div style={{background:'rgba(255,255,255,.15)',borderRadius:6,padding:'5px 8px',fontSize:11,color:'#BBF7D0',textAlign:'center'}}>
+          🏪 {myBranches.find(b=>b.id===user.branch_id)?.name||'Tawi Lako'}
+        </div>
+      </div>}
+
+      <div style={{padding:6,flex:1,overflowY:'auto'}}>
+        {menu.map(m=><button key={m.id} onClick={()=>{setPage(m.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',background:page===m.id?'rgba(255,255,255,.2)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:page===m.id?700:500,marginBottom:2}}>
+          {m.icon}{m.label}
+          {m.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700}}>{unread}</span>}
+        </button>)}
+      </div>
+
+      <div style={{padding:10,borderTop:'1px solid rgba(255,255,255,.15)'}}>
+        <div style={{fontSize:12,opacity:.7}}>{user.name}</div>
+        <div style={{fontSize:10,opacity:.5,textTransform:'uppercase',marginBottom:6}}>{role}</div>
+        {trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:6}}>⏳ Siku {trial}</div>}
+        <div style={{display:'flex',gap:4,marginBottom:6}}>
+          <button onClick={()=>setLang(lang==='sw'?'en':'sw')} style={{flex:1,padding:'3px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{lang==='sw'?'EN':'SW'}</button>
+          <button onClick={()=>setCurrency(currency==='TZS'?'USD':'TZS')} style={{flex:1,padding:'3px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{currency==='TZS'?'USD':'TZS'}</button>
+        </div>
+        <button onClick={()=>{logout();setPage('dashboard');setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:6,width:'100%',padding:'7px 12px',background:'rgba(255,255,255,.1)',border:'none',borderRadius:8,color:'#fff',fontSize:12}}>{IC.out} Toka</button>
+      </div>
+    </div>
+
+    {/* Main */}
+    <div className="main-content" style={{flex:1,marginLeft:240,minHeight:'100vh'}}>
+      <div style={{background:'#fff',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 1px 3px rgba(0,0,0,.05)',position:'sticky',top:0,zIndex:4000}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <button className="mobile-btn" onClick={()=>setSidebar(true)} style={{background:'none',border:'none',color:'#1E293B',padding:4}}>{IC.menu}</button>
+          <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}>{menu.find(m=>m.id===page)?.label||'Dashboard'}</h2>
+          {activeBranch&&role==='office'&&<Badge color="#0B7A3B">{myBranches.find(b=>b.id===activeBranch)?.name}</Badge>}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {!online&&<Badge color="#F59E0B">Offline</Badge>}
+          {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
+            {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
+          </button>}
+          <div style={{width:32,height:32,borderRadius:'50%',background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700}}>{user.name?.[0]?.toUpperCase()}</div>
+        </div>
+      </div>
+      <div style={{padding:'16px 20px',maxWidth:1200,margin:'0 auto'}}>{renderPage()}</div>
+    </div>
+  </div>;
+}
