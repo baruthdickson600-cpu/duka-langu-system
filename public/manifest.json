@@ -1,0 +1,19 @@
+{
+  "name": "Duka Langu - Smart POS",
+  "short_name": "Duka Langu",
+  "description": "Mfumo wa kisasa wa biashara - Together for the better",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B7A3B",
+  "theme_color": "#0B7A3B",
+  "lang": "sw",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
