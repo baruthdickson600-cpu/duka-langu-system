@@ -295,3 +295,173 @@ export function SecurityPage(){
     </div>}
   </div>;
 }
+
+// ===== PAYMENTS (Approve/Reject) =====
+export function PaymentsPage(){
+  const{paymentRequests,approvePayment,rejectPayment,pendingPayments,settings}=useApp();
+  const[tab,setTab]=useState('pending');
+  const[days,setDays]=useState('30');
+  const[rejectId,setRejectId]=useState(null);
+  const[rejectReason,setRejectReason]=useState('');
+  const[processing,setProcessing]=useState(null);
+  const price=parseInt(settings.system_price||30000);
+
+  const filtered=tab==='pending'?paymentRequests.filter(p=>p.status==='pending')
+    :tab==='approved'?paymentRequests.filter(p=>p.status==='approved')
+    :tab==='rejected'?paymentRequests.filter(p=>p.status==='rejected')
+    :paymentRequests;
+
+  const handleApprove=async(id)=>{
+    setProcessing(id);
+    const result=await approvePayment(id,+days||30);
+    setProcessing(null);
+    if(result)alert(`Imethibitishwa! Token: ${result.code} (Siku ${result.days})`);
+  };
+
+  const handleReject=(id)=>{
+    setRejectId(id);setRejectReason('');
+  };
+
+  const confirmReject=async()=>{
+    if(!rejectId)return;
+    setProcessing(rejectId);
+    await rejectPayment(rejectId,rejectReason||'Transaction ID si sahihi');
+    setProcessing(null);
+    setRejectId(null);setRejectReason('');
+  };
+
+  return <div>
+    {/* Stats */}
+    <div className="flex-wrap" style={{marginBottom:16}}>
+      <Stat icon={IC.bell} label="Inasubiri" value={pendingPayments.length} color="#F59E0B"/>
+      <Stat icon={IC.ok} label="Zimethibitishwa" value={paymentRequests.filter(p=>p.status==='approved').length} color="#22C55E"/>
+      <Stat icon={IC.warn} label="Zimekataliwa" value={paymentRequests.filter(p=>p.status==='rejected').length} color="#EF4444"/>
+      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${paymentRequests.filter(p=>p.status==='approved').reduce((a,p)=>a+(p.amount||0),0).toLocaleString()}`} color="#0B7A3B"/>
+    </div>
+
+    {/* Days input for approval */}
+    <div className="card" style={{marginBottom:16,display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+      <span style={{fontSize:13,fontWeight:600}}>Siku za Token:</span>
+      <div style={{width:100}}><Input type="number" value={days} onChange={e=>setDays(e.target.value)}/></div>
+      <div style={{display:'flex',gap:4}}>
+        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#0B7A3B':'#64748B'}}>{d}</button>)}
+      </div>
+    </div>
+
+    {/* Tabs */}
+    <Tabs tabs={[
+      {id:'pending',label:`Inasubiri (${pendingPayments.length})`},
+      {id:'approved',label:'Zimethibitishwa'},
+      {id:'rejected',label:'Zimekataliwa'},
+      {id:'all',label:'Zote'},
+    ]} active={tab} onChange={setTab}/>
+
+    {/* Payment Cards */}
+    <div className="card">
+      {filtered.length?filtered.map(p=><div key={p.id} style={{padding:'14px 0',borderBottom:'1px solid #F1F5F9'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:14}}>{p.business_name||'—'}</div>
+            <div style={{fontSize:12,color:'#64748B'}}>{p.user_email}</div>
+            <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{new Date(p.created_at).toLocaleString('sw-TZ')}</div>
+          </div>
+          <Badge color={p.status==='pending'?'#F59E0B':p.status==='approved'?'#22C55E':'#EF4444'}>
+            {p.status==='pending'?'Inasubiri':p.status==='approved'?'Imethibitishwa':'Imekataliwa'}
+          </Badge>
+        </div>
+
+        {/* Payment Details */}
+        <div style={{background:'#F8FAFC',borderRadius:10,padding:10,marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+          <div style={{fontSize:12}}><span style={{color:'#94A3B8'}}>Transaction:</span><br/><span style={{fontWeight:700,fontFamily:'monospace',fontSize:13}}>{p.transaction_id}</span></div>
+          <div style={{fontSize:12}}><span style={{color:'#94A3B8'}}>Kiasi:</span><br/><span style={{fontWeight:700,fontSize:15,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</span></div>
+          <div style={{fontSize:12}}><span style={{color:'#94A3B8'}}>Njia:</span><br/><span style={{fontWeight:600}}>{p.payment_method}</span></div>
+          <div style={{fontSize:12}}><span style={{color:'#94A3B8'}}>Simu:</span><br/><span style={{fontWeight:600}}>{p.phone||'—'}</span></div>
+        </div>
+
+        {/* Approved info */}
+        {p.status==='approved'&&p.token_code&&<div style={{background:'#F0FDF4',borderRadius:8,padding:8,marginTop:6,fontSize:12,color:'#15803D'}}>
+          Token: <b>{p.token_code}</b> | Siku: {p.days_given}
+        </div>}
+        {p.status==='rejected'&&<div style={{background:'#FEF2F2',borderRadius:8,padding:8,marginTop:6,fontSize:12,color:'#B91C1C'}}>
+          Sababu: {p.reject_reason||'—'}
+        </div>}
+
+        {/* Action Buttons */}
+        {p.status==='pending'&&<div style={{display:'flex',gap:8,marginTop:10}}>
+          <button onClick={()=>handleApprove(p.id)} disabled={processing===p.id} style={{flex:1,padding:'10px 0',background:processing===p.id?'#86EFAC':'#22C55E',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:processing===p.id?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+            {processing===p.id?<><span className="spinner"></span> Inathibitisha...</>:'✅ Thibitisha'}
+          </button>
+          <button onClick={()=>handleReject(p.id)} style={{flex:1,padding:'10px 0',background:'#FEF2F2',color:'#EF4444',border:'1px solid #FECACA',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer'}}>❌ Kataa</button>
+        </div>}
+      </div>):<Empty icon={tab==='pending'?'✅':'📋'} text={tab==='pending'?'Hakuna malipo yanasubiri':'Hakuna'}/>}
+    </div>
+
+    {/* Reject Modal */}
+    {rejectId&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:16}}>
+      <div style={{background:'#fff',borderRadius:16,padding:24,maxWidth:400,width:'100%'}}>
+        <h3 style={{margin:'0 0 12px',fontSize:16,fontWeight:700}}>Sababu ya Kukataa</h3>
+        <Input label="Sababu" value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Mf: Transaction ID si sahihi"/>
+        <div style={{display:'flex',gap:8,marginTop:12}}>
+          <button onClick={confirmReject} style={{flex:1,padding:12,background:'#EF4444',color:'#fff',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Kataa</button>
+          <button onClick={()=>setRejectId(null)} style={{flex:1,padding:12,background:'#F1F5F9',color:'#475569',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+        </div>
+      </div>
+    </div>}
+
+    <style>{`.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top:2px solid #fff;border-radius:50%;animation:spin 0.8s linear infinite}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
+  </div>;
+}
+
+// ===== MARKETING PARTNERS MANAGEMENT =====
+export function PartnersPage(){
+  const{partners,createPartner,updatePartner,deletePartner}=useApp();
+  const[modal,setModal]=useState(false);
+  const[f,setF]=useState({name:'',email:'',phone:'',password:'partner123',commission:10});
+
+  return <div>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+      <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Washirika wa Masoko ({partners.length})</h3>
+      <Btn onClick={()=>setModal(true)}>{IC.plus} Ongeza Mshirika</Btn>
+    </div>
+
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
+      {partners.map(p=><div key={p.id} className="card">
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#8B5CF6,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:18,fontWeight:700}}>{p.name?.[0]?.toUpperCase()}</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:15}}>{p.name}</div>
+            <div style={{fontSize:12,color:'#64748B'}}>{p.email}</div>
+            {p.phone&&<div style={{fontSize:11,color:'#94A3B8'}}>{p.phone}</div>}
+          </div>
+          <Badge color={p.status==='active'?'#22C55E':'#EF4444'}>{p.status==='active'?'Active':'Disabled'}</Badge>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+          <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#94A3B8'}}>Commission</div><div style={{fontWeight:700,fontSize:16,color:'#8B5CF6'}}>{p.commission_rate||10}%</div></div>
+          <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#94A3B8'}}>Tangu</div><div style={{fontWeight:600,fontSize:12}}>{fmtDate(p.created_at)}</div></div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <Btn v={p.status==='active'?'warning':'primary'} style={{flex:1,justifyContent:'center',padding:'6px 10px',fontSize:11}} onClick={()=>updatePartner(p.id,{status:p.status==='active'?'disabled':'active'})}>{p.status==='active'?'Zima':'Washa'}</Btn>
+          <Btn v="danger" style={{padding:'6px 10px',fontSize:11}} onClick={()=>window.confirm(`Futa "${p.name}"?`)&&deletePartner(p.id)}>Futa</Btn>
+        </div>
+      </div>)}
+    </div>
+    {!partners.length&&<div className="card" style={{marginTop:12}}><Empty icon="🤝" text="Ongeza mshirika wa kwanza wa masoko"/></div>}
+
+    <div style={{background:'#EFF6FF',borderRadius:12,padding:'12px 16px',marginTop:16,fontSize:12,color:'#1E40AF',lineHeight:1.6}}>
+      <b>Jinsi inavyofanya kazi:</b> Mshirika anaingia kwa email na password yake. Anaona Dashboard ya Masoko yenye wateja, mawakala, pipeline, kamisheni, na ripoti. HAONI data za mauzo ya wateja — usalama umehakikishwa.
+    </div>
+
+    <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mshirika wa Masoko">
+      <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili"/>
+      <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
+      <Input label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
+      <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
+      <Input label="Commission %" type="number" value={f.commission} onChange={e=>setF({...f,commission:+e.target.value})}/>
+      <Btn onClick={async()=>{
+        if(!f.name||!f.email)return alert('Jaza jina na email!');
+        const result=await createPartner(f.name,f.email,f.password,f.phone,f.commission);
+        if(result){alert('Mshirika amesajiliwa! Anaweza kuingia kwa email: '+f.email);setModal(false);setF({name:'',email:'',phone:'',password:'partner123',commission:10})}
+      }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Mshirika</Btn>
+    </Modal>
+  </div>;
+}

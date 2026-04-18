@@ -7,7 +7,7 @@ const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
 
 // ===== OFFICE DASHBOARD with Daily Report + Alerts =====
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings}=useApp();
+  const{user,biz,products,sales,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   const tSales=sales.filter(s=>isToday(s.created_at));const wSales=sales.filter(s=>isThisWeek(s.created_at));const mSales=sales.filter(s=>isThisMonth(s.created_at));
   const tTotal=tSales.reduce((a,s)=>a+s.total,0);const wTotal=wSales.reduce((a,s)=>a+s.total,0);
@@ -73,6 +73,35 @@ export function OfficeDash({onReceipt}){
             <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#94A3B8'}}>Idadi</div><div style={{fontWeight:800,fontSize:16}}>{r.salesCount} mauzo</div></div>
           </div>
         </>})()}
+      </div>}
+
+      {/* PROFIT GOALS PROGRESS */}
+      {isOff&&(goalProgress.daily.goal>0||goalProgress.weekly.goal>0||goalProgress.monthly.goal>0)&&<div className="card" style={{borderLeft:'4px solid #8B5CF6'}}>
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#8B5CF6'}}>🎯 Malengo ya Faida</h3>
+        {[{label:'Leo',data:goalProgress.daily,color:'#0B7A3B'},{label:'Wiki',data:goalProgress.weekly,color:'#3B82F6'},{label:'Mwezi',data:goalProgress.monthly,color:'#8B5CF6'}].filter(g=>g.data.goal>0).map(g=>(
+          <div key={g.label} style={{marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
+              <span style={{fontWeight:600}}>{g.label}: {fm(g.data.current)} / {fm(g.data.goal)}</span>
+              <span style={{fontWeight:700,color:g.data.pct>=100?'#22C55E':g.color}}>{g.data.pct}%</span>
+            </div>
+            <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${g.data.pct}%`,background:g.data.pct>=100?'#22C55E':g.color,borderRadius:4,transition:'width 0.5s'}}/>
+            </div>
+            {g.data.pct>=100&&<div style={{fontSize:11,color:'#22C55E',fontWeight:600,marginTop:2}}>🎉 Umefika lengo!</div>}
+          </div>
+        ))}
+      </div>}
+
+      {/* AI SMART INSIGHTS */}
+      {isOff&&aiInsights.length>0&&<div className="card" style={{borderLeft:'4px solid #3B82F6'}}>
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#3B82F6'}}>🤖 Uchambuzi wa AI</h3>
+        {aiInsights.map((ins,i)=>(
+          <div key={i} style={{padding:'8px 10px',marginBottom:6,borderRadius:8,background:ins.type==='success'?'#F0FDF4':ins.type==='warning'?'#FFF7ED':ins.type==='danger'?'#FEF2F2':'#EFF6FF',display:'flex',gap:8,alignItems:'flex-start'}}>
+            <span style={{fontSize:18}}>{ins.icon}</span>
+            <div><div style={{fontWeight:700,fontSize:12,color:ins.type==='success'?'#15803D':ins.type==='warning'?'#92400E':ins.type==='danger'?'#B91C1C':'#1E40AF'}}>{ins.title}</div>
+            <div style={{fontSize:11,color:'#64748B',marginTop:2}}>{ins.desc}</div></div>
+          </div>
+        ))}
       </div>}
 
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🕐 Mauzo ya Hivi Karibuni</h3>
@@ -773,5 +802,193 @@ export function BranchesPage(){
       {editModal.branch&&<><Input label="Jina" value={editModal.branch.name} onChange={e=>setEditModal({...editModal,branch:{...editModal.branch,name:e.target.value}})}/><Input label="Eneo" value={editModal.branch.location||''} onChange={e=>setEditModal({...editModal,branch:{...editModal.branch,location:e.target.value}})}/>
       <Btn onClick={async()=>{await updateBranch(editModal.branch.id,{name:editModal.branch.name,location:editModal.branch.location});setEditModal({open:false,branch:null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi</Btn></>}
     </Modal>
+  </div>;
+}
+
+// ===== PROFIT GOALS PAGE =====
+export function GoalsPage(){
+  const{currency,saveGoal,getGoal,goalProgress,sales}=useApp();
+  const fm=n=>fmtMoney(n,currency||'TZS');
+  const[dGoal,setDGoal]=useState(getGoal('daily')||'');
+  const[wGoal,setWGoal]=useState(getGoal('weekly')||'');
+  const[mGoal,setMGoal]=useState(getGoal('monthly')||'');
+
+  const ProgressBar=({label,data,color,emoji})=>(
+    <div className="card" style={{marginBottom:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+        <h3 style={{fontSize:15,fontWeight:700,margin:0,color}}>{emoji} {label}</h3>
+        {data.pct>=100&&<Badge color="#22C55E">Umefanikiwa!</Badge>}
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+        <span style={{fontSize:28,fontWeight:900,color:data.pct>=100?'#22C55E':color}}>{fm(data.current)}</span>
+        <span style={{fontSize:14,color:'#64748B'}}>/ {fm(data.goal)}</span>
+      </div>
+      <div style={{height:14,background:'#F1F5F9',borderRadius:7,overflow:'hidden',marginBottom:6}}>
+        <div style={{height:'100%',width:`${data.pct}%`,background:data.pct>=100?'linear-gradient(90deg,#22C55E,#16A34A)':data.pct>60?`linear-gradient(90deg,${color},${color}CC)`:'#F59E0B',borderRadius:7,transition:'width 0.8s ease',position:'relative'}}>
+          {data.pct>15&&<span style={{position:'absolute',right:6,top:0,color:'#fff',fontSize:10,fontWeight:700,lineHeight:'14px'}}>{data.pct}%</span>}
+        </div>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#64748B'}}>
+        <span>{data.pct>=100?'🎉 Lengo limefikiwa!':data.pct>50?'Karibu...':'Jitahidi zaidi!'}</span>
+        <span>{data.goal>data.current?`Imebaki: ${fm(data.goal-data.current)}`:'Umezidi lengo!'}</span>
+      </div>
+    </div>
+  );
+
+  return <div style={{maxWidth:600}}>
+    {/* Set Goals */}
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 16px'}}>🎯 Weka Malengo ya Faida</h3>
+      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,alignItems:'end',marginBottom:10}}>
+        <Input label="Lengo la Siku (TZS)" type="number" value={dGoal} onChange={e=>setDGoal(e.target.value)} placeholder="Mf: 50000"/>
+        <Btn onClick={()=>{saveGoal('daily',+dGoal);alert('Limehifadhiwa!')}} style={{marginBottom:12}}>Hifadhi</Btn>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,alignItems:'end',marginBottom:10}}>
+        <Input label="Lengo la Wiki (TZS)" type="number" value={wGoal} onChange={e=>setWGoal(e.target.value)} placeholder="Mf: 300000"/>
+        <Btn onClick={()=>{saveGoal('weekly',+wGoal);alert('Limehifadhiwa!')}} style={{marginBottom:12}}>Hifadhi</Btn>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,alignItems:'end'}}>
+        <Input label="Lengo la Mwezi (TZS)" type="number" value={mGoal} onChange={e=>setMGoal(e.target.value)} placeholder="Mf: 1000000"/>
+        <Btn onClick={()=>{saveGoal('monthly',+mGoal);alert('Limehifadhiwa!')}} style={{marginBottom:12}}>Hifadhi</Btn>
+      </div>
+    </div>
+
+    {/* Progress */}
+    {goalProgress.daily.goal>0&&<ProgressBar label="Lengo la Leo" data={goalProgress.daily} color="#0B7A3B" emoji="☀️"/>}
+    {goalProgress.weekly.goal>0&&<ProgressBar label="Lengo la Wiki" data={goalProgress.weekly} color="#3B82F6" emoji="📅"/>}
+    {goalProgress.monthly.goal>0&&<ProgressBar label="Lengo la Mwezi" data={goalProgress.monthly} color="#8B5CF6" emoji="📊"/>}
+
+    {!goalProgress.daily.goal&&!goalProgress.weekly.goal&&!goalProgress.monthly.goal&&
+      <div className="card" style={{textAlign:'center',padding:30}}>
+        <div style={{fontSize:40,marginBottom:8}}>🎯</div>
+        <div style={{fontSize:16,fontWeight:700,color:'#1E293B',marginBottom:4}}>Weka Malengo Yako!</div>
+        <div style={{fontSize:13,color:'#64748B'}}>Weka lengo la faida kwa siku, wiki, au mwezi — mfumo utakuonyesha maendeleo yako.</div>
+      </div>
+    }
+  </div>;
+}
+
+// ===== INVOICE GENERATOR =====
+export function InvoicePage(){
+  const{biz,customers,products,currency,settings}=useApp();
+  const fm=n=>fmtMoney(n,currency||'TZS');
+  const[items,setItems]=useState([{name:'',qty:1,price:0}]);
+  const[custName,setCustName]=useState('');
+  const[custPhone,setCustPhone]=useState('');
+  const[custAddress,setCustAddress]=useState('');
+  const[notes,setNotes]=useState('');
+  const[dueDate,setDueDate]=useState('');
+  const[taxRate,setTaxRate]=useState(0);
+  const[invoices,setInvoices]=useState([]);
+
+  const addItem=()=>setItems([...items,{name:'',qty:1,price:0}]);
+  const removeItem=i=>setItems(items.filter((_,j)=>j!==i));
+  const updateItem=(i,field,val)=>setItems(items.map((item,j)=>j===i?{...item,[field]:val}:item));
+
+  const subtotal=items.reduce((s,i)=>s+i.qty*i.price,0);
+  const tax=subtotal*taxRate/100;
+  const grandTotal=subtotal+tax;
+  const invNo=`INV-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+
+  const generateInvoice=()=>{
+    if(!custName||items.every(i=>!i.name))return alert('Jaza taarifa za mteja na bidhaa!');
+    const inv={id:invNo,date:new Date().toISOString(),dueDate,customer:{name:custName,phone:custPhone,address:custAddress},items:items.filter(i=>i.name),subtotal,tax,taxRate,grandTotal,notes,status:'unpaid',bizName:biz?.name};
+    setInvoices(prev=>[inv,...prev]);
+    // Generate printable
+    const w=window.open('','_blank','width=800,height=900');
+    w.document.write(`<html><head><title>Invoice ${invNo}</title><style>
+      body{font-family:Arial;padding:30px;color:#1E293B;max-width:800px;margin:0 auto}
+      .header{display:flex;justify-content:space-between;border-bottom:3px solid #0B7A3B;padding-bottom:16px;margin-bottom:20px}
+      .logo{font-size:24px;font-weight:900;color:#0B7A3B}
+      table{width:100%;border-collapse:collapse;margin:16px 0}
+      th{background:#0B7A3B;color:#fff;padding:10px;text-align:left;font-size:13px}
+      td{padding:8px 10px;border-bottom:1px solid #E2E8F0;font-size:13px}
+      .total-row{font-weight:700;font-size:16px;color:#0B7A3B}
+      .footer{margin-top:30px;border-top:2px solid #E2E8F0;padding-top:12px;font-size:11px;color:#64748B;text-align:center}
+      @media print{body{padding:20px}}
+    </style></head><body>
+      <div class="header"><div><div class="logo">${biz?.name||'Duka Langu'}</div><div style="font-size:12px;color:#64748B">${biz?.email||''} | ${biz?.phone||''}</div></div>
+      <div style="text-align:right"><div style="font-size:18px;font-weight:700">ANKARA / INVOICE</div><div style="font-size:13px;color:#64748B">Na: ${invNo}</div><div style="font-size:13px;color:#64748B">Tarehe: ${new Date().toLocaleDateString('sw-TZ')}</div>${dueDate?`<div style="font-size:13px;color:#EF4444">Lipa kabla: ${new Date(dueDate).toLocaleDateString('sw-TZ')}</div>`:''}</div></div>
+      <div style="background:#F8FAFC;padding:14px;border-radius:8px;margin-bottom:16px"><div style="font-weight:700;font-size:13px;color:#64748B;margin-bottom:4px">KWA:</div>
+      <div style="font-weight:700;font-size:16px">${custName}</div>${custPhone?`<div style="font-size:13px">${custPhone}</div>`:''}${custAddress?`<div style="font-size:13px;color:#64748B">${custAddress}</div>`:''}</div>
+      <table><thead><tr><th>#</th><th>Bidhaa</th><th>Idadi</th><th>Bei</th><th>Jumla</th></tr></thead><tbody>
+      ${items.filter(i=>i.name).map((i,k)=>`<tr><td>${k+1}</td><td>${i.name}</td><td>${i.qty}</td><td>${(+i.price).toLocaleString()}</td><td>${(i.qty*i.price).toLocaleString()}</td></tr>`).join('')}
+      </tbody></table>
+      <div style="text-align:right;margin-top:8px"><div style="font-size:14px">Jumla Ndogo: TZS ${subtotal.toLocaleString()}</div>
+      ${taxRate>0?`<div style="font-size:14px">Kodi (${taxRate}%): TZS ${tax.toLocaleString()}</div>`:''}
+      <div class="total-row" style="font-size:20px;margin-top:6px;padding-top:6px;border-top:2px solid #0B7A3B">JUMLA: TZS ${grandTotal.toLocaleString()}</div></div>
+      ${notes?`<div style="margin-top:20px;background:#FFF7ED;padding:12px;border-radius:8px;font-size:13px"><b>Maelezo:</b> ${notes}</div>`:''}
+      <div style="margin-top:30px;padding:14px;background:#F0FDF4;border-radius:8px;font-size:13px"><b>Malipo:</b> ${settings.payment_provider||'SELCOM'} > ${settings.payment_number||'6113 4066'} | Jina: ${settings.payment_name||'PESAFLY'}</div>
+      <div class="footer">${biz?.name||'Duka Langu'} — Together for the better<br/>pesafly1@gmail.com | +255 628 986 770 | Huduma: 0702 025 050</div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+  };
+
+  const shareWhatsApp=()=>{
+    const msg=`*ANKARA / INVOICE*%0A━━━━━━━━━━%0ANa: ${invNo}%0ATarehe: ${new Date().toLocaleDateString('sw-TZ')}%0A${dueDate?`Lipa kabla: ${new Date(dueDate).toLocaleDateString('sw-TZ')}%0A`:''}%0AKwa: ${custName}%0A%0A*Bidhaa:*%0A${items.filter(i=>i.name).map(i=>`• ${i.name} x${i.qty} = TZS ${(i.qty*i.price).toLocaleString()}`).join('%0A')}%0A%0A${taxRate>0?`Kodi (${taxRate}%): TZS ${tax.toLocaleString()}%0A`:''}*JUMLA: TZS ${grandTotal.toLocaleString()}*%0A%0AMalipo: ${settings.payment_provider} > ${settings.payment_number}%0AJina: ${settings.payment_name}%0A%0A${biz?.name||'Duka Langu'}`;
+    window.open(`https://wa.me/${custPhone?.replace(/\D/g,'')}?text=${msg}`,'_blank');
+  };
+
+  return <div style={{maxWidth:700}}>
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 16px'}}>📄 Tengeneza Ankara</h3>
+
+      {/* Customer Info */}
+      <div style={{background:'#F8FAFC',borderRadius:12,padding:14,marginBottom:16}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Taarifa za Mteja</div>
+        <Input label="Jina la Mteja *" value={custName} onChange={e=>setCustName(e.target.value)} placeholder="Jina kamili"/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <Input label="Simu" value={custPhone} onChange={e=>setCustPhone(e.target.value)} placeholder="07XX"/>
+          <Input label="Tarehe ya Kulipa" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/>
+        </div>
+        <Input label="Anwani" value={custAddress} onChange={e=>setCustAddress(e.target.value)} placeholder="Mtaa, Kata, Jiji"/>
+      </div>
+
+      {/* Items */}
+      <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Bidhaa / Huduma</div>
+      {items.map((item,i)=>(
+        <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:6,marginBottom:6,alignItems:'end'}}>
+          <Input label={i===0?"Bidhaa":""} value={item.name} onChange={e=>updateItem(i,'name',e.target.value)} placeholder="Jina"/>
+          <Input label={i===0?"Idadi":""} type="number" value={item.qty} onChange={e=>updateItem(i,'qty',+e.target.value||1)}/>
+          <Input label={i===0?"Bei":""} type="number" value={item.price} onChange={e=>updateItem(i,'price',+e.target.value||0)}/>
+          <button onClick={()=>removeItem(i)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:'8px',color:'#EF4444',cursor:'pointer',marginBottom:12}}>{IC.del}</button>
+        </div>
+      ))}
+      <Btn v="ghost" onClick={addItem} style={{marginBottom:12}}>{IC.plus} Ongeza Bidhaa</Btn>
+
+      {/* Tax & Notes */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <Input label="Kodi / VAT (%)" type="number" value={taxRate} onChange={e=>setTaxRate(+e.target.value||0)} placeholder="0"/>
+        <div style={{display:'flex',alignItems:'end',paddingBottom:12}}>
+          <div style={{fontSize:12,color:'#64748B'}}>Ankara Na: <b>{invNo}</b></div>
+        </div>
+      </div>
+      <Input label="Maelezo ya Ziada" value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Mf: Malipo ndani ya siku 30"/>
+
+      {/* Totals */}
+      <div style={{background:'#F0FDF4',borderRadius:12,padding:14,marginTop:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4}}><span>Jumla Ndogo:</span><span style={{fontWeight:600}}>{fm(subtotal)}</span></div>
+        {taxRate>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4,color:'#F59E0B'}}><span>Kodi ({taxRate}%):</span><span style={{fontWeight:600}}>{fm(tax)}</span></div>}
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:20,fontWeight:900,color:'#0B7A3B',paddingTop:6,borderTop:'2px solid #BBF7D0'}}><span>JUMLA KUU:</span><span>{fm(grandTotal)}</span></div>
+      </div>
+
+      {/* Actions */}
+      <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
+        <Btn onClick={generateInvoice} style={{flex:1}}>{IC.file} Chapisha / PDF</Btn>
+        <Btn v="blue" onClick={shareWhatsApp} style={{flex:1}}>{IC.send} WhatsApp</Btn>
+      </div>
+    </div>
+
+    {/* Invoice History */}
+    {invoices.length>0&&<div className="card">
+      <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📋 Ankara Zilizotumwa ({invoices.length})</h3>
+      {invoices.map(inv=>(
+        <div key={inv.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div><div style={{fontWeight:600,fontSize:13}}>{inv.customer.name}</div><div style={{fontSize:11,color:'#64748B'}}>{inv.id} • {fmtDate(inv.date)}</div></div>
+          <div style={{fontWeight:700,color:'#0B7A3B'}}>{fm(inv.grandTotal)}</div>
+        </div>
+      ))}
+    </div>}
   </div>;
 }

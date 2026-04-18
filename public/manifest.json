@@ -1,19 +1,15 @@
 {
   "name": "Duka Langu - Smart POS",
   "short_name": "Duka Langu",
-  "description": "Mfumo wa kisasa wa biashara - Together for the better",
+  "description": "Mfumo wa kisasa wa Point of Sale kwa wafanyabiashara",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0B7A3B",
+  "background_color": "#ffffff",
   "theme_color": "#0B7A3B",
-  "lang": "sw",
+  "orientation": "any",
   "icons": [
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+    {"src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "lang": "sw"
 }

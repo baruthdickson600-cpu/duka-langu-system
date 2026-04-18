@@ -38,6 +38,8 @@ export function AppProvider({children}){
   const[systemLogs,setSysLogs]=useState([]);
   const[tickets,setTickets]=useState([]);
   const[returns,setReturns]=useState([]);
+  const[paymentRequests,setPayReqs]=useState([]);
+  const[partners,setPartners]=useState([]);
 
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
   const bizId=biz?.id;
@@ -64,10 +66,18 @@ export function AppProvider({children}){
           safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
         ]);
         setProds(pr);setSales(sl);setExp(ex);setCust(cu);setEmps(em);setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        // Load payment requests for this business
+        const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
+        setPayReqs(pyReqs);
       }
       if(role==='admin'){
         const sl=await safeSelect('system_logs',{order:{col:'created_at'},limit:200});setSysLogs(sl);
         const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
+        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const pt=await safeSelect('marketing_partners');setPartners(pt);
+      }
+      if(role==='marketing'){
+        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
       }
     }catch(e){console.error('Load:',e)}
   },[]);
@@ -301,6 +311,123 @@ export function AppProvider({children}){
   // ===== PROMO =====
   const addPromo=useCallback(async(agent,phone,commission=10)=>{const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('promo_codes',{code,agent_name:agent,agent_phone:phone,commission_rate:commission});setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:agent,agent_phone:phone,commission_rate:commission,used_count:0,total_earned:0}]);return code},[]);
 
+  // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
+  // Office: submit payment with transaction ID
+  const submitPayment=useCallback(async(transactionId,amount,payMethod='SELCOM',phone='')=>{
+    if(!bizId)return null;
+    const pr={business_id:bizId,business_name:biz?.name,user_email:user?.email,transaction_id:transactionId.trim(),amount:+amount,payment_method:payMethod,phone,status:'pending',plan:biz?.plan||'basic'};
+    const saved=await safeInsert('payment_requests',pr);
+    const final=saved||{...pr,id:genId(),created_at:nowISO()};
+    setPayReqs(prev=>[final,...prev]);
+    // Notify admin
+    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 Malipo Mapya! - ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA!`});
+    return final;
+  },[bizId,biz,user]);
+
+  // Admin: approve payment → auto-generate token → activate
+  const approvePayment=useCallback(async(paymentId,days=30)=>{
+    const pr=paymentRequests.find(p=>p.id===paymentId);
+    if(!pr)return null;
+    // 1. Generate token
+    const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
+    const tokenData=await safeInsert('tokens',{code,days:parseInt(days),plan:pr.plan||'basic',created_by:user?.id,used:true,used_by:pr.business_id,used_at:nowISO()});
+    setTokens(prev=>[tokenData||{id:genId(),code,days,plan:pr.plan||'basic',used:true,created_at:nowISO()},...prev]);
+    // 2. Activate business
+    const exp=new Date(Date.now()+parseInt(days)*86400000).toISOString();
+    await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:pr.plan||'basic',is_suspended:false},'id',pr.business_id);
+    setBiz(prev=>prev.map(b=>b.id===pr.business_id?{...b,token_active:true,token_expiry:exp,is_suspended:false}:b));
+    // 3. Update payment request status
+    await safeUpdate('payment_requests',{status:'approved',approved_by:user?.id,approved_at:nowISO(),token_code:code,days_given:days},'id',paymentId);
+    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'approved',token_code:code,days_given:days}:p));
+    // 4. Notify business
+    await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'success',title:'🎉 Malipo Yamethibitishwa!',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamethibitishwa! Mfumo umefunguliwa kwa siku ${days}. Token: ${code}`});
+    return{code,days};
+  },[paymentRequests,user]);
+
+  // Admin: reject payment
+  const rejectPayment=useCallback(async(paymentId,reason='')=>{
+    const pr=paymentRequests.find(p=>p.id===paymentId);
+    if(!pr)return;
+    await safeUpdate('payment_requests',{status:'rejected',reject_reason:reason,approved_by:user?.id,approved_at:nowISO()},'id',paymentId);
+    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'rejected',reject_reason:reason}:p));
+    // Notify business
+    await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'danger',title:'❌ Malipo Yamekataliwa',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamekataliwa. Sababu: ${reason||'Transaction ID si sahihi'}. Jaribu tena.`});
+  },[paymentRequests,user]);
+
+  // Check my latest payment status (for office/locked page)
+  const myLatestPayment=useMemo(()=>{
+    if(!bizId)return null;
+    return paymentRequests.filter(p=>p.business_id===bizId).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]||null;
+  },[paymentRequests,bizId]);
+
+  // Pending payments count (for admin badge)
+  const pendingPayments=useMemo(()=>paymentRequests.filter(p=>p.status==='pending'),[paymentRequests]);
+
+  // Real-time subscription for payment status updates
+  useEffect(()=>{
+    if(!bizId||user?.role==='admin')return;
+    const channel=supabase.channel('payment-updates')
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'payment_requests',filter:`business_id=eq.${bizId}`},(payload)=>{
+        const updated=payload.new;
+        setPayReqs(prev=>prev.map(p=>p.id===updated.id?{...p,...updated}:p));
+        if(updated.status==='approved'){
+          // Auto-refresh business data
+          setPopups(prev=>[{id:genId(),type:'success',title:'🎉 Malipo Yamethibitishwa!',message:'Mfumo unafunguka...'},...prev]);
+          // Reload business data after 1.5 seconds
+          setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
+        }
+      }).subscribe();
+    return()=>{supabase.removeChannel(channel)};
+  },[bizId,user,loadData]);
+
+  // Admin: real-time new payment requests
+  useEffect(()=>{
+    if(user?.role!=='admin')return;
+    const channel=supabase.channel('admin-payments')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'payment_requests'},(payload)=>{
+        setPayReqs(prev=>[payload.new,...prev]);
+        setPopups(prev=>[{id:genId(),type:'warning',title:'💰 Malipo Mapya!',message:`${payload.new.business_name} amelipa! Thibitisha.`},...prev]);
+      }).subscribe();
+    return()=>{supabase.removeChannel(channel)};
+  },[user]);
+
+  // ===== MARKETING PARTNERS =====
+  const createPartner=useCallback(async(name,email,password,phone,commission=10)=>{
+    try{
+      const{data:auth}=await supabase.auth.signUp({email,password:password||'partner123'});
+      const uid=auth?.user?.id||genId();
+      const d=await safeInsert('users',{id:uid,email,name,phone,role:'marketing'});
+      const partner=await safeInsert('marketing_partners',{user_id:uid,name,email,phone,commission_rate:commission,status:'active'});
+      const final=partner||{id:genId(),user_id:uid,name,email,phone,commission_rate:commission,status:'active',created_at:nowISO()};
+      setPartners(prev=>[...prev,final]);
+      return final;
+    }catch(e){console.warn('Partner:',e);return null}
+  },[]);
+  const updatePartner=useCallback(async(pid,updates)=>{
+    await safeUpdate('marketing_partners',updates,'id',pid);
+    setPartners(prev=>prev.map(p=>p.id===pid?{...p,...updates}:p));
+  },[]);
+  const deletePartner=useCallback(async(pid)=>{
+    await safeDelete('marketing_partners','id',pid);
+    setPartners(prev=>prev.filter(p=>p.id!==pid));
+  },[]);
+
+  // Marketing computed values
+  const marketingStats=useMemo(()=>{
+    const totalClients=businesses.length;
+    const activeClients=businesses.filter(b=>b.token_active&&!b.is_suspended).length;
+    const trialClients=businesses.filter(b=>!b.token_active&&!b.is_suspended).length;
+    const suspendedClients=businesses.filter(b=>b.is_suspended).length;
+    const thisMonth=todayStr().slice(0,7);
+    const newThisMonth=businesses.filter(b=>b.created_at?.startsWith(thisMonth)).length;
+    const paidThisMonth=paymentRequests.filter(p=>p.status==='approved'&&p.created_at?.startsWith(thisMonth));
+    const revenueThisMonth=paidThisMonth.reduce((a,p)=>a+(p.amount||0),0);
+    const conversionRate=totalClients>0?Math.round(activeClients/totalClients*100):0;
+    // Pipeline
+    const pipeline={leads:trialClients,active:activeClients,churned:suspendedClients,total:totalClients};
+    return{totalClients,activeClients,trialClients,suspendedClients,newThisMonth,revenueThisMonth,conversionRate,pipeline};
+  },[businesses,paymentRequests]);
+
   // ===== NOTIFICATIONS =====
   const addNotif=useCallback(async(tt,tid,type,title,msg)=>{const d=await safeInsert('notifications',{target_type:tt,target_id:tid,type,title,message:msg});const n=d||{id:genId(),target_type:tt,target_id:tid,type,title,message:msg,created_at:nowISO(),is_read:false};setNotifs(prev=>[n,...prev]);return n},[]);
   const broadcastNotif=useCallback(async(type,title,msg)=>{await safeInsert('notifications',{target_type:'broadcast',type,title,message:msg});setNotifs(prev=>[{id:genId(),target_type:'broadcast',type,title,message:msg,created_at:nowISO(),is_read:false},...prev])},[]);
@@ -391,13 +518,90 @@ export function AppProvider({children}){
 
   useEffect(()=>{if(!popups.length)return;const t=setTimeout(()=>setPopups(p=>p.slice(0,-1)),6000);return()=>clearTimeout(t)},[popups]);
 
-  const myNotifs=user?.role==='admin'?notifications.filter(n=>n.target_type==='admin'||n.target_type==='broadcast'):notifications.filter(n=>(n.target_type==='business'&&n.target_id===bizId)||n.target_type==='broadcast');
+  // ===== PROFIT GOALS =====
+  const saveGoal=useCallback(async(type,amount)=>{
+    const key=`goal_${type}_${bizId}`;
+    await safeUpsert('system_settings',{key,value:String(amount),updated_at:nowISO()},'key');
+    setSettings(prev=>({...prev,[key]:String(amount)}));
+  },[bizId]);
+  const getGoal=useCallback((type)=>{
+    const key=`goal_${type}_${bizId}`;
+    return parseInt(settings[key])||0;
+  },[settings,bizId]);
+  const goalProgress=useMemo(()=>{
+    const today=todayStr();
+    const dayProfit=sales.filter(s=>s.created_at?.startsWith(today)).reduce((a,s)=>a+s.profit,0);
+    const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());
+    const weekProfit=sales.filter(s=>new Date(s.created_at)>=weekStart).reduce((a,s)=>a+s.profit,0);
+    const monthProfit=sales.filter(s=>s.created_at?.startsWith(today.slice(0,7))).reduce((a,s)=>a+s.profit,0);
+    return{
+      daily:{current:dayProfit,goal:getGoal('daily'),pct:getGoal('daily')?Math.min(100,Math.round(dayProfit/getGoal('daily')*100)):0},
+      weekly:{current:weekProfit,goal:getGoal('weekly'),pct:getGoal('weekly')?Math.min(100,Math.round(weekProfit/getGoal('weekly')*100)):0},
+      monthly:{current:monthProfit,goal:getGoal('monthly'),pct:getGoal('monthly')?Math.min(100,Math.round(monthProfit/getGoal('monthly')*100)):0},
+    };
+  },[sales,getGoal]);
+
+  // ===== AI SMART INSIGHTS =====
+  const aiInsights=useMemo(()=>{
+    if(!sales.length)return[];
+    const insights=[];
+    const today=todayStr();
+    const todaySales=sales.filter(s=>s.created_at?.startsWith(today));
+    const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);
+    const yesterday=yesterdayDate.toISOString().split('T')[0];
+    const yesterdaySales=sales.filter(s=>s.created_at?.startsWith(yesterday));
+    const tTotal=todaySales.reduce((a,s)=>a+s.total,0);
+    const yTotal=yesterdaySales.reduce((a,s)=>a+s.total,0);
+
+    // Trend: today vs yesterday
+    if(yTotal>0){
+      const change=((tTotal-yTotal)/yTotal*100).toFixed(0);
+      if(+change>10)insights.push({type:'success',icon:'📈',title:'Mauzo yanakua!',desc:`Leo +${change}% kuliko jana. Endelea hivyo!`});
+      else if(+change<-10)insights.push({type:'warning',icon:'📉',title:'Mauzo yameshuka',desc:`Leo ${change}% kuliko jana. Angalia sababu.`});
+    }
+
+    // Best selling day of the week
+    const dayMap={0:'Jumapili',1:'Jumatatu',2:'Jumanne',3:'Jumatano',4:'Alhamisi',5:'Ijumaa',6:'Jumamosi'};
+    const daySales={};
+    sales.forEach(s=>{const d=new Date(s.created_at).getDay();daySales[d]=(daySales[d]||0)+s.total});
+    const bestDay=Object.entries(daySales).sort((a,b)=>b[1]-a[1])[0];
+    if(bestDay)insights.push({type:'info',icon:'🏆',title:`Siku bora: ${dayMap[bestDay[0]]}`,desc:`Mauzo mengi zaidi yanafanyika ${dayMap[bestDay[0]]}. Hakikisha una stock ya kutosha!`});
+
+    // Top product suggestion
+    const prodMap={};
+    sales.slice(0,50).forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
+    const topProd=Object.entries(prodMap).sort((a,b)=>b[1]-a[1])[0];
+    if(topProd)insights.push({type:'success',icon:'⭐',title:`${topProd[0]} inauza zaidi`,desc:`Bidhaa hii ndiyo inayouza zaidi (x${topProd[1]}). Agiza zaidi na usiishe!`});
+
+    // Slow moving products
+    const recentProds=new Set();
+    sales.slice(0,100).forEach(s=>s.items?.forEach(i=>recentProds.add(i.name)));
+    const slowProds=products.filter(p=>!recentProds.has(p.name)&&p.quantity>0&&p.business_id===bizId);
+    if(slowProds.length>0)insights.push({type:'warning',icon:'🐢',title:`Bidhaa ${slowProds.length} zinasimama`,desc:`${slowProds.slice(0,3).map(p=>p.name).join(', ')} hazijauza hivi karibuni. Fikiria kupunguza bei.`});
+
+    // Profit margin analysis
+    if(lowMarginProducts.length>0)insights.push({type:'danger',icon:'⚠️',title:`Bidhaa ${lowMarginProducts.length} zina faida ndogo`,desc:`${lowMarginProducts.slice(0,2).map(p=>`${p.name} (${p.margin}%)`).join(', ')}. Ongeza bei au tafuta supplier mpya.`});
+
+    // Stock alert
+    if(lowStockProducts.length>0)insights.push({type:'danger',icon:'📦',title:`Bidhaa ${lowStockProducts.length} zinaisha`,desc:`Agiza haraka: ${lowStockProducts.slice(0,3).map(p=>p.name).join(', ')}.`});
+
+    // Average sale value
+    if(sales.length>=10){
+      const avg=sales.slice(0,30).reduce((a,s)=>a+s.total,0)/Math.min(30,sales.length);
+      insights.push({type:'info',icon:'💰',title:`Wastani wa mauzo: TZS ${Math.round(avg).toLocaleString()}`,desc:`Kila mteja ananunua wastani wa TZS ${Math.round(avg).toLocaleString()}. Jaribu upselling!`});
+    }
+
+    return insights.slice(0,6);
+  },[sales,products,bizId,lowMarginProducts,lowStockProducts]);
+
+  const myNotifs=user?.role==='admin'||user?.role==='marketing'?notifications.filter(n=>n.target_type==='admin'||n.target_type==='broadcast'||n.target_type==='marketing'):notifications.filter(n=>(n.target_type==='business'&&n.target_id===bizId)||n.target_type==='broadcast');
 
   return <Ctx.Provider value={{
     user,loading,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
     branches,activeBranch,setActiveBranch,branchProducts,branchSales,branchExpenses,
     products,sales,expenses,customers,employees,tokens,promoCodes,notifications:myNotifs,
     stockHistory,loginLogs,settings,popups,setPopups,systemLogs,tickets,returns,creditHistory,totalDebt,
+    paymentRequests,pendingPayments,myLatestPayment,
     // Auth
     login,signup,logout,forgotPassword,
     // CRUD
@@ -406,15 +610,17 @@ export function AppProvider({children}){
     addBranch,updateBranch,deleteBranch,getBranches,
     // Tickets
     createTicket,replyTicket,closeTicket,
-    // Tokens & Promo
-    genToken,activateToken,addPromo,
+    // Tokens & Promo & Payments
+    genToken,activateToken,addPromo,submitPayment,approvePayment,rejectPayment,
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin
     updateSetting,suspendBiz,deleteBiz,exportAllData,
+    createPartner,updatePartner,deletePartner,partners,marketingStats,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     getDailyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
+    saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }
 
