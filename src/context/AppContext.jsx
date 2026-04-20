@@ -563,11 +563,13 @@ export function AppProvider({children}){
       }
       // Daily report email (after 6 PM)
       if(hour>=18&&todaySales.length>0){
-        const report=getDailyReport();
+        const todayExp=expenses.filter(e=>e.created_at?.startsWith(today));
+        const topMap={};todaySales.forEach(s=>s.items?.forEach(i=>{topMap[i.name]=(topMap[i.name]||0)+i.qty}));
+        const report={date:today,totalSales:todayTotal,totalProfit:todayProfit,totalExpenses:todayExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:todaySales.length,topItems:topMap,lowStock:lowStockProducts.length};
         emailDailyReport(ownerEmail,report).catch(()=>{});
       }
     }
-  },[user,bizId,products,overdueCustomers,biz,sales,expenses,getDailyReport,settings]);
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses,settings,lowStockProducts,overdueTotal]);
 
   // ===== ADMIN SMART ALERTS =====
   useEffect(()=>{
