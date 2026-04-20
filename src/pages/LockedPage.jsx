@@ -106,7 +106,7 @@ export default function LockedPage(){
           </div>}
 
           <div style={{borderTop:'1px solid #E2E8F0',marginTop:16,paddingTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontSize:11,color:'#94A3B8'}}>Msaada: 0702 025 050<br/>WhatsApp: +255 628 319 789</div>
+            <div style={{fontSize:11,color:'#94A3B8'}}>Msaada: 0617 288 752<br/>WhatsApp: +255 628 319 789</div>
             <button onClick={logout} style={{background:'none',border:'1px solid #FCA5A5',borderRadius:8,padding:'6px 14px',color:'#EF4444',fontWeight:600,fontSize:12,cursor:'pointer'}}>Toka</button>
           </div>
         </div>

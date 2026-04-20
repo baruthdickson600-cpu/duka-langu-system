@@ -192,51 +192,112 @@ export function AppProvider({children}){
   const updateCustomer=useCallback(async(cid,u)=>{await safeUpdate('customers',u,'id',cid);setCust(prev=>prev.map(c=>c.id===cid?{...c,...u}:c))},[]);
   const deleteCustomer=useCallback(async(cid)=>{await safeDelete('customers','id',cid);setCust(prev=>prev.filter(c=>c.id!==cid))},[]);
 
-  // ===== CREDIT / DEBT MANAGEMENT =====
+  // ===== CREDIT / DEBT MANAGEMENT (ADVANCED) =====
   const[creditHistory,setCreditHist]=useState([]);
   
-  // Uza kwa deni (credit sale)
-  const creditSale=useCallback(async(cart,custId,discount=0)=>{
+  // Uza kwa deni (credit sale) - with due date
+  const creditSale=useCallback(async(cart,custId,discount=0,dueDate=null)=>{
     if(!bizId||!cart.length||!custId)return null;
     const subtotal=cart.reduce((s,c)=>s+c.qty*c.price,0);const total=Math.max(0,subtotal-discount);
     const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice),0)-discount;
-    // Create sale with credit payment method
-    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:'credit',customer_id:custId,is_synced:online};
+    const cust=customers.find(c=>c.id===custId);
+    // Check credit limit
+    if(cust?.credit_limit&&(cust.credit_balance||0)+total>cust.credit_limit){
+      return{error:`Deni litazidi kikomo cha TZS ${(cust.credit_limit||0).toLocaleString()}! Sasa: TZS ${(cust.credit_balance||0).toLocaleString()}, Mpya: TZS ${total.toLocaleString()}`};
+    }
+    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:'credit',customer_id:custId,customer_name:cust?.name,is_synced:online};
     const saved=await safeInsert('sales',sd);const final=saved||{...sd,id:genId(),created_at:nowISO()};
     setSales(prev=>[final,...prev]);
-    // Update stock
     for(const item of cart){
       const prod=products.find(p=>p.id===item.productId);
       if(prod){const nq=Math.max(0,prod.quantity-item.qty);await safeUpdate('products',{quantity:nq},'id',item.productId);setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p))}
     }
-    // Add credit to customer
-    const cust=customers.find(c=>c.id===custId);
     const newBal=(cust?.credit_balance||0)+total;
     const newSpent=(cust?.total_spent||0)+total;
-    await safeUpdate('customers',{credit_balance:newBal,total_spent:newSpent},'id',custId);
-    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal,total_spent:newSpent}:c));
-    // Record credit transaction
-    const tx={customer_id:custId,business_id:bizId,sale_id:final.id,amount:total,type:'credit',note:`Mauzo ya deni - ${cart.map(i=>i.name).join(', ')}`};
+    await safeUpdate('customers',{credit_balance:newBal,total_spent:newSpent,last_credit_date:nowISO()},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal,total_spent:newSpent,last_credit_date:nowISO()}:c));
+    // Record credit transaction with due date
+    const defaultDue=new Date(Date.now()+30*86400000).toISOString().split('T')[0]; // 30 days default
+    const tx={customer_id:custId,business_id:bizId,sale_id:final.id,amount:total,type:'credit',due_date:dueDate||defaultDue,note:`Deni - ${cart.map(i=>i.name).join(', ')}`,status:'unpaid'};
     const txSaved=await safeInsert('credit_transactions',tx);
     setCreditHist(prev=>[txSaved||{...tx,id:genId(),created_at:nowISO()},...prev]);
     return final;
   },[bizId,activeBranch,user,online,products,customers]);
 
-  // Pokea malipo ya deni
-  const receivePayment=useCallback(async(custId,amount,note='')=>{
+  // Pokea malipo ya deni - with payment method tracking
+  const receivePayment=useCallback(async(custId,amount,note='',payMethod='cash')=>{
     if(!bizId||!custId||!amount)return null;
     const cust=customers.find(c=>c.id===custId);if(!cust)return null;
     const newBal=Math.max(0,(cust.credit_balance||0)-amount);
-    await safeUpdate('customers',{credit_balance:newBal},'id',custId);
-    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal}:c));
-    const tx={customer_id:custId,business_id:bizId,amount,type:'payment',note:note||`Malipo ya deni - TZS ${amount.toLocaleString()}`};
+    await safeUpdate('customers',{credit_balance:newBal,last_payment_date:nowISO()},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal,last_payment_date:nowISO()}:c));
+    const tx={customer_id:custId,business_id:bizId,amount,type:'payment',payment_method:payMethod,note:note||`Malipo - ${payMethod} - TZS ${amount.toLocaleString()}`,status:'completed'};
     const txSaved=await safeInsert('credit_transactions',tx);
     setCreditHist(prev=>[txSaved||{...tx,id:genId(),created_at:nowISO()},...prev]);
+    // Mark oldest unpaid credits as paid
+    const unpaid=creditHistory.filter(t=>t.customer_id===custId&&t.type==='credit'&&t.status==='unpaid').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    let remaining=amount;
+    for(const u of unpaid){
+      if(remaining<=0)break;
+      if(remaining>=u.amount){
+        await safeUpdate('credit_transactions',{status:'paid',paid_at:nowISO()},'id',u.id);
+        setCreditHist(prev=>prev.map(t=>t.id===u.id?{...t,status:'paid',paid_at:nowISO()}:t));
+        remaining-=u.amount;
+      }else{
+        // Partial payment - update remaining
+        await safeUpdate('credit_transactions',{status:'partial',paid_amount:u.amount-remaining},'id',u.id);
+        setCreditHist(prev=>prev.map(t=>t.id===u.id?{...t,status:'partial'}:t));
+        remaining=0;
+      }
+    }
     return{newBalance:newBal};
-  },[bizId,customers]);
+  },[bizId,customers,creditHistory]);
 
-  // Total debt across all customers
+  // Auto-notify on payment received
+  const receivePaymentWithAlert=useCallback(async(custId,amount,note='',payMethod='cash')=>{
+    const result=await receivePayment(custId,amount,note,payMethod);
+    if(result){
+      const cust=customers.find(c=>c.id===custId);
+      setPopups(prev=>[{id:genId(),type:'success',title:'💰 Malipo Yamepokewa!',message:`${cust?.name} amelipa TZS ${amount.toLocaleString()}. Deni baki: TZS ${result.newBalance.toLocaleString()}`},...prev]);
+    }
+    return result;
+  },[receivePayment,customers]);
+
+  // Set credit limit for customer
+  const setCreditLimit=useCallback(async(custId,limit)=>{
+    await safeUpdate('customers',{credit_limit:+limit},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_limit:+limit}:c));
+  },[]);
+
+  // Total debt + overdue calculations
   const totalDebt=useMemo(()=>customers.reduce((a,c)=>a+(c.credit_balance||0),0),[customers]);
+  const overdueDebts=useMemo(()=>{
+    const today=new Date();
+    return creditHistory.filter(t=>{
+      if(t.type!=='credit'||t.status==='paid')return false;
+      if(!t.due_date)return false;
+      return new Date(t.due_date)<today;
+    });
+  },[creditHistory]);
+  const overdueCustomers=useMemo(()=>{
+    const custIds=new Set(overdueDebts.map(d=>d.customer_id));
+    return customers.filter(c=>custIds.has(c.id));
+  },[overdueDebts,customers]);
+  const overdueTotal=useMemo(()=>overdueDebts.reduce((a,d)=>a+(d.amount||0),0),[overdueDebts]);
+
+  // Debt aging analysis
+  const debtAging=useMemo(()=>{
+    const today=Date.now();
+    const aging={current:0,days30:0,days60:0,days90:0,over90:0};
+    creditHistory.filter(t=>t.type==='credit'&&t.status!=='paid').forEach(t=>{
+      const days=Math.floor((today-new Date(t.created_at).getTime())/86400000);
+      if(days<=30)aging.current+=t.amount||0;
+      else if(days<=60)aging.days30+=t.amount||0;
+      else if(days<=90)aging.days60+=t.amount||0;
+      else aging.over90+=t.amount||0;
+    });
+    return aging;
+  },[creditHistory]);
 
   // ===== EMPLOYEES =====
   const addEmployee=useCallback(async(emp)=>{
@@ -319,8 +380,8 @@ export function AppProvider({children}){
     const saved=await safeInsert('payment_requests',pr);
     const final=saved||{...pr,id:genId(),created_at:nowISO()};
     setPayReqs(prev=>[final,...prev]);
-    // Notify admin
-    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 Malipo Mapya! - ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA!`});
+    // Notify admin with priority notification
+    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Simu: ${phone}. FUNGUA: Nenda Malipo na Thibitisha SASA!`});
     return final;
   },[bizId,biz,user]);
 
@@ -383,13 +444,139 @@ export function AppProvider({children}){
   // Admin: real-time new payment requests
   useEffect(()=>{
     if(user?.role!=='admin')return;
-    const channel=supabase.channel('admin-payments')
+    // Listen for new payment requests
+    const ch1=supabase.channel('admin-payments')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'payment_requests'},(payload)=>{
         setPayReqs(prev=>[payload.new,...prev]);
-        setPopups(prev=>[{id:genId(),type:'warning',title:'💰 Malipo Mapya!',message:`${payload.new.business_name} amelipa! Thibitisha.`},...prev]);
+        setPopups(prev=>[{id:genId(),type:'warning',title:'💰 Malipo Mapya!',message:`${payload.new.business_name} amelipa TZS ${(payload.new.amount||0).toLocaleString()}! Thibitisha SASA.`},...prev]);
       }).subscribe();
-    return()=>{supabase.removeChannel(channel)};
+    // Listen for new notifications
+    const ch2=supabase.channel('admin-notifs')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:'target_type=eq.admin'},(payload)=>{
+        setNotifs(prev=>[payload.new,...prev]);
+      }).subscribe();
+    return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2)};
   },[user]);
+
+  // ===== SMART ALERT ENGINE =====
+  // Runs once on load — generates auto-notifications for important events
+  useEffect(()=>{
+    if(!user||!bizId||user.role==='admin'||user.role==='marketing')return;
+    const today=todayStr();
+    const alertKey=`alerts_${bizId}_${today}`;
+    // Prevent duplicate alerts per day
+    if(sessionStorage.getItem(alertKey))return;
+    sessionStorage.setItem(alertKey,'1');
+
+    const alerts=[];
+
+    // 1. LOW STOCK ALERT
+    const lowItems=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5));
+    if(lowItems.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'warning',
+        title:`📦 Bidhaa ${lowItems.length} Zinaisha!`,
+        message:`Agiza haraka: ${lowItems.slice(0,5).map(p=>`${p.name} (${p.quantity} zimebaki)`).join(', ')}${lowItems.length>5?` na ${lowItems.length-5} nyingine`:''}.`
+      });
+    }
+
+    // 2. OVERDUE DEBT ALERT
+    if(overdueCustomers.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'danger',
+        title:`🚨 Deni Limechelewa — Wateja ${overdueCustomers.length}!`,
+        message:`Deni la jumla TZS ${overdueTotal.toLocaleString()} limechelewa! ${overdueCustomers.slice(0,3).map(c=>`${c.name}: TZS ${(c.credit_balance||0).toLocaleString()}`).join(', ')}.`
+      });
+    }
+
+    // 3. SUBSCRIPTION EXPIRY ALERT
+    if(biz){
+      const end=biz.token_active?biz.token_expiry:biz.trial_end;
+      if(end){
+        const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
+        if(dLeft>0&&dLeft<=5){
+          alerts.push({target_type:'business',target_id:bizId,type:'warning',
+            title:`⏳ Muda Unakaribia Kuisha — Siku ${dLeft}!`,
+            message:`Muda wako wa mfumo utaisha ${dLeft===1?'KESHO':`baada ya siku ${dLeft}`}. Lipa sasa ili kuendelea: SELCOM > 6113 4066 — PESAFLY.`
+          });
+        }
+      }
+    }
+
+    // 4. EXPIRY DATE ALERT (products expiring soon)
+    const expiring=products.filter(p=>{
+      if(!p.expiry_date||p.business_id!==bizId)return false;
+      const dLeft=Math.ceil((new Date(p.expiry_date)-new Date())/86400000);
+      return dLeft>0&&dLeft<=14;
+    });
+    if(expiring.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'warning',
+        title:`📅 Bidhaa ${expiring.length} Zinakaribia Kuisha Muda!`,
+        message:`Angalia: ${expiring.slice(0,3).map(p=>{const d=Math.ceil((new Date(p.expiry_date)-new Date())/86400000);return`${p.name} (siku ${d})`}).join(', ')}.`
+      });
+    }
+
+    // 5. DAILY PERFORMANCE SUMMARY (if sales exist today)
+    const todaySales=sales.filter(s=>s.created_at?.startsWith(today));
+    const todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
+    const todayProfit=todaySales.reduce((a,s)=>a+s.profit,0);
+    const todayExp=expenses.filter(e=>e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+    // Only show if it's after 6 PM
+    const hour=new Date().getHours();
+    if(hour>=18&&todaySales.length>0){
+      const topProd={};todaySales.forEach(s=>s.items?.forEach(i=>{topProd[i.name]=(topProd[i.name]||0)+i.qty}));
+      const best=Object.entries(topProd).sort((a,b)=>b[1]-a[1])[0];
+      alerts.push({target_type:'business',target_id:bizId,type:'info',
+        title:`📊 Ripoti ya Leo — ${new Date().toLocaleDateString('sw-TZ')}`,
+        message:`Mauzo: TZS ${todayTotal.toLocaleString()} | Faida: TZS ${todayProfit.toLocaleString()} | Matumizi: TZS ${todayExp.toLocaleString()} | Mauzo: ${todaySales.length}${best?` | Bidhaa bora: ${best[0]} (x${best[1]})`:''}`
+      });
+    }
+
+    // Save alerts
+    alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses]);
+
+  // ===== ADMIN SMART ALERTS =====
+  useEffect(()=>{
+    if(user?.role!=='admin')return;
+    const today=todayStr();
+    const alertKey=`admin_alerts_${today}`;
+    if(sessionStorage.getItem(alertKey))return;
+    sessionStorage.setItem(alertKey,'1');
+    const alerts=[];
+
+    // New customer alert
+    const newToday=businesses.filter(b=>b.created_at?.startsWith(today));
+    if(newToday.length>0){
+      alerts.push({target_type:'admin',type:'success',
+        title:`🆕 Wateja Wapya ${newToday.length} Leo!`,
+        message:newToday.map(b=>`${b.name} (${b.email})`).join(', ')
+      });
+    }
+
+    // Expiring businesses (within 5 days)
+    const expSoon=businesses.filter(b=>{
+      const end=b.token_active?b.token_expiry:b.trial_end;
+      if(!end)return false;
+      const d=Math.ceil((new Date(end)-new Date())/86400000);
+      return d>0&&d<=5;
+    });
+    if(expSoon.length>0){
+      alerts.push({target_type:'admin',type:'warning',
+        title:`⏳ Wateja ${expSoon.length} Muda Unaisha!`,
+        message:expSoon.map(b=>{const d=Math.ceil((new Date(b.token_expiry||b.trial_end)-new Date())/86400000);return`${b.name} (siku ${d})`}).join(', ')
+      });
+    }
+
+    // Pending payments
+    const pending=paymentRequests.filter(p=>p.status==='pending');
+    if(pending.length>0){
+      alerts.push({target_type:'admin',type:'warning',
+        title:`💰 Malipo ${pending.length} Yanasubiri Kuthibitishwa!`,
+        message:pending.map(p=>`${p.business_name}: TZS ${(p.amount||0).toLocaleString()}`).join(', ')
+      });
+    }
+
+    alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
+  },[user,businesses,paymentRequests]);
 
   // ===== MARKETING PARTNERS =====
   const createPartner=useCallback(async(name,email,password,phone,commission=10)=>{
@@ -476,6 +663,49 @@ export function AppProvider({children}){
     const tExp=expenses.filter(e=>e.created_at?.startsWith(today));
     return{date:today,totalSales:tSales.reduce((a,s)=>a+s.total,0),totalProfit:tSales.reduce((a,s)=>a+s.profit,0),totalExpenses:tExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:tSales.length,topItems:tSales.flatMap(s=>s.items||[]).reduce((a,i)=>{a[i.name]=(a[i.name]||0)+i.qty;return a},{}),lowStock:lowStockProducts.length};
   },[sales,expenses,lowStockProducts]);
+
+  // Weekly Report
+  const getWeeklyReport=useCallback(()=>{
+    const now=new Date();const weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());
+    const prevWeekStart=new Date(weekStart);prevWeekStart.setDate(prevWeekStart.getDate()-7);
+    const wSales=sales.filter(s=>new Date(s.created_at)>=weekStart);
+    const pwSales=sales.filter(s=>{const d=new Date(s.created_at);return d>=prevWeekStart&&d<weekStart});
+    const wExp=expenses.filter(e=>new Date(e.created_at)>=weekStart);
+    const wTotal=wSales.reduce((a,s)=>a+s.total,0);const pwTotal=pwSales.reduce((a,s)=>a+s.total,0);
+    const wProfit=wSales.reduce((a,s)=>a+s.profit,0);const pwProfit=pwSales.reduce((a,s)=>a+s.profit,0);
+    const wExpTotal=wExp.reduce((a,e)=>a+(e.amount||0),0);
+    const salesChange=pwTotal>0?Math.round((wTotal-pwTotal)/pwTotal*100):0;
+    const profitChange=pwProfit>0?Math.round((wProfit-pwProfit)/pwProfit*100):0;
+    // Top items this week
+    const itemMap={};wSales.forEach(s=>s.items?.forEach(i=>{itemMap[i.name]=(itemMap[i.name]||0)+i.qty}));
+    const topItems=Object.entries(itemMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    // By day
+    const dayData=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);const ds=d.toISOString().split('T')[0];
+      dayData.push({day:d.toLocaleDateString('sw',{weekday:'short'}),sales:sales.filter(s=>s.created_at?.startsWith(ds)).reduce((a,s)=>a+s.total,0)});
+    }
+    return{totalSales:wTotal,prevTotalSales:pwTotal,salesChange,totalProfit:wProfit,prevProfit:pwProfit,profitChange,
+      totalExpenses:wExpTotal,netProfit:wProfit-wExpTotal,salesCount:wSales.length,topItems,dayData,newCustomers:customers.filter(c=>new Date(c.created_at)>=weekStart).length};
+  },[sales,expenses,customers]);
+
+  // Monthly Report
+  const getMonthlyReport=useCallback(()=>{
+    const now=new Date();const thisMonth=now.toISOString().slice(0,7);
+    const prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);const prevMonth=prevDate.toISOString().slice(0,7);
+    const mSales=sales.filter(s=>s.created_at?.startsWith(thisMonth));
+    const pmSales=sales.filter(s=>s.created_at?.startsWith(prevMonth));
+    const mExp=expenses.filter(e=>e.created_at?.startsWith(thisMonth));
+    const pmExp=expenses.filter(e=>e.created_at?.startsWith(prevMonth));
+    const mTotal=mSales.reduce((a,s)=>a+s.total,0);const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
+    const mProfit=mSales.reduce((a,s)=>a+s.profit,0);const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
+    const mExpTotal=mExp.reduce((a,e)=>a+(e.amount||0),0);const pmExpTotal=pmExp.reduce((a,e)=>a+(e.amount||0),0);
+    const salesChange=pmTotal>0?Math.round((mTotal-pmTotal)/pmTotal*100):0;
+    const profitChange=pmProfit>0?Math.round((mProfit-pmProfit)/pmProfit*100):0;
+    const expenseChange=pmExpTotal>0?Math.round((mExpTotal-pmExpTotal)/pmExpTotal*100):0;
+    return{totalSales:mTotal,prevSales:pmTotal,salesChange,totalProfit:mProfit,prevProfit:pmProfit,profitChange,
+      totalExpenses:mExpTotal,prevExpenses:pmExpTotal,expenseChange,netProfit:mProfit-mExpTotal,prevNetProfit:pmProfit-pmExpTotal,
+      salesCount:mSales.length,prevSalesCount:pmSales.length,newCustomers:customers.filter(c=>c.created_at?.startsWith(thisMonth)).length,
+      totalDebt:customers.reduce((a,c)=>a+(c.credit_balance||0),0),inventoryValue:products.reduce((a,p)=>a+p.quantity*(p.buy_price||0),0)};
+  },[sales,expenses,customers,products]);
 
   // ===== CHURN DETECTION (for admin) =====
   const churnRisk=useMemo(()=>{
@@ -601,11 +831,11 @@ export function AppProvider({children}){
     branches,activeBranch,setActiveBranch,branchProducts,branchSales,branchExpenses,
     products,sales,expenses,customers,employees,tokens,promoCodes,notifications:myNotifs,
     stockHistory,loginLogs,settings,popups,setPopups,systemLogs,tickets,returns,creditHistory,totalDebt,
-    paymentRequests,pendingPayments,myLatestPayment,
+    paymentRequests,pendingPayments,myLatestPayment,overdueCustomers,overdueTotal,debtAging,
     // Auth
     login,signup,logout,forgotPassword,
     // CRUD
-    addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment,
+    addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
     addBranch,updateBranch,deleteBranch,getBranches,
     // Tickets
@@ -619,7 +849,7 @@ export function AppProvider({children}){
     createPartner,updatePartner,deletePartner,partners,marketingStats,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
-    getDailyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
+    getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }

@@ -234,8 +234,74 @@ export function ProductsPage(){
       <div style={{marginBottom:12}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:5}}>{EMOJIS.map(e=><button key={e} onClick={()=>setF({...f,image:e})} style={{fontSize:20,padding:5,borderRadius:8,border:f.image===e?'2px solid #0B7A3B':'1px solid #E2E8F0',background:f.image===e?'#F0FDF4':'#fff',cursor:'pointer'}}>{e}</button>)}</div></div>
       <Input label="Jina" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Sukari"/>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        <Sel label="Kipimo" value={f.unit} onChange={e=>setF({...f,unit:e.target.value})} options={[{value:'Kg',label:'Kg'},{value:'Litre',label:'Lita'},{value:'Piece',label:'Kipande'},{value:'Pack',label:'Pakiti'},{value:'Box',label:'Boksi'}]}/>
-        <Sel label="Aina" value={f.category} onChange={e=>setF({...f,category:e.target.value})} options={[{value:'Vyakula',label:'Vyakula'},{value:'Vinywaji',label:'Vinywaji'},{value:'Vifaa',label:'Vifaa'},{value:'Dawa',label:'Dawa'},{value:'Nyingine',label:'Nyingine'}]}/>
+        <Sel label="Kipimo" value={f.unit} onChange={e=>setF({...f,unit:e.target.value})} options={[
+          {value:'Kipande',label:'Kipande (Pcs)'},
+          {value:'Kg',label:'Kilogramu (Kg)'},
+          {value:'Gram',label:'Gramu (g)'},
+          {value:'Lita',label:'Lita (L)'},
+          {value:'Mililita',label:'Mililita (ml)'},
+          {value:'Mfuko',label:'Mfuko'},
+          {value:'Pakiti',label:'Pakiti'},
+          {value:'Boksi',label:'Boksi/Kartoni'},
+          {value:'Chupa',label:'Chupa'},
+          {value:'Kopo',label:'Kopo/Tin'},
+          {value:'Debe',label:'Debe'},
+          {value:'Gunia',label:'Gunia'},
+          {value:'Seti',label:'Seti'},
+          {value:'Doseni',label:'Doseni (12)'},
+          {value:'Mita',label:'Mita (m)'},
+          {value:'Sentimita',label:'Sentimita (cm)'},
+          {value:'Inchi',label:'Inchi (in)'},
+          {value:'Futi',label:'Futi (ft)'},
+          {value:'Roli',label:'Roli/Roll'},
+          {value:'Ndoo',label:'Ndoo/Bucket'},
+          {value:'Tray',label:'Tray/Trei'},
+          {value:'Kopo_Ndogo',label:'Kopo Ndogo'},
+          {value:'Kopo_Kubwa',label:'Kopo Kubwa'},
+          {value:'Sachet',label:'Sachet/Kijiko'},
+          {value:'Begi',label:'Begi'},
+          {value:'Karatasi',label:'Karatasi/Sheet'},
+          {value:'Jozi',label:'Jozi/Pair'},
+          {value:'Nyingine',label:'Nyingine'},
+        ]}/>
+        <Sel label="Aina" value={f.category} onChange={e=>setF({...f,category:e.target.value})} options={[
+          {value:'Vyakula',label:'🍚 Vyakula/Chakula'},
+          {value:'Vinywaji',label:'🥤 Vinywaji'},
+          {value:'Matunda',label:'🍎 Matunda'},
+          {value:'Mboga',label:'🥬 Mboga/Mbogamboga'},
+          {value:'Nyama',label:'🥩 Nyama/Samaki/Kuku'},
+          {value:'Maziwa',label:'🥛 Maziwa/Dairy'},
+          {value:'Mkate',label:'🍞 Mkate/Bakery'},
+          {value:'Viungo',label:'🌶 Viungo/Spices'},
+          {value:'Mafuta',label:'🫒 Mafuta ya Kupikia'},
+          {value:'Nafaka',label:'🌾 Nafaka/Cereals'},
+          {value:'Snacks',label:'🍪 Snacks/Vitafunwa'},
+          {value:'Sabuni',label:'🧼 Sabuni/Usafi'},
+          {value:'Urembo',label:'💄 Urembo/Cosmetics'},
+          {value:'Dawa',label:'💊 Dawa/Pharmacy'},
+          {value:'Nguo',label:'👕 Nguo/Vitenge'},
+          {value:'Viatu',label:'👟 Viatu/Shoes'},
+          {value:'Elektroniki',label:'📱 Elektroniki'},
+          {value:'Vifaa_Umeme',label:'💡 Vifaa vya Umeme'},
+          {value:'Vifaa_Ujenzi',label:'🧱 Vifaa vya Ujenzi'},
+          {value:'Vifaa_Shule',label:'📚 Vifaa vya Shule'},
+          {value:'Vifaa_Ofisi',label:'🖊 Vifaa vya Ofisi'},
+          {value:'Vifaa_Nyumba',label:'🏠 Vifaa vya Nyumbani'},
+          {value:'Vifaa_Jikoni',label:'🍳 Vifaa vya Jikoni'},
+          {value:'Gesi',label:'🔥 Gesi/Gas'},
+          {value:'Maji',label:'💧 Maji/Water'},
+          {value:'Sigara',label:'🚬 Sigara/Tobacco'},
+          {value:'Pombe',label:'🍺 Pombe/Bia'},
+          {value:'Plastiki',label:'🛍 Plastiki/Mifuko'},
+          {value:'Mbolea',label:'🌱 Mbolea/Kilimo'},
+          {value:'Mifugo',label:'🐄 Chakula cha Mifugo'},
+          {value:'Spare_Parts',label:'🔧 Spare Parts'},
+          {value:'Toys',label:'🧸 Vinyago/Toys'},
+          {value:'Stationery',label:'✏️ Stationery'},
+          {value:'Hardware',label:'🔨 Hardware'},
+          {value:'Furniture',label:'🪑 Samani/Furniture'},
+          {value:'Nyingine',label:'📦 Nyingine/Other'},
+        ]}/>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
         <Input label="Bei Kununua" type="number" value={f.buy_price} onChange={e=>setF({...f,buy_price:e.target.value})}/>
@@ -488,114 +554,233 @@ export function EmployeesPage(){
   </div>;
 }
 
-// ===== CUSTOMERS & DEBT MANAGEMENT =====
+// ===== CUSTOMERS & ADVANCED DEBT MANAGEMENT =====
 export function CustomersPage(){
-  const{customers,addCustomer,updateCustomer,deleteCustomer,creditHistory,receivePayment,sales,currency,totalDebt}=useApp();
+  const{customers,addCustomer,updateCustomer,deleteCustomer,creditHistory,receivePayment,setCreditLimit,sales,currency,totalDebt,overdueCustomers,overdueTotal,debtAging}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[search,setSearch]=useState('');
   const[modal,setModal]=useState(false);
   const[editModal,setEditModal]=useState({open:false,cust:null});
   const[payModal,setPayModal]=useState({open:false,cust:null});
   const[histModal,setHistModal]=useState({open:false,cust:null});
+  const[limitModal,setLimitModal]=useState({open:false,cust:null});
   const[f,setF]=useState({name:'',phone:'',email:'',address:''});
   const[payAmt,setPayAmt]=useState('');
   const[payNote,setPayNote]=useState('');
+  const[payMethod,setPayMethod]=useState('cash');
   const[filter,setFilter]=useState('all');
+  const[limitAmt,setLimitAmt]=useState('');
+  const[tab,setTab]=useState('customers');
 
+  const debtCount=customers.filter(c=>(c.credit_balance||0)>0).length;
   const filtered=customers.filter(c=>{
     if(search&&!c.name?.toLowerCase().includes(search.toLowerCase())&&!c.phone?.includes(search))return false;
     if(filter==='debt')return(c.credit_balance||0)>0;
     if(filter==='clear')return(c.credit_balance||0)===0;
+    if(filter==='overdue')return overdueCustomers.some(o=>o.id===c.id);
     return true;
   }).sort((a,b)=>(b.credit_balance||0)-(a.credit_balance||0));
 
-  const debtCount=customers.filter(c=>(c.credit_balance||0)>0).length;
-
-  // Customer purchase history
   const getCustSales=(custId)=>sales.filter(s=>s.customer_id===custId);
   const getCustCredits=(custId)=>creditHistory.filter(t=>t.customer_id===custId);
+  const isOverdue=(custId)=>overdueCustomers.some(o=>o.id===custId);
+  const getDaysOverdue=(custId)=>{
+    const txs=creditHistory.filter(t=>t.customer_id===custId&&t.type==='credit'&&t.status!=='paid'&&t.due_date);
+    if(!txs.length)return 0;
+    const oldest=txs.sort((a,b)=>new Date(a.due_date)-new Date(b.due_date))[0];
+    return Math.max(0,Math.floor((Date.now()-new Date(oldest.due_date).getTime())/86400000));
+  };
+  const getCustDebtAge=(custId)=>{
+    const txs=creditHistory.filter(t=>t.customer_id===custId&&t.type==='credit'&&t.status!=='paid');
+    if(!txs.length)return 0;
+    const oldest=txs.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at))[0];
+    return Math.floor((Date.now()-new Date(oldest.created_at).getTime())/86400000);
+  };
+
+  // WhatsApp reminder message
+  const sendReminder=(cust)=>{
+    const msg=`Habari ${cust.name},%0A%0ATunakukumbusha kuwa una deni la *TZS ${(cust.credit_balance||0).toLocaleString()}* kwenye duka letu.%0A%0ATafadhali lipa haraka iwezekanavyo.%0A%0AMalipo: SELCOM > 6113 4066%0AJina: PESAFLY%0A%0AAsante! 🙏`;
+    window.open(`https://wa.me/${cust.phone?.replace(/\D/g,'')}?text=${msg}`,'_blank');
+  };
 
   return <div>
-    {/* Stats */}
-    <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.people} label="Wateja" value={customers.length} color="#0B7A3B"/>
-      <Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#EF4444" sub={`${debtCount} wanadaiwa`}/>
-      <Stat icon={IC.dollar} label="Walionunua" value={fm(customers.reduce((a,c)=>a+(c.total_spent||0),0))} color="#3B82F6"/>
+    {/* Tabs: Wateja | Deni Dashboard */}
+    <div style={{display:'flex',background:'#F1F5F9',borderRadius:12,padding:3,marginBottom:16}}>
+      <button onClick={()=>setTab('customers')} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:14,background:tab==='customers'?'#fff':'transparent',color:tab==='customers'?'#0B7A3B':'#94A3B8',boxShadow:tab==='customers'?'0 2px 8px rgba(0,0,0,.08)':'none',cursor:'pointer'}}>👥 Wateja</button>
+      <button onClick={()=>setTab('debt')} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:14,background:tab==='debt'?'#fff':'transparent',color:tab==='debt'?'#EF4444':'#94A3B8',boxShadow:tab==='debt'?'0 2px 8px rgba(0,0,0,.08)':'none',cursor:'pointer'}}>💰 Deni ({debtCount})</button>
     </div>
 
-    {/* Search & Filter */}
-    <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
-      <div style={{display:'flex',gap:8,flex:'1 1 300px',maxWidth:400}}>
-        <div style={{position:'relative',flex:1}}>
-          <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#94A3B8'}}>{IC.find}</span>
-          <input placeholder="Tafuta kwa jina au simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 10px 10px 36px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box'}}/>
-        </div>
-        <Sel value={filter} onChange={e=>setFilter(e.target.value)} options={[{value:'all',label:'Wote'},{value:'debt',label:'Wanadaiwa'},{value:'clear',label:'Hawadaiwi'}]} style={{width:130}}/>
+    {/* ===== DEBT DASHBOARD TAB ===== */}
+    {tab==='debt'&&<div>
+      {/* Debt Stats */}
+      <div className="flex-wrap" style={{marginBottom:16}}>
+        <Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#EF4444" sub={`${debtCount} wanadaiwa`}/>
+        <Stat icon={IC.warn} label="Limechelewa" value={fm(overdueTotal)} color="#B91C1C" sub={`${overdueCustomers.length} wateja`}/>
+        <Stat icon={IC.dollar} label="Walionunua" value={fm(customers.reduce((a,c)=>a+(c.total_spent||0),0))} color="#0B7A3B"/>
       </div>
-      <Btn onClick={()=>setModal(true)}>{IC.plus} Ongeza Mteja</Btn>
-    </div>
 
-    {/* Debt Summary Alert */}
-    {totalDebt>0&&<div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:12,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
-      <div>
-        <div style={{fontWeight:700,fontSize:14,color:'#B91C1C'}}>💰 Deni la Wateja: {fm(totalDebt)}</div>
-        <div style={{fontSize:12,color:'#DC2626'}}>Wateja {debtCount} wanadaiwa — fuatilia malipo!</div>
+      {/* Debt Aging Chart */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14,marginBottom:16}}>
+        <div className="card">
+          <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📊 Umri wa Deni (Debt Aging)</h3>
+          {[{label:'Siku 0-30 (Sasa)',value:debtAging.current,color:'#22C55E',bg:'#F0FDF4'},
+            {label:'Siku 31-60',value:debtAging.days30,color:'#F59E0B',bg:'#FFF7ED'},
+            {label:'Siku 61-90',value:debtAging.days60,color:'#EF4444',bg:'#FEF2F2'},
+            {label:'Zaidi ya 90',value:debtAging.over90,color:'#B91C1C',bg:'#FEF2F2'},
+          ].map(a=>(
+            <div key={a.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderRadius:8,marginBottom:6,background:a.bg}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:10,height:10,borderRadius:3,background:a.color}}/>
+                <span style={{fontSize:13,fontWeight:600}}>{a.label}</span>
+              </div>
+              <span style={{fontWeight:800,color:a.color,fontSize:14}}>{fm(a.value)}</span>
+            </div>
+          ))}
+          <div style={{display:'flex',justifyContent:'space-between',padding:'10px',borderTop:'2px solid #E2E8F0',marginTop:8}}>
+            <span style={{fontWeight:800,fontSize:14}}>JUMLA</span>
+            <span style={{fontWeight:900,fontSize:16,color:'#EF4444'}}>{fm(totalDebt)}</span>
+          </div>
+        </div>
+
+        {/* Overdue Alerts */}
+        <div className="card" style={{borderLeft:'4px solid #EF4444'}}>
+          <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px',color:'#B91C1C'}}>🚨 Deni Limechelewa ({overdueCustomers.length})</h3>
+          {overdueCustomers.length>0?overdueCustomers.map(c=>{
+            const daysOver=getDaysOverdue(c.id);
+            return <div key={c.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:13}}>{c.name}</div>
+                <div style={{fontSize:11,color:'#EF4444'}}>Siku {daysOver} zimepita tarehe ya kulipa!</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span style={{fontWeight:800,color:'#B91C1C'}}>{fm(c.credit_balance)}</span>
+                {c.phone&&<button onClick={()=>sendReminder(c)} style={{background:'#22C55E',border:'none',borderRadius:6,padding:'4px 8px',color:'#fff',fontSize:10,fontWeight:700,cursor:'pointer'}}>WhatsApp</button>}
+              </div>
+            </div>;
+          }):<div style={{textAlign:'center',padding:20,color:'#22C55E',fontSize:13}}>✅ Hakuna deni limechelewa!</div>}
+        </div>
+      </div>
+
+      {/* All Debtors */}
+      <div className="card">
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📋 Wateja Wenye Deni ({debtCount})</h3>
+        {customers.filter(c=>(c.credit_balance||0)>0).sort((a,b)=>(b.credit_balance||0)-(a.credit_balance||0)).map(c=>{
+          const overdue=isOverdue(c.id);const age=getCustDebtAge(c.id);
+          return <div key={c.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+            <div style={{width:38,height:38,borderRadius:'50%',background:overdue?'#FEF2F2':'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:overdue?'#EF4444':'#F59E0B'}}>{c.name?.[0]?.toUpperCase()}</div>
+            <div style={{flex:1,minWidth:120}}>
+              <div style={{fontWeight:700,fontSize:13}}>{c.name}</div>
+              <div style={{fontSize:11,color:'#64748B'}}>{c.phone||'-'} • Siku {age}</div>
+            </div>
+            <div style={{textAlign:'right',minWidth:80}}>
+              <div style={{fontWeight:800,fontSize:15,color:'#EF4444'}}>{fm(c.credit_balance)}</div>
+              {c.credit_limit&&<div style={{fontSize:10,color:'#64748B'}}>Kikomo: {fm(c.credit_limit)}</div>}
+            </div>
+            <div style={{display:'flex',gap:4}}>
+              {overdue&&<Badge color="#B91C1C">Chelewa!</Badge>}
+              <button onClick={()=>{setPayModal({open:true,cust:c});setPayAmt('');setPayNote('')}} style={{background:'#22C55E',border:'none',borderRadius:6,padding:'5px 10px',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>Pokea</button>
+              {c.phone&&<button onClick={()=>sendReminder(c)} style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:6,padding:'5px 8px',fontSize:11,cursor:'pointer',color:'#15803D',fontWeight:600}}>Kumbusha</button>}
+            </div>
+          </div>;
+        })}
+        {debtCount===0&&<Empty icon="✅" text="Hakuna wateja wenye deni!"/>}
       </div>
     </div>}
 
-    {/* Customer Cards */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
-      {filtered.map(c=>{
-        const hasDebt=(c.credit_balance||0)>0;
-        const custSales=getCustSales(c.id);
-        const lastSale=custSales[0];
-        
-        return <div key={c.id} style={{background:'#fff',borderRadius:14,padding:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',border:hasDebt?'2px solid #FCA5A5':'1px solid #E2E8F0'}}>
-          {/* Header */}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <div style={{width:44,height:44,borderRadius:'50%',background:hasDebt?'#FEF2F2':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:hasDebt?'#EF4444':'#0B7A3B'}}>{c.name?.[0]?.toUpperCase()}</div>
-              <div>
-                <div style={{fontWeight:700,fontSize:15}}>{c.name}</div>
-                <div style={{fontSize:12,color:'#64748B'}}>{c.phone||'Hakuna simu'}</div>
-                {c.address&&<div style={{fontSize:11,color:'#94A3B8'}}>{c.address}</div>}
+    {/* ===== CUSTOMERS TAB ===== */}
+    {tab==='customers'&&<div>
+      {/* Stats */}
+      <div className="flex-wrap" style={{marginBottom:16}}>
+        <Stat icon={IC.people} label="Wateja" value={customers.length} color="#0B7A3B"/>
+        <Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#EF4444" sub={`${debtCount} wanadaiwa`}/>
+        <Stat icon={IC.dollar} label="Walionunua" value={fm(customers.reduce((a,c)=>a+(c.total_spent||0),0))} color="#3B82F6"/>
+        {overdueCustomers.length>0&&<Stat icon={IC.warn} label="Chelewa" value={overdueCustomers.length} color="#B91C1C"/>}
+      </div>
+
+      {/* Search & Filter */}
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',gap:8,flex:'1 1 300px',maxWidth:450}}>
+          <div style={{position:'relative',flex:1}}>
+            <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#94A3B8'}}>{IC.find}</span>
+            <input placeholder="Tafuta kwa jina au simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 10px 10px 36px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box'}}/>
+          </div>
+          <Sel value={filter} onChange={e=>setFilter(e.target.value)} options={[{value:'all',label:'Wote'},{value:'debt',label:'Wanadaiwa'},{value:'overdue',label:'Wamechelewa'},{value:'clear',label:'Hawadaiwi'}]} style={{width:140}}/>
+        </div>
+        <Btn onClick={()=>setModal(true)}>{IC.plus} Ongeza Mteja</Btn>
+      </div>
+
+      {/* Customer Cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
+        {filtered.map(c=>{
+          const hasDebt=(c.credit_balance||0)>0;const overdue=isOverdue(c.id);const age=getCustDebtAge(c.id);
+          const custSales=getCustSales(c.id);const lastSale=custSales[0];
+          const limitUsed=c.credit_limit?Math.min(100,Math.round((c.credit_balance||0)/c.credit_limit*100)):0;
+          
+          return <div key={c.id} style={{background:'#fff',borderRadius:14,padding:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',border:overdue?'2px solid #EF4444':hasDebt?'2px solid #FCA5A5':'1px solid #E2E8F0'}}>
+            {/* Overdue banner */}
+            {overdue&&<div style={{background:'#FEF2F2',borderRadius:8,padding:'4px 10px',marginBottom:8,fontSize:11,fontWeight:700,color:'#B91C1C',display:'flex',justifyContent:'space-between'}}>
+              <span>🚨 Deni limechelewa siku {getDaysOverdue(c.id)}!</span>
+              {c.phone&&<span onClick={()=>sendReminder(c)} style={{cursor:'pointer',textDecoration:'underline'}}>Kumbusha</span>}
+            </div>}
+
+            {/* Header */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:overdue?'#FEF2F2':hasDebt?'#FFF7ED':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:overdue?'#EF4444':hasDebt?'#F59E0B':'#0B7A3B'}}>{c.name?.[0]?.toUpperCase()}</div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:15}}>{c.name}</div>
+                  <div style={{fontSize:12,color:'#64748B'}}>{c.phone||'Hakuna simu'}</div>
+                  {c.address&&<div style={{fontSize:11,color:'#94A3B8'}}>{c.address}</div>}
+                </div>
+              </div>
+              <div style={{display:'flex',gap:3}}>
+                <button onClick={()=>{setLimitModal({open:true,cust:c});setLimitAmt(c.credit_limit||'')}} title="Weka kikomo" style={{background:'#EFF6FF',border:'none',borderRadius:6,padding:5,cursor:'pointer',color:'#3B82F6',fontSize:12}}>📏</button>
+                <button onClick={()=>setEditModal({open:true,cust:{...c}})} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:5,cursor:'pointer',color:'#475569'}}>{IC.gear}</button>
+                <button onClick={()=>window.confirm(`Futa "${c.name}"?`)&&deleteCustomer(c.id)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:5,cursor:'pointer',color:'#EF4444'}}>{IC.del}</button>
               </div>
             </div>
-            <div style={{display:'flex',gap:3}}>
-              <button onClick={()=>setEditModal({open:true,cust:{...c}})} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:5,cursor:'pointer',color:'#475569'}}>{IC.gear}</button>
-              <button onClick={()=>window.confirm(`Futa "${c.name}"?`)&&deleteCustomer(c.id)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:5,cursor:'pointer',color:'#EF4444'}}>{IC.del}</button>
-            </div>
-          </div>
 
-          {/* Financial Info */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
-            <div style={{background:hasDebt?'#FEF2F2':'#F0FDF4',borderRadius:10,padding:'8px 10px'}}>
-              <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>DENI</div>
-              <div style={{fontWeight:800,fontSize:18,color:hasDebt?'#EF4444':'#22C55E'}}>{fm(c.credit_balance||0)}</div>
-              {hasDebt&&<div style={{fontSize:10,color:'#EF4444',fontWeight:600}}>Anadaiwa</div>}
-              {!hasDebt&&<div style={{fontSize:10,color:'#22C55E',fontWeight:600}}>Hadaiwi</div>}
+            {/* Financial Info */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+              <div style={{background:overdue?'#FEF2F2':hasDebt?'#FFF7ED':'#F0FDF4',borderRadius:10,padding:'8px 10px'}}>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>DENI</div>
+                <div style={{fontWeight:800,fontSize:18,color:overdue?'#B91C1C':hasDebt?'#EF4444':'#22C55E'}}>{fm(c.credit_balance||0)}</div>
+                {hasDebt&&<div style={{fontSize:10,color:overdue?'#B91C1C':'#F59E0B',fontWeight:600}}>{overdue?'Chelewa!':age>0?`Siku ${age}`:'Leo'}</div>}
+              </div>
+              <div style={{background:'#F8FAFC',borderRadius:10,padding:'8px 10px'}}>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>AMENUNUA</div>
+                <div style={{fontWeight:800,fontSize:18,color:'#1E293B'}}>{fm(c.total_spent||0)}</div>
+                <div style={{fontSize:10,color:'#64748B'}}>{custSales.length} mauzo</div>
+              </div>
             </div>
-            <div style={{background:'#F8FAFC',borderRadius:10,padding:'8px 10px'}}>
-              <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>AMENUNUA</div>
-              <div style={{fontWeight:800,fontSize:18,color:'#1E293B'}}>{fm(c.total_spent||0)}</div>
-              <div style={{fontSize:10,color:'#64748B'}}>{custSales.length} mauzo</div>
+
+            {/* Credit Limit Bar */}
+            {c.credit_limit&&<div style={{marginBottom:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#64748B',marginBottom:2}}>
+                <span>Kikomo: {fm(c.credit_limit)}</span>
+                <span style={{color:limitUsed>=90?'#EF4444':limitUsed>=70?'#F59E0B':'#22C55E'}}>{limitUsed}%</span>
+              </div>
+              <div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${limitUsed}%`,background:limitUsed>=90?'#EF4444':limitUsed>=70?'#F59E0B':'#22C55E',borderRadius:3}}/>
+              </div>
+            </div>}
+
+            {/* Last purchase */}
+            {lastSale&&<div style={{background:'#F8FAFC',borderRadius:8,padding:'4px 10px',marginBottom:8,fontSize:11,color:'#64748B'}}>
+              Mauzo: {fmtDate(lastSale.created_at)} — {fm(lastSale.total)} {lastSale.payment_method==='credit'?'(Deni)':''}
+            </div>}
+
+            {/* Action Buttons */}
+            <div style={{display:'flex',gap:5}}>
+              {hasDebt&&<button onClick={()=>{setPayModal({open:true,cust:c});setPayAmt('');setPayNote('');setPayMethod('cash')}} style={{flex:1,padding:'8px 6px',borderRadius:8,border:'none',background:'#22C55E',color:'#fff',fontWeight:700,fontSize:11,cursor:'pointer'}}>💰 Pokea</button>}
+              {hasDebt&&c.phone&&<button onClick={()=>sendReminder(c)} style={{padding:'8px 6px',borderRadius:8,border:'none',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:11,cursor:'pointer'}}>📱</button>}
+              <button onClick={()=>setHistModal({open:true,cust:c})} style={{flex:1,padding:'8px 6px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#fff',color:'#475569',fontWeight:600,fontSize:11,cursor:'pointer'}}>📋 Historia</button>
             </div>
-          </div>
-
-          {/* Last purchase */}
-          {lastSale&&<div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px',marginBottom:10,fontSize:11,color:'#64748B'}}>
-            Mauzo ya mwisho: {fmtDate(lastSale.created_at)} — {fm(lastSale.total)}
-          </div>}
-
-          {/* Action Buttons */}
-          <div style={{display:'flex',gap:6}}>
-            {hasDebt&&<button onClick={()=>{setPayModal({open:true,cust:c});setPayAmt('');setPayNote('')}} style={{flex:1,padding:'8px 10px',borderRadius:8,border:'none',background:'#22C55E',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>💰 Pokea Malipo</button>}
-            <button onClick={()=>setHistModal({open:true,cust:c})} style={{flex:1,padding:'8px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#fff',color:'#475569',fontWeight:600,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>📋 Historia</button>
-          </div>
-        </div>;
-      })}
-    </div>
-    {!filtered.length&&<Empty icon="👥" text={search?'Hakuna matokeo':'Ongeza wateja wako'}/>}
+          </div>;
+        })}
+      </div>
+      {!filtered.length&&<Empty icon="👥" text={search?'Hakuna matokeo':'Ongeza wateja wako'}/>}
+    </div>}
 
     {/* ADD CUSTOMER MODAL */}
     <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mteja Mpya">
@@ -624,26 +809,51 @@ export function CustomersPage(){
       </>}
     </Modal>
 
+    {/* SET CREDIT LIMIT MODAL */}
+    <Modal open={limitModal.open} onClose={()=>setLimitModal({open:false,cust:null})} title={`Kikomo cha Deni - ${limitModal.cust?.name||''}`}>
+      {limitModal.cust&&<>
+        <div style={{background:'#EFF6FF',borderRadius:10,padding:12,marginBottom:14,fontSize:13,color:'#1E40AF'}}>
+          Kikomo cha deni ni kiasi cha juu ambacho mteja anaweza kukopa. Akizidi kikomo, mfumo utamzuia.
+        </div>
+        <div style={{background:'#F8FAFC',borderRadius:10,padding:10,marginBottom:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <div><div style={{fontSize:10,color:'#94A3B8'}}>Deni Sasa</div><div style={{fontWeight:800,fontSize:16,color:'#EF4444'}}>{fm(limitModal.cust.credit_balance||0)}</div></div>
+          <div><div style={{fontSize:10,color:'#94A3B8'}}>Kikomo Sasa</div><div style={{fontWeight:800,fontSize:16,color:'#3B82F6'}}>{limitModal.cust.credit_limit?fm(limitModal.cust.credit_limit):'Hakuna'}</div></div>
+        </div>
+        <Input label="Kikomo Kipya (TZS)" type="number" value={limitAmt} onChange={e=>setLimitAmt(e.target.value)} placeholder="Mf: 100000"/>
+        <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+          {[50000,100000,200000,500000].map(a=><button key={a} onClick={()=>setLimitAmt(String(a))} style={{padding:'6px 12px',borderRadius:8,border:limitAmt===String(a)?'2px solid #3B82F6':'1px solid #E2E8F0',background:limitAmt===String(a)?'#EFF6FF':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:limitAmt===String(a)?'#3B82F6':'#64748B'}}>{fm(a)}</button>)}
+          <button onClick={()=>setLimitAmt('0')} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #FCA5A5',background:'#FEF2F2',fontSize:12,fontWeight:600,cursor:'pointer',color:'#EF4444'}}>Ondoa</button>
+        </div>
+        <Btn onClick={async()=>{
+          await setCreditLimit(limitModal.cust.id,+limitAmt||0);
+          alert(+limitAmt?`Kikomo kimewekwa: ${fm(+limitAmt)}`:'Kikomo kimeondolewa');
+          setLimitModal({open:false,cust:null});
+        }} style={{width:'100%',justifyContent:'center',marginTop:8}}>📏 Weka Kikomo</Btn>
+      </>}
+    </Modal>
+
     {/* RECEIVE PAYMENT MODAL */}
     <Modal open={payModal.open} onClose={()=>setPayModal({open:false,cust:null})} title="Pokea Malipo ya Deni">
       {payModal.cust&&<>
-        <div style={{background:'#FEF2F2',borderRadius:12,padding:14,marginBottom:16,textAlign:'center'}}>
+        <div style={{background:'#FEF2F2',borderRadius:12,padding:14,marginBottom:14,textAlign:'center'}}>
           <div style={{fontSize:13,color:'#64748B'}}>Deni la {payModal.cust.name}</div>
-          <div style={{fontSize:28,fontWeight:900,color:'#EF4444'}}>{fm(payModal.cust.credit_balance||0)}</div>
+          <div style={{fontSize:30,fontWeight:900,color:'#EF4444'}}>{fm(payModal.cust.credit_balance||0)}</div>
         </div>
         <Input label="Kiasi cha Malipo (TZS)" type="number" value={payAmt} onChange={e=>setPayAmt(e.target.value)} placeholder="Mf: 5000"/>
-        {/* Quick amount buttons */}
-        <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:6,marginBottom:10,flexWrap:'wrap'}}>
           {[5000,10000,20000,50000].map(amt=>
-            <button key={amt} onClick={()=>setPayAmt(String(amt))} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:payAmt===String(amt)?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:payAmt===String(amt)?'#0B7A3B':'#64748B'}}>
-              {(amt/1000)}K
-            </button>
+            <button key={amt} onClick={()=>setPayAmt(String(amt))} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #E2E8F0',background:payAmt===String(amt)?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:payAmt===String(amt)?'#0B7A3B':'#64748B'}}>{(amt/1000)}K</button>
           )}
-          <button onClick={()=>setPayAmt(String(payModal.cust.credit_balance||0))} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #22C55E',background:'#F0FDF4',fontSize:12,fontWeight:700,cursor:'pointer',color:'#0B7A3B'}}>
-            Lipa Yote
-          </button>
+          <button onClick={()=>setPayAmt(String(payModal.cust.credit_balance||0))} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #22C55E',background:'#F0FDF4',fontSize:12,fontWeight:700,cursor:'pointer',color:'#0B7A3B'}}>Lipa Yote</button>
         </div>
-        <Input label="Maelezo (si lazima)" value={payNote} onChange={e=>setPayNote(e.target.value)} placeholder="Mf: Malipo ya M-Pesa"/>
+        <div style={{marginBottom:10}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Njia ya Malipo</label>
+          <div style={{display:'flex',gap:6}}>
+            {[{v:'cash',l:'Taslimu'},{v:'mobile',l:'M-Pesa'},{v:'bank',l:'Benki'}].map(m=>
+              <button key={m.v} onClick={()=>setPayMethod(m.v)} style={{flex:1,padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:payMethod===m.v?'#0B7A3B':'#64748B'}}>{m.l}</button>
+            )}
+          </div>
+        </div>
+        <Input label="Maelezo (si lazima)" value={payNote} onChange={e=>setPayNote(e.target.value)} placeholder="Mf: Malipo ya sehemu"/>
         {payAmt&&<div style={{background:'#F0FDF4',borderRadius:10,padding:10,marginBottom:8}}>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span>Deni sasa:</span><span style={{fontWeight:700,color:'#EF4444'}}>{fm(payModal.cust.credit_balance||0)}</span></div>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}><span>Analipa:</span><span style={{fontWeight:700,color:'#22C55E'}}>-{fm(+payAmt)}</span></div>
@@ -652,7 +862,7 @@ export function CustomersPage(){
         <Btn onClick={async()=>{
           const amt=+payAmt;if(!amt||amt<=0)return alert('Weka kiasi sahihi!');
           if(amt>(payModal.cust.credit_balance||0))return alert('Kiasi ni kikubwa kuliko deni!');
-          await receivePayment(payModal.cust.id,amt,payNote);
+          await receivePayment(payModal.cust.id,amt,payNote,payMethod);
           alert(`Malipo ya ${fm(amt)} yamepokewa! Deni jipya: ${fm(Math.max(0,(payModal.cust.credit_balance||0)-amt))}`);
           setPayModal({open:false,cust:null});setPayAmt('');setPayNote('');
         }} style={{width:'100%',justifyContent:'center',marginTop:8,background:'#22C55E'}}>💰 Pokea {payAmt?fm(+payAmt):''}</Btn>
@@ -662,10 +872,9 @@ export function CustomersPage(){
     {/* CREDIT HISTORY MODAL */}
     <Modal open={histModal.open} onClose={()=>setHistModal({open:false,cust:null})} title={`Historia - ${histModal.cust?.name||''}`} wide>
       {histModal.cust&&<>
-        {/* Summary */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
           <div style={{background:'#FEF2F2',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
-            <div style={{fontSize:10,color:'#94A3B8'}}>Deni Sasa</div>
+            <div style={{fontSize:10,color:'#94A3B8'}}>Deni</div>
             <div style={{fontWeight:800,fontSize:18,color:'#EF4444'}}>{fm(histModal.cust.credit_balance||0)}</div>
           </div>
           <div style={{background:'#F8FAFC',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
@@ -673,48 +882,45 @@ export function CustomersPage(){
             <div style={{fontWeight:800,fontSize:18}}>{fm(histModal.cust.total_spent||0)}</div>
           </div>
           <div style={{background:'#F0FDF4',borderRadius:10,padding:'8px 10px',textAlign:'center'}}>
-            <div style={{fontSize:10,color:'#94A3B8'}}>Mauzo</div>
-            <div style={{fontWeight:800,fontSize:18,color:'#0B7A3B'}}>{getCustSales(histModal.cust.id).length}</div>
+            <div style={{fontSize:10,color:'#94A3B8'}}>Kikomo</div>
+            <div style={{fontWeight:800,fontSize:18,color:'#3B82F6'}}>{histModal.cust.credit_limit?fm(histModal.cust.credit_limit):'—'}</div>
           </div>
         </div>
 
-        {/* Transaction History */}
-        <h4 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#1E293B'}}>Shughuli za Deni</h4>
+        <h4 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>Shughuli za Deni</h4>
         <div style={{maxHeight:300,overflowY:'auto'}}>
-          {getCustCredits(histModal.cust.id).length?getCustCredits(histModal.cust.id).map(tx=>(
-            <div key={tx.id} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          {getCustCredits(histModal.cust.id).length?getCustCredits(histModal.cust.id).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(tx=>{
+            const isOverdueTx=tx.type==='credit'&&tx.status!=='paid'&&tx.due_date&&new Date(tx.due_date)<new Date();
+            return <div key={tx.id} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',background:isOverdueTx?'#FEF2F2':'transparent'}}>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <div style={{width:32,height:32,borderRadius:'50%',background:tx.type==='credit'?'#FEF2F2':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>
                   {tx.type==='credit'?'📤':'💰'}
                 </div>
                 <div>
                   <div style={{fontWeight:600,fontSize:13,color:tx.type==='credit'?'#EF4444':'#22C55E'}}>
-                    {tx.type==='credit'?'Deni Jipya':'Malipo'}
+                    {tx.type==='credit'?'Deni':'Malipo'} {tx.payment_method&&tx.type==='payment'?`(${tx.payment_method})`:''}
                   </div>
-                  <div style={{fontSize:11,color:'#94A3B8'}}>{tx.note}</div>
+                  <div style={{fontSize:11,color:'#94A3B8'}}>{tx.note?.slice(0,50)}</div>
                   <div style={{fontSize:10,color:'#CBD5E1'}}>{fmtDate(tx.created_at)}</div>
+                  {tx.due_date&&tx.type==='credit'&&<div style={{fontSize:10,color:isOverdueTx?'#B91C1C':'#64748B'}}>Lipa kabla: {new Date(tx.due_date).toLocaleDateString('sw-TZ')} {isOverdueTx?'⚠️ CHELEWA!':''}</div>}
                 </div>
               </div>
-              <div style={{fontWeight:800,fontSize:14,color:tx.type==='credit'?'#EF4444':'#22C55E'}}>
-                {tx.type==='credit'?'+':'-'}{fm(tx.amount)}
+              <div style={{textAlign:'right'}}>
+                <div style={{fontWeight:800,fontSize:14,color:tx.type==='credit'?'#EF4444':'#22C55E'}}>{tx.type==='credit'?'+':'-'}{fm(tx.amount)}</div>
+                {tx.type==='credit'&&<Badge color={tx.status==='paid'?'#22C55E':tx.status==='partial'?'#F59E0B':'#EF4444'}>{tx.status==='paid'?'Imelipwa':tx.status==='partial'?'Sehemu':'Haijalipwa'}</Badge>}
               </div>
-            </div>
-          )):<div style={{textAlign:'center',padding:20,color:'#94A3B8',fontSize:13}}>Hakuna shughuli za deni</div>}
+            </div>;
+          }):<div style={{textAlign:'center',padding:20,color:'#94A3B8'}}>Hakuna shughuli</div>}
         </div>
 
-        {/* Purchase History */}
-        <h4 style={{fontSize:14,fontWeight:700,margin:'16px 0 10px',color:'#1E293B'}}>Mauzo ({getCustSales(histModal.cust.id).length})</h4>
+        <h4 style={{fontSize:14,fontWeight:700,margin:'16px 0 10px'}}>Mauzo ({getCustSales(histModal.cust.id).length})</h4>
         <div style={{maxHeight:200,overflowY:'auto'}}>
           {getCustSales(histModal.cust.id).map(s=>(
-            <div key={s.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
-                <div style={{fontWeight:600,fontSize:12}}>{s.items?.map(i=>i.name).join(', ').slice(0,40)}</div>
-                <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)} • <Badge color={s.payment_method==='credit'?'#EF4444':'#22C55E'}>{s.payment_method==='credit'?'Deni':s.payment_method}</Badge></div>
-              </div>
-              <div style={{fontWeight:700,fontSize:13}}>{fm(s.total)}</div>
+            <div key={s.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div><div style={{fontWeight:600,fontSize:12}}>{s.items?.map(i=>i.name).join(', ').slice(0,40)}</div><div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)}</div></div>
+              <div style={{textAlign:'right'}}><div style={{fontWeight:700,fontSize:13}}>{fm(s.total)}</div><Badge color={s.payment_method==='credit'?'#EF4444':'#22C55E'}>{s.payment_method==='credit'?'Deni':s.payment_method}</Badge></div>
             </div>
           ))}
-          {!getCustSales(histModal.cust.id).length&&<div style={{textAlign:'center',padding:12,color:'#94A3B8',fontSize:12}}>Hakuna mauzo</div>}
         </div>
       </>}
     </Modal>
@@ -748,13 +954,42 @@ export function SupportPage(){
 }
 
 // ===== NOTIFICATIONS =====
-export function NotifsPage(){const{notifications,markAllRead}=useApp();
-  const sty=t=>({bg:t==='danger'?'#FEF2F2':t==='warning'?'#FFF7ED':'#F0FDF4',ac:t==='danger'?'#EF4444':t==='warning'?'#F59E0B':'#22C55E',em:t==='danger'?'🚨':t==='warning'?'⚠️':'✅'});
-  return <div className="card">
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}><h3 style={{fontSize:15,fontWeight:700,margin:0}}>Arifa ({notifications.length})</h3>{notifications.length>0&&<Btn v="ghost" onClick={markAllRead}>Soma Zote</Btn>}</div>
-    {!notifications.length?<Empty icon="🔔" text="Hakuna arifa"/>:notifications.slice(0,50).map(n=>{const s=sty(n.type);return <div key={n.id} style={{padding:'10px 14px',marginBottom:6,borderRadius:8,background:n.is_read?'#fff':s.bg,borderLeft:`4px solid ${s.ac}`,display:'flex',gap:10}}>
-      <span style={{fontSize:20}}>{s.em}</span><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{n.title}</div><div style={{fontSize:12,color:'#64748B',marginTop:2}}>{n.message}</div><div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>{fmtDate(n.created_at)}</div></div>
-    </div>})}
+export function NotifsPage(){
+  const{notifications,markAllRead,markRead}=useApp();
+  const[filter,setFilter]=useState('all');
+  const sty=t=>({bg:t==='danger'?'#FEF2F2':t==='warning'?'#FFF7ED':t==='success'?'#F0FDF4':'#EFF6FF',ac:t==='danger'?'#EF4444':t==='warning'?'#F59E0B':t==='success'?'#22C55E':'#3B82F6',em:t==='danger'?'🚨':t==='warning'?'⚠️':t==='success'?'✅':'📋'});
+  const unread=notifications.filter(n=>!n.is_read).length;
+  const filtered=filter==='all'?notifications:filter==='unread'?notifications.filter(n=>!n.is_read):notifications.filter(n=>n.type===filter);
+
+  return <div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+      <h3 style={{fontSize:15,fontWeight:700,margin:0}}>🔔 Arifa {unread>0&&<span style={{background:'#EF4444',color:'#fff',fontSize:11,padding:'2px 8px',borderRadius:10,marginLeft:6}}>{unread} mpya</span>}</h3>
+      {unread>0&&<Btn v="ghost" onClick={markAllRead}>Soma Zote</Btn>}
+    </div>
+
+    {/* Filter tabs */}
+    <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
+      {[{v:'all',l:`Zote (${notifications.length})`},{v:'unread',l:`Mpya (${unread})`},{v:'danger',l:'🚨 Hatari'},{v:'warning',l:'⚠️ Onyo'},{v:'success',l:'✅ Mafanikio'},{v:'info',l:'📋 Taarifa'}].map(f=>
+        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'6px 12px',borderRadius:8,border:filter===f.v?'2px solid #0B7A3B':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:filter===f.v?700:500,cursor:'pointer',color:filter===f.v?'#0B7A3B':'#64748B'}}>{f.l}</button>
+      )}
+    </div>
+
+    <div className="card">
+      {!filtered.length?<Empty icon="🔔" text={filter==='all'?'Hakuna arifa':'Hakuna arifa za aina hii'}/>:filtered.slice(0,50).map(n=>{
+        const s=sty(n.type);
+        return <div key={n.id} onClick={()=>!n.is_read&&markRead(n.id)} style={{padding:'12px 14px',marginBottom:8,borderRadius:10,background:n.is_read?'#FAFAFA':s.bg,borderLeft:`4px solid ${s.ac}`,display:'flex',gap:10,cursor:n.is_read?'default':'pointer',transition:'all 0.2s',boxShadow:n.is_read?'none':'0 1px 4px rgba(0,0,0,0.04)'}}>
+          <span style={{fontSize:22,marginTop:2}}>{s.em}</span>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div style={{fontWeight:n.is_read?600:800,fontSize:14,color:n.is_read?'#64748B':'#1E293B'}}>{n.title}</div>
+              {!n.is_read&&<span style={{width:8,height:8,borderRadius:'50%',background:s.ac,flexShrink:0}}/>}
+            </div>
+            <div style={{fontSize:13,color:'#475569',marginTop:4,lineHeight:1.5}}>{n.message}</div>
+            <div style={{fontSize:11,color:'#94A3B8',marginTop:6}}>{fmtDate(n.created_at)}</div>
+          </div>
+        </div>;
+      })}
+    </div>
   </div>;
 }
 
@@ -919,7 +1154,7 @@ export function InvoicePage(){
       <div class="total-row" style="font-size:20px;margin-top:6px;padding-top:6px;border-top:2px solid #0B7A3B">JUMLA: TZS ${grandTotal.toLocaleString()}</div></div>
       ${notes?`<div style="margin-top:20px;background:#FFF7ED;padding:12px;border-radius:8px;font-size:13px"><b>Maelezo:</b> ${notes}</div>`:''}
       <div style="margin-top:30px;padding:14px;background:#F0FDF4;border-radius:8px;font-size:13px"><b>Malipo:</b> ${settings.payment_provider||'SELCOM'} > ${settings.payment_number||'6113 4066'} | Jina: ${settings.payment_name||'PESAFLY'}</div>
-      <div class="footer">${biz?.name||'Duka Langu'} — Together for the better<br/>pesafly1@gmail.com | +255 628 986 770 | Huduma: 0702 025 050</div>
+      <div class="footer">${biz?.name||'Duka Langu'} — Together for the better<br/>pesafly1@gmail.com | +255 628 986 770 | Huduma: 0617 288 752</div>
     </body></html>`);
     w.document.close();
     setTimeout(()=>w.print(),500);
