@@ -1,5 +1,6 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
 import {supabase} from '../config/supabase';
+import {emailDailyReport,emailWeeklyReport,emailMonthlyReport,emailLowStock,emailOverdueDebt,emailPaymentReceived,emailNewCustomer,emailSubscriptionExpiry,emailWelcome,emailAdminPayment,emailPromotional} from '../utils/email';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
@@ -123,6 +124,10 @@ export function AppProvider({children}){
         await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya: ${businessName}`,message:`${name} (${email}) amesajili.`});
         setBiz(prev=>[newBiz,...prev]);setUser({id:uid,email,name,phone,role:'office',business_id:newBiz.id});
         await loadData(uid,'office',newBiz.id);
+        // Welcome email to new user
+        emailWelcome(email,{name,businessName}).catch(()=>{});
+        // Notify admin via email
+        emailNewCustomer('pesafly1@gmail.com',{name:businessName,email,phone}).catch(()=>{});
       }
       setLoading(false);return null;
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
@@ -259,9 +264,13 @@ export function AppProvider({children}){
     if(result){
       const cust=customers.find(c=>c.id===custId);
       setPopups(prev=>[{id:genId(),type:'success',title:'💰 Malipo Yamepokewa!',message:`${cust?.name} amelipa TZS ${amount.toLocaleString()}. Deni baki: TZS ${result.newBalance.toLocaleString()}`},...prev]);
+      // Email to owner
+      if(biz?.email){
+        emailPaymentReceived(biz.email,{customerName:cust?.name,amount,remaining:result.newBalance,method:payMethod,note}).catch(()=>{});
+      }
     }
     return result;
-  },[receivePayment,customers]);
+  },[receivePayment,customers,biz]);
 
   // Set credit limit for customer
   const setCreditLimit=useCallback(async(custId,limit)=>{
@@ -382,6 +391,8 @@ export function AppProvider({children}){
     setPayReqs(prev=>[final,...prev]);
     // Notify admin with priority notification
     await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Simu: ${phone}. FUNGUA: Nenda Malipo na Thibitisha SASA!`});
+    // Email admin
+    emailAdminPayment('pesafly1@gmail.com',{businessName:biz?.name,email:user?.email,transactionId,amount:+amount,method:payMethod,phone}).catch(()=>{});
     return final;
   },[bizId,biz,user]);
 
@@ -530,9 +541,33 @@ export function AppProvider({children}){
       });
     }
 
-    // Save alerts
+    // Save alerts + Send emails
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
-  },[user,bizId,products,overdueCustomers,biz,sales,expenses]);
+    // Send email alerts to business owner
+    const ownerEmail=biz?.email;
+    if(ownerEmail&&alerts.length>0){
+      // Low stock email
+      if(lowItems.length>0){
+        emailLowStock(ownerEmail,{count:lowItems.length,items:lowItems.slice(0,10).map(p=>({name:p.name,image:p.image,quantity:p.quantity,min_stock:p.min_stock||5}))}).catch(()=>{});
+      }
+      // Overdue debt email
+      if(overdueCustomers.length>0){
+        emailOverdueDebt(ownerEmail,{count:overdueCustomers.length,total:overdueTotal,customers:overdueCustomers.slice(0,10).map(c=>({name:c.name,phone:c.phone,balance:c.credit_balance,daysOverdue:Math.floor((Date.now()-new Date(c.last_credit_date||c.created_at).getTime())/86400000)}))}).catch(()=>{});
+      }
+      // Subscription expiry email
+      if(biz){
+        const end=biz.token_active?biz.token_expiry:biz.trial_end;
+        if(end){const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
+          if(dLeft>0&&dLeft<=5){emailSubscriptionExpiry(ownerEmail,{daysLeft:dLeft,price:parseInt(settings.system_price||30000)}).catch(()=>{});}
+        }
+      }
+      // Daily report email (after 6 PM)
+      if(hour>=18&&todaySales.length>0){
+        const report=getDailyReport();
+        emailDailyReport(ownerEmail,report).catch(()=>{});
+      }
+    }
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses,getDailyReport,settings]);
 
   // ===== ADMIN SMART ALERTS =====
   useEffect(()=>{
@@ -576,6 +611,10 @@ export function AppProvider({children}){
     }
 
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
+    // Email admin
+    if(expSoon.length>0){
+      emailSubscriptionExpiry('pesafly1@gmail.com',{daysLeft:'multiple',price:0,message:`Wateja ${expSoon.length} muda unaisha: ${expSoon.map(b=>b.name).join(', ')}`}).catch(()=>{});
+    }
   },[user,businesses,paymentRequests]);
 
   // ===== MARKETING PARTNERS =====
@@ -850,7 +889,7 @@ export function AppProvider({children}){
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
-    saveGoal,getGoal,goalProgress,aiInsights,
+    saveGoal,getGoal,goalProgress,aiInsights,emailDailyReport,emailWeeklyReport,emailMonthlyReport,emailPromotional,
   }}>{children}</Ctx.Provider>;
 }
 
