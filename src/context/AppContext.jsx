@@ -1,6 +1,5 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
 import {supabase} from '../config/supabase';
-import {emailDailyReport,emailWeeklyReport,emailMonthlyReport,emailLowStock,emailOverdueDebt,emailPaymentReceived,emailNewCustomer,emailSubscriptionExpiry,emailWelcome,emailAdminPayment,emailPromotional} from '../utils/email';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
@@ -14,6 +13,10 @@ async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).
 async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});if(q.limit)s=s.limit(q.limit);const r=await s;if(r.error){console.warn('Select:',t,r.error.message);return[]}return r.data||[]}catch(e){console.warn('DB:',t,e);return[]}}
+
+
+// Email helper (calls API directly - no imports needed)
+const sendMail=(to,subject,type,data)=>{fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})}).catch(()=>{})};
 
 export function AppProvider({children}){
   const[user,setUser]=useState(null);
@@ -125,9 +128,9 @@ export function AppProvider({children}){
         setBiz(prev=>[newBiz,...prev]);setUser({id:uid,email,name,phone,role:'office',business_id:newBiz.id});
         await loadData(uid,'office',newBiz.id);
         // Welcome email to new user
-        emailWelcome(email,{name,businessName}).catch(()=>{});
+        sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
         // Notify admin via email
-        emailNewCustomer('pesafly1@gmail.com',{name:businessName,email,phone}).catch(()=>{});
+        sendMail('pesafly1@gmail.com','🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone});
       }
       setLoading(false);return null;
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
@@ -266,7 +269,7 @@ export function AppProvider({children}){
       setPopups(prev=>[{id:genId(),type:'success',title:'💰 Malipo Yamepokewa!',message:`${cust?.name} amelipa TZS ${amount.toLocaleString()}. Deni baki: TZS ${result.newBalance.toLocaleString()}`},...prev]);
       // Email to owner
       if(biz?.email){
-        emailPaymentReceived(biz.email,{customerName:cust?.name,amount,remaining:result.newBalance,method:payMethod,note}).catch(()=>{});
+        sendMail(biz.email,'💰 Malipo Yamepokewa','payment_received',{customerName:cust?.name,amount,remaining:result.newBalance,method:payMethod,note});
       }
     }
     return result;
@@ -392,7 +395,7 @@ export function AppProvider({children}){
     // Notify admin with priority notification
     await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Simu: ${phone}. FUNGUA: Nenda Malipo na Thibitisha SASA!`});
     // Email admin
-    emailAdminPayment('pesafly1@gmail.com',{businessName:biz?.name,email:user?.email,transactionId,amount:+amount,method:payMethod,phone}).catch(()=>{});
+    sendMail('pesafly1@gmail.com','💰 MALIPO MAPYA — '+(biz?.name),'admin_payment',{businessName:biz?.name,email:user?.email,transactionId,amount:+amount,method:payMethod,phone});
     return final;
   },[bizId,biz,user]);
 
@@ -482,8 +485,7 @@ export function AppProvider({children}){
     const alerts=[];
 
     // 1. LOW STOCK ALERT
-    const lowItems=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5));
-    if(lowItems.length>0){
+    const lowItems=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5));    if(lowItems.length>0){
       alerts.push({target_type:'business',target_id:bizId,type:'warning',
         title:`📦 Bidhaa ${lowItems.length} Zinaisha!`,
         message:`Agiza haraka: ${lowItems.slice(0,5).map(p=>`${p.name} (${p.quantity} zimebaki)`).join(', ')}${lowItems.length>5?` na ${lowItems.length-5} nyingine`:''}.`
@@ -548,28 +550,28 @@ export function AppProvider({children}){
     if(ownerEmail&&alerts.length>0){
       // Low stock email
       if(lowItems.length>0){
-        emailLowStock(ownerEmail,{count:lowItems.length,items:lowItems.slice(0,10).map(p=>({name:p.name,image:p.image,quantity:p.quantity,min_stock:p.min_stock||5}))}).catch(()=>{});
+        sendMail(ownerEmail,'📦 Bidhaa '+lowItems.length+' Zinaisha!','low_stock',{count:lowItems.length,items:lowItems.slice(0,10).map(p=>({name:p.name,image:p.image,quantity:p.quantity,min_stock:p.min_stock||5}))});
       }
       // Overdue debt email
       if(overdueCustomers.length>0){
-        emailOverdueDebt(ownerEmail,{count:overdueCustomers.length,total:overdueTotal,customers:overdueCustomers.slice(0,10).map(c=>({name:c.name,phone:c.phone,balance:c.credit_balance,daysOverdue:Math.floor((Date.now()-new Date(c.last_credit_date||c.created_at).getTime())/86400000)}))}).catch(()=>{});
+        sendMail(ownerEmail,'🚨 Deni Limechelewa!','overdue_debt',{count:overdueCustomers.length,total:overdueTotal,customers:overdueCustomers.slice(0,10).map(c=>({name:c.name,phone:c.phone,balance:c.credit_balance,daysOverdue:Math.floor((Date.now()-new Date(c.last_credit_date||c.created_at).getTime())/86400000)}))});
       }
       // Subscription expiry email
       if(biz){
         const end=biz.token_active?biz.token_expiry:biz.trial_end;
         if(end){const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
-          if(dLeft>0&&dLeft<=5){emailSubscriptionExpiry(ownerEmail,{daysLeft:dLeft,price:parseInt(settings.system_price||30000)}).catch(()=>{});}
+          if(dLeft>0&&dLeft<=5){sendMail(ownerEmail,'⏳ Muda Unakaribia Kuisha!','subscription_expiry',{daysLeft:dLeft,price:parseInt(settings.system_price||30000)});}
         }
       }
       // Daily report email (after 6 PM)
       if(hour>=18&&todaySales.length>0){
         const todayExp=expenses.filter(e=>e.created_at?.startsWith(today));
         const topMap={};todaySales.forEach(s=>s.items?.forEach(i=>{topMap[i.name]=(topMap[i.name]||0)+i.qty}));
-        const report={date:today,totalSales:todayTotal,totalProfit:todayProfit,totalExpenses:todayExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:todaySales.length,topItems:topMap,lowStock:lowStockProducts.length};
-        emailDailyReport(ownerEmail,report).catch(()=>{});
+        const report={date:today,totalSales:todayTotal,totalProfit:todayProfit,totalExpenses:todayExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:todaySales.length,topItems:topMap,lowStock:lowItems.length};
+        sendMail(ownerEmail,'📊 Ripoti ya Leo','daily_report',report);
       }
     }
-  },[user,bizId,products,overdueCustomers,biz,sales,expenses,settings,lowStockProducts,overdueTotal]);
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses,settings,overdueTotal]);
 
   // ===== ADMIN SMART ALERTS =====
   useEffect(()=>{
@@ -615,7 +617,7 @@ export function AppProvider({children}){
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
     // Email admin
     if(expSoon.length>0){
-      emailSubscriptionExpiry('pesafly1@gmail.com',{daysLeft:'multiple',price:0,message:`Wateja ${expSoon.length} muda unaisha: ${expSoon.map(b=>b.name).join(', ')}`}).catch(()=>{});
+      sendMail('pesafly1@gmail.com','⏳ Wateja Muda Unaisha!','subscription_expiry',{daysLeft:'multiple',price:0});
     }
   },[user,businesses,paymentRequests]);
 
@@ -891,7 +893,7 @@ export function AppProvider({children}){
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
-    saveGoal,getGoal,goalProgress,aiInsights,emailDailyReport,emailWeeklyReport,emailMonthlyReport,emailPromotional,
+    saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }
 
