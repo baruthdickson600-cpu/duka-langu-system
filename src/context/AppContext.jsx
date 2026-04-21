@@ -16,7 +16,11 @@ async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq
 
 
 // Email helper (calls API directly - no imports needed)
-const sendMail=(to,subject,type,data)=>{fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})}).catch(()=>{})};
+const sendMail=(to,subject,type,data)=>{
+  fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})})
+  .then(r=>{if(!r.ok)r.json().then(d=>console.warn('Email fail:',d)).catch(()=>{});else console.log('Email sent:',subject,'→',to)})
+  .catch(e=>console.warn('Email network error:',e.message));
+};
 
 export function AppProvider({children}){
   const[user,setUser]=useState(null);
@@ -946,14 +950,28 @@ export function AppProvider({children}){
   },[businesses]);
 
   // ===== AGENT LEADERBOARD =====
+  // Agent tier definitions
+  const AGENT_TIERS=[
+    {min:51,name:'Shujaa',emoji:'👑',color:'#F59E0B',bonus:650000},
+    {min:36,name:'Bingwa',emoji:'💎',color:'#8B5CF6',bonus:400000},
+    {min:21,name:'Hodari',emoji:'🥇',color:'#0B7A3B',bonus:250000},
+    {min:11,name:'Wastani',emoji:'🥈',color:'#3B82F6',bonus:130000},
+    {min:5,name:'Mwanzo',emoji:'🥉',color:'#64748B',bonus:50000},
+    {min:0,name:'Bado',emoji:'⏳',color:'#94A3B8',bonus:0},
+  ];
+  const getAgentTier=(activeCount)=>AGENT_TIERS.find(t=>activeCount>=t.min)||AGENT_TIERS[AGENT_TIERS.length-1];
+
   const agentLeaderboard=useMemo(()=>{
     return promoCodes.map(p=>{
       const clients=businesses.filter(b=>b.promo_code===p.code);
       const activeClients=clients.filter(b=>b.token_active);
       const revenue=activeClients.length*parseInt(settings.system_price||30000);
       const commission=revenue*(p.commission_rate||10)/100;
-      return{...p,clients:clients.length,activeClients:activeClients.length,revenue,commission};
-    }).sort((a,b)=>b.clients-a.clients);
+      const tier=getAgentTier(activeClients.length);
+      const nextTier=AGENT_TIERS[AGENT_TIERS.indexOf(tier)-1];
+      const toNextTier=nextTier?nextTier.min-activeClients.length:0;
+      return{...p,clients:clients.length,activeClients:activeClients.length,revenue,commission,tier,nextTier,toNextTier};
+    }).sort((a,b)=>b.activeClients-a.activeClients);
   },[promoCodes,businesses,settings.system_price]);
 
   useEffect(()=>{if(!popups.length)return;const t=setTimeout(()=>setPopups(p=>p.slice(0,-1)),6000);return()=>clearTimeout(t)},[popups]);
@@ -1065,7 +1083,7 @@ export function AppProvider({children}){
     testimonials,addTestimonial,deleteTestimonial,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
-    getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
+    getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }

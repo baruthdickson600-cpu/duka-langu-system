@@ -74,6 +74,26 @@ export function MktAgentsPage(){
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
       {agentRevenue.map((a,i)=><div key={a.id} className="card">
+        {/* Tier Badge at top */}
+        <div style={{background:a.tier?.color+'15',borderRadius:10,padding:'8px 12px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center',border:`1.5px solid ${a.tier?.color||'#E2E8F0'}33`}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:22}}>{a.tier?.emoji||'⏳'}</span>
+            <div><div style={{fontWeight:800,fontSize:14,color:a.tier?.color||'#94A3B8'}}>{a.tier?.name||'Bado'}</div>
+            <div style={{fontSize:10,color:'#64748B'}}>Bonus: {fm(a.tier?.bonus||0)}</div></div>
+          </div>
+          {a.toNextTier>0&&a.nextTier&&<div style={{textAlign:'right'}}>
+            <div style={{fontSize:10,color:'#64748B'}}>→ {a.nextTier.emoji} {a.nextTier.name}</div>
+            <div style={{fontSize:12,fontWeight:700,color:a.nextTier.color}}>Wateja {a.toNextTier} zaidi</div>
+          </div>}
+          {a.toNextTier<=0&&a.tier?.name==='Shujaa'&&<div style={{fontSize:11,color:'#F59E0B',fontWeight:700}}>🏆 TOP LEVEL!</div>}
+        </div>
+        {/* Tier Progress Bar */}
+        {a.nextTier&&<div style={{marginBottom:10}}>
+          <div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${Math.min(100,Math.round(a.activeClients/(a.nextTier?.min||1)*100))}%`,background:a.tier?.color||'#94A3B8',borderRadius:3,transition:'width 0.5s'}}/>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94A3B8',marginTop:2}}><span>{a.activeClients} active</span><span>{a.nextTier?.min} kwa {a.nextTier?.name}</span></div>
+        </div>}
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
           <span style={{width:36,height:36,borderRadius:'50%',background:i===0?'#F0FDF4':i===1?'#EFF6FF':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:i===0?'#0B7A3B':'#64748B'}}>#{i+1}</span>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{a.agent_name}</div><div style={{fontSize:12,color:'#64748B'}}>{a.agent_phone||'-'} • <span style={{fontFamily:'monospace',color:'#8B5CF6'}}>{a.code}</span></div></div>
@@ -83,8 +103,7 @@ export function MktAgentsPage(){
           <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Active</div><div style={{fontWeight:800,fontSize:16,color:'#3B82F6'}}>{a.activeClients}</div></div>
           <div style={{background:'#F5F3FF',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Kamisheni</div><div style={{fontWeight:800,fontSize:14,color:'#8B5CF6'}}>{fm(a.commission)}</div></div>
         </div>
-        <div style={{fontSize:12,color:'#64748B'}}>Commission Rate: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fm(a.totalRevenue)}</b></div>
-        {/* Referral Link */}
+        <div style={{fontSize:12,color:'#64748B'}}>Commission: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fm(a.totalRevenue)}</b></div>
         <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px',marginTop:8,fontSize:11}}>
           🔗 Link: <code style={{background:'#E2E8F0',padding:'2px 6px',borderRadius:4,fontSize:10}}>duka-langu-system.vercel.app?ref={a.code}</code>
           <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app?ref=${a.code}`);alert('Link imecopy!')}} style={{marginLeft:6,fontSize:10,background:'#0B7A3B',color:'#fff',border:'none',borderRadius:4,padding:'2px 8px',cursor:'pointer'}}>Copy</button>

@@ -46,11 +46,19 @@ export function AdminDashboard(){
         </div>)}
         {!expiringBiz.length&&<Empty icon="✅" text="Hakuna zinazoisha"/>}</div>
 
-      {/* Agent Leaderboard */}
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Mawakala Bora</h3>
-        {agentLeaderboard.slice(0,5).map((a,i)=><div key={a.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{width:22,height:22,borderRadius:'50%',background:i===0?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:i===0?'#0B7A3B':'#64748B'}}>{i+1}</span>
-          <div style={{flex:1}}><div style={{fontWeight:600,fontSize:12}}>{a.agent_name}</div><div style={{fontSize:11,color:'#64748B'}}>{a.clients} wateja | {fmtMoney(a.commission)} kamisheni</div></div>
+      {/* Agent Leaderboard with Tiers */}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Mawakala — Madaraja</h3>
+        {agentLeaderboard.slice(0,8).map((a,i)=><div key={a.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
+          <span style={{fontSize:18}}>{a.tier?.emoji||'⏳'}</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:13}}>{a.agent_name}</div>
+            <div style={{fontSize:11,color:'#64748B'}}>{a.activeClients} active / {a.clients} jumla</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <Badge color={a.tier?.color||'#94A3B8'}>{a.tier?.name||'Bado'}</Badge>
+            <div style={{fontSize:10,color:'#64748B',marginTop:2}}>{fmtMoney(a.tier?.bonus||0)}</div>
+          </div>
+          {a.toNextTier>0&&<div style={{fontSize:9,color:'#F59E0B',fontWeight:600,minWidth:50,textAlign:'right'}}>→ {a.toNextTier} zaidi</div>}
         </div>)}
         {!agentLeaderboard.length&&<Empty icon="👥" text="Hakuna mawakala"/>}</div>
 

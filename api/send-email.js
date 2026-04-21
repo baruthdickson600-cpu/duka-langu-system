@@ -162,7 +162,7 @@ export default async function handler(req, res) {
           <table class="table"><tr><th>Bidhaa</th><th>Zimebaki</th><th>Minimum</th></tr>
           ${(data.items||[]).map(i=>`<tr><td>${i.image||'📦'} ${i.name}</td><td style="color:#EF4444;font-weight:700">${i.quantity}</td><td>${i.min_stock||5}</td></tr>`).join('')}
           </table>
-          <a href="https://duka-langu-beige.vercel.app" class="btn">Angalia Mfumo →</a>
+          <a href="https://duka-langu-system.vercel.app" class="btn">Angalia Mfumo →</a>
         `);
         break;
 
@@ -214,7 +214,7 @@ export default async function handler(req, res) {
             <div style="font-size:14px;color:#92400E">Jina: PESAFLY</div>
             <div style="font-size:14px;color:#92400E;margin-top:4px">Kiasi: <strong>${fm(data.price || 30000)}</strong></div>
           </div>
-          <a href="https://duka-langu-beige.vercel.app" class="btn">Lipa Sasa →</a>
+          <a href="https://duka-langu-system.vercel.app" class="btn">Lipa Sasa →</a>
         `);
         break;
 
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
             <tr><td>3️⃣</td><td><strong>Angalia Ripoti</strong> — Nenda "Ripoti" → Ona mauzo, faida, na matumizi</td></tr>
             <tr><td>4️⃣</td><td><strong>Ongeza Wafanyakazi</strong> — Nenda "Wafanyakazi" → Wape login yao</td></tr>
           </table>
-          <a href="https://duka-langu-beige.vercel.app" class="btn">Fungua Mfumo →</a>
+          <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo →</a>
           <hr class="divider">
           <p>Unahitaji msaada? Tupigie <strong>${phone}</strong> au WhatsApp <strong>${whatsapp}</strong></p>
         `);
@@ -247,7 +247,7 @@ export default async function handler(req, res) {
           <div style="background:#F0FDF4;border-radius:12px;padding:20px;margin:16px 0;text-align:center;border:2px dashed ${G}">
             <div style="font-size:16px;color:${D};line-height:1.8">${data.message || ''}</div>
           </div>
-          ${data.cta ? `<div style="text-align:center"><a href="https://duka-langu-beige.vercel.app" class="btn">${data.cta}</a></div>` : ''}
+          ${data.cta ? `<div style="text-align:center"><a href="https://duka-langu-system.vercel.app" class="btn">${data.cta}</a></div>` : ''}
           <hr class="divider">
           <p style="text-align:center;font-size:11px;color:#94A3B8">Hutaki kupokea tena? Jibu email hii na andika "STOP"</p>
         `);
@@ -265,7 +265,7 @@ export default async function handler(req, res) {
             <p style="margin:6px 0"><strong>Njia:</strong> ${data.method || 'SELCOM'}</p>
             <p style="margin:6px 0"><strong>Simu:</strong> ${data.phone || '-'}</p>
           </div>
-          <a href="https://duka-langu-beige.vercel.app" class="btn">Fungua Mfumo na Thibitisha →</a>
+          <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo na Thibitisha →</a>
         `);
         break;
 
