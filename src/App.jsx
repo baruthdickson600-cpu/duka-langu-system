@@ -6,7 +6,7 @@ import AuthPage from './pages/AuthPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
-import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage} from './pages/marketing/MarketingPages';
+import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 
 const MENUS={
   admin:[
@@ -20,6 +20,7 @@ const MENUS={
     {id:'tickets',icon:IC.bell,label:'Tickets'},
     {id:'usage',icon:IC.chart,label:'Usage'},
     {id:'broadcast',icon:IC.send,label:'Broadcast'},
+    {id:'messaging',icon:IC.send,label:'Ujumbe'},
     {id:'templates',icon:IC.file,label:'Email'},
     {id:'security',icon:IC.shield,label:'Security'},
     {id:'settings',icon:IC.gear,label:'Mipangilio'},
@@ -28,9 +29,14 @@ const MENUS={
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'agents',icon:IC.users,label:'Mawakala'},
-    {id:'commission',icon:IC.dollar,label:'Kamisheni'},
+    {id:'campaigns',icon:IC.gift,label:'Kampeni'},
+    {id:'followups',icon:IC.clock,label:'Follow-up'},
+    {id:'messaging',icon:IC.send,label:'Ujumbe'},
+    {id:'testimonials',icon:IC.star||IC.ok,label:'Maoni'},
+    {id:'emailcamp',icon:IC.file,label:'Email'},
     {id:'reports',icon:IC.chart,label:'Ripoti'},
-    {id:'broadcast',icon:IC.send,label:'Matangazo'},
+    {id:'demo',icon:IC.key,label:'Demo'},
+    {id:'broadcast',icon:IC.bell,label:'Broadcast'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   office:[
@@ -85,7 +91,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs}=useApp();
   const[page,setPage]=useState('dashboard');
   const[sidebar,setSidebar]=useState(false);
   const[receipt,setReceipt]=useState(null);
@@ -113,15 +119,18 @@ export default function App(){
         case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
-        case'templates':return <EmailTemplatesPage/>;
+        case'templates':return <EmailTemplatesPage/>;case'messaging':return <MessagingPage/>;
         default:return <AdminDashboard/>;
       }
     }
     if(role==='marketing'){
       switch(page){
         case'pipeline':return <PipelinePage/>;case'agents':return <MktAgentsPage/>;
-        case'commission':return <CommissionPage/>;case'reports':return <MktReportsPage/>;
-        case'broadcast':return <MktBroadcastPage/>;case'notifications':return <NotifsPage/>;
+        case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
+        case'messaging':return <MessagingPage/>;case'testimonials':return <TestimonialsPage/>;
+        case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;
+        case'reports':return <MktReportsPage/>;case'broadcast':return <MktBroadcastPage/>;
+        case'notifications':return <NotifsPage/>;
         default:return <MarketingDash/>;
       }
     }
@@ -176,6 +185,7 @@ export default function App(){
           {m.icon}{m.label}
           {m.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700}}>{unread}</span>}
           {m.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
+          {m.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700}}>{unreadMsgs}</span>}
         </button>)}
       </div>
 

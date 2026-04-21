@@ -44,6 +44,10 @@ export function AppProvider({children}){
   const[returns,setReturns]=useState([]);
   const[paymentRequests,setPayReqs]=useState([]);
   const[partners,setPartners]=useState([]);
+  const[campaigns,setCampaigns]=useState([]);
+  const[internalMsgs,setMsgs]=useState([]);
+  const[followups,setFollowups]=useState([]);
+  const[testimonials,setTestimonials]=useState([]);
 
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
   const bizId=biz?.id;
@@ -79,9 +83,17 @@ export function AppProvider({children}){
         const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
         const pt=await safeSelect('marketing_partners');setPartners(pt);
+        const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
+        const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
+        const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
+        const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
       if(role==='marketing'){
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
+        const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
+        const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
+        const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
     }catch(e){console.error('Load:',e)}
   },[]);
@@ -642,6 +654,48 @@ export function AppProvider({children}){
     setPartners(prev=>prev.filter(p=>p.id!==pid));
   },[]);
 
+  // ===== CAMPAIGNS =====
+  const addCampaign=useCallback(async(c)=>{
+    const d=await safeInsert('campaigns',{...c,created_by:user?.id,status:'active'});
+    const f=d||{...c,id:genId(),created_by:user?.id,status:'active',signups:0,created_at:nowISO()};
+    setCampaigns(prev=>[f,...prev]);return f;
+  },[user]);
+  const updateCampaign=useCallback(async(cid,u)=>{await safeUpdate('campaigns',u,'id',cid);setCampaigns(prev=>prev.map(c=>c.id===cid?{...c,...u}:c))},[]);
+  const deleteCampaign=useCallback(async(cid)=>{await safeDelete('campaigns','id',cid);setCampaigns(prev=>prev.filter(c=>c.id!==cid))},[]);
+
+  // ===== INTERNAL MESSAGING (Admin ↔ Marketing) =====
+  const sendMessage=useCallback(async(to,message,subject='')=>{
+    const d=await safeInsert('internal_messages',{from_id:user?.id,from_name:user?.name||user?.email,from_role:user?.role,to_role:to,subject,message,is_read:false});
+    const f=d||{id:genId(),from_id:user?.id,from_name:user?.name||user?.email,from_role:user?.role,to_role:to,subject,message,is_read:false,created_at:nowISO()};
+    setMsgs(prev=>[f,...prev]);return f;
+  },[user]);
+  const markMsgRead=useCallback(async(mid)=>{await safeUpdate('internal_messages',{is_read:true},'id',mid);setMsgs(prev=>prev.map(m=>m.id===mid?{...m,is_read:true}:m))},[]);
+  const myMessages=useMemo(()=>internalMsgs.filter(m=>m.to_role===user?.role||m.from_role===user?.role).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[internalMsgs,user]);
+  const unreadMsgs=useMemo(()=>internalMsgs.filter(m=>m.to_role===user?.role&&!m.is_read).length,[internalMsgs,user]);
+
+  // ===== FOLLOW-UP REMINDERS =====
+  const addFollowup=useCallback(async(f)=>{
+    const d=await safeInsert('followups',{...f,created_by:user?.id,status:'pending'});
+    const final=d||{...f,id:genId(),created_by:user?.id,status:'pending',created_at:nowISO()};
+    setFollowups(prev=>[final,...prev]);return final;
+  },[user]);
+  const completeFollowup=useCallback(async(fid,note='')=>{
+    await safeUpdate('followups',{status:'done',completed_at:nowISO(),completion_note:note},'id',fid);
+    setFollowups(prev=>prev.map(f=>f.id===fid?{...f,status:'done',completed_at:nowISO()}:f));
+  },[]);
+  const todayFollowups=useMemo(()=>{
+    const today=todayStr();
+    return followups.filter(f=>f.status==='pending'&&f.due_date<=today);
+  },[followups]);
+
+  // ===== TESTIMONIALS =====
+  const addTestimonial=useCallback(async(t)=>{
+    const d=await safeInsert('testimonials',{...t,created_by:user?.id,status:'active'});
+    const f=d||{...t,id:genId(),created_by:user?.id,status:'active',created_at:nowISO()};
+    setTestimonials(prev=>[f,...prev]);return f;
+  },[user]);
+  const deleteTestimonial=useCallback(async(tid)=>{await safeDelete('testimonials','id',tid);setTestimonials(prev=>prev.filter(t=>t.id!==tid))},[]);
+
   // Marketing computed values
   const marketingStats=useMemo(()=>{
     const totalClients=businesses.length;
@@ -1005,6 +1059,10 @@ export function AppProvider({children}){
     quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,activityFeed,systemUsage,
     generate2FA,verify2FA,twoFAVerified,setTwoFAVerified,
     createPartner,updatePartner,deletePartner,partners,marketingStats,
+    campaigns,addCampaign,updateCampaign,deleteCampaign,
+    sendMessage,markMsgRead,myMessages,unreadMsgs,
+    followups,addFollowup,completeFollowup,todayFollowups,
+    testimonials,addTestimonial,deleteTestimonial,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,
