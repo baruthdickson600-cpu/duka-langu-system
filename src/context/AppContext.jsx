@@ -678,6 +678,119 @@ export function AppProvider({children}){
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`duka-langu-export-${todayStr()}.json`;a.click();URL.revokeObjectURL(url);
   },[businesses,products,sales,expenses,customers,employees,tokens,promoCodes,branches,tickets,returns]);
 
+  // ===== QUICK EXTEND (ongeza siku bila token) =====
+  const quickExtend=useCallback(async(bid,days)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    const currentEnd=b.token_active&&b.token_expiry?new Date(b.token_expiry):b.trial_end?new Date(b.trial_end):new Date();
+    const base=currentEnd>new Date()?currentEnd:new Date();
+    const newEnd=new Date(base.getTime()+parseInt(days)*86400000).toISOString();
+    await safeUpdate('businesses',{token_active:true,token_expiry:newEnd,is_suspended:false},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,token_active:true,token_expiry:newEnd,is_suspended:false}:x));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_extend',details:{text:`${b.name}: +${days} siku`}});
+    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`🎉 Siku ${days} Zimeongezwa!`,message:`Admin amekuongezea siku ${days}. Mfumo wako utaendelea hadi ${new Date(newEnd).toLocaleDateString('sw-TZ')}.`});
+  },[businesses,user]);
+
+  // ===== QUICK UPGRADE (badilisha plan) =====
+  const quickUpgrade=useCallback(async(bid,newPlan)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    await safeUpdate('businesses',{plan:newPlan},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,plan:newPlan}:x));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_upgrade',details:{text:`${b.name}: ${b.plan} → ${newPlan}`}});
+    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`⬆️ Plan Imebadilishwa!`,message:`Plan yako imebadilishwa kuwa ${newPlan.toUpperCase()}. Furahia features mpya!`});
+  },[businesses,user]);
+
+  // ===== QUICK TRANSFER (hamisha kwa agent mwingine) =====
+  const quickTransfer=useCallback(async(bid,newPromoCode)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    await safeUpdate('businesses',{promo_code:newPromoCode||null},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,promo_code:newPromoCode||null}:x));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'transfer',details:{text:`${b.name}: agent → ${newPromoCode||'none'}`}});
+  },[businesses,user]);
+
+  // ===== DELETE ALL CUSTOMER DATA (GDPR) =====
+  const deleteAllCustomerData=useCallback(async(bid)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    // Delete all related data
+    await safeDelete('sales','business_id',bid);
+    await safeDelete('products','business_id',bid);
+    await safeDelete('expenses','business_id',bid);
+    await safeDelete('customers','business_id',bid);
+    await safeDelete('credit_transactions','business_id',bid);
+    await safeDelete('branches','business_id',bid);
+    await safeDelete('support_tickets','business_id',bid);
+    await safeDelete('returns','business_id',bid);
+    await safeDelete('payment_requests','business_id',bid);
+    await safeDelete('notifications','target_id',bid);
+    // Delete users of this business
+    const bizUsers=employees.filter(e=>e.business_id===bid);
+    for(const u of bizUsers){await safeDelete('users','id',u.id)}
+    // Delete the business itself
+    await safeDelete('businesses','id',bid);
+    setBiz(prev=>prev.filter(x=>x.id!==bid));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'gdpr_delete',details:{text:`GDPR: ${b.name} — data zote zimefutwa`}});
+  },[businesses,employees,user]);
+
+  // ===== ACTIVITY FEED (real-time) =====
+  const activityFeed=useMemo(()=>{
+    const feed=[];
+    // Recent logins (last 24h)
+    const day=Date.now()-86400000;
+    loginLogs.filter(l=>new Date(l.created_at)>new Date(day)).forEach(l=>{
+      feed.push({type:'login',icon:'🔑',title:`${l.email} ameingia`,time:l.created_at,color:'#3B82F6'});
+    });
+    // Recent sales (last 24h)
+    sales.filter(s=>new Date(s.created_at)>new Date(day)).forEach(s=>{
+      feed.push({type:'sale',icon:'🛒',title:`Mauzo: TZS ${(s.total||0).toLocaleString()} — ${s.seller_name||''}`,time:s.created_at,color:'#22C55E',biz:businesses.find(b=>b.id===s.business_id)?.name});
+    });
+    // Recent signups (last 7 days)
+    businesses.filter(b=>new Date(b.created_at)>new Date(Date.now()-7*86400000)).forEach(b=>{
+      feed.push({type:'signup',icon:'🆕',title:`Duka jipya: ${b.name}`,time:b.created_at,color:'#8B5CF6'});
+    });
+    // Recent payments
+    paymentRequests.filter(p=>new Date(p.created_at)>new Date(day)).forEach(p=>{
+      feed.push({type:'payment',icon:p.status==='approved'?'✅':p.status==='pending'?'⏳':'❌',title:`Malipo: ${p.business_name} — TZS ${(p.amount||0).toLocaleString()}`,time:p.created_at,color:p.status==='approved'?'#22C55E':p.status==='pending'?'#F59E0B':'#EF4444'});
+    });
+    // Sort by time (newest first)
+    return feed.sort((a,b)=>new Date(b.time)-new Date(a.time)).slice(0,50);
+  },[loginLogs,sales,businesses,paymentRequests]);
+
+  // ===== SYSTEM USAGE STATS =====
+  const systemUsage=useMemo(()=>{
+    const today=todayStr();const day=Date.now()-86400000;const week=Date.now()-7*86400000;
+    const activeToday=new Set(loginLogs.filter(l=>l.created_at?.startsWith(today)).map(l=>l.email)).size;
+    const activeWeek=new Set(loginLogs.filter(l=>new Date(l.created_at)>new Date(week)).map(l=>l.email)).size;
+    const salesToday=sales.filter(s=>s.created_at?.startsWith(today)).length;
+    const salesWeek=sales.filter(s=>new Date(s.created_at)>new Date(week)).length;
+    const prodTotal=products.length;
+    const custTotal=customers.length;
+    // Feature usage (rough estimate)
+    const features={
+      mauzo:salesToday,
+      bidhaa:products.filter(p=>new Date(p.created_at)>new Date(week)).length,
+      matumizi:expenses.filter(e=>new Date(e.created_at)>new Date(week)).length,
+      wateja:customers.filter(c=>new Date(c.created_at)>new Date(week)).length,
+      deni:sales.filter(s=>s.payment_method==='credit'&&new Date(s.created_at)>new Date(week)).length,
+      matawi:branches.length,
+    };
+    const topFeature=Object.entries(features).sort((a,b)=>b[1]-a[1])[0];
+    return{activeToday,activeWeek,salesToday,salesWeek,prodTotal,custTotal,features,topFeature:topFeature?{name:topFeature[0],count:topFeature[1]}:null,totalBiz:businesses.length};
+  },[loginLogs,sales,products,customers,expenses,branches,businesses]);
+
+  // ===== 2FA STATE =====
+  const[twoFACode,setTwoFACode]=useState(null);
+  const[twoFAVerified,setTwoFAVerified]=useState(false);
+  const generate2FA=useCallback(()=>{
+    const code=Math.floor(100000+Math.random()*900000).toString();
+    setTwoFACode(code);
+    // Send code via email
+    sendMail(ADMIN_EMAIL,'🔐 Duka Langu — Code ya Kuingia','welcome',{name:'Admin',businessName:`Code yako ni: ${code}. Itaisha baada ya dakika 5.`});
+    return code;
+  },[]);
+  const verify2FA=useCallback((input)=>{
+    if(input===twoFACode){setTwoFAVerified(true);return true}
+    return false;
+  },[twoFACode]);
+
   // ===== TRIAL/SUBSCRIPTION =====
   const isExpired=useCallback(()=>{if(!biz)return false;if(biz.is_suspended)return true;if(biz.token_active){if(biz.token_expiry&&new Date(biz.token_expiry)>new Date())return false;if(!biz.token_expiry)return false;return true}if(biz.trial_end)return new Date()>new Date(biz.trial_end);return false},[biz]);
   const daysLeft=useCallback(()=>{if(!biz)return 0;const end=biz.token_active?biz.token_expiry:biz.trial_end;if(!end)return 999;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))},[biz]);
@@ -889,6 +1002,8 @@ export function AppProvider({children}){
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin
     updateSetting,suspendBiz,deleteBiz,exportAllData,
+    quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,activityFeed,systemUsage,
+    generate2FA,verify2FA,twoFAVerified,setTwoFAVerified,
     createPartner,updatePartner,deletePartner,partners,marketingStats,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,

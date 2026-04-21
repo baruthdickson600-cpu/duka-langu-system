@@ -4,7 +4,7 @@ import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
 import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage} from './pages/marketing/MarketingPages';
 
@@ -13,11 +13,14 @@ const MENUS={
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'stores',icon:IC.store,label:'Maduka'},
     {id:'payments',icon:IC.dollar,label:'Malipo'},
+    {id:'activity',icon:IC.clock,label:'Activity'},
     {id:'tokens',icon:IC.key,label:'Tokens'},
     {id:'promo',icon:IC.gift,label:'Mawakala'},
     {id:'partners',icon:IC.people,label:'Washirika'},
     {id:'tickets',icon:IC.bell,label:'Tickets'},
+    {id:'usage',icon:IC.chart,label:'Usage'},
     {id:'broadcast',icon:IC.send,label:'Broadcast'},
+    {id:'templates',icon:IC.file,label:'Email'},
     {id:'security',icon:IC.shield,label:'Security'},
     {id:'settings',icon:IC.gear,label:'Mipangilio'},
   ],
@@ -109,6 +112,8 @@ export default function App(){
         case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
         case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
+        case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
+        case'templates':return <EmailTemplatesPage/>;
         default:return <AdminDashboard/>;
       }
     }
