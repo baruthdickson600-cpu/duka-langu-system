@@ -7,6 +7,7 @@ import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
+import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
 
 const MENUS={
   admin:[
@@ -61,6 +62,13 @@ const MENUS={
     {id:'support',icon:IC.send,label:'Msaada'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
+  agent:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'register',icon:IC.plus,label:'Sajili Mteja'},
+    {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
+    {id:'tiers',icon:IC.chart,label:'Madaraja'},
+    {id:'notifications',icon:IC.bell,label:'Arifa'},
+  ],
 };
 
 function ReceiptModal({sale,bizName,footer,onClose}){
@@ -97,7 +105,7 @@ export default function App(){
   const[receipt,setReceipt]=useState(null);
 
   if(!user)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword}/>;
-  if(user.role!=='admin'&&user.role!=='marketing'&&biz&&isExpired())return <LockedPage/>;
+  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
   // Add branches menu ONLY if canUseBranches
@@ -132,6 +140,15 @@ export default function App(){
         case'reports':return <MktReportsPage/>;case'broadcast':return <MktBroadcastPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <MarketingDash/>;
+      }
+    }
+    if(role==='agent'){
+      switch(page){
+        case'register':return <AgentRegisterPage/>;
+        case'mycustomers':return <AgentCustomersPage/>;
+        case'tiers':return <AgentTiersPage/>;
+        case'notifications':return <NotifsPage/>;
+        default:return <AgentDashboard/>;
       }
     }
     switch(page){

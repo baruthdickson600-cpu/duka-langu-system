@@ -50,9 +50,9 @@ export function MarketingDash(){
 
 // ===== AGENTS + COMMISSION CALCULATOR =====
 export function MktAgentsPage(){
-  const{promoCodes,addPromo,deletePromo,agentLeaderboard,businesses,paymentRequests,settings}=useApp();
+  const{promoCodes,createAgent,deletePromo,agentLeaderboard,businesses,paymentRequests,settings}=useApp();
   const[modal,setModal]=useState(false);
-  const[agent,setAgent]=useState('');const[phone,setPhone]=useState('');const[comm,setComm]=useState('10');
+  const[f,setF]=useState({name:'',email:'',phone:'',password:'agent123',commission:'10'});
   const price=parseInt(settings.system_price||30000);
 
   // Revenue by agent
@@ -116,10 +116,22 @@ export function MktAgentsPage(){
     </div>
     {!agentRevenue.length&&<div className="card"><Empty icon="👥" text="Sajili wakala wa kwanza"/></div>}
     <Modal open={modal} onClose={()=>setModal(false)} title="Sajili Wakala Mpya">
-      <Input label="Jina *" value={agent} onChange={e=>setAgent(e.target.value)} placeholder="Jina kamili"/>
-      <Input label="Simu" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX"/>
-      <Input label="Commission %" type="number" value={comm} onChange={e=>setComm(e.target.value)}/>
-      <Btn onClick={async()=>{if(!agent.trim())return alert('Weka jina!');const c=await addPromo(agent.trim(),phone.trim(),+comm);alert('Promo: '+c+'\nLink: https://duka-langu-system.vercel.app?ref='+c);setModal(false);setAgent('');setPhone('')}} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili</Btn>
+      <div style={{background:'#EFF6FF',borderRadius:10,padding:'8px 12px',marginBottom:12,fontSize:12,color:'#1E40AF'}}>
+        Wakala atapata akaunti yake na kuweza kusajili wateja moja kwa moja.
+      </div>
+      <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili la wakala"/>
+      <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
+      <Input label="Namba ya WhatsApp *" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
+      <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
+      <Input label="Commission %" type="number" value={f.commission} onChange={e=>setF({...f,commission:e.target.value})}/>
+      <Btn onClick={async()=>{
+        if(!f.name.trim()||!f.email.trim())return alert('Jaza jina na email!');
+        const result=await createAgent(f.name.trim(),f.email.trim(),f.password,f.phone.trim(),+f.commission||10);
+        if(result){
+          alert(`Wakala amesajiliwa!\n\nJina: ${f.name}\nEmail: ${f.email}\nPassword: ${f.password}\nPromo Code: ${result.code}\n\nMtumie taarifa hizi aingie kwenye mfumo.`);
+          setModal(false);setF({name:'',email:'',phone:'',password:'agent123',commission:'10'});
+        }else{alert('Tatizo! Jaribu tena.')}
+      }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Wakala</Btn>
     </Modal>
   </div>;
 }
