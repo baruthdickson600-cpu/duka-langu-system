@@ -399,6 +399,7 @@ export function AppProvider({children}){
 
   // ===== PROMO =====
   const addPromo=useCallback(async(agent,phone,commission=10)=>{const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('promo_codes',{code,agent_name:agent,agent_phone:phone,commission_rate:commission});setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:agent,agent_phone:phone,commission_rate:commission,used_count:0,total_earned:0}]);return code},[]);
+  const deletePromo=useCallback(async(pid)=>{await safeDelete('promo_codes','id',pid);setPromos(prev=>prev.filter(p=>p.id!==pid))},[]);
 
   // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
   // Office: submit payment with transaction ID
@@ -1069,7 +1070,7 @@ export function AppProvider({children}){
     // Tickets
     createTicket,replyTicket,closeTicket,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,submitPayment,approvePayment,rejectPayment,
+    genToken,activateToken,addPromo,deletePromo,submitPayment,approvePayment,rejectPayment,
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin

@@ -271,31 +271,144 @@ export function TokensPage(){
 }
 
 // ===== PROMO + LEADERBOARD =====
+// ===== MAWAKALA (Admin View — Wakala anasajiliwa na Marketing Partner) =====
 export function PromoPage(){
-  const{promoCodes,addPromo,agentLeaderboard}=useApp();
-  const[agent,setAgent]=useState('');const[phone,setPhone]=useState('');const[comm,setComm]=useState('10');
+  const{promoCodes,deletePromo,agentLeaderboard,businesses,AGENT_TIERS}=useApp();
+  const[detail,setDetail]=useState(null);
+
   return <div>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+      <h3 style={{fontSize:16,fontWeight:700,margin:0}}>👥 Mawakala ({promoCodes.length})</h3>
+      <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 14px',fontSize:12,color:'#1E40AF',fontWeight:600}}>Wakala anasajiliwa na Mshirika wa Masoko</div>
+    </div>
+
+    {/* Tiers Reference */}
     <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>Sajili Wakala</h3>
-      <Input label="Jina" value={agent} onChange={e=>setAgent(e.target.value)} placeholder="Jina"/>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        <Input label="Simu" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX"/>
-        <Input label="Commission %" type="number" value={comm} onChange={e=>setComm(e.target.value)}/>
+      <h4 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>📊 Madaraja ya Malipo</h4>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+        {(AGENT_TIERS||[]).filter(t=>t.min>0).reverse().map(t=>(
+          <div key={t.name} style={{background:t.color+'15',border:`1.5px solid ${t.color}33`,borderRadius:10,padding:'6px 12px',textAlign:'center',minWidth:90}}>
+            <div style={{fontSize:16}}>{t.emoji}</div>
+            <div style={{fontWeight:700,fontSize:12,color:t.color}}>{t.name}</div>
+            <div style={{fontSize:10,color:'#64748B'}}>{t.min}+ wateja</div>
+            <div style={{fontSize:11,fontWeight:700,color:t.color}}>TZS {(t.bonus||0).toLocaleString()}</div>
+          </div>
+        ))}
       </div>
-      <Btn onClick={async()=>{if(!agent.trim())return alert('Weka jina!');const c=await addPromo(agent.trim(),phone.trim(),+comm);alert('Promo: '+c);setAgent('');setPhone('')}}>{IC.plus} Tengeneza</Btn>
     </div>
-    {/* LEADERBOARD */}
-    <div className="card">
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🏆 Agent Leaderboard</h3>
-      {agentLeaderboard.map((a,i)=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10}}>
-        <span style={{width:28,height:28,borderRadius:'50%',background:i===0?'#F0FDF4':i===1?'#EFF6FF':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:i===0?'#0B7A3B':i===1?'#3B82F6':'#64748B'}}>{i+1}</span>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,fontSize:13}}>{a.agent_name} <span style={{fontFamily:'monospace',fontSize:11,color:'#8B5CF6',background:'#F5F3FF',padding:'1px 6px',borderRadius:4,marginLeft:6}}>{a.code}</span></div>
-          <div style={{fontSize:11,color:'#64748B'}}>Wateja: {a.clients} ({a.activeClients} active) • Kamisheni: {fmtMoney(a.commission)}</div>
-        </div>
-      </div>)}
-      {!agentLeaderboard.length&&<Empty icon="👥" text="Hakuna mawakala"/>}
+
+    {/* Agent Cards */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
+      {agentLeaderboard.map((a,i)=>{
+        const agentBiz=businesses.filter(b=>b.promo_code===a.code);
+        const activeBiz=agentBiz.filter(b=>b.token_active);
+        const trialBiz=agentBiz.filter(b=>!b.token_active&&!b.is_suspended);
+        return <div key={a.id} className="card" style={{border:`1.5px solid ${a.tier?.color||'#E2E8F0'}33`}}>
+          {/* Tier Badge */}
+          <div style={{background:a.tier?.color+'15',borderRadius:10,padding:'8px 12px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:22}}>{a.tier?.emoji||'⏳'}</span>
+              <div>
+                <div style={{fontWeight:800,fontSize:14,color:a.tier?.color||'#94A3B8'}}>{a.tier?.name||'Bado'}</div>
+                <div style={{fontSize:10,color:'#64748B'}}>Bonus: TZS {(a.tier?.bonus||0).toLocaleString()}</div>
+              </div>
+            </div>
+            {a.toNextTier>0&&a.nextTier&&<div style={{textAlign:'right'}}>
+              <div style={{fontSize:10,color:'#64748B'}}>Daraja linalofuata: {a.nextTier.emoji}</div>
+              <div style={{fontSize:12,fontWeight:700,color:a.nextTier.color}}>Wateja {a.toNextTier} zaidi</div>
+            </div>}
+          </div>
+
+          {/* Agent Info */}
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <div style={{width:44,height:44,borderRadius:'50%',background:a.tier?.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:a.tier?.color||'#64748B'}}>{a.agent_name?.[0]?.toUpperCase()}</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:800,fontSize:16}}>{a.agent_name}</div>
+              <div style={{fontSize:12,color:'#64748B'}}>{a.agent_phone||'Hakuna simu'}</div>
+              <div style={{fontSize:11,fontFamily:'monospace',color:'#8B5CF6',background:'#F5F3FF',padding:'1px 8px',borderRadius:4,display:'inline-block',marginTop:2}}>{a.code}</div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:10}}>
+            <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#94A3B8'}}>Jumla</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#1E293B'}}>{a.clients}</div>
+            </div>
+            <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#94A3B8'}}>Active</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#22C55E'}}>{a.activeClients}</div>
+            </div>
+            <div style={{background:'#FFF7ED',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#94A3B8'}}>Trial</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#F59E0B'}}>{trialBiz.length}</div>
+            </div>
+            <div style={{background:'#F5F3FF',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#94A3B8'}}>Kamisheni</div>
+              <div style={{fontWeight:800,fontSize:13,color:'#8B5CF6'}}>{fmtMoney(a.commission)}</div>
+            </div>
+          </div>
+
+          {/* Progress Bar to next tier */}
+          {a.nextTier&&<div style={{marginBottom:10}}>
+            <div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${Math.min(100,Math.round(a.activeClients/(a.nextTier.min||1)*100))}%`,background:a.tier?.color||'#94A3B8',borderRadius:3}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94A3B8',marginTop:2}}>
+              <span>{a.activeClients} sasa</span><span>{a.nextTier.min} kwa {a.nextTier.name}</span>
+            </div>
+          </div>}
+
+          {/* Commission Rate */}
+          <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Commission Rate: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fmtMoney(a.revenue)}</b></div>
+
+          {/* Actions */}
+          <div style={{display:'flex',gap:6}}>
+            <button onClick={()=>setDetail(a)} style={{flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>📋 Wateja Wake</button>
+            {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'7px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:12,cursor:'pointer',textDecoration:'none'}}>WhatsApp</a>}
+            <button onClick={()=>window.confirm(`Futa wakala "${a.agent_name}" na promo code ${a.code}?`)&&deletePromo(a.id)} style={{padding:'7px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>🗑️</button>
+          </div>
+        </div>;
+      })}
     </div>
+    {!agentLeaderboard.length&&<div className="card"><Empty icon="👥" text="Hakuna mawakala — Mshirika wa Masoko atasajili mawakala"/></div>}
+
+    {/* Agent Detail Modal — shows customers */}
+    <Modal open={!!detail} onClose={()=>setDetail(null)} title={`👤 ${detail?.agent_name||''} — Wateja`} wide>
+      {detail&&(()=>{
+        const agentBiz=businesses.filter(b=>b.promo_code===detail.code);
+        return <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
+            <div style={{background:'#F0FDF4',borderRadius:10,padding:'8px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#94A3B8'}}>Jumla</div>
+              <div style={{fontWeight:800,fontSize:20,color:'#0B7A3B'}}>{agentBiz.length}</div>
+            </div>
+            <div style={{background:'#F5F3FF',borderRadius:10,padding:'8px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#94A3B8'}}>Active</div>
+              <div style={{fontWeight:800,fontSize:20,color:'#8B5CF6'}}>{agentBiz.filter(b=>b.token_active).length}</div>
+            </div>
+            <div style={{background:'#FFF7ED',borderRadius:10,padding:'8px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#94A3B8'}}>Trial</div>
+              <div style={{fontWeight:800,fontSize:20,color:'#F59E0B'}}>{agentBiz.filter(b=>!b.token_active&&!b.is_suspended).length}</div>
+            </div>
+          </div>
+          <div style={{maxHeight:350,overflowY:'auto'}}>
+            {agentBiz.length?agentBiz.map(b=>(
+              <div key={b.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:13}}>{b.name}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>{b.email} • {fmtDate(b.created_at)}</div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <Badge color={b.plan==='premium'?'#8B5CF6':'#64748B'}>{b.plan||'trial'}</Badge>
+                  <Badge color={b.token_active?'#22C55E':b.is_suspended?'#EF4444':'#F59E0B'}>{b.token_active?'Active':b.is_suspended?'Suspended':'Trial'}</Badge>
+                </div>
+              </div>
+            )):<Empty icon="🏪" text="Hakuna wateja bado"/>}
+          </div>
+        </>;
+      })()}
+    </Modal>
   </div>;
 }
 

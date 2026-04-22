@@ -50,7 +50,7 @@ export function MarketingDash(){
 
 // ===== AGENTS + COMMISSION CALCULATOR =====
 export function MktAgentsPage(){
-  const{promoCodes,addPromo,agentLeaderboard,businesses,paymentRequests,settings}=useApp();
+  const{promoCodes,addPromo,deletePromo,agentLeaderboard,businesses,paymentRequests,settings}=useApp();
   const[modal,setModal]=useState(false);
   const[agent,setAgent]=useState('');const[phone,setPhone]=useState('');const[comm,setComm]=useState('10');
   const price=parseInt(settings.system_price||30000);
@@ -107,6 +107,10 @@ export function MktAgentsPage(){
         <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px',marginTop:8,fontSize:11}}>
           🔗 Link: <code style={{background:'#E2E8F0',padding:'2px 6px',borderRadius:4,fontSize:10}}>duka-langu-system.vercel.app?ref={a.code}</code>
           <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app?ref=${a.code}`);alert('Link imecopy!')}} style={{marginLeft:6,fontSize:10,background:'#0B7A3B',color:'#fff',border:'none',borderRadius:4,padding:'2px 8px',cursor:'pointer'}}>Copy</button>
+        </div>
+        <div style={{display:'flex',gap:6,marginTop:8}}>
+          {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{flex:1,padding:'6px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:11,cursor:'pointer',textDecoration:'none',textAlign:'center'}}>💬 WhatsApp</a>}
+          <button onClick={()=>window.confirm(`Futa wakala "${a.agent_name}"?`)&&deletePromo(a.id)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️ Futa</button>
         </div>
       </div>)}
     </div>
