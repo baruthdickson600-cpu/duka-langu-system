@@ -493,7 +493,7 @@ export function PaymentsPage(){
       <div style={{display:'flex',gap:4}}>
         {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#0B7A3B':'#64748B'}}>{d}</button>)}
       </div>
-      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:refreshing?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#0B7A3B',display:'flex',alignItems:'center',gap:4'}}>
+      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:refreshing?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#0B7A3B',display:'flex',alignItems:'center',gap:4}}>
         {refreshing?'⏳ Inapakia...':'🔄 Refresh'}
       </button>
     </div>
