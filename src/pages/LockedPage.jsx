@@ -11,8 +11,9 @@ export default function LockedPage(){
   const[phone,setPhone]=useState('');
   const[submitting,setSubmitting]=useState(false);
   const[submitted,setSubmitted]=useState(false);
-  const[bgIdx,setBgIdx]=useState(Math.floor(Math.random()*BG_COUNT)+1);
-  const[fade,setFade]=useState(true);
+  const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
+  const[bgB,setBgB]=useState(null);
+  const[showB,setShowB]=useState(false);
 
   const price=parseInt(settings.system_price||30000);
   const payNum=settings.payment_number||'6113 4066';
@@ -24,9 +25,13 @@ export default function LockedPage(){
 
   useEffect(()=>{if(hasPending)setSubmitted(true)},[hasPending]);
   useEffect(()=>{
-    const t=setInterval(()=>{setFade(false);setTimeout(()=>{setBgIdx(p=>(p%BG_COUNT)+1);setFade(true)},800)},7000);
+    const t=setInterval(()=>{
+      const next=(showB?bgA:bgB||bgA)%BG_COUNT+1;
+      if(showB){setBgA(next);setTimeout(()=>setShowB(false),50)}
+      else{setBgB(next);setTimeout(()=>setShowB(true),50)}
+    },10000);
     return()=>clearInterval(t);
-  },[]);
+  },[bgA,bgB,showB]);
 
   const handleSubmitPayment=async()=>{
     if(!txId.trim())return alert('Weka Transaction ID!');
@@ -35,19 +40,20 @@ export default function LockedPage(){
     await submitPayment(txId.trim(),price,payProvider,phone.trim());
     setSubmitting(false);setSubmitted(true);
   };
-
   const handleActivateToken=async()=>{
     if(!code.trim())return alert('Ingiza token!');
     const e=await activateToken(code.trim());
     if(e)alert(e);else{alert('Mfumo umefunguliwa!');setCode('')}
   };
 
+  const bgStyle=(img,visible)=>({position:'fixed',inset:0,zIndex:0,backgroundImage:`url(/bg/bg${img}.jpg)`,backgroundSize:'cover',backgroundPosition:'center',opacity:visible?1:0,transition:'opacity 1.5s ease-in-out'});
+
   return(
     <div style={{minHeight:'100vh',position:'relative',overflow:'hidden'}}>
-      <div style={{position:'fixed',inset:0,zIndex:0,backgroundImage:`url(/bg/bg${bgIdx}.jpg)`,backgroundSize:'cover',backgroundPosition:'center',opacity:fade?1:0,transition:'opacity 0.8s ease-in-out'}}/>
-      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(135deg,rgba(11,122,59,0.6),rgba(4,61,30,0.75))'}}/>
+      <div style={bgStyle(bgA,!showB)}/>{bgB&&<div style={bgStyle(bgB,showB)}/>}
+      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.2) 40%,rgba(0,0,0,0.5) 100%)'}}/>
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-        <div style={{background:'rgba(255,255,255,0.97)',borderRadius:24,maxWidth:440,width:'100%',boxShadow:'0 25px 80px rgba(0,0,0,.35)',overflow:'hidden',backdropFilter:'blur(20px)'}}>
+        <div style={{background:'rgba(255,255,255,0.94)',borderRadius:24,maxWidth:440,width:'100%',boxShadow:'0 25px 80px rgba(0,0,0,.4)',overflow:'hidden',backdropFilter:'blur(24px)'}}>
           <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',padding:'24px 28px',textAlign:'center',color:'#fff'}}>
             <img src="/logo-white.png" alt="Logo" style={{width:70,height:70,objectFit:'contain',marginBottom:8,filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.3))'}}/>
             <div style={{fontSize:22,fontWeight:900}}>Mfumo Umefungwa</div>

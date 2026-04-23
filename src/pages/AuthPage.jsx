@@ -1,9 +1,9 @@
-import React,{useState,useEffect} from 'react';
+import React,{useState,useEffect,useRef} from 'react';
 import {Input} from '../components/UI';
 import {TermsPage,PrivacyPage} from './LegalPages';
 
 const BG_COUNT=13;
-const BG_INTERVAL=6000;
+const BG_INTERVAL=10000;
 
 export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[tab,setTab]=useState('login');
@@ -15,17 +15,20 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[legalPage,setLegalPage]=useState(null);
   const[showForgot,setShowForgot]=useState(false);
   const[forgotEmail,setForgotEmail]=useState('');
-  const[bgIdx,setBgIdx]=useState(Math.floor(Math.random()*BG_COUNT)+1);
-  const[fade,setFade]=useState(true);
+  const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
+  const[bgB,setBgB]=useState(null);
+  const[showB,setShowB]=useState(false);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
 
+  // Crossfade: two layers alternate
   useEffect(()=>{
     const timer=setInterval(()=>{
-      setFade(false);
-      setTimeout(()=>{setBgIdx(prev=>(prev%BG_COUNT)+1);setFade(true)},800);
+      const next=(showB?bgA:bgB||bgA)%BG_COUNT+1;
+      if(showB){setBgA(next);setTimeout(()=>setShowB(false),50)}
+      else{setBgB(next);setTimeout(()=>setShowB(true),50)}
     },BG_INTERVAL);
     return()=>clearInterval(timer);
-  },[]);
+  },[bgA,bgB,showB]);
 
   if(legalPage==='terms')return <TermsPage onBack={()=>setLegalPage(null)}/>;
   if(legalPage==='privacy')return <PrivacyPage onBack={()=>setLegalPage(null)}/>;
@@ -53,29 +56,45 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     setBusy(false);
   };
 
+  const bgStyle=(img,visible)=>({
+    position:'fixed',inset:0,zIndex:0,
+    backgroundImage:`url(/bg/bg${img}.jpg)`,
+    backgroundSize:'cover',backgroundPosition:'center',
+    opacity:visible?1:0,
+    transition:'opacity 1.5s ease-in-out',
+  });
+
   return(
     <div style={{minHeight:'100vh',position:'relative',overflow:'hidden'}}>
-      <div style={{position:'fixed',inset:0,zIndex:0,backgroundImage:`url(/bg/bg${bgIdx}.jpg)`,backgroundSize:'cover',backgroundPosition:'center',opacity:fade?1:0,transition:'opacity 0.8s ease-in-out'}}/>
-      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(135deg,rgba(11,122,59,0.6) 0%,rgba(6,95,46,0.65) 50%,rgba(4,61,30,0.75) 100%)'}}/>
+      {/* Two background layers for smooth crossfade */}
+      <div style={bgStyle(bgA,!showB)}/>
+      {bgB&&<div style={bgStyle(bgB,showB)}/>}
+      {/* Subtle dark overlay — no green */}
+      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.2) 40%,rgba(0,0,0,0.45) 100%)'}}/>
+
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
         <div style={{width:'100%',maxWidth:440}}>
+          {/* Logo */}
           <div style={{textAlign:'center',marginBottom:28,color:'#fff'}}>
-            <img src="/logo-white.png" alt="Duka Langu" style={{width:120,height:120,objectFit:'contain',marginBottom:6,filter:'drop-shadow(0 4px 20px rgba(0,0,0,0.35))'}}/>
-            <div style={{fontSize:26,fontWeight:900,letterSpacing:1,textShadow:'0 2px 10px rgba(0,0,0,0.3)'}}>DUKA LANGU</div>
-            <p style={{margin:'4px 0 0',opacity:.85,fontSize:13,fontWeight:500}}>Smart POS — Together for the better</p>
+            <img src="/logo-white.png" alt="Duka Langu" style={{width:110,height:110,objectFit:'contain',marginBottom:6,filter:'drop-shadow(0 6px 24px rgba(0,0,0,0.5))'}}/>
+            <div style={{fontSize:28,fontWeight:900,letterSpacing:2,textShadow:'0 3px 15px rgba(0,0,0,0.5)'}}>DUKA LANGU</div>
+            <p style={{margin:'6px 0 0',opacity:.9,fontSize:14,fontWeight:500,textShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>Smart POS — Together for the better</p>
           </div>
-          <div style={{background:'rgba(255,255,255,0.97)',borderRadius:24,padding:'32px 28px',boxShadow:'0 25px 80px rgba(0,0,0,0.35)',backdropFilter:'blur(20px)'}}>
+
+          {/* Glass Card */}
+          <div style={{background:'rgba(255,255,255,0.92)',borderRadius:24,padding:'32px 28px',boxShadow:'0 25px 80px rgba(0,0,0,0.4)',backdropFilter:'blur(24px)',border:'1px solid rgba(255,255,255,0.2)'}}>
             {showForgot?<>
               <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 8px'}}>Umesahau Password?</h3>
               <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Weka email yako na tutakutumia link.</p>
               {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{err}</div>}
               {msg&&<div style={{background:'#F0FDF4',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #22C55E'}}>{msg}</div>}
               <Input label="Email" type="email" placeholder="email@mfano.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleForgot()}/>
-              <button onClick={handleForgot} disabled={busy} style={{width:'100%',padding:15,background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:700,fontSize:15,marginTop:6,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{busy?'Subiri...':'Tuma Link'}</button>
+              <button onClick={handleForgot} disabled={busy} style={{width:'100%',padding:15,background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:700,fontSize:15,marginTop:6,cursor:'pointer',boxShadow:'0 4px 20px rgba(11,122,59,0.35)'}}>{busy?'Subiri...':'Tuma Link'}</button>
               <p onClick={()=>{setShowForgot(false);setErr('');setMsg('')}} style={{textAlign:'center',marginTop:16,color:'#0B7A3B',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
             </>:<>
+            {/* Tabs */}
             <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:22}}>
-              {['login','signup'].map(t=><button key={t} onClick={()=>{setTab(t);setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:14,background:tab===t?'#fff':'transparent',color:tab===t?'#0B7A3B':'#94A3B8',boxShadow:tab===t?'0 2px 10px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.2s'}}>{t==='login'?'Ingia':'Jisajili'}</button>)}
+              {['login','signup'].map(t=><button key={t} onClick={()=>{setTab(t);setErr('')}} style={{flex:1,padding:'12px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#0B7A3B':'#94A3B8',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>{t==='login'?'Ingia':'Jisajili'}</button>)}
             </div>
             {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}><span>⚠️</span>{err}</div>}
             {tab==='signup'&&<>
@@ -95,7 +114,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                 </label>
               </div>
             </>}
-            <button onClick={submit} disabled={busy} style={{width:'100%',padding:15,background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:16,marginTop:6,cursor:'pointer',opacity:busy?.7:1,boxShadow:'0 4px 15px rgba(11,122,59,0.3)',transition:'all 0.2s'}}>
+            <button onClick={submit} disabled={busy} style={{width:'100%',padding:16,background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:16,marginTop:6,cursor:'pointer',opacity:busy?.7:1,boxShadow:'0 4px 20px rgba(11,122,59,0.35)',transition:'all 0.2s'}}>
               {busy?'⏳ Subiri...':tab==='login'?'Ingia':'Jisajili Sasa'}
             </button>
             {tab==='signup'&&<div style={{textAlign:'center',fontSize:12,color:'#22C55E',marginTop:12,fontWeight:600}}>🎁 Siku 5 za majaribio BURE!</div>}
@@ -104,12 +123,18 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
             </div>
             </>}
           </div>
-          <div style={{textAlign:'center',marginTop:18}}>
-            <div style={{fontSize:12,color:'rgba(255,255,255,.7)',fontWeight:500}}>Lipa: SELCOM → 6113 4066 • PESAFLY</div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:6}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
+
+          {/* Bottom */}
+          <div style={{textAlign:'center',marginTop:20}}>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,textShadow:'0 2px 6px rgba(0,0,0,0.4)'}}>Lipa: SELCOM → 6113 4066 • PESAFLY</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:6}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
           </div>
-          <div style={{display:'flex',justifyContent:'center',gap:5,marginTop:12}}>
-            {Array.from({length:BG_COUNT}).map((_,i)=><div key={i} style={{width:bgIdx===i+1?16:6,height:6,borderRadius:3,background:bgIdx===i+1?'rgba(255,255,255,.9)':'rgba(255,255,255,.3)',transition:'all 0.3s'}}/>)}
+          {/* Dots */}
+          <div style={{display:'flex',justifyContent:'center',gap:5,marginTop:14}}>
+            {Array.from({length:BG_COUNT}).map((_,i)=>{
+              const cur=showB?bgB:bgA;
+              return <div key={i} style={{width:cur===i+1?18:6,height:6,borderRadius:3,background:cur===i+1?'rgba(255,255,255,.95)':'rgba(255,255,255,.3)',transition:'all 0.4s',boxShadow:cur===i+1?'0 0 8px rgba(255,255,255,0.4)':'none'}}/>;
+            })}
           </div>
         </div>
       </div>
