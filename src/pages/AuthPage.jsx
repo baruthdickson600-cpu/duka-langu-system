@@ -130,11 +130,6 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
             <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:6}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
           </div>
           {/* Dots */}
-          <div style={{display:'flex',justifyContent:'center',gap:5,marginTop:14}}>
-            {Array.from({length:BG_COUNT}).map((_,i)=>{
-              const cur=showB?bgB:bgA;
-              return <div key={i} style={{width:cur===i+1?18:6,height:6,borderRadius:3,background:cur===i+1?'rgba(255,255,255,.95)':'rgba(255,255,255,.3)',transition:'all 0.4s',boxShadow:cur===i+1?'0 0 8px rgba(255,255,255,0.4)':'none'}}/>;
-            })}
           </div>
         </div>
       </div>
