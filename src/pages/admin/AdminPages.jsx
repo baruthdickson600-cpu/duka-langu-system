@@ -883,3 +883,114 @@ export function EmailTemplatesPage(){
     <Btn onClick={()=>{setSaved(true);alert('Templates zimehifadhiwa!')}} style={{width:'100%',justifyContent:'center'}}>💾 Hifadhi Templates</Btn>
   </div>;
 }
+
+// ===== ADMIN FULL REPORTS =====
+export function AdminReportsPage(){
+  const{businesses,paymentRequests,promoCodes,agentLeaderboard,loginLogs,sales}=useApp();
+  const active=businesses.filter(b=>b.token_active&&!b.is_suspended);
+  const trial=businesses.filter(b=>!b.token_active&&!b.is_suspended);
+  const expired=businesses.filter(b=>b.is_suspended||(!b.token_active&&b.trial_end&&new Date(b.trial_end)<new Date()));
+  const approved=paymentRequests.filter(p=>p.status==='approved');
+  const totalRev=approved.reduce((a,p)=>a+(p.amount||0),0);
+  const monthMap={};businesses.forEach(b=>{const m=b.created_at?.slice(0,7);if(m)monthMap[m]=(monthMap[m]||0)+1});
+  const monthData=Object.entries(monthMap).slice(-6).map(([m,c])=>({month:m,count:c}));
+
+  const exportPDF=()=>{
+    const w=window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Duka Langu Report</title><style>
+      body{font-family:Arial,sans-serif;margin:30px;color:#1E293B}
+      h1{color:#0B7A3B;border-bottom:3px solid #0B7A3B;padding-bottom:8px}
+      h2{color:#1E293B;margin-top:24px}
+      table{width:100%;border-collapse:collapse;margin:12px 0}
+      th{background:#0B7A3B;color:#fff;padding:10px;text-align:left;font-size:13px}
+      td{padding:8px 10px;border-bottom:1px solid #E2E8F0;font-size:12px}
+      tr:nth-child(even){background:#F8FAFC}
+      .stat{display:inline-block;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 20px;margin:6px;text-align:center;min-width:100px}
+      .stat .num{font-size:24px;font-weight:900;color:#0B7A3B}
+      .stat .lbl{font-size:11px;color:#64748B}
+      .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+      .active{background:#F0FDF4;color:#15803D}
+      .trial{background:#FFF7ED;color:#92400E}
+      .expired{background:#FEF2F2;color:#B91C1C}
+      @media print{body{margin:15px}}
+    </style></head><body>
+    <div style="display:flex;align-items:center;gap:14;margin-bottom:20px">
+      <div><h1 style="margin:0;font-size:24px">DUKA LANGU — RIPOTI KAMILI</h1>
+      <div style="color:#64748B;font-size:12px">Tarehe: ${new Date().toLocaleDateString('sw-TZ')} | PesaFly / Duka Langu</div></div>
+    </div>
+    <div style="margin:16px 0">
+      <div class="stat"><div class="num">${businesses.length}</div><div class="lbl">Maduka Jumla</div></div>
+      <div class="stat"><div class="num">${active.length}</div><div class="lbl">Active</div></div>
+      <div class="stat"><div class="num">${trial.length}</div><div class="lbl">Trial</div></div>
+      <div class="stat"><div class="num">${expired.length}</div><div class="lbl">Expired</div></div>
+      <div class="stat"><div class="num">TZS ${totalRev.toLocaleString()}</div><div class="lbl">Mapato Jumla</div></div>
+      <div class="stat"><div class="num">${promoCodes.length}</div><div class="lbl">Mawakala</div></div>
+    </div>
+    <h2>Wateja Wote (${businesses.length})</h2>
+    <table><tr><th>#</th><th>Jina</th><th>Email</th><th>Simu</th><th>Plan</th><th>Hali</th><th>Tarehe</th></tr>
+    ${businesses.map((b,i)=>`<tr><td>${i+1}</td><td><b>${b.name||''}</b></td><td>${b.email||''}</td><td>${b.phone||''}</td><td>${(b.plan||'trial').toUpperCase()}</td><td><span class="badge ${b.token_active?'active':b.is_suspended?'expired':'trial'}">${b.token_active?'Active':b.is_suspended?'Expired':'Trial'}</span></td><td>${new Date(b.created_at).toLocaleDateString('sw-TZ')}</td></tr>`).join('')}
+    </table>
+    <h2>Malipo Yaliyothibitishwa (${approved.length})</h2>
+    <table><tr><th>#</th><th>Biashara</th><th>Kiasi</th><th>Transaction</th><th>Njia</th><th>Tarehe</th></tr>
+    ${approved.map((p,i)=>`<tr><td>${i+1}</td><td>${p.business_name||''}</td><td>TZS ${(p.amount||0).toLocaleString()}</td><td>${p.transaction_id||''}</td><td>${p.payment_method||''}</td><td>${new Date(p.created_at).toLocaleDateString('sw-TZ')}</td></tr>`).join('')}
+    </table>
+    <h2>Mawakala (${agentLeaderboard.length})</h2>
+    <table><tr><th>#</th><th>Jina</th><th>Simu</th><th>Code</th><th>Wateja</th><th>Active</th><th>Daraja</th><th>Kamisheni</th></tr>
+    ${agentLeaderboard.map((a,i)=>`<tr><td>${i+1}</td><td>${a.agent_name||''}</td><td>${a.agent_phone||''}</td><td>${a.code||''}</td><td>${a.clients}</td><td>${a.activeClients}</td><td>${a.tier?.emoji||''} ${a.tier?.name||''}</td><td>TZS ${(a.commission||0).toLocaleString()}</td></tr>`).join('')}
+    </table>
+    <h2>Usajili kwa Mwezi</h2>
+    <table><tr><th>Mwezi</th><th>Wateja Wapya</th></tr>
+    ${monthData.map(d=>`<tr><td>${d.month}</td><td>${d.count}</td></tr>`).join('')}
+    </table>
+    <div style="margin-top:30px;border-top:2px solid #0B7A3B;padding-top:12px;text-align:center;color:#64748B;font-size:11px">
+      PesaFly / Duka Langu — pesafly1@gmail.com | +255 628 986 770<br/>
+      Ripoti imetolewa: ${new Date().toLocaleString('sw-TZ')}
+    </div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+  };
+
+  return <div>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
+      <h3 style={{fontSize:16,fontWeight:700,margin:0}}>📋 Ripoti Kamili ya Mfumo</h3>
+      <button onClick={exportPDF} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#0B7A3B',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>📥 Pakua PDF</button>
+    </div>
+    <div className="flex-wrap" style={{marginBottom:20}}>
+      <Stat icon={IC.store} label="Maduka" value={businesses.length} color="#0B7A3B" sub={`${active.length} active`}/>
+      <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F59E0B"/>
+      <Stat icon={IC.warn} label="Expired" value={expired.length} color="#EF4444"/>
+      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRev.toLocaleString()}`} color="#3B82F6"/>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:16}}>
+      {/* Active Customers */}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#22C55E'}}>✅ Active ({active.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{active.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
+          <div style={{textAlign:'right'}}><Badge color="#8B5CF6">{b.plan||'basic'}</Badge><br/><span style={{fontSize:10,color:'#94A3B8'}}>{b.phone||''}</span></div>
+        </div>)}{!active.length&&<Empty icon="✅" text="Hakuna"/>}</div>
+      </div>
+      {/* Trial */}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#F59E0B'}}>⏳ Trial ({trial.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{trial.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
+          <Badge color="#F59E0B">Trial</Badge>
+        </div>)}{!trial.length&&<Empty icon="⏳" text="Hakuna"/>}</div>
+      </div>
+      {/* Expired */}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#EF4444'}}>❌ Expired / Suspended ({expired.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{expired.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
+          <Badge color="#EF4444">Expired</Badge>
+        </div>)}{!expired.length&&<Empty icon="❌" text="Hakuna"/>}</div>
+      </div>
+      {/* Revenue */}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>💰 Malipo ({approved.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{approved.slice(0,20).map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{p.business_name}</b><br/><span style={{color:'#94A3B8',fontFamily:'monospace'}}>{p.transaction_id}</span></div>
+          <div style={{textAlign:'right',fontWeight:700,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</div>
+        </div>)}</div>
+      </div>
+    </div>
+  </div>;
+}

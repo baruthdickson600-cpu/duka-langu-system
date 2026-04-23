@@ -4,7 +4,7 @@ import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
 import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
@@ -20,6 +20,7 @@ const MENUS={
     {id:'partners',icon:IC.people,label:'Washirika'},
     {id:'tickets',icon:IC.bell,label:'Tickets'},
     {id:'usage',icon:IC.chart,label:'Usage'},
+    {id:'reports',icon:IC.file,label:'Ripoti'},
     {id:'broadcast',icon:IC.send,label:'Broadcast'},
     {id:'messaging',icon:IC.send,label:'Ujumbe'},
     {id:'templates',icon:IC.file,label:'Email'},
@@ -128,6 +129,7 @@ export default function App(){
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
         case'templates':return <EmailTemplatesPage/>;case'messaging':return <MessagingPage/>;
+        case'reports':return <AdminReportsPage/>;
         default:return <AdminDashboard/>;
       }
     }
