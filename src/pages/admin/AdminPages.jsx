@@ -12,7 +12,7 @@ export function AdminDashboard(){
   const todayBiz=businesses.filter(b=>isToday(b.created_at));
   const weekBiz=businesses.filter(b=>isThisWeek(b.created_at));
   const usedTokens=tokens.filter(t=>t.used);
-  const revenue=usedTokens.length*parseInt(settings.system_price||30000);
+  const revenue=usedTokens.length*parseInt(settings.system_price||15000);
   const monthMap={};businesses.forEach(b=>{const m=b.created_at?.slice(0,7);if(m){monthMap[m]=(monthMap[m]||0)+1}});
   const chartData=Object.entries(monthMap).slice(-6).map(([m,c])=>({month:m.slice(5),count:c}));
 

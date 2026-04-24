@@ -53,7 +53,7 @@ export function MktAgentsPage(){
   const{promoCodes,createAgent,deletePromo,agentLeaderboard,businesses,paymentRequests,settings}=useApp();
   const[modal,setModal]=useState(false);
   const[f,setF]=useState({name:'',email:'',phone:'',password:'agent123',commission:'10'});
-  const price=parseInt(settings.system_price||30000);
+  const price=parseInt(settings.system_price||15000);
 
   // Revenue by agent
   const agentRevenue=useMemo(()=>{
@@ -166,7 +166,7 @@ export function CampaignPage(){
 
   const getCampaignStats=(c)=>{
     const signups=businesses.filter(b=>b.promo_code===c.promo_code).length;
-    const roi=c.budget>0?Math.round(signups*30000/c.budget*100):0;
+    const roi=c.budget>0?Math.round(signups*15000/c.budget*100):0;
     return{signups,roi};
   };
 
@@ -376,7 +376,7 @@ export function DemoPage(){
         3. Nenda Mauzo → Onyesha jinsi ya kuuza<br/>
         4. Onyesha Ripoti → "Unaona faida yako hapa"<br/>
         5. Onyesha Wateja → "Unafuatilia deni hapa"<br/>
-        6. "Bei ni TZS 30,000 tu kwa mwezi — unapata hizi features zote!"
+        6. "Bei ni TZS 15,000 tu kwa mwezi — unapata hizi features zote!"
       </div>
     </div>
   </div>;

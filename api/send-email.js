@@ -73,20 +73,38 @@ export default async function handler(req, res) {
   try {
     switch (type) {
       case 'daily_report':
-        html = wrap(`📊 Ripoti ya Leo — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
+        html = wrap(`📊 Ripoti ya Asubuhi — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
+          ${data.totalBiz !== undefined ? `
+          <h3 style="font-size:15px;margin:0 0 12px;color:#1E40AF">📋 Hali ya Wateja</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Jumla</div><div class="value">${data.totalBiz || 0}</div><div class="sub">maduka yote</div></div>
+            <div class="stat"><div class="label">Active</div><div class="value" style="color:#22C55E">${data.activeBiz || 0}</div><div class="sub">wanaolipa</div></div>
+            <div class="stat"><div class="label">Trial</div><div class="value" style="color:#F59E0B">${data.trialBiz || 0}</div><div class="sub">wanajaribu</div></div>
+            <div class="stat"><div class="label">Suspended</div><div class="value" style="color:#EF4444">${data.suspendedBiz || 0}</div><div class="sub">wamefungwa</div></div>
+          </div>
+          ${data.newToday > 0 ? `<div class="alert alert-success">🆕 Wateja wapya <strong>${data.newToday}</strong> leo!</div>` : ''}
+          ${data.expiringSoon > 0 ? `<div class="alert alert-warning">⏳ Wateja <strong>${data.expiringSoon}</strong> muda unaisha ndani ya siku 5</div>` : ''}
+          ${data.pendingPayments > 0 ? `<div class="alert alert-danger">💰 Malipo <strong>${data.pendingPayments}</strong> yanasubiri kuthibitishwa!</div>` : ''}
+          ${data.newCustomers && data.newCustomers.length > 0 ? `
+          <h3 style="font-size:15px;margin:20px 0 8px">🆕 Wateja Wapya wa Leo</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th></tr>
+          ${data.newCustomers.map(c => `<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone||'-'}</td></tr>`).join('')}
+          </table>` : ''}
+          <hr class="divider">` : ''}
+          ${data.salesCount > 0 ? `
+          <h3 style="font-size:15px;margin:0 0 12px">💰 Mauzo ya Leo</h3>
           <div class="stat-grid">
             <div class="stat"><div class="label">Mauzo</div><div class="value">${fm(data.totalSales)}</div><div class="sub">${data.salesCount || 0} mauzo</div></div>
             <div class="stat"><div class="label">Faida</div><div class="value" style="color:#22C55E">${fm(data.totalProfit)}</div></div>
             <div class="stat"><div class="label">Matumizi</div><div class="value" style="color:#EF4444">${fm(data.totalExpenses)}</div></div>
-            <div class="stat"><div class="label">Faida Halisi</div><div class="value">${fm(data.totalProfit - data.totalExpenses)}</div></div>
-          </div>
-          ${data.topItems ? `<h3 style="font-size:15px;margin:16px 0 8px">🏆 Bidhaa Bora</h3>
+          </div>` : ''}
+          ${data.topItems && Object.keys(data.topItems).length > 0 ? `<h3 style="font-size:15px;margin:16px 0 8px">🏆 Bidhaa Bora</h3>
           <table class="table"><tr><th>Bidhaa</th><th>Idadi</th></tr>
           ${Object.entries(data.topItems).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`<tr><td>${n}</td><td><strong>${q}</strong></td></tr>`).join('')}
           </table>` : ''}
           ${data.lowStock > 0 ? `<div class="alert alert-warning">⚠️ Bidhaa <strong>${data.lowStock}</strong> zinaisha — agiza haraka!</div>` : ''}
           <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo →</a>
-          <hr class="divider"><p style="text-align:center;color:${GR};font-size:12px">Ripoti ya kila siku — saa 8 usiku</p>`);
+          <hr class="divider"><p style="text-align:center;color:${GR};font-size:12px">Ripoti ya kila siku — PesaFly / Duka Langu</p>`);
         break;
 
       case 'weekly_report':
@@ -162,7 +180,7 @@ export default async function handler(req, res) {
           <div style="background:#FFF7ED;border-radius:12px;padding:16px;margin:16px 0;text-align:center">
             <div style="font-size:13px;color:#92400E">Lipa kupitia</div>
             <div style="font-size:22px;font-weight:800;color:#B45309;margin:6px 0">SELCOM → 6113 4066</div>
-            <div style="font-size:14px;color:#92400E">Jina: PESAFLY | Kiasi: <strong>${fm(data.price || 30000)}</strong></div>
+            <div style="font-size:14px;color:#92400E">Jina: PESAFLY | Kiasi: <strong>${fm(data.price || 15000)}</strong></div>
           </div>
           <a href="https://duka-langu-system.vercel.app" class="btn">Lipa Sasa →</a>`);
         break;

@@ -42,7 +42,7 @@ export function AppProvider({children}){
   const[notifications,setNotifs]=useState([]);
   const[stockHistory,setSH]=useState([]);
   const[loginLogs,setLogs]=useState([]);
-  const[settings,setSettings]=useState({system_price:'30000',trial_days:'5',payment_number:'6113 4066',payment_name:'PESAFLY',payment_provider:'SELCOM',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
+  const[settings,setSettings]=useState({system_price:'15000',trial_days:'5',payment_number:'6113 4066',payment_name:'PESAFLY',payment_provider:'SELCOM',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
   const[popups,setPopups]=useState([]);
   const[systemLogs,setSysLogs]=useState([]);
   const[tickets,setTickets]=useState([]);
@@ -156,7 +156,11 @@ export function AppProvider({children}){
         // Welcome email to new user
         sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
         // Notify admin via email
-        sendMail('pesafly1@gmail.com','🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone});
+        sendMail(ADMIN_EMAIL,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone});
+        // Notify ALL marketing partners
+        supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone})});
+        }).catch(()=>{});
       }
       setLoading(false);return null;
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
@@ -444,6 +448,11 @@ export function AppProvider({children}){
         await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Mteja Mpya (Wakala): ${bizName}`,message:`${custName||bizName} amesajiliwa na wakala ${user.name}. Code: ${user.promo_code}`});
         // Welcome email
         sendMail(custEmail,'🎉 Karibu kwenye Duka Langu!','welcome',{name:custName||bizName,businessName:bizName});
+        // Admin + Partners notification
+        sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya (Wakala): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'});
+        supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya (Wakala): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'})});
+        }).catch(()=>{});
       }
       return{success:true,email:custEmail,password,bizName};
     }catch(e){console.warn('RegisterByAgent:',e);return{error:e.message||'Tatizo'}}
@@ -625,7 +634,7 @@ export function AppProvider({children}){
       if(biz){
         const end=biz.token_active?biz.token_expiry:biz.trial_end;
         if(end){const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
-          if(dLeft>0&&dLeft<=5){sendMail(ownerEmail,'⏳ Muda Unakaribia Kuisha!','subscription_expiry',{daysLeft:dLeft,price:parseInt(settings.system_price||30000)});}
+          if(dLeft>0&&dLeft<=5){sendMail(ownerEmail,'⏳ Muda Unakaribia Kuisha!','subscription_expiry',{daysLeft:dLeft,price:parseInt(settings.system_price||15000)});}
         }
       }
       // Daily report email (after 6 PM)
@@ -638,17 +647,23 @@ export function AppProvider({children}){
     }
   },[user,bizId,products,overdueCustomers,biz,sales,expenses,settings,overdueTotal]);
 
-  // ===== ADMIN SMART ALERTS =====
+  // ===== ADMIN + PARTNER DAILY REPORT (8:00 AM) =====
   useEffect(()=>{
-    if(user?.role!=='admin')return;
+    if(user?.role!=='admin'&&user?.role!=='marketing')return;
     const today=todayStr();
-    const alertKey=`admin_alerts_${today}`;
+    const alertKey=`admin_alerts_${today}_${user?.role}`;
     if(sessionStorage.getItem(alertKey))return;
     sessionStorage.setItem(alertKey,'1');
     const alerts=[];
+    const hour=new Date().getHours();
 
-    // New customer alert
+    // Customer stats
+    const activeBiz=businesses.filter(b=>b.token_active&&!b.is_suspended);
+    const trialBiz=businesses.filter(b=>!b.token_active&&!b.is_suspended);
+    const suspendedBiz=businesses.filter(b=>b.is_suspended);
     const newToday=businesses.filter(b=>b.created_at?.startsWith(today));
+
+    // New customer alert (in-app)
     if(newToday.length>0){
       alerts.push({target_type:'admin',type:'success',
         title:`🆕 Wateja Wapya ${newToday.length} Leo!`,
@@ -656,12 +671,10 @@ export function AppProvider({children}){
       });
     }
 
-    // Expiring businesses (within 5 days)
+    // Expiring businesses
     const expSoon=businesses.filter(b=>{
       const end=b.token_active?b.token_expiry:b.trial_end;
-      if(!end)return false;
-      const d=Math.ceil((new Date(end)-new Date())/86400000);
-      return d>0&&d<=5;
+      if(!end)return false;const d=Math.ceil((new Date(end)-new Date())/86400000);return d>0&&d<=5;
     });
     if(expSoon.length>0){
       alerts.push({target_type:'admin',type:'warning',
@@ -674,17 +687,64 @@ export function AppProvider({children}){
     const pending=paymentRequests.filter(p=>p.status==='pending');
     if(pending.length>0){
       alerts.push({target_type:'admin',type:'warning',
-        title:`💰 Malipo ${pending.length} Yanasubiri Kuthibitishwa!`,
+        title:`💰 Malipo ${pending.length} Yanasubiri!`,
         message:pending.map(p=>`${p.business_name}: TZS ${(p.amount||0).toLocaleString()}`).join(', ')
       });
     }
 
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
-    // Email admin
-    if(expSoon.length>0){
-      sendMail('pesafly1@gmail.com','⏳ Wateja Muda Unaisha!','subscription_expiry',{daysLeft:'multiple',price:0});
+
+    // ===== DAILY EMAIL REPORT — 8:00 AM =====
+    const dailyKey=`daily_email_${today}_${user?.role}`;
+    if(!sessionStorage.getItem(dailyKey)){
+      sessionStorage.setItem(dailyKey,'1');
+      const reportData={
+        totalSales:0,totalProfit:0,totalExpenses:0,salesCount:0,
+        topItems:{},lowStock:0,
+        // Admin/Partner stats
+        totalBiz:businesses.length,
+        activeBiz:activeBiz.length,
+        trialBiz:trialBiz.length,
+        suspendedBiz:suspendedBiz.length,
+        newToday:newToday.length,
+        expiringSoon:expSoon.length,
+        pendingPayments:pending.length,
+        newCustomers:newToday.map(b=>({name:b.name,email:b.email,phone:b.phone||'-',date:b.created_at})),
+      };
+
+      // Send to ADMIN
+      if(user?.role==='admin'){
+        sendMail(ADMIN_EMAIL,`📊 Ripoti ya Asubuhi — ${today}`,'daily_report',reportData);
+      }
+
+      // Send to ALL MARKETING PARTNERS
+      if(user?.role==='admin'){
+        partners.forEach(p=>{
+          if(p.email){
+            sendMail(p.email,`📊 Ripoti ya Asubuhi — ${today}`,'daily_report',reportData);
+          }
+        });
+      }
+
+      // New customer notification to admin + partners
+      if(newToday.length>0){
+        newToday.forEach(b=>{
+          sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'});
+          // Also notify marketing partners
+          partners.forEach(p=>{
+            if(p.email){
+              sendMail(p.email,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'});
+            }
+          });
+        });
+      }
+
+      // Expiring alert email
+      if(expSoon.length>0){
+        sendMail(ADMIN_EMAIL,'⏳ Wateja Muda Unaisha!','subscription_expiry',{daysLeft:'multiple',price:0});
+      }
     }
-  },[user,businesses,paymentRequests]);
+  },[user,businesses,paymentRequests,partners]);
 
   // ===== MARKETING PARTNERS =====
   const createPartner=useCallback(async(name,email,password,phone,commission=10)=>{
@@ -1014,7 +1074,7 @@ export function AppProvider({children}){
     return promoCodes.map(p=>{
       const clients=businesses.filter(b=>b.promo_code===p.code);
       const activeClients=clients.filter(b=>b.token_active);
-      const revenue=activeClients.length*parseInt(settings.system_price||30000);
+      const revenue=activeClients.length*parseInt(settings.system_price||15000);
       const commission=revenue*(p.commission_rate||10)/100;
       const tier=getAgentTier(activeClients.length);
       const nextTier=AGENT_TIERS[AGENT_TIERS.indexOf(tier)-1];

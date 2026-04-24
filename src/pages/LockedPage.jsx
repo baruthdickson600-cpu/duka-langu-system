@@ -15,7 +15,7 @@ export default function LockedPage(){
   const[bgB,setBgB]=useState(null);
   const[showB,setShowB]=useState(false);
 
-  const price=parseInt(settings.system_price||30000);
+  const price=parseInt(settings.system_price||15000);
   const payNum=settings.payment_number||'6113 4066';
   const payName=settings.payment_name||'PESAFLY';
   const payProvider=settings.payment_provider||'SELCOM';

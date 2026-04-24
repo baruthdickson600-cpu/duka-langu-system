@@ -20,7 +20,7 @@ export function AgentDashboard(){
   const nextTier=tiers.find(t=>t.min>active.length);
   const toNext=nextTier?nextTier.min-active.length:0;
   const progress=nextTier?Math.min(100,Math.round(active.length/nextTier.min*100)):100;
-  const price=parseInt(settings.system_price||30000);
+  const price=parseInt(settings.system_price||15000);
   const revenue=active.length*price;
   const commission=revenue*(user?.commission_rate||10)/100;
 
