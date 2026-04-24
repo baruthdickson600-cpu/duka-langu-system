@@ -228,6 +228,86 @@ export default async function handler(req, res) {
           ${data.cta ? `<div style="text-align:center"><a href="https://duka-langu-system.vercel.app" class="btn">${data.cta}</a></div>` : ''}`);
         break;
 
+      case 'full_shop_report':
+        html = wrap(`📊 RIPOTI KAMILI — ${data.shopName || 'Duka'} — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
+          <div class="alert alert-info" style="text-align:center;font-size:14px">
+            <strong>🏪 ${data.shopName || 'Duka'}</strong> — Ripoti ya kila siku saa 10 usiku
+          </div>
+
+          <!-- DAILY -->
+          <h3 style="font-size:15px;margin:20px 0 8px;color:${G}">📅 MAUZO YA LEO</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Mauzo</div><div class="value">${fm(data.daySales)}</div><div class="sub">${data.dayCount||0} mauzo</div></div>
+            <div class="stat"><div class="label">Faida</div><div class="value" style="color:#22C55E">${fm(data.dayProfit)}</div></div>
+            <div class="stat"><div class="label">Matumizi</div><div class="value" style="color:#EF4444">${fm(data.dayExpenses)}</div></div>
+            <div class="stat"><div class="label">Faida Halisi</div><div class="value" style="color:${(data.dayNet||0)>=0?'#22C55E':'#EF4444'}">${fm(data.dayNet)}</div></div>
+          </div>
+
+          <!-- WEEKLY -->
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#3B82F6">📅 MAUZO YA WIKI (Siku 7)</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Mauzo</div><div class="value">${fm(data.weekSales)}</div><div class="sub">${data.weekCount||0} mauzo</div></div>
+            <div class="stat"><div class="label">Faida</div><div class="value" style="color:#22C55E">${fm(data.weekProfit)}</div></div>
+            <div class="stat"><div class="label">Matumizi</div><div class="value" style="color:#EF4444">${fm(data.weekExpenses)}</div></div>
+            <div class="stat"><div class="label">Faida Halisi</div><div class="value" style="color:${(data.weekNet||0)>=0?'#22C55E':'#EF4444'}">${fm(data.weekNet)}</div></div>
+          </div>
+
+          <!-- MONTHLY -->
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#8B5CF6">📅 MAUZO YA MWEZI HUU</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Mauzo</div><div class="value">${fm(data.monthSales)}</div><div class="sub">${data.monthCount||0} mauzo</div></div>
+            <div class="stat"><div class="label">Faida</div><div class="value" style="color:#22C55E">${fm(data.monthProfit)}</div></div>
+            <div class="stat"><div class="label">Matumizi</div><div class="value" style="color:#EF4444">${fm(data.monthExpenses)}</div></div>
+            <div class="stat"><div class="label">Faida Halisi</div><div class="value" style="color:${(data.monthNet||0)>=0?'#22C55E':'#EF4444'}">${fm(data.monthNet)}</div></div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- TOP PRODUCTS -->
+          ${(data.topProducts||[]).length>0 ? `
+          <h3 style="font-size:15px;margin:16px 0 8px">🏆 Bidhaa Zinazouzwa Sana (Mwezi Huu)</h3>
+          <table class="table"><tr><th>#</th><th>Bidhaa</th><th>Idadi Iliyouzwa</th></tr>
+          ${data.topProducts.map((p,i)=>`<tr><td>${i+1}</td><td><strong>${p.name}</strong></td><td style="color:${G};font-weight:700">${p.qty}</td></tr>`).join('')}
+          </table>` : ''}
+
+          <!-- LOW STOCK -->
+          ${data.lowStockCount>0 ? `
+          <h3 style="font-size:15px;margin:16px 0 8px;color:#EF4444">⚠️ Bidhaa Zinazoisha (${data.lowStockCount})</h3>
+          <table class="table"><tr><th>Bidhaa</th><th>Zimebaki</th><th>Minimum</th></tr>
+          ${(data.lowStock||[]).map(p=>`<tr><td>📦 ${p.name}</td><td style="color:#EF4444;font-weight:700">${p.quantity}</td><td>${p.min_stock}</td></tr>`).join('')}
+          </table>
+          <div class="alert alert-warning">⚠️ Agiza bidhaa hizi HARAKA kabla hazijaisha!</div>` : '<div class="alert alert-success">✅ Stock yote iko vizuri!</div>'}
+
+          <hr class="divider">
+
+          <!-- DEBTS -->
+          <h3 style="font-size:15px;margin:16px 0 8px;color:#F59E0B">💳 Orodha ya Madeni (${data.debtCount||0} wateja)</h3>
+          ${data.debtCount>0 ? `
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Deni Jumla</div><div class="value" style="color:#EF4444">${fm(data.totalDebt)}</div></div>
+            <div class="stat"><div class="label">Wateja</div><div class="value">${data.debtCount}</div><div class="sub">wana deni</div></div>
+          </div>
+          <table class="table"><tr><th>Mteja</th><th>Simu</th><th>Deni</th><th>Siku</th></tr>
+          ${(data.debts||[]).map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.phone}</td><td style="color:#EF4444;font-weight:700">${fm(c.balance)}</td><td>${c.daysOverdue>0?`<span style="color:#EF4444">${c.daysOverdue}d</span>`:'Leo'}</td></tr>`).join('')}
+          </table>` : '<div class="alert alert-success">✅ Hakuna deni — wateja wote wamelipa!</div>'}
+
+          <hr class="divider">
+
+          <!-- SUBSCRIPTION -->
+          <h3 style="font-size:15px;margin:16px 0 8px">📋 Mfumo</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Plan</div><div class="value" style="color:#8B5CF6">${data.plan||'TRIAL'}</div></div>
+            <div class="stat"><div class="label">Siku Zimebaki</div><div class="value" style="color:${(data.daysLeft||0)<=5?'#EF4444':'#22C55E'}">${data.daysLeft||0}</div></div>
+          </div>
+          ${(data.daysLeft||0)<=5 ? `<div class="alert alert-danger">⏳ Muda wako unakaribia kuisha! Lipa sasa: <strong>SELCOM → 6113 4066 — PESAFLY</strong></div>` : ''}
+
+          <div style="text-align:center;margin-top:20px">
+            <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo →</a>
+          </div>
+          <hr class="divider">
+          <p style="text-align:center;color:${GR};font-size:12px">Ripoti hii inatumwa kila siku saa 10 usiku — PesaFly / Duka Langu</p>`);
+        break;
+
       default:
         html = wrap(subject, `<p>${data?.message || data?.body || ''}</p>`);
     }

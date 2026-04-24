@@ -619,33 +619,81 @@ export function AppProvider({children}){
 
     // Save alerts + Send emails
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
-    // Send email alerts to business owner
     const ownerEmail=biz?.email;
     if(ownerEmail&&alerts.length>0){
-      // Low stock email
       if(lowItems.length>0){
         sendMail(ownerEmail,'📦 Bidhaa '+lowItems.length+' Zinaisha!','low_stock',{count:lowItems.length,items:lowItems.slice(0,10).map(p=>({name:p.name,image:p.image,quantity:p.quantity,min_stock:p.min_stock||5}))});
       }
-      // Overdue debt email
       if(overdueCustomers.length>0){
         sendMail(ownerEmail,'🚨 Deni Limechelewa!','overdue_debt',{count:overdueCustomers.length,total:overdueTotal,customers:overdueCustomers.slice(0,10).map(c=>({name:c.name,phone:c.phone,balance:c.credit_balance,daysOverdue:Math.floor((Date.now()-new Date(c.last_credit_date||c.created_at).getTime())/86400000)}))});
       }
-      // Subscription expiry email
       if(biz){
         const end=biz.token_active?biz.token_expiry:biz.trial_end;
         if(end){const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
           if(dLeft>0&&dLeft<=5){sendMail(ownerEmail,'⏳ Muda Unakaribia Kuisha!','subscription_expiry',{daysLeft:dLeft,price:parseInt(settings.system_price||15000)});}
         }
       }
-      // Daily report email (after 6 PM)
-      if(hour>=18&&todaySales.length>0){
-        const todayExp=expenses.filter(e=>e.created_at?.startsWith(today));
-        const topMap={};todaySales.forEach(s=>s.items?.forEach(i=>{topMap[i.name]=(topMap[i.name]||0)+i.qty}));
-        const report={date:today,totalSales:todayTotal,totalProfit:todayProfit,totalExpenses:todayExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:todaySales.length,topItems:topMap,lowStock:lowItems.length};
-        sendMail(ownerEmail,'📊 Ripoti ya Leo','daily_report',report);
-      }
     }
-  },[user,bizId,products,overdueCustomers,biz,sales,expenses,settings,overdueTotal]);
+
+    // ===== FULL SHOP REPORT — Saa 10 Usiku (22:00) =====
+    const hour=new Date().getHours();
+    const fullReportKey=`full_report_${todayStr()}_${bizId}`;
+    if(hour>=22&&ownerEmail&&!sessionStorage.getItem(fullReportKey)){
+      sessionStorage.setItem(fullReportKey,'1');
+
+      // TODAY stats
+      const todaySales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(today));
+      const todayTotal=todaySales.reduce((a,s)=>a+(s.total||0),0);
+      const todayProfit=todaySales.reduce((a,s)=>a+(s.profit||0),0);
+      const todayExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+
+      // WEEK stats
+      const weekAgo=new Date(Date.now()-7*86400000).toISOString();
+      const weekSales=sales.filter(s=>s.business_id===bizId&&s.created_at>=weekAgo);
+      const weekTotal=weekSales.reduce((a,s)=>a+(s.total||0),0);
+      const weekProfit=weekSales.reduce((a,s)=>a+(s.profit||0),0);
+      const weekExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at>=weekAgo).reduce((a,e)=>a+(e.amount||0),0);
+
+      // MONTH stats
+      const monthStart=today.slice(0,7);
+      const monthSales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(monthStart));
+      const monthTotal=monthSales.reduce((a,s)=>a+(s.total||0),0);
+      const monthProfit=monthSales.reduce((a,s)=>a+(s.profit||0),0);
+      const monthExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(monthStart)).reduce((a,e)=>a+(e.amount||0),0);
+
+      // Top selling products (month)
+      const prodMap={};monthSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
+      const topProducts=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,qty])=>({name,qty}));
+
+      // Low stock
+      const lowStockList=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5)).slice(0,10).map(p=>({name:p.name,quantity:p.quantity,min_stock:p.min_stock||5}));
+
+      // Debts
+      const debtCustomers=customers.filter(c=>c.business_id===bizId&&(c.credit_balance||0)>0).map(c=>({name:c.name,phone:c.phone||'-',balance:c.credit_balance,daysOverdue:c.last_credit_date?Math.floor((Date.now()-new Date(c.last_credit_date).getTime())/86400000):0})).sort((a,b)=>b.balance-a.balance);
+      const totalDebt=debtCustomers.reduce((a,c)=>a+(c.balance||0),0);
+
+      // Days remaining
+      const subEnd=biz?.token_active?biz?.token_expiry:biz?.trial_end;
+      const daysLeft=subEnd?Math.max(0,Math.ceil((new Date(subEnd)-new Date())/86400000)):0;
+
+      sendMail(ownerEmail,`📊 RIPOTI KAMILI — ${biz?.name||'Duka'} — ${new Date().toLocaleDateString('sw-TZ')}`,'full_shop_report',{
+        shopName:biz?.name||'Duka',
+        date:today,
+        // Daily
+        daySales:todayTotal,dayProfit:todayProfit,dayExpenses:todayExpTotal,dayCount:todaySales.length,dayNet:todayProfit-todayExpTotal,
+        // Weekly
+        weekSales:weekTotal,weekProfit:weekProfit,weekExpenses:weekExpTotal,weekCount:weekSales.length,weekNet:weekProfit-weekExpTotal,
+        // Monthly
+        monthSales:monthTotal,monthProfit:monthProfit,monthExpenses:monthExpTotal,monthCount:monthSales.length,monthNet:monthProfit-monthExpTotal,
+        // Products
+        topProducts,lowStock:lowStockList,lowStockCount:lowStockList.length,
+        // Debts
+        debts:debtCustomers.slice(0,15),totalDebt,debtCount:debtCustomers.length,
+        // Subscription
+        daysLeft,plan:(biz?.plan||'trial').toUpperCase(),
+      });
+    }
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses,customers,settings,overdueTotal]);
 
   // ===== ADMIN + PARTNER DAILY REPORT (8:00 AM) =====
   useEffect(()=>{
