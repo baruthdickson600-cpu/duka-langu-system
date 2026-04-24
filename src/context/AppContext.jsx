@@ -17,9 +17,10 @@ async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq
 
 // Email helper (calls API directly - no imports needed)
 const sendMail=(to,subject,type,data)=>{
+  console.log('[EMAIL] Sending:',type,'to:',to);
   fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})})
-  .then(r=>{if(!r.ok)r.json().then(d=>console.warn('Email fail:',d)).catch(()=>{});else console.log('Email sent:',subject,'→',to)})
-  .catch(e=>console.warn('Email network error:',e.message));
+  .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[EMAIL FAIL]',to,d.error||r.status)}else{console.log('[EMAIL OK]',to,d.id)}})
+  .catch(e=>console.error('[EMAIL NET ERROR]',to,e.message));
 };
 
 export function AppProvider({children}){

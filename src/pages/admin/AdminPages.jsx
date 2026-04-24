@@ -413,6 +413,53 @@ export function PromoPage(){
 }
 
 // ===== SETTINGS (with branch toggle, announcement, white label) =====
+// ===== EMAIL TEST SECTION =====
+function EmailTestSection(){
+  const[testResult,setTestResult]=useState(null);
+  const[testing,setTesting]=useState(false);
+  const[testEmail,setTestEmail]=useState('pesafly1@gmail.com');
+
+  const runTest=async()=>{
+    setTesting(true);setTestResult(null);
+    try{
+      const r=await fetch(`/api/test-email?to=${encodeURIComponent(testEmail)}`);
+      const d=await r.json();
+      setTestResult(d);
+    }catch(e){setTestResult({success:false,error:e.message})}
+    setTesting(false);
+  };
+
+  return <div className="card">
+    <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>📧 Email System</h3>
+    <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#1E40AF',lineHeight:1.6}}>
+      <b>Hali ya Email:</b> Mfumo unatumia <b>Gmail SMTP</b> kutuma email kwa wateja WOTE moja kwa moja kutoka <b>pesafly1@gmail.com</b>.<br/><br/>
+      <b>Kama email haifanyi kazi:</b> Hakikisha <code>GMAIL_APP_PASSWORD</code> imewekwa kwenye Vercel Environment Variables. <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{color:'#0B7A3B',fontWeight:700}}>Tengeneza App Password hapa</a>.
+    </div>
+    <div style={{display:'flex',gap:8,alignItems:'flex-end',marginBottom:12}}>
+      <div style={{flex:1}}><Input label="Test Email" value={testEmail} onChange={e=>setTestEmail(e.target.value)}/></div>
+      <button onClick={runTest} disabled={testing} style={{padding:'10px 20px',background:testing?'#86EFAC':'#0B7A3B',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',marginBottom:12,whiteSpace:'nowrap'}}>
+        {testing?'⏳ Inatuma...':'📧 Test Email'}
+      </button>
+    </div>
+    {testResult&&<div style={{background:testResult.success?'#F0FDF4':'#FEF2F2',border:`1px solid ${testResult.success?'#BBF7D0':'#FECACA'}`,borderRadius:10,padding:12,fontSize:12,marginBottom:8}}>
+      {testResult.success?<>
+        <div style={{color:'#15803D',fontWeight:700,fontSize:14,marginBottom:4}}>✅ Email Imetumwa!</div>
+        <div style={{color:'#15803D'}}>ID: {testResult.id}</div>
+        <div style={{color:'#64748B',marginTop:4}}>Angalia inbox ya <b>{testEmail}</b> (na spam folder).</div>
+        {testResult.note&&<div style={{color:'#92400E',marginTop:6,background:'#FFF7ED',borderRadius:6,padding:8}}>{testResult.note}</div>}
+      </>:<>
+        <div style={{color:'#B91C1C',fontWeight:700,fontSize:14,marginBottom:4}}>❌ Imeshindwa!</div>
+        <div style={{color:'#B91C1C'}}>{testResult.error}</div>
+        {testResult.hint&&<div style={{color:'#92400E',marginTop:6,background:'#FFF7ED',borderRadius:6,padding:8}}><b>Suluhisho:</b> {testResult.hint}</div>}
+        {testResult.fix&&<div style={{color:'#1E40AF',marginTop:6,background:'#EFF6FF',borderRadius:6,padding:8}}>{testResult.fix}</div>}
+      </>}
+    </div>}
+    <div style={{fontSize:11,color:'#94A3B8',lineHeight:1.6}}>
+      <b>Email zinazotumwa:</b> Welcome (mteja mpya), Daily/Weekly/Monthly Reports, Low Stock, Overdue Debt, Payment Received, Subscription Expiry, Admin Payment Alert, Promotional
+    </div>
+  </div>;
+}
+
 export function SettingsPage(){
   const{settings,updateSetting}=useApp();
   return <div style={{maxWidth:580}}>
@@ -456,13 +503,15 @@ export function SettingsPage(){
       <Input label="SMS API Key" value={settings.sms_api_key||''} onChange={e=>updateSetting('sms_api_key',e.target.value)}/>
     </div>
     {/* MAINTENANCE */}
-    <div className="card">
+    <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🔒 System Control</h3>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <span style={{fontSize:13}}>Maintenance Mode:</span>
         <button onClick={()=>updateSetting('maintenance_mode',settings.maintenance_mode==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.maintenance_mode==='true'?'#EF4444':'#22C55E',color:'#fff',cursor:'pointer'}}>{settings.maintenance_mode==='true'?'ON':'OFF'}</button>
       </div>
     </div>
+    {/* EMAIL TEST */}
+    <EmailTestSection/>
   </div>;
 }
 
