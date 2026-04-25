@@ -636,7 +636,6 @@ export function AppProvider({children}){
     }
 
     // ===== FULL SHOP REPORT — Saa 10 Usiku (22:00) =====
-    const hour=new Date().getHours();
     const fullReportKey=`full_report_${todayStr()}_${bizId}`;
     if(hour>=22&&ownerEmail&&!sessionStorage.getItem(fullReportKey)){
       sessionStorage.setItem(fullReportKey,'1');
