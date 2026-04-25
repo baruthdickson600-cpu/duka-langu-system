@@ -72,6 +72,64 @@ export default async function handler(req, res) {
 
   try {
     switch (type) {
+      case 'admin_daily_report':
+        html = wrap(`📊 Ripoti ya Asubuhi — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
+          <!-- SUMMARY -->
+          <div class="stat-grid">
+            <div class="stat"><div class="label">MADUKA JUMLA</div><div class="value">${data.totalBiz||0}</div></div>
+            <div class="stat"><div class="label">ACTIVE</div><div class="value" style="color:#22C55E">${data.activeBiz||0}</div><div class="sub">wanaolipa</div></div>
+            <div class="stat"><div class="label">TRIAL</div><div class="value" style="color:#F59E0B">${data.trialBiz||0}</div><div class="sub">wanajaribu</div></div>
+            <div class="stat"><div class="label">SUSPENDED</div><div class="value" style="color:#EF4444">${data.suspendedBiz||0}</div><div class="sub">wamefungwa</div></div>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat"><div class="label">MAPATO JUMLA</div><div class="value" style="color:${G}">${fm(data.totalRevenue)}</div><div class="sub">tangu kuanza</div></div>
+            <div class="stat"><div class="label">MWEZI HUU</div><div class="value" style="color:#3B82F6">${fm(data.monthRevenue)}</div></div>
+            <div class="stat"><div class="label">CONVERSION</div><div class="value" style="color:#8B5CF6">${data.convRate||0}%</div><div class="sub">trial→paid</div></div>
+            <div class="stat"><div class="label">MAWAKALA</div><div class="value">${data.agentCount||0}</div></div>
+          </div>
+
+          ${data.newToday>0?`<div class="alert alert-success">🆕 Wateja wapya <strong>${data.newToday}</strong> leo!</div>`:''}
+          ${data.pendingPayments>0?`<div class="alert alert-danger">💰 Malipo <strong>${data.pendingPayments}</strong> yanasubiri kuthibitishwa!</div>`:''}
+          ${data.expiringSoon>0?`<div class="alert alert-warning">⏳ Wateja <strong>${data.expiringSoon}</strong> muda unaisha ndani ya siku 5</div>`:''}
+
+          <!-- NEW CUSTOMERS TODAY -->
+          ${(data.newCustomers||[]).length>0?`
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#22C55E">🆕 Wateja Wapya wa Leo</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th></tr>
+          ${data.newCustomers.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone||'-'}</td></tr>`).join('')}</table>`:''}
+
+          <!-- ACTIVE CUSTOMERS -->
+          ${(data.activeList||[]).length>0?`
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#22C55E">✅ Wateja Active (${data.activeBiz})</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Plan</th><th>Siku</th></tr>
+          ${data.activeList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:#8B5CF6;font-weight:700">${c.plan}</td><td style="color:${c.daysLeft<=5?'#EF4444':'#22C55E'};font-weight:700">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
+
+          <!-- TRIAL CUSTOMERS -->
+          ${(data.trialList||[]).length>0?`
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#F59E0B">⏳ Wateja Trial (${data.trialBiz})</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Siku Zimebaki</th></tr>
+          ${data.trialList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:${c.daysLeft<=2?'#EF4444':'#F59E0B'};font-weight:700">${c.daysLeft} siku</td></tr>`).join('')}</table>`:''}
+
+          <!-- EXPIRING SOON -->
+          ${(data.expiringList||[]).length>0?`
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#EF4444">⚠️ Muda Unaisha (Siku 5)</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Siku</th></tr>
+          ${data.expiringList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:#EF4444;font-weight:900;font-size:16px">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
+
+          <!-- SUSPENDED -->
+          ${(data.suspendedList||[]).length>0?`
+          <h3 style="font-size:15px;margin:20px 0 8px;color:#EF4444">🔒 Wamefungwa (${data.suspendedBiz})</h3>
+          <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th></tr>
+          ${data.suspendedList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td></tr>`).join('')}</table>`:''}
+
+          <div style="text-align:center;margin-top:20px">
+            <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo →</a>
+          </div>
+          <hr class="divider">
+          <p style="text-align:center;color:${GR};font-size:12px">Ripoti ya kila siku — PesaFly / Duka Langu<br>Wateja: ${data.totalBiz} | Active: ${data.activeBiz} | Mapato: ${fm(data.totalRevenue)}</p>`);
+        break;
+
       case 'daily_report':
         html = wrap(`📊 Ripoti ya Asubuhi — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
           ${data.totalBiz !== undefined ? `

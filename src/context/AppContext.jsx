@@ -549,7 +549,9 @@ export function AppProvider({children}){
   // ===== SMART ALERT ENGINE =====
   // Runs once on load — generates auto-notifications for important events
   useEffect(()=>{
-    if(!user||!bizId||user.role==='admin'||user.role==='marketing')return;
+    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||user.role==='agent')return;
+    // WAIT for data to load — don't run with empty data
+    if(products.length===0&&sales.length===0&&customers.length===0)return;
     const today=todayStr();
     const alertKey=`alerts_${bizId}_${today}`;
     // Prevent duplicate alerts per day
@@ -637,7 +639,9 @@ export function AppProvider({children}){
 
     // ===== FULL SHOP REPORT — Saa 10 Usiku (22:00) =====
     const fullReportKey=`full_report_${todayStr()}_${bizId}`;
-    if(hour>=22&&ownerEmail&&!sessionStorage.getItem(fullReportKey)){
+    // Only send if: it's after 10PM, data has loaded, and not sent today
+    const hasShopData=products.filter(p=>p.business_id===bizId).length>0||sales.filter(s=>s.business_id===bizId).length>0;
+    if(hour>=22&&ownerEmail&&hasShopData&&!sessionStorage.getItem(fullReportKey)){
       sessionStorage.setItem(fullReportKey,'1');
 
       // TODAY stats
@@ -697,6 +701,8 @@ export function AppProvider({children}){
   // ===== ADMIN + PARTNER DAILY REPORT (8:00 AM) =====
   useEffect(()=>{
     if(user?.role!=='admin'&&user?.role!=='marketing')return;
+    // WAIT for data to load — don't send report with zero data
+    if(businesses.length===0)return;
     const today=todayStr();
     const alertKey=`admin_alerts_${today}_${user?.role}`;
     if(sessionStorage.getItem(alertKey))return;
@@ -741,14 +747,33 @@ export function AppProvider({children}){
 
     alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
 
-    // ===== DAILY EMAIL REPORT — 8:00 AM =====
+    // ===== DAILY EMAIL REPORT =====
     const dailyKey=`daily_email_${today}_${user?.role}`;
     if(!sessionStorage.getItem(dailyKey)){
       sessionStorage.setItem(dailyKey,'1');
+
+      // Revenue from approved payments
+      const approvedPay=paymentRequests.filter(p=>p.status==='approved');
+      const totalRevenue=approvedPay.reduce((a,p)=>a+(p.amount||0),0);
+      const monthPay=approvedPay.filter(p=>p.created_at?.startsWith(today.slice(0,7)));
+      const monthRevenue=monthPay.reduce((a,p)=>a+(p.amount||0),0);
+
+      // Conversion rate
+      const convRate=businesses.length>0?Math.round(activeBiz.length/businesses.length*100):0;
+
+      // Expiring list details
+      const expList=expSoon.map(b=>{const d=Math.ceil((new Date(b.token_expiry||b.trial_end)-new Date())/86400000);return{name:b.name,email:b.email,phone:b.phone||'-',daysLeft:d}});
+
+      // Suspended list
+      const suspList=suspendedBiz.slice(0,10).map(b=>({name:b.name,email:b.email,phone:b.phone||'-'}));
+
+      // Active list
+      const activeList=activeBiz.slice(0,15).map(b=>{const d=b.token_expiry?Math.ceil((new Date(b.token_expiry)-new Date())/86400000):0;return{name:b.name,email:b.email,phone:b.phone||'-',plan:(b.plan||'basic').toUpperCase(),daysLeft:d}});
+
+      // Trial list
+      const trialList=trialBiz.slice(0,10).map(b=>{const d=b.trial_end?Math.ceil((new Date(b.trial_end)-new Date())/86400000):0;return{name:b.name,email:b.email,phone:b.phone||'-',daysLeft:d}});
+
       const reportData={
-        totalSales:0,totalProfit:0,totalExpenses:0,salesCount:0,
-        topItems:{},lowStock:0,
-        // Admin/Partner stats
         totalBiz:businesses.length,
         activeBiz:activeBiz.length,
         trialBiz:trialBiz.length,
@@ -756,42 +781,40 @@ export function AppProvider({children}){
         newToday:newToday.length,
         expiringSoon:expSoon.length,
         pendingPayments:pending.length,
-        newCustomers:newToday.map(b=>({name:b.name,email:b.email,phone:b.phone||'-',date:b.created_at})),
+        totalRevenue,monthRevenue,convRate,
+        newCustomers:newToday.map(b=>({name:b.name,email:b.email,phone:b.phone||'-'})),
+        expiringList:expList,
+        suspendedList:suspList,
+        activeList,trialList,
+        agentCount:promoCodes.length,
+        partnerCount:partners.length,
       };
 
       // Send to ADMIN
       if(user?.role==='admin'){
-        sendMail(ADMIN_EMAIL,`📊 Ripoti ya Asubuhi — ${today}`,'daily_report',reportData);
+        sendMail(ADMIN_EMAIL,`📊 Ripoti ya Asubuhi — ${today}`,'admin_daily_report',reportData);
       }
 
       // Send to ALL MARKETING PARTNERS
       if(user?.role==='admin'){
         partners.forEach(p=>{
-          if(p.email){
-            sendMail(p.email,`📊 Ripoti ya Asubuhi — ${today}`,'daily_report',reportData);
-          }
+          if(p.email)sendMail(p.email,`📊 Ripoti ya Asubuhi — ${today}`,'admin_daily_report',reportData);
         });
       }
 
-      // New customer notification to admin + partners
+      // New customer notification
       if(newToday.length>0){
         newToday.forEach(b=>{
           sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'});
-          // Also notify marketing partners
-          partners.forEach(p=>{
-            if(p.email){
-              sendMail(p.email,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'});
-            }
-          });
+          partners.forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'})});
         });
       }
 
-      // Expiring alert email
       if(expSoon.length>0){
         sendMail(ADMIN_EMAIL,'⏳ Wateja Muda Unaisha!','subscription_expiry',{daysLeft:'multiple',price:0});
       }
     }
-  },[user,businesses,paymentRequests,partners]);
+  },[user,businesses,paymentRequests,partners,promoCodes]);
 
   // ===== MARKETING PARTNERS =====
   const createPartner=useCallback(async(name,email,password,phone,commission=10)=>{
