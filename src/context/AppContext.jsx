@@ -153,7 +153,7 @@ export function AppProvider({children}){
     setLoading(true);
     // ADMIN hardcoded login
     if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
-      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin',phone:'+255628986770'};
+      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin',phone:'0628986770'};
       // Admin needs OTP
       setOtpPending({userData:u,email,phone:u.phone,role:'admin'});
       const otpResult=await sendOTP(u.phone,email);
