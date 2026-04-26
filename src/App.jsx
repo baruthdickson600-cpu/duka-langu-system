@@ -100,12 +100,12 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP}=useApp();
   const[page,setPage]=useState('dashboard');
   const[sidebar,setSidebar]=useState(false);
   const[receipt,setReceipt]=useState(null);
 
-  if(!user)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword}/>;
+  if(!user||otpPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP}/>;
   if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;

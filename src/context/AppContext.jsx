@@ -107,14 +107,59 @@ export function AppProvider({children}){
     }catch(e){console.error('Load:',e)}
   },[]);
 
+  // ===== OTP STATE =====
+  const[otpPending,setOtpPending]=useState(null); // {user, role, bizId, phone}
+  const[otpSending,setOtpSending]=useState(false);
+  const OTP_ROLES=['admin','marketing','agent','office']; // roles that need OTP
+
+  // Send OTP via Beem SMS
+  const sendOTP=useCallback(async(phone,email)=>{
+    setOtpSending(true);
+    try{
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',phone,email})});
+      const d=await r.json();
+      setOtpSending(false);
+      return d;
+    }catch(e){setOtpSending(false);return{success:false,error:e.message}}
+  },[]);
+
+  // Verify OTP and complete login
+  const verifyOTP=useCallback(async(code)=>{
+    if(!otpPending)return{success:false,error:'Hakuna OTP inayosubiri'};
+    try{
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',code,phone:otpPending.phone,email:otpPending.email})});
+      const d=await r.json();
+      if(!d.success)return d;
+      // OTP verified — complete login
+      const u=otpPending.userData;
+      setUser(u);
+      await safeUpdate('users',{last_login:nowISO()},'id',u.id);
+      safeInsert('login_logs',{user_id:u.id,email:u.email,action:'login_otp',device_info:navigator.userAgent}).catch(()=>{});
+      await loadData(u.id,u.role,u.business_id);
+      if(u.role==='employee'&&u.branch_id){setActiveBranch(u.branch_id)}
+      if(u.role==='agent'){
+        const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',u.email).single();
+        if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
+      }
+      setOtpPending(null);
+      return{success:true};
+    }catch(e){return{success:false,error:e.message}}
+  },[otpPending,loadData]);
+
+  const cancelOTP=useCallback(()=>{setOtpPending(null)},[]);
+
   // ===== AUTH =====
   const login=useCallback(async(email,password)=>{
     setLoading(true);
+    // ADMIN hardcoded login
     if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
-      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin'};
-      setUser(u);
-      safeInsert('login_logs',{user_id:u.id,email,action:'login',device_info:navigator.userAgent}).catch(()=>{});
-      await loadData(u.id,'admin',null);setLoading(false);return null;
+      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin',phone:'+255628986770'};
+      // Admin needs OTP
+      setOtpPending({userData:u,email,phone:u.phone,role:'admin'});
+      const otpResult=await sendOTP(u.phone,email);
+      setLoading(false);
+      if(!otpResult.success)return'SMS haikutumwa: '+(otpResult.error||'Jaribu tena');
+      return'OTP_REQUIRED';
     }
     try{
       const{data,error}=await supabase.auth.signInWithPassword({email,password});
@@ -124,12 +169,21 @@ export function AppProvider({children}){
         if(!uData.is_active){setLoading(false);return'Akaunti yako imesimamishwa.'}
         const ub=uData.business_id?(await supabase.from('businesses').select('*').eq('id',uData.business_id).single()):null;
         if(ub?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.'}
+
+        // Check if role needs OTP
+        if(OTP_ROLES.includes(uData.role)&&uData.phone){
+          setOtpPending({userData:uData,email,phone:uData.phone,role:uData.role});
+          const otpResult=await sendOTP(uData.phone,email);
+          setLoading(false);
+          if(!otpResult.success)return'SMS haikutumwa: '+(otpResult.error||'Jaribu tena');
+          return'OTP_REQUIRED';
+        }
+
+        // No OTP needed (employee or no phone) — login directly
         setUser(uData);await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
         safeInsert('login_logs',{user_id:uData.id,email,action:'login',device_info:navigator.userAgent}).catch(()=>{});
         await loadData(uData.id,uData.role,uData.business_id);
-        // Employee: auto-set branch
         if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id)}
-        // Agent: fetch promo code info
         if(uData.role==='agent'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
@@ -1262,6 +1316,7 @@ export function AppProvider({children}){
     testimonials,addTestimonial,deleteTestimonial,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
+    otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;

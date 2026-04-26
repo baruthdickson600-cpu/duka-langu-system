@@ -5,7 +5,7 @@ import {TermsPage,PrivacyPage} from './LegalPages';
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
-export default function AuthPage({onLogin,onSignup,onForgotPassword}){
+export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,otpSending,onVerifyOTP,onCancelOTP,onResendOTP}){
   const[tab,setTab]=useState('login');
   const[f,setF]=useState({name:'',email:'',password:'',business:'',phone:'',promo:''});
   const[err,setErr]=useState('');
@@ -18,9 +18,13 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
   const[bgB,setBgB]=useState(null);
   const[showB,setShowB]=useState(false);
+  const[otpCode,setOtpCode]=useState('');
+  const[otpErr,setOtpErr]=useState('');
+  const[otpTimer,setOtpTimer]=useState(300);
+  const[verifying,setVerifying]=useState(false);
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
 
-  // Crossfade: two layers alternate
+  // Crossfade backgrounds
   useEffect(()=>{
     const timer=setInterval(()=>{
       const next=(showB?bgA:bgB||bgA)%BG_COUNT+1;
@@ -29,6 +33,14 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     },BG_INTERVAL);
     return()=>clearInterval(timer);
   },[bgA,bgB,showB]);
+
+  // OTP countdown timer
+  useEffect(()=>{
+    if(!otpPending)return;
+    setOtpTimer(300);
+    const t=setInterval(()=>setOtpTimer(p=>{if(p<=1){clearInterval(t);return 0}return p-1}),1000);
+    return()=>clearInterval(t);
+  },[otpPending]);
 
   if(legalPage==='terms')return <TermsPage onBack={()=>setLegalPage(null)}/>;
   if(legalPage==='privacy')return <PrivacyPage onBack={()=>setLegalPage(null)}/>;
@@ -39,7 +51,8 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     setBusy(true);
     if(tab==='login'){
       if(!f.email||!f.password){setErr('Jaza email na password!');setBusy(false);return}
-      const e=await onLogin(f.email,f.password);if(e)setErr(e);
+      const e=await onLogin(f.email,f.password);
+      if(e&&e!=='OTP_REQUIRED')setErr(e);
     }else{
       if(!f.name||!f.email||!f.password||!f.business){setErr('Jaza taarifa zote!');setBusy(false);return}
       if(f.password.length<6){setErr('Password lazima iwe angalau herufi 6!');setBusy(false);return}
@@ -56,22 +69,34 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     setBusy(false);
   };
 
+  const handleVerifyOTP=async()=>{
+    if(!otpCode||otpCode.length<6){setOtpErr('Ingiza code ya namba 6');return}
+    setVerifying(true);setOtpErr('');
+    const result=await onVerifyOTP(otpCode);
+    if(!result.success)setOtpErr(result.error||'Code si sahihi');
+    setVerifying(false);
+  };
+
+  const handleResend=async()=>{
+    if(otpTimer>240){setOtpErr('Subiri kidogo kabla ya kutuma tena');return}
+    setOtpErr('');
+    const result=await onResendOTP(otpPending.phone,otpPending.email);
+    if(result.success){setOtpTimer(300);setMsg('Code mpya imetumwa!')}
+    else setOtpErr(result.error||'Haikutumwa. Jaribu tena.');
+  };
+
+  const fmtTime=(s)=>`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+
   const bgStyle=(img,visible)=>({
     position:'fixed',inset:0,zIndex:0,
-    backgroundImage:`url(/bg/bg${img}.jpg)`,
-    backgroundSize:'cover',backgroundPosition:'center',
-    opacity:visible?1:0,
-    transition:'opacity 1.5s ease-in-out',
+    backgroundImage:`url(/bg/bg${img}.jpg)`,backgroundSize:'cover',backgroundPosition:'center',
+    opacity:visible?1:0,transition:'opacity 1.5s ease-in-out',
   });
 
   return(
     <div style={{minHeight:'100vh',position:'relative',overflow:'hidden'}}>
-      {/* Two background layers for smooth crossfade */}
-      <div style={bgStyle(bgA,!showB)}/>
-      {bgB&&<div style={bgStyle(bgB,showB)}/>}
-      {/* Subtle dark overlay — no green */}
+      <div style={bgStyle(bgA,!showB)}/>{bgB&&<div style={bgStyle(bgB,showB)}/>}
       <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.2) 40%,rgba(0,0,0,0.45) 100%)'}}/>
-
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
         <div style={{width:'100%',maxWidth:440}}>
           {/* Logo */}
@@ -83,6 +108,57 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
 
           {/* Glass Card */}
           <div style={{background:'rgba(255,255,255,0.92)',borderRadius:24,padding:'32px 28px',boxShadow:'0 25px 80px rgba(0,0,0,0.4)',backdropFilter:'blur(24px)',border:'1px solid rgba(255,255,255,0.2)'}}>
+
+            {/* ===== OTP SCREEN ===== */}
+            {otpPending?<>
+              <div style={{textAlign:'center',marginBottom:20}}>
+                <div style={{width:70,height:70,margin:'0 auto 14px',borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>🔐</div>
+                <h3 style={{fontSize:22,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Thibitisha ni Wewe</h3>
+                <p style={{fontSize:13,color:'#64748B',margin:0}}>Tumetuma code kwenye simu yako</p>
+                <p style={{fontSize:15,fontWeight:700,color:'#0B7A3B',margin:'6px 0 0'}}>***{otpPending.phone?.slice(-4)}</p>
+              </div>
+
+              {otpErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{otpErr}</div>}
+              {msg&&<div style={{background:'#F0FDF4',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #22C55E'}}>{msg}</div>}
+
+              {/* OTP Input */}
+              <div style={{marginBottom:16}}>
+                <input
+                  type="text" inputMode="numeric" maxLength={6} autoFocus
+                  value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,''))}
+                  onKeyDown={e=>e.key==='Enter'&&handleVerifyOTP()}
+                  placeholder="______"
+                  style={{width:'100%',textAlign:'center',fontSize:32,fontWeight:900,letterSpacing:12,padding:'16px 0',border:'2px solid #E2E8F0',borderRadius:14,outline:'none',fontFamily:'monospace',boxSizing:'border-box',color:'#0B7A3B'}}
+                />
+              </div>
+
+              {/* Timer */}
+              <div style={{textAlign:'center',marginBottom:16}}>
+                {otpTimer>0?
+                  <span style={{fontSize:14,color:otpTimer<60?'#EF4444':'#64748B',fontWeight:600}}>⏳ Inaisha: {fmtTime(otpTimer)}</span>:
+                  <span style={{fontSize:14,color:'#EF4444',fontWeight:600}}>⏳ Code imeisha muda!</span>
+                }
+              </div>
+
+              {/* Verify Button */}
+              <button onClick={handleVerifyOTP} disabled={verifying||otpCode.length<6} style={{width:'100%',padding:16,background:verifying?'#86EFAC':otpCode.length===6?'linear-gradient(135deg,#0B7A3B,#065F2E)':'#E2E8F0',color:otpCode.length===6?'#fff':'#94A3B8',border:'none',borderRadius:14,fontWeight:800,fontSize:16,cursor:otpCode.length===6?'pointer':'not-allowed',boxShadow:otpCode.length===6?'0 4px 20px rgba(11,122,59,0.35)':'none',transition:'all 0.2s'}}>
+                {verifying?'⏳ Inathibitisha...':'✅ Thibitisha'}
+              </button>
+
+              {/* Resend + Cancel */}
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:16}}>
+                <button onClick={handleResend} disabled={otpTimer>240||otpSending} style={{background:'none',border:'none',color:otpTimer>240?'#94A3B8':'#0B7A3B',fontWeight:700,fontSize:13,cursor:otpTimer>240?'default':'pointer'}}>
+                  {otpSending?'Inatuma...':'🔄 Tuma Tena'}
+                </button>
+                <button onClick={()=>{onCancelOTP();setOtpCode('');setOtpErr('');setMsg('')}} style={{background:'none',border:'none',color:'#EF4444',fontWeight:600,fontSize:13,cursor:'pointer'}}>← Rudi</button>
+              </div>
+
+              <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginTop:16,fontSize:11,color:'#1E40AF',textAlign:'center'}}>
+                🔒 OTP inalinda akaunti yako — hata mtu akijua password yako, hawezi kuingia bila code hii
+              </div>
+            </>:<>
+
+            {/* ===== NORMAL LOGIN/SIGNUP ===== */}
             {showForgot?<>
               <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 8px'}}>Umesahau Password?</h3>
               <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Weka email yako na tutakutumia link.</p>
@@ -92,7 +168,6 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
               <button onClick={handleForgot} disabled={busy} style={{width:'100%',padding:15,background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:700,fontSize:15,marginTop:6,cursor:'pointer',boxShadow:'0 4px 20px rgba(11,122,59,0.35)'}}>{busy?'Subiri...':'Tuma Link'}</button>
               <p onClick={()=>{setShowForgot(false);setErr('');setMsg('')}} style={{textAlign:'center',marginTop:16,color:'#0B7A3B',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
             </>:<>
-            {/* Tabs */}
             <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:22}}>
               {['login','signup'].map(t=><button key={t} onClick={()=>{setTab(t);setErr('')}} style={{flex:1,padding:'12px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#0B7A3B':'#94A3B8',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>{t==='login'?'Ingia':'Jisajili'}</button>)}
             </div>
@@ -122,9 +197,9 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
               <span onClick={()=>setLegalPage('terms')} style={{color:'#64748B',cursor:'pointer'}}>Masharti</span>{' • '}<span onClick={()=>setLegalPage('privacy')} style={{color:'#64748B',cursor:'pointer'}}>Faragha</span>
             </div>
             </>}
+            </>}
           </div>
 
-          {/* Bottom */}
           <div style={{textAlign:'center',marginTop:20}}>
             <div style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,textShadow:'0 2px 6px rgba(0,0,0,0.4)'}}>Lipa: SELCOM → 6113 4066 • PESAFLY</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:6}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
