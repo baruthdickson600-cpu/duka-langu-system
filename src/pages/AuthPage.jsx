@@ -80,7 +80,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
   const handleResend=async()=>{
     if(otpTimer>240){setOtpErr('Subiri kidogo kabla ya kutuma tena');return}
     setOtpErr('');
-    const result=await onResendOTP(otpPending.phone,otpPending.email);
+    const result=await onResendOTP(otpPending.email);
     if(result.success){setOtpTimer(300);setMsg('Code mpya imetumwa!')}
     else setOtpErr(result.error||'Haikutumwa. Jaribu tena.');
   };
@@ -114,8 +114,8 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
               <div style={{textAlign:'center',marginBottom:20}}>
                 <div style={{width:70,height:70,margin:'0 auto 14px',borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>🔐</div>
                 <h3 style={{fontSize:22,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Thibitisha ni Wewe</h3>
-                <p style={{fontSize:13,color:'#64748B',margin:0}}>Tumetuma code kwenye simu yako</p>
-                <p style={{fontSize:15,fontWeight:700,color:'#0B7A3B',margin:'6px 0 0'}}>***{otpPending.phone?.slice(-4)}</p>
+                <p style={{fontSize:13,color:'#64748B',margin:0}}>Tumetuma code kwenye email yako</p>
+                <p style={{fontSize:15,fontWeight:700,color:'#0B7A3B',margin:'6px 0 0'}}>{otpPending.email?.replace(/(.{2})(.*)(@.*)/,'$1***$3')}</p>
               </div>
 
               {otpErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{otpErr}</div>}

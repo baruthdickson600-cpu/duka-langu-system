@@ -112,11 +112,11 @@ export function AppProvider({children}){
   const[otpSending,setOtpSending]=useState(false);
   const OTP_ROLES=['admin','marketing','agent','office']; // roles that need OTP
 
-  // Send OTP via Beem SMS
-  const sendOTP=useCallback(async(phone,email)=>{
+  // Send OTP via Email
+  const sendOTP=useCallback(async(email)=>{
     setOtpSending(true);
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',phone,email})});
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email})});
       const d=await r.json();
       setOtpSending(false);
       return d;
@@ -127,7 +127,7 @@ export function AppProvider({children}){
   const verifyOTP=useCallback(async(code)=>{
     if(!otpPending)return{success:false,error:'Hakuna OTP inayosubiri'};
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',code,phone:otpPending.phone,email:otpPending.email})});
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',code,email:otpPending.email})});
       const d=await r.json();
       if(!d.success)return d;
       // OTP verified — complete login
@@ -153,12 +153,11 @@ export function AppProvider({children}){
     setLoading(true);
     // ADMIN hardcoded login
     if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
-      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin',phone:'0628986770'};
-      // Admin needs OTP
-      setOtpPending({userData:u,email,phone:u.phone,role:'admin'});
-      const otpResult=await sendOTP(u.phone,email);
+      const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin'};
+      setOtpPending({userData:u,email,role:'admin'});
+      const otpResult=await sendOTP(email);
       setLoading(false);
-      if(!otpResult.success)return'SMS haikutumwa: '+(otpResult.error||'Jaribu tena');
+      if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
       return'OTP_REQUIRED';
     }
     try{
@@ -171,11 +170,11 @@ export function AppProvider({children}){
         if(ub?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.'}
 
         // Check if role needs OTP
-        if(OTP_ROLES.includes(uData.role)&&uData.phone){
-          setOtpPending({userData:uData,email,phone:uData.phone,role:uData.role});
-          const otpResult=await sendOTP(uData.phone,email);
+        if(OTP_ROLES.includes(uData.role)){
+          setOtpPending({userData:uData,email,role:uData.role});
+          const otpResult=await sendOTP(email);
           setLoading(false);
-          if(!otpResult.success)return'SMS haikutumwa: '+(otpResult.error||'Jaribu tena');
+          if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
           return'OTP_REQUIRED';
         }
 
