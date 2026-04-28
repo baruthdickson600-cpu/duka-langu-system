@@ -249,24 +249,121 @@ export function StoresPage(){
 
 // ===== TOKENS =====
 export function TokensPage(){
-  const{tokens,genToken}=useApp();const[days,setDays]=useState('30');const[plan,setPlan]=useState('basic');
+  const{tokens,genToken,partners,businesses,paymentRequests}=useApp();
+  const[days,setDays]=useState('30');const[plan,setPlan]=useState('basic');
+  const[assignTo,setAssignTo]=useState('');const[assignName,setAssignName]=useState('');
+  const[qty,setQty]=useState('1');const[tab,setTab]=useState('all');const[generating,setGenerating]=useState(false);
+
+  const usedTokens=tokens.filter(t=>t.used);
+  const freeTokens=tokens.filter(t=>!t.used);
+  const filtered=tab==='used'?usedTokens:tab==='free'?freeTokens:tab==='mine'?tokens.filter(t=>!t.assigned_to):tokens;
+
+  // Revenue from tokens
+  const approvedPay=paymentRequests.filter(p=>p.status==='approved');
+  const totalRevenue=approvedPay.reduce((a,p)=>a+(p.amount||0),0);
+
+  const handleGenerate=async()=>{
+    if(!days||days<1)return alert('Weka siku!');
+    setGenerating(true);
+    const count=Math.min(parseInt(qty)||1,50);
+    const codes=[];
+    for(let i=0;i<count;i++){
+      const c=await genToken(days,plan,assignTo,assignName||partners.find(p=>p.id===assignTo)?.name||'Admin');
+      codes.push(c);
+    }
+    setGenerating(false);
+    if(count===1)alert('Token: '+codes[0]);
+    else alert(`Token ${count} zimetengenezwa!\n\n${codes.join('\n')}`);
+  };
+
+  // Get business name for used token
+  const getBizName=(t)=>{const b=businesses.find(b=>b.id===t.used_by);return b?.name||'—'};
+
   return <div>
-    <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>Tengeneza Token</h3>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'flex-end'}}>
-        <div style={{width:120}}><Input label="Siku" type="number" value={days} onChange={e=>setDays(e.target.value)}/></div>
-        <div style={{width:140}}><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[{value:'basic',label:'Basic'},{value:'premium',label:'Premium'}]}/></div>
-        <Btn onClick={async()=>{const c=await genToken(days,plan);alert('Token: '+c)}} style={{marginBottom:12}}>{IC.plus} Tengeneza</Btn>
+    {/* Stats */}
+    <div className="flex-wrap" style={{marginBottom:16}}>
+      <Stat icon={IC.key} label="Jumla" value={tokens.length} color="#0B7A3B"/>
+      <Stat icon={IC.ok} label="Zinapatikana" value={freeTokens.length} color="#22C55E"/>
+      <Stat icon={IC.clock} label="Zimetumika" value={usedTokens.length} color="#F59E0B"/>
+      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRevenue.toLocaleString()}`} color="#3B82F6"/>
+    </div>
+
+    {/* Generate Card */}
+    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0'}}>
+      <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 14px',color:'#0B7A3B'}}>🔑 Tengeneza Token Mpya</h3>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:12}}>
+        <div>
+          <label style={{fontSize:11,fontWeight:600,color:'#475569',display:'block',marginBottom:4}}>Siku</label>
+          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'6px 12px',borderRadius:8,border:days===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:13,cursor:'pointer',color:days===String(d)?'#0B7A3B':'#64748B'}}>{d}</button>)}
+          </div>
+        </div>
+        <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[{value:'basic',label:'Basic'},{value:'premium',label:'Premium'},{value:'enterprise',label:'Enterprise'}]}/></div>
+        <div><Input label="Idadi" type="number" value={qty} onChange={e=>setQty(e.target.value)}/></div>
+        <div><Sel label="Weka kwa Mshirika" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Admin (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
       </div>
+      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+        {generating?'⏳ Inatengeneza...':`🔑 Tengeneza Token ${qty>1?qty+' ':''}(Siku ${days})`}
+      </button>
     </div>
+
+    {/* Tabs */}
+    <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
+      {[
+        {id:'all',label:`Zote (${tokens.length})`,color:'#0B7A3B'},
+        {id:'free',label:`Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
+        {id:'used',label:`Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
+        {id:'mine',label:'Za Admin',color:'#3B82F6'},
+      ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'7px 14px',borderRadius:8,border:tab===t.id?`2px solid ${t.color}`:'1px solid #E2E8F0',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
+      {/* Partner filter buttons */}
+      {partners.map(p=><button key={p.id} onClick={()=>setTab('p_'+p.id)} style={{padding:'7px 14px',borderRadius:8,border:tab===('p_'+p.id)?'2px solid #8B5CF6':'1px solid #E2E8F0',background:tab===('p_'+p.id)?'#F5F3FF':'#fff',fontWeight:tab===('p_'+p.id)?700:500,fontSize:12,cursor:'pointer',color:tab===('p_'+p.id)?'#8B5CF6':'#64748B'}}>📋 {p.name||p.email}</button>)}
+    </div>
+
+    {/* Token Cards */}
     <div className="card">
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>Tokens ({tokens.length})</h3>
-      {tokens.map(t=><div key={t.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:6,alignItems:'center'}}>
-        <div><span style={{fontFamily:'monospace',fontWeight:700,fontSize:13,background:'#F1F5F9',padding:'2px 8px',borderRadius:6}}>{t.code}</span><span style={{fontSize:12,color:'#64748B',marginLeft:8}}>Siku: {t.days}</span></div>
-        <Badge color={t.used?'#B91C1C':'#15803D'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
-      </div>)}
-      {!tokens.length&&<Empty text="Hakuna"/>}
+      {(tab.startsWith('p_')?tokens.filter(t=>t.assigned_to===tab.slice(2)):filtered).map(t=>(
+        <div key={t.id} style={{padding:'12px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <div style={{width:40,height:40,borderRadius:10,background:t.used?'#FFF7ED':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>
+            {t.used?'✅':'🔑'}
+          </div>
+          <div style={{flex:1,minWidth:150}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <span style={{fontFamily:'monospace',fontWeight:800,fontSize:14,background:t.used?'#FFF7ED':'#F0FDF4',padding:'3px 10px',borderRadius:6,color:t.used?'#92400E':'#0B7A3B'}}>{t.code}</span>
+              <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#0B7A3B':'#64748B'}>{t.plan||'basic'}</Badge>
+            </div>
+            <div style={{fontSize:11,color:'#94A3B8',marginTop:3}}>
+              Siku: <b>{t.days}</b> • {fmtDate(t.created_at)}
+              {t.assigned_name&&<span> • 📋 <b style={{color:'#8B5CF6'}}>{t.assigned_name}</b></span>}
+            </div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <Badge color={t.used?'#F59E0B':'#22C55E'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
+            {t.used&&<div style={{fontSize:11,color:'#64748B',marginTop:2}}>→ {getBizName(t)}</div>}
+          </div>
+          {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy: '+t.code)}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #E2E8F0',background:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:'#64748B'}}>📋 Copy</button>}
+        </div>
+      ))}
+      {filtered.length===0&&<Empty icon="🔑" text="Hakuna token"/>}
     </div>
+
+    {/* Revenue Breakdown */}
+    {approvedPay.length>0&&<div className="card" style={{marginTop:16}}>
+      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>💰 Mapato — Malipo Yaliyothibitishwa</h3>
+      <div style={{maxHeight:300,overflowY:'auto'}}>
+        {approvedPay.map(p=><div key={p.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:13}}>{p.business_name}</div>
+            <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'SELCOM'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id}</span></div>
+            {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6'}}>Token: {p.token_code} • Siku: {p.days_given}</div>}
+          </div>
+          <div style={{fontWeight:800,fontSize:15,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</div>
+        </div>)}
+      </div>
+      <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 14px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span style={{fontWeight:700,color:'#15803D'}}>JUMLA YA MAPATO</span>
+        <span style={{fontWeight:900,fontSize:20,color:'#0B7A3B'}}>TZS {totalRevenue.toLocaleString()}</span>
+      </div>
+    </div>}
   </div>;
 }
 
@@ -413,6 +510,49 @@ export function PromoPage(){
 }
 
 // ===== SETTINGS (with branch toggle, announcement, white label) =====
+// ===== ACCOUNTANT MANAGEMENT =====
+function AccountantSection(){
+  const{supabase}=useApp();
+  const[accName,setAccName]=useState('');
+  const[accEmail,setAccEmail]=useState('');
+  const[accPass,setAccPass]=useState('');
+  const[accPhone,setAccPhone]=useState('');
+  const[creating,setCreating]=useState(false);
+  const[result,setResult]=useState(null);
+
+  const createAccountant=async()=>{
+    if(!accName||!accEmail||!accPass)return setResult({ok:false,msg:'Jaza taarifa zote!'});
+    if(accPass.length<6)return setResult({ok:false,msg:'Password lazima herufi 6+'});
+    setCreating(true);setResult(null);
+    try{
+      const{data:authData,error:authErr}=await supabase.auth.signUp({email:accEmail,password:accPass,options:{data:{name:accName}}});
+      if(authErr)throw authErr;
+      const uid=authData?.user?.id;
+      if(uid){
+        await supabase.from('users').insert({id:uid,email:accEmail,name:accName,role:'accountant',phone:accPhone,is_active:true});
+      }
+      setResult({ok:true,msg:`✅ Muhasibu "${accName}" ametengenezwa! Anaweza kuingia kwa ${accEmail}`});
+      setAccName('');setAccEmail('');setAccPass('');setAccPhone('');
+    }catch(e){setResult({ok:false,msg:e.message||'Tatizo!'})}
+    setCreating(false);
+  };
+
+  return <div className="card" style={{marginBottom:16,border:'2px solid #8B5CF6'}}>
+    <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px',color:'#8B5CF6'}}>🧮 Ongeza Muhasibu (Accountant)</h3>
+    <p style={{fontSize:12,color:'#64748B',marginBottom:12}}>Muhasibu ataona: mapato, malipo, tokens, wateja — HAWEZI kubadilisha au kufuta chochote.</p>
+    {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.msg}</div>}
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      <Input label="Jina" placeholder="Jina la Muhasibu" value={accName} onChange={e=>setAccName(e.target.value)}/>
+      <Input label="Email" type="email" placeholder="muhasibu@email.com" value={accEmail} onChange={e=>setAccEmail(e.target.value)}/>
+      <Input label="Password" type="password" placeholder="Password (6+)" value={accPass} onChange={e=>setAccPass(e.target.value)}/>
+      <Input label="Simu" placeholder="07XXXXXXXX" value={accPhone} onChange={e=>setAccPhone(e.target.value)}/>
+    </div>
+    <button onClick={createAccountant} disabled={creating} style={{width:'100%',marginTop:10,padding:13,background:creating?'#C4B5FD':'linear-gradient(135deg,#7C3AED,#6D28D9)',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
+      {creating?'⏳ Inatengeneza...':'🧮 Tengeneza Akaunti ya Muhasibu'}
+    </button>
+  </div>;
+}
+
 // ===== EMAIL TEST SECTION =====
 function EmailTestSection(){
   const[testResult,setTestResult]=useState(null);
@@ -512,6 +652,8 @@ export function SettingsPage(){
     </div>
     {/* EMAIL TEST */}
     <EmailTestSection/>
+    {/* ACCOUNTANT */}
+    <AccountantSection/>
   </div>;
 }
 

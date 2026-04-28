@@ -33,12 +33,24 @@ export default function LockedPage(){
     return()=>clearInterval(t);
   },[bgA,bgB,showB]);
 
+  const[err,setErr]=useState('');
+
   const handleSubmitPayment=async()=>{
     if(!txId.trim())return alert('Weka Transaction ID!');
     if(txId.trim().length<4)return alert('Transaction ID ni fupi sana!');
-    setSubmitting(true);
-    await submitPayment(txId.trim(),price,payProvider,phone.trim());
-    setSubmitting(false);setSubmitted(true);
+    setSubmitting(true);setErr('');
+    try{
+      const result=await submitPayment(txId.trim(),price,payProvider,phone.trim());
+      if(result?.error){
+        setErr(result.error);
+        setSubmitting(false);
+        return;
+      }
+      setSubmitted(true);
+    }catch(e){
+      setErr('Tatizo la mfumo: '+(e.message||'Jaribu tena'));
+    }
+    setSubmitting(false);
   };
   const handleActivateToken=async()=>{
     if(!code.trim())return alert('Ingiza token!');
@@ -80,6 +92,7 @@ export default function LockedPage(){
               <button onClick={()=>setTab('token')} style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',fontWeight:700,fontSize:13,background:tab==='token'?'#fff':'transparent',color:tab==='token'?'#0B7A3B':'#94A3B8',cursor:'pointer'}}>Nina Token</button>
             </div>}
             {!submitted&&!hasPending&&tab==='pay'&&<>
+              {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{err}</div>}
               <Input label="Transaction ID (kutoka SMS)" placeholder="Mf: MP240415ABC123" value={txId} onChange={e=>setTxId(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSubmitPayment()}/>
               <Input label="Namba ya Simu" placeholder="07XXXXXXXX" value={phone} onChange={e=>setPhone(e.target.value)}/>
               <button onClick={handleSubmitPayment} disabled={submitting} style={{width:'100%',padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:submitting?'not-allowed':'pointer',marginTop:4,boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>

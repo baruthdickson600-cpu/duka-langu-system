@@ -8,6 +8,7 @@ import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPag
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
+import {AccountantDashboard,RevenuePage,AccExpensesPage,AccTokensPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
   admin:[
@@ -26,6 +27,13 @@ const MENUS={
     {id:'templates',icon:IC.file,label:'Email'},
     {id:'security',icon:IC.shield,label:'Security'},
     {id:'settings',icon:IC.gear,label:'Mipangilio'},
+  ],
+  accountant:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'revenue',icon:IC.dollar,label:'Mapato'},
+    {id:'customers',icon:IC.store,label:'Wateja'},
+    {id:'tokens',icon:IC.key,label:'Tokens'},
+    {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
@@ -106,7 +114,7 @@ export default function App(){
   const[receipt,setReceipt]=useState(null);
 
   if(!user||otpPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP}/>;
-  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&biz&&isExpired())return <LockedPage/>;
+  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
   // Add branches menu ONLY if canUseBranches
@@ -142,6 +150,15 @@ export default function App(){
         case'reports':return <MktReportsPage/>;case'broadcast':return <MktBroadcastPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <MarketingDash/>;
+      }
+    }
+    if(role==='accountant'){
+      switch(page){
+        case'revenue':return <RevenuePage/>;
+        case'customers':return <AccExpensesPage/>;
+        case'tokens':return <AccTokensPage/>;
+        case'notifications':return <NotifsPage/>;
+        default:return <AccountantDashboard/>;
       }
     }
     if(role==='agent'){

@@ -22,6 +22,13 @@ const sendMail=(to,subject,type,data)=>{
   .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[EMAIL FAIL]',to,d.error||r.status)}else{console.log('[EMAIL OK]',to,d.id)}})
   .catch(e=>console.error('[EMAIL NET ERROR]',to,e.message));
 };
+const sendSMS=(to,message)=>{
+  if(!to)return;
+  console.log('[SMS] Sending to:',to);
+  fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,message})})
+  .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[SMS FAIL]',to,d.error||d.beem_response)}else{console.log('[SMS OK]',to)}})
+  .catch(e=>console.error('[SMS NET ERROR]',to,e.message));
+};
 
 export function AppProvider({children}){
   const[user,setUser]=useState(null);
@@ -54,8 +61,8 @@ export function AppProvider({children}){
   const[followups,setFollowups]=useState([]);
   const[testimonials,setTestimonials]=useState([]);
 
-  const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
-  const bizId=biz?.id;
+  const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
+  const bizId=biz?.id||user?.business_id;
 
   useEffect(()=>{const on=()=>setOnline(true);const off=()=>setOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)}},[]);
 
@@ -104,13 +111,17 @@ export function AppProvider({children}){
         // Agent promo code is loaded after login via user.promo_code
         // Businesses are already loaded above (bData)
       }
+      if(role==='accountant'){
+        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const pt=await safeSelect('marketing_partners');setPartners(pt);
+      }
     }catch(e){console.error('Load:',e)}
   },[]);
 
   // ===== OTP STATE =====
   const[otpPending,setOtpPending]=useState(null); // {user, role, bizId, phone}
   const[otpSending,setOtpSending]=useState(false);
-  const OTP_ROLES=['admin','marketing','agent','office']; // roles that need OTP
+  const OTP_ROLES=['admin','marketing','agent','office','accountant']; // roles that need OTP
 
   // Send OTP via Email
   const sendOTP=useCallback(async(email)=>{
@@ -461,7 +472,12 @@ export function AppProvider({children}){
   const closeTicket=useCallback(async(tid)=>{await safeUpdate('support_tickets',{status:'closed'},'id',tid);setTickets(prev=>prev.map(t=>t.id===tid?{...t,status:'closed'}:t))},[]);
 
   // ===== TOKENS =====
-  const genToken=useCallback(async(days,plan='basic')=>{const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();const d=await safeInsert('tokens',{code,days:parseInt(days),plan,created_by:user?.id});setTokens(prev=>[d||{id:genId(),code,days:parseInt(days),plan,used:false,created_at:nowISO()},...prev]);return code},[user]);
+  const genToken=useCallback(async(days,plan='basic',assignTo='',assignName='')=>{
+    const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
+    const d=await safeInsert('tokens',{code,days:parseInt(days),plan,created_by:user?.id,assigned_to:assignTo||null,assigned_name:assignName||null,used:false});
+    const final=d||{id:genId(),code,days:parseInt(days),plan,created_by:user?.id,assigned_to:assignTo||null,assigned_name:assignName||null,used:false,created_at:nowISO()};
+    setTokens(prev=>[final,...prev]);return code;
+  },[user]);
   const activateToken=useCallback(async(code)=>{const tk=tokens.find(t=>t.code===code&&!t.used);if(!tk)return'Token si sahihi au imetumika!';if(!bizId)return'Biashara haijapatikana!';const exp=new Date(Date.now()+tk.days*86400000).toISOString();await safeUpdate('tokens',{used:true,used_by:bizId,used_at:nowISO()},'id',tk.id);await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:tk.plan||'basic',is_suspended:false},'id',bizId);setTokens(prev=>prev.map(t=>t.id===tk.id?{...t,used:true}:t));setBiz(prev=>prev.map(b=>b.id===bizId?{...b,token_active:true,token_expiry:exp,is_suspended:false}:b));return null},[tokens,bizId]);
 
   // ===== PROMO =====
@@ -514,15 +530,52 @@ export function AppProvider({children}){
   // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
   // Office: submit payment with transaction ID
   const submitPayment=useCallback(async(transactionId,amount,payMethod='SELCOM',phone='')=>{
-    if(!bizId)return null;
-    const pr={business_id:bizId,business_name:biz?.name,user_email:user?.email,transaction_id:transactionId.trim(),amount:+amount,payment_method:payMethod,phone,status:'pending',plan:biz?.plan||'basic'};
+    const myBizId=bizId||user?.business_id;
+    const myBizName=biz?.name||user?.name||'Biashara';
+    const myEmail=user?.email||'';
+    
+    if(!myBizId){
+      console.error('[PAYMENT] No bizId! user:',user?.id,'biz:',biz);
+      return{error:'Biashara haijapatikana. Jaribu tena.'};
+    }
+    
+    console.log('[PAYMENT] Submitting:',{bizId:myBizId,txId:transactionId,amount,method:payMethod});
+    
+    const pr={business_id:myBizId,business_name:myBizName,user_email:myEmail,transaction_id:transactionId.trim(),amount:+amount,payment_method:payMethod,phone,status:'pending',plan:biz?.plan||'basic'};
+    
+    // Insert payment request
     const saved=await safeInsert('payment_requests',pr);
+    if(!saved){
+      console.error('[PAYMENT] Insert failed! Trying direct insert...');
+      // Try direct insert
+      const{data:directSaved,error:directErr}=await supabase.from('payment_requests').insert(pr).select().single();
+      if(directErr){
+        console.error('[PAYMENT] Direct insert also failed:',directErr.message);
+        return{error:'Tatizo la database: '+directErr.message};
+      }
+      if(directSaved){
+        setPayReqs(prev=>[directSaved,...prev]);
+        // Notify admin
+        await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`});
+        sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
+        console.log('[PAYMENT] Success via direct insert!');
+        return directSaved;
+      }
+    }
+    
     const final=saved||{...pr,id:genId(),created_at:nowISO()};
     setPayReqs(prev=>[final,...prev]);
-    // Notify admin with priority notification
-    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${biz?.name}`,message:`${biz?.name} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Simu: ${phone}. FUNGUA: Nenda Malipo na Thibitisha SASA!`});
-    // Email admin
-    sendMail('pesafly1@gmail.com','💰 MALIPO MAPYA — '+(biz?.name),'admin_payment',{businessName:biz?.name,email:user?.email,transactionId,amount:+amount,method:payMethod,phone});
+    
+    // Notify admin — in-app notification
+    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`});
+    // Notify admin — email
+    sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
+    // Notify partners
+    supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+      (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`💰 Malipo Mapya: ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone})});
+    }).catch(()=>{});
+    
+    console.log('[PAYMENT] Success! ID:',final.id);
     return final;
   },[bizId,biz,user]);
 
@@ -532,8 +585,8 @@ export function AppProvider({children}){
     if(!pr)return null;
     // 1. Generate token
     const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
-    const tokenData=await safeInsert('tokens',{code,days:parseInt(days),plan:pr.plan||'basic',created_by:user?.id,used:true,used_by:pr.business_id,used_at:nowISO()});
-    setTokens(prev=>[tokenData||{id:genId(),code,days,plan:pr.plan||'basic',used:true,created_at:nowISO()},...prev]);
+    const tokenData=await safeInsert('tokens',{code,days:parseInt(days),plan:pr.plan||'basic',created_by:user?.id,used:true,used_by:pr.business_id,used_by_name:pr.business_name,used_at:nowISO()});
+    setTokens(prev=>[tokenData||{id:genId(),code,days,plan:pr.plan||'basic',used:true,used_by:pr.business_id,used_by_name:pr.business_name,created_at:nowISO()},...prev]);
     // 2. Activate business
     const exp=new Date(Date.now()+parseInt(days)*86400000).toISOString();
     await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:pr.plan||'basic',is_suspended:false},'id',pr.business_id);
@@ -541,8 +594,17 @@ export function AppProvider({children}){
     // 3. Update payment request status
     await safeUpdate('payment_requests',{status:'approved',approved_by:user?.id,approved_at:nowISO(),token_code:code,days_given:days},'id',paymentId);
     setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'approved',token_code:code,days_given:days}:p));
-    // 4. Notify business
+    // 4. Notify business — in-app
     await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'success',title:'🎉 Malipo Yamethibitishwa!',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamethibitishwa! Mfumo umefunguliwa kwa siku ${days}. Token: ${code}`});
+    // 5. Email customer
+    if(pr.user_email){
+      sendMail(pr.user_email,'🎉 Malipo Yamethibitishwa — Duka Langu','payment_received',{customerName:pr.business_name,amount:pr.amount,remaining:0,method:pr.payment_method||'SELCOM'});
+    }
+    // 6. SMS token to customer phone
+    if(pr.phone){
+      sendSMS(pr.phone,`DUKA LANGU\nMalipo yako yamethibitishwa!\nMfumo umefunguliwa siku ${days}.\nToken: ${code}\nFungua: duka-langu-system.vercel.app\nAsante!`);
+    }
+    console.log('[APPROVE] Payment approved:',pr.business_name,'Token:',code,'Days:',days,'SMS→',pr.phone||'no phone');
     return{code,days};
   },[paymentRequests,user]);
 
@@ -550,10 +612,19 @@ export function AppProvider({children}){
   const rejectPayment=useCallback(async(paymentId,reason='')=>{
     const pr=paymentRequests.find(p=>p.id===paymentId);
     if(!pr)return;
-    await safeUpdate('payment_requests',{status:'rejected',reject_reason:reason,approved_by:user?.id,approved_at:nowISO()},'id',paymentId);
-    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'rejected',reject_reason:reason}:p));
-    // Notify business
+    await safeUpdate('payment_requests',{status:'rejected',reject_reason:reason||'Transaction ID si sahihi',approved_by:user?.id,approved_at:nowISO()},'id',paymentId);
+    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'rejected',reject_reason:reason||'Transaction ID si sahihi'}:p));
+    // Notify business — in-app
     await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'danger',title:'❌ Malipo Yamekataliwa',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamekataliwa. Sababu: ${reason||'Transaction ID si sahihi'}. Jaribu tena.`});
+    // Email customer
+    if(pr.user_email){
+      sendMail(pr.user_email,'❌ Malipo Yamekataliwa — Duka Langu','promotional',{title:'❌ Malipo Yamekataliwa',emoji:'❌',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamekataliwa.\n\nSababu: ${reason||'Transaction ID si sahihi'}\n\nTafadhali jaribu tena na Transaction ID sahihi.`,cta:'Jaribu Tena →'});
+    }
+    // SMS customer
+    if(pr.phone){
+      sendSMS(pr.phone,`DUKA LANGU\nMalipo yako yamekataliwa.\nSababu: ${reason||'Transaction ID si sahihi'}\nJaribu tena: duka-langu-system.vercel.app`);
+    }
+    console.log('[REJECT] Payment rejected:',pr.business_name,'Reason:',reason);
   },[paymentRequests,user]);
 
   // Check my latest payment status (for office/locked page)
@@ -1301,7 +1372,7 @@ export function AppProvider({children}){
     // Tickets
     createTicket,replyTicket,closeTicket,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,supabase,
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin
