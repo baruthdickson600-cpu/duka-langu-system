@@ -7,7 +7,7 @@ const fm=n=>`TZS ${(+n||0).toLocaleString()}`;
 
 // ===== 1. DASHBOARD (Features 1-5) =====
 export function AccountantDashboard(){
-  const{paymentRequests,businesses,tokens,partners,systemExpenses=[]}=useApp();
+  const{paymentRequests,businesses,tokens,partners,systemExpenses}=useApp();
   const ap=paymentRequests.filter(p=>p.status==='approved');
   const pd=paymentRequests.filter(p=>p.status==='pending');
   const rj=paymentRequests.filter(p=>p.status==='rejected');
@@ -185,25 +185,34 @@ export function AccPaymentsPage(){
 
 // ===== 3. MATUMIZI PAGE (Features 11-14) =====
 export function AccExpensesPage(){
-  const{systemExpenses=[],addSystemExpense,supabase}=useApp();
+  const{systemExpenses,supabase}=useApp();
   const[show,setShow]=useState(false);
-  const[f,setF]=useState({category:'SMS',amount:'',description:'',date:new Date().toISOString().split('T')[0]});
+  const[expList,setExpList]=useState(systemExpenses||[]);
+  const[f,setF]=useState({category:'SMS/Beem',amount:'',description:'',date:new Date().toISOString().split('T')[0]});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  
+  // Sync with context
+  React.useEffect(()=>{setExpList(systemExpenses||[])},[systemExpenses]);
+  
   const ms=new Date().toISOString().split('T')[0].slice(0,7);
-  const monthExp=(systemExpenses||[]).filter(e=>e.date?.startsWith(ms));
-  const totalMonth=monthExp.reduce((a,e)=>a+(e.amount||0),0);
+  const monthExp=expList.filter(e=>(e.date||e.created_at||'').startsWith(ms));
+  const totalMonth=monthExp.reduce((a,e)=>a+(+e.amount||0),0);
+  const totalAll=expList.reduce((a,e)=>a+(+e.amount||0),0);
   // F12: By category
-  const byCat={};(systemExpenses||[]).forEach(e=>{const c=e.category||'Nyingine';byCat[c]=(byCat[c]||0)+(e.amount||0)});
+  const byCat={};expList.forEach(e=>{const c=e.category||'Nyingine';byCat[c]=(byCat[c]||0)+(+e.amount||0)});
   const cats=['SMS/Beem','Server/Hosting','Marketing','Mishahara','Vifaa','Domain','Nyingine'];
   // F14: Budget
-  const budgets={SMS:10000,'Server/Hosting':65000,Marketing:30000,Mishahara:0,Vifaa:0,Domain:5000,Nyingine:0};
+  const budgets={'SMS/Beem':10000,'Server/Hosting':65000,'Marketing':30000,'Mishahara':0,'Vifaa':0,'Domain':5000,'Nyingine':0};
 
   const handleAdd=async()=>{
     if(!f.amount||+f.amount<=0)return alert('Weka kiasi!');
     const exp={category:f.category,amount:+f.amount,description:f.description,date:f.date,created_by:'accountant'};
-    const{error}=await supabase.from('system_expenses').insert(exp);
-    if(error)alert('Error: '+error.message);
-    else{setShow(false);setF({category:'SMS',amount:'',description:'',date:new Date().toISOString().split('T')[0]});window.location.reload()}
+    try{
+      const{data,error}=await supabase.from('system_expenses').insert(exp).select().single();
+      if(error){alert('Error: '+error.message);return}
+      setExpList(prev=>[data||{...exp,id:Math.random().toString(),created_at:new Date().toISOString()},...prev]);
+      setShow(false);setF({category:'SMS/Beem',amount:'',description:'',date:new Date().toISOString().split('T')[0]});
+    }catch(e){alert('Tatizo: '+e.message)}
   };
 
   return <div>
@@ -214,7 +223,7 @@ export function AccExpensesPage(){
     </div>
     <div className="flex-wrap" style={{marginBottom:14}}>
       <Stat icon={IC.wallet} label="Mwezi Huu" value={fm(totalMonth)} color="#EF4444"/>
-      <Stat icon={IC.dollar} label="Jumla" value={fm((systemExpenses||[]).reduce((a,e)=>a+(e.amount||0),0))} color="#F59E0B"/>
+      <Stat icon={IC.dollar} label="Jumla Yote" value={fm(totalAll)} color="#F59E0B"/>
     </div>
     {/* F12: By Category */}
     <div className="card" style={{marginBottom:14}}>
@@ -232,14 +241,14 @@ export function AccExpensesPage(){
     <div className="card">
       <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📋 Orodha ya Matumizi</h3>
       <div style={{maxHeight:400,overflowY:'auto'}}>
-        {(systemExpenses||[]).map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+        {expList.map(e=><div key={e.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
           <div>
             <div style={{display:'flex',alignItems:'center',gap:6}}><Badge color="#64748B">{e.category||'Nyingine'}</Badge><span style={{fontSize:12,fontWeight:600}}>{e.description||'—'}</span></div>
             <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(e.date||e.created_at)}</div>
           </div>
           <span style={{fontWeight:800,color:'#EF4444',fontSize:14}}>{fm(e.amount)}</span>
         </div>)}
-        {!(systemExpenses||[]).length&&<Empty icon="💸" text="Hakuna matumizi bado"/>}
+        {!expList.length&&<Empty icon="💸" text="Hakuna matumizi bado"/>}
       </div>
     </div>
     {/* Add Modal */}
@@ -350,7 +359,7 @@ export function AccCustomersPage(){
 
 // ===== 6. RIPOTI PAGE (Features 21-23) =====
 export function AccReportsPage(){
-  const{paymentRequests,tokens,businesses,systemExpenses=[]}=useApp();
+  const{paymentRequests,tokens,businesses,systemExpenses}=useApp();
   const ap=paymentRequests.filter(p=>p.status==='approved');
   const totalRev=ap.reduce((a,p)=>a+(p.amount||0),0);
   const ms=new Date().toISOString().split('T')[0].slice(0,7);

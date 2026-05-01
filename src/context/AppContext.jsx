@@ -100,6 +100,7 @@ export function AppProvider({children}){
         const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
         const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
         const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
+        const se=await safeSelect('system_expenses',{order:{col:'created_at'}});setSystemExpenses(se);
       }
       if(role==='marketing'){
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
