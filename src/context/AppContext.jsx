@@ -60,6 +60,7 @@ export function AppProvider({children}){
   const[internalMsgs,setMsgs]=useState([]);
   const[followups,setFollowups]=useState([]);
   const[testimonials,setTestimonials]=useState([]);
+  const[systemExpenses,setSystemExpenses]=useState([]);
 
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
   const bizId=biz?.id||user?.business_id;
@@ -117,6 +118,7 @@ export function AppProvider({children}){
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
         const pt=await safeSelect('marketing_partners');setPartners(pt);
         const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
+        const se=await safeSelect('system_expenses',{order:{col:'created_at'}});setSystemExpenses(se);
       }
     }catch(e){console.error('Load:',e)}
   },[]);
@@ -1373,7 +1375,7 @@ export function AppProvider({children}){
     // Tickets
     createTicket,replyTicket,closeTicket,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,supabase,
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,supabase,systemExpenses,
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin

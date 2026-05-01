@@ -8,7 +8,7 @@ import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPag
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
-import {AccountantDashboard,RevenuePage,AccExpensesPage,AccTokensPage} from './pages/accountant/AccountantPages';
+import {AccountantDashboard,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
   admin:[
@@ -30,9 +30,11 @@ const MENUS={
   ],
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'revenue',icon:IC.dollar,label:'Mapato'},
+    {id:'payments',icon:IC.dollar,label:'Malipo'},
+    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
+    {id:'revenue',icon:IC.chart,label:'Chaneli'},
     {id:'customers',icon:IC.store,label:'Wateja'},
-    {id:'tokens',icon:IC.key,label:'Tokens'},
+    {id:'reports',icon:IC.file,label:'Ripoti'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   marketing:[
@@ -157,9 +159,11 @@ export default function App(){
     }
     if(role==='accountant'){
       switch(page){
-        case'revenue':return <RevenuePage/>;
-        case'customers':return <AccExpensesPage/>;
-        case'tokens':return <AccTokensPage/>;
+        case'payments':return <AccPaymentsPage/>;
+        case'expenses':return <AccExpensesPage/>;
+        case'revenue':return <AccRevenuePage/>;
+        case'customers':return <AccCustomersPage/>;
+        case'reports':return <AccReportsPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AccountantDashboard/>;
       }
