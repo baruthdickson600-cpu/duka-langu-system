@@ -544,33 +544,31 @@ export function AppProvider({children}){
     
     console.log('[PAYMENT] Submitting:',{bizId:myBizId,txId:transactionId,amount,method:payMethod});
     
-    const pr={business_id:myBizId,business_name:myBizName,user_email:myEmail,transaction_id:transactionId.trim(),amount:+amount,payment_method:payMethod,phone,status:'pending',plan:biz?.plan||'basic'};
+    // Basic columns (always exist)
+    const prBasic={business_id:myBizId,transaction_id:transactionId.trim(),amount:+amount,status:'pending'};
+    // Extra columns (may not exist yet)
+    const prFull={...prBasic,business_name:myBizName,user_email:myEmail,payment_method:payMethod,phone,plan:biz?.plan||'basic'};
     
-    // Insert payment request
-    const saved=await safeInsert('payment_requests',pr);
-    if(!saved){
-      console.error('[PAYMENT] Insert failed! Trying direct insert...');
-      // Try direct insert
-      const{data:directSaved,error:directErr}=await supabase.from('payment_requests').insert(pr).select().single();
-      if(directErr){
-        console.error('[PAYMENT] Direct insert also failed:',directErr.message);
-        return{error:'Tatizo la database: '+directErr.message};
+    // Try full insert first, fallback to basic
+    let saved=null;
+    let{data:d1,error:e1}=await supabase.from('payment_requests').insert(prFull).select().single();
+    if(e1){
+      console.warn('[PAYMENT] Full insert failed:',e1.message,'→ trying basic...');
+      let{data:d2,error:e2}=await supabase.from('payment_requests').insert(prBasic).select().single();
+      if(e2){
+        console.error('[PAYMENT] Basic insert also failed:',e2.message);
+        return{error:'Tatizo la database: '+e2.message};
       }
-      if(directSaved){
-        setPayReqs(prev=>[directSaved,...prev]);
-        // Notify admin
-        await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`});
-        sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
-        console.log('[PAYMENT] Success via direct insert!');
-        return directSaved;
-      }
+      saved=d2;
+    }else{
+      saved=d1;
     }
     
-    const final=saved||{...pr,id:genId(),created_at:nowISO()};
-    setPayReqs(prev=>[final,...prev]);
+    if(saved)setPayReqs(prev=>[saved,...prev]);
+    const final=saved||{...prFull,id:genId(),created_at:nowISO()};
     
     // Notify admin — in-app notification
-    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`});
+    safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`}).catch(()=>{});
     // Notify admin — email
     sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
     // Notify partners
