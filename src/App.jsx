@@ -113,6 +113,9 @@ export default function App(){
   const[sidebar,setSidebar]=useState(false);
   const[receipt,setReceipt]=useState(null);
 
+  // Reset page to dashboard when user/role changes
+  useEffect(()=>{if(user?.role)setPage('dashboard')},[user?.role]);
+
   if(!user||otpPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP}/>;
   if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 

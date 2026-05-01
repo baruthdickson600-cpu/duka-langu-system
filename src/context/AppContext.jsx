@@ -108,12 +108,15 @@ export function AppProvider({children}){
         const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
       if(role==='agent'){
-        // Agent promo code is loaded after login via user.promo_code
-        // Businesses are already loaded above (bData)
+        // Agent: load businesses (for seeing their registered customers)
+        // promo_code info loaded after login
+        const pt=await safeSelect('marketing_partners');setPartners(pt);
       }
       if(role==='accountant'){
+        // Accountant: full financial view (read-only)
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
         const pt=await safeSelect('marketing_partners');setPartners(pt);
+        const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
       }
     }catch(e){console.error('Load:',e)}
   },[]);

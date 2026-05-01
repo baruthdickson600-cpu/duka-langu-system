@@ -17,51 +17,85 @@ export function AccountantDashboard(){
   const todayRev=approved.filter(p=>p.created_at?.startsWith(today)).reduce((a,p)=>a+(p.amount||0),0);
   const monthRev=approved.filter(p=>p.created_at?.startsWith(monthStart)).reduce((a,p)=>a+(p.amount||0),0);
   const activeBiz=businesses.filter(b=>b.token_active&&!b.is_suspended);
+  const trialBiz=businesses.filter(b=>!b.token_active&&!b.is_suspended);
+  const suspBiz=businesses.filter(b=>b.is_suspended);
   const monthlyExpected=activeBiz.length*15000;
+  const collectionRate=monthlyExpected>0?Math.round(monthRev/monthlyExpected*100):0;
+
+  // Revenue by month
+  const monthMap={};approved.forEach(p=>{const m=p.created_at?.slice(0,7);if(m)monthMap[m]=(monthMap[m]||0)+(p.amount||0)});
+  const months=Object.entries(monthMap).sort().slice(-6);
+
+  // Revenue by partner
+  const partnerMap={'Admin (Moja kwa moja)':0};
+  approved.forEach(p=>{
+    const tk=tokens.find(t=>t.code===p.token_code);
+    const name=tk?.assigned_name||'Admin (Moja kwa moja)';
+    partnerMap[name]=(partnerMap[name]||0)+(p.amount||0);
+  });
 
   return <div>
-    <h3 style={{fontSize:18,fontWeight:800,margin:'0 0 16px'}}>📊 Muhasibu — Dashboard</h3>
-    <div className="flex-wrap" style={{marginBottom:16}}>
+    <h3 style={{fontSize:18,fontWeight:800,margin:'0 0 4px'}}>🧮 Muhasibu — Dashboard</h3>
+    <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Hali ya fedha za mfumo wa Duka Langu</p>
+
+    {/* Revenue Stats */}
+    <div className="flex-wrap" style={{marginBottom:12}}>
       <Stat icon={IC.dollar} label="Mapato Jumla" value={fmtMoney(totalRev)} color="#0B7A3B" sub="tangu kuanza"/>
       <Stat icon={IC.dollar} label="Mwezi Huu" value={fmtMoney(monthRev)} color="#3B82F6"/>
       <Stat icon={IC.dollar} label="Leo" value={fmtMoney(todayRev)} color="#22C55E"/>
-      <Stat icon={IC.clock} label="Inasubiri" value={pending.length} color="#F59E0B"/>
+      <Stat icon={IC.clock} label="Inasubiri" value={`${pending.length} (${fmtMoney(pending.reduce((a,p)=>a+(p.amount||0),0))})`} color="#F59E0B"/>
     </div>
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.store} label="Maduka Active" value={activeBiz.length} color="#22C55E"/>
-      <Stat icon={IC.dollar} label="Mapato Tarajiwa" value={fmtMoney(monthlyExpected)} color="#8B5CF6" sub="kwa mwezi"/>
-      <Stat icon={IC.ok} label="Malipo Yamekubaliwa" value={approved.length} color="#22C55E"/>
-      <Stat icon={IC.warn} label="Yamekataliwa" value={rejected.length} color="#EF4444"/>
+      <Stat icon={IC.store} label="Active" value={activeBiz.length} color="#22C55E" sub="wanaolipa"/>
+      <Stat icon={IC.clock} label="Trial" value={trialBiz.length} color="#F59E0B"/>
+      <Stat icon={IC.warn} label="Suspended" value={suspBiz.length} color="#EF4444"/>
+      <Stat icon={IC.chart} label="Collection Rate" value={`${collectionRate}%`} color={collectionRate>=80?'#22C55E':collectionRate>=50?'#F59E0B':'#EF4444'} sub={`${fmtMoney(monthRev)} / ${fmtMoney(monthlyExpected)}`}/>
     </div>
 
-    {/* Quick Summary */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
-      {/* Recent Payments */}
+      {/* Monthly Revenue Chart */}
+      {months.length>0&&<div className="card">
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>📅 Mapato kwa Mwezi</h3>
+        {months.map(([m,a])=>{const max=Math.max(...months.map(d=>d[1]));const pct=max?a/max*100:0;return<div key={m} style={{padding:'5px 0',display:'flex',alignItems:'center',gap:8}}>
+          <span style={{width:55,fontSize:11,fontWeight:600,color:'#64748B'}}>{m}</span>
+          <div style={{flex:1,background:'#F1F5F9',borderRadius:6,height:22,overflow:'hidden'}}><div style={{width:pct+'%',height:'100%',background:'linear-gradient(90deg,#0B7A3B,#22C55E)',borderRadius:6}}/></div>
+          <span style={{fontWeight:700,fontSize:11,color:'#0B7A3B',minWidth:90,textAlign:'right'}}>{fmtMoney(a)}</span>
+        </div>})}
+      </div>}
+
+      {/* Partner Revenue */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#0B7A3B'}}>💰 Malipo ya Hivi Karibuni</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>
-          {approved.slice(0,10).map(p=><div key={p.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontWeight:600,fontSize:13}}>{p.business_name}</div>
-              <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'SELCOM'}</div>
-            </div>
-            <div style={{fontWeight:800,fontSize:14,color:'#0B7A3B'}}>{fmtMoney(p.amount)}</div>
-          </div>)}
-          {!approved.length&&<Empty icon="💰" text="Hakuna malipo bado"/>}
-        </div>
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>📊 Mapato kwa Chaneli</h3>
+        {Object.entries(partnerMap).filter(([,a])=>a>0).sort((a,b)=>b[1]-a[1]).map(([name,amt])=><div key={name} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontWeight:600,fontSize:12}}>{name}</span>
+          <div>
+            <span style={{fontWeight:800,color:'#0B7A3B',fontSize:13}}>{fmtMoney(amt)}</span>
+            <span style={{fontSize:10,color:'#94A3B8',marginLeft:4}}>({totalRev?Math.round(amt/totalRev*100):0}%)</span>
+          </div>
+        </div>)}
+        {!Object.keys(partnerMap).filter(k=>partnerMap[k]>0).length&&<Empty icon="📊" text="Hakuna mapato bado"/>}
       </div>
 
-      {/* Pending */}
-      {pending.length>0&&<div className="card" style={{border:'2px solid #FED7AA'}}>
-        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#F59E0B'}}>⏳ Yanasubiri ({pending.length})</h3>
-        {pending.map(p=><div key={p.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div>
-            <div style={{fontWeight:600,fontSize:13}}>{p.business_name}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>TX: {p.transaction_id}</div>
-          </div>
-          <div style={{fontWeight:800,fontSize:14,color:'#F59E0B'}}>{fmtMoney(p.amount)}</div>
+      {/* Pending Payments */}
+      <div className="card" style={{border:pending.length?'2px solid #FED7AA':''}}>
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#F59E0B'}}>⏳ Malipo Yanasubiri ({pending.length})</h3>
+        {pending.map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{p.business_name||'—'}</b><br/><span style={{color:'#94A3B8',fontFamily:'monospace',fontSize:10}}>{p.transaction_id}</span></div>
+          <div style={{fontWeight:700,color:'#F59E0B'}}>{fmtMoney(p.amount)}</div>
         </div>)}
-      </div>}
+        {!pending.length&&<Empty icon="✅" text="Hakuna malipo yanasubiri"/>}
+      </div>
+
+      {/* Recent Approved */}
+      <div className="card">
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#22C55E'}}>✅ Malipo ya Hivi Karibuni</h3>
+        <div style={{maxHeight:250,overflowY:'auto'}}>
+          {approved.slice(0,12).map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
+            <div><b>{p.business_name||'—'}</b><br/><span style={{color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'SELCOM'}</span></div>
+            <div style={{fontWeight:800,color:'#0B7A3B'}}>{fmtMoney(p.amount)}</div>
+          </div>)}
+        </div>
+      </div>
     </div>
   </div>;
 }
