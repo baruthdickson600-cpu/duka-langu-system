@@ -8,7 +8,7 @@ import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPag
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
-import {AccountantDashboard,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
+import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
   admin:[
@@ -31,10 +31,14 @@ const MENUS={
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'payments',icon:IC.dollar,label:'Malipo'},
-    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
-    {id:'revenue',icon:IC.chart,label:'Chaneli'},
+    {id:'budget',icon:IC.chart,label:'Bajeti'},
+    {id:'expenses',icon:IC.file,label:'Matumizi'},
+    {id:'payroll',icon:IC.people,label:'Payroll'},
+    {id:'debts',icon:IC.warn,label:'Madeni'},
+    {id:'revenue',icon:IC.dollar,label:'Chaneli'},
     {id:'customers',icon:IC.store,label:'Wateja'},
     {id:'reports',icon:IC.file,label:'Ripoti'},
+    {id:'audit',icon:IC.shield,label:'Audit'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   marketing:[
@@ -160,10 +164,14 @@ export default function App(){
     if(role==='accountant'){
       switch(page){
         case'payments':return <AccPaymentsPage/>;
+        case'budget':return <AccBudgetPage/>;
         case'expenses':return <AccExpensesPage/>;
+        case'payroll':return <AccPayrollPage/>;
+        case'debts':return <AccDebtsPage/>;
         case'revenue':return <AccRevenuePage/>;
         case'customers':return <AccCustomersPage/>;
         case'reports':return <AccReportsPage/>;
+        case'audit':return <AccAuditPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AccountantDashboard/>;
       }
