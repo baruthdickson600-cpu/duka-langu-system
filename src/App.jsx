@@ -6,7 +6,7 @@ import AuthPage from './pages/AuthPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
-import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
+import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
@@ -43,6 +43,7 @@ const MENUS={
   ],
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'tokens',icon:IC.key,label:'Tokens Zangu'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'agents',icon:IC.users,label:'Mawakala'},
     {id:'campaigns',icon:IC.gift,label:'Kampeni'},
@@ -153,6 +154,7 @@ export default function App(){
     if(role==='marketing'){
       switch(page){
         case'pipeline':return <PipelinePage/>;case'agents':return <MktAgentsPage/>;
+        case'tokens':return <MktTokensPage/>;
         case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
         case'messaging':return <MessagingPage/>;case'testimonials':return <TestimonialsPage/>;
         case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;

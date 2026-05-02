@@ -418,3 +418,106 @@ export function MktBroadcastPage(){
     <Btn onClick={()=>{if(!title||!msg)return alert('Jaza!');broadcastNotif(type,title,msg);alert('Imetumwa!');setTitle('');setMsg('')}} style={{width:'100%',justifyContent:'center'}}>{IC.send} Tuma ({businesses.length})</Btn>
   </div>;
 }
+
+// ===== MARKETING TOKENS PAGE =====
+export function MktTokensPage(){
+  const{tokens=[],businesses=[],user}=useApp();
+  
+  // Filter tokens assigned to this partner
+  const myTokens=tokens.filter(t=>t.assigned_to===user?.id||t.assigned_name===user?.name||t.assigned_name===user?.email);
+  const usedTokens=myTokens.filter(t=>t.used);
+  const freeTokens=myTokens.filter(t=>!t.used);
+  const getBizName=(t)=>{const b=businesses.find(b=>b.id===t.used_by);return b?.name||t.used_by_name||'—'};
+  const fm=n=>`TZS ${(+n||0).toLocaleString()}`;
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('sw-TZ',{day:'numeric',month:'short',year:'numeric'}):'—';
+
+  const[tab,setTab]=useState('all');
+  const filtered=tab==='used'?usedTokens:tab==='free'?freeTokens:myTokens;
+
+  return <div>
+    <h3 style={{fontSize:18,fontWeight:800,margin:'0 0 4px'}}>🔑 Tokens Zangu</h3>
+    <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Tokens zilizowekwa kwenye akaunti yako na Admin</p>
+    
+    {/* Stats */}
+    <div className="flex-wrap" style={{marginBottom:16}}>
+      <Stat icon={IC.key} label="Jumla" value={myTokens.length} color="#0B7A3B"/>
+      <Stat icon={IC.ok} label="Zinapatikana" value={freeTokens.length} color="#22C55E"/>
+      <Stat icon={IC.clock} label="Zimetumika" value={usedTokens.length} color="#F59E0B"/>
+    </div>
+
+    {/* Info Card */}
+    {!myTokens.length&&<div className="card" style={{background:'#EFF6FF',border:'2px solid #BFDBFE',textAlign:'center',padding:30,marginBottom:16}}>
+      <div style={{fontSize:48,marginBottom:10}}>🔑</div>
+      <div style={{fontSize:16,fontWeight:700,color:'#1E40AF'}}>Hakuna Tokens Bado</div>
+      <div style={{fontSize:13,color:'#3B82F6',marginTop:6}}>Admin ataweka tokens kwenye akaunti yako. Utaziona hapa.</div>
+    </div>}
+
+    {/* Tabs */}
+    {myTokens.length>0&&<>
+      <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
+        {[
+          {id:'all',label:`Zote (${myTokens.length})`,color:'#0B7A3B'},
+          {id:'free',label:`Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
+          {id:'used',label:`Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
+        ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1px solid #E2E8F0',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
+      </div>
+
+      {/* Token List */}
+      <div className="card">
+        {filtered.map(t=>(
+          <div key={t.id} style={{padding:'14px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+            {/* Icon */}
+            <div style={{width:44,height:44,borderRadius:12,background:t.used?'#FFF7ED':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
+              {t.used?'✅':'🔑'}
+            </div>
+            
+            {/* Details */}
+            <div style={{flex:1,minWidth:180}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                <span style={{fontFamily:'monospace',fontWeight:800,fontSize:15,background:t.used?'#FFF7ED':'#F0FDF4',padding:'4px 12px',borderRadius:8,color:t.used?'#92400E':'#0B7A3B',letterSpacing:1}}>{t.code}</span>
+                <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#0B7A3B':'#64748B'}>{(t.plan||'basic').toUpperCase()}</Badge>
+                <Badge color={t.used?'#F59E0B':'#22C55E'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
+              </div>
+              <div style={{fontSize:12,color:'#64748B',marginTop:5}}>
+                📅 Siku: <b>{t.days}</b> • Imetengenezwa: {fmtDate(t.created_at)}
+              </div>
+              {t.used&&<div style={{fontSize:12,marginTop:4,background:'#FFF7ED',borderRadius:6,padding:'4px 10px',display:'inline-block'}}>
+                <span style={{color:'#92400E'}}>🏪 Imefungua: <b>{getBizName(t)}</b></span>
+                {t.used_at&&<span style={{color:'#94A3B8',marginLeft:8}}>• {fmtDate(t.used_at)}</span>}
+              </div>}
+            </div>
+            
+            {/* Actions */}
+            <div style={{textAlign:'right',flexShrink:0}}>
+              {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy: '+t.code)}} style={{padding:'8px 16px',borderRadius:10,border:'2px solid #0B7A3B',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0B7A3B',display:'flex',alignItems:'center',gap:4}}>
+                📋 Copy Code
+              </button>}
+            </div>
+          </div>
+        ))}
+        {!filtered.length&&<Empty icon={tab==='free'?'✅':'🔑'} text={tab==='free'?'Tokens zote zimetumika':'Hakuna tokens'}/>}
+      </div>
+
+      {/* Summary Card */}
+      {usedTokens.length>0&&<div className="card" style={{marginTop:16}}>
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>📊 Wateja Uliowafungulia</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>
+          {usedTokens.map(t=>{const bName=getBizName(t);return(
+            <div key={t.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+              <div>
+                <div style={{fontWeight:600,fontSize:13}}>🏪 {bName}</div>
+                <div style={{fontSize:11,color:'#94A3B8'}}>Token: <span style={{fontFamily:'monospace',fontWeight:700}}>{t.code}</span> • Siku {t.days} • {(t.plan||'basic').toUpperCase()}</div>
+                <div style={{fontSize:10,color:'#94A3B8'}}>Tarehe: {fmtDate(t.used_at||t.created_at)}</div>
+              </div>
+              <Badge color="#22C55E">✅ Amefunguliwa</Badge>
+            </div>
+          )})}
+        </div>
+        <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 14px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontWeight:700,color:'#15803D',fontSize:13}}>JUMLA WATEJA ULIOFUNGUA</span>
+          <span style={{fontWeight:900,fontSize:20,color:'#0B7A3B'}}>{usedTokens.length}</span>
+        </div>
+      </div>}
+    </>}
+  </div>;
+}
