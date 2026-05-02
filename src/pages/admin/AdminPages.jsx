@@ -1,4 +1,4 @@
-import React,{useState} from 'react';
+import React,{useState,useEffect} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
@@ -513,12 +513,17 @@ export function PromoPage(){
 // ===== ACCOUNTANT MANAGEMENT =====
 function AccountantSection(){
   const{supabase}=useApp();
-  const[accName,setAccName]=useState('');
-  const[accEmail,setAccEmail]=useState('');
-  const[accPass,setAccPass]=useState('');
-  const[accPhone,setAccPhone]=useState('');
-  const[creating,setCreating]=useState(false);
-  const[result,setResult]=useState(null);
+  const[accName,setAccName]=useState('');const[accEmail,setAccEmail]=useState('');
+  const[accPass,setAccPass]=useState('');const[accPhone,setAccPhone]=useState('');
+  const[creating,setCreating]=useState(false);const[result,setResult]=useState(null);
+  const[accountants,setAccountants]=useState([]);const[loaded,setLoaded]=useState(false);
+
+  // Load accountants
+  useEffect(()=>{
+    if(loaded)return;
+    supabase?.from('users').select('*').eq('role','accountant').order('created_at',{ascending:false})
+      .then(({data})=>{setAccountants(data||[]);setLoaded(true)});
+  },[loaded]);
 
   const createAccountant=async()=>{
     if(!accName||!accEmail||!accPass)return setResult({ok:false,msg:'Jaza taarifa zote!'});
@@ -528,18 +533,49 @@ function AccountantSection(){
       const{data:authData,error:authErr}=await supabase.auth.signUp({email:accEmail,password:accPass,options:{data:{name:accName}}});
       if(authErr)throw authErr;
       const uid=authData?.user?.id;
-      if(uid){
-        await supabase.from('users').insert({id:uid,email:accEmail,name:accName,role:'accountant',phone:accPhone,is_active:true});
-      }
-      setResult({ok:true,msg:`✅ Muhasibu "${accName}" ametengenezwa! Anaweza kuingia kwa ${accEmail}`});
+      const newAcc={id:uid,email:accEmail,name:accName,role:'accountant',phone:accPhone,is_active:true};
+      if(uid)await supabase.from('users').insert(newAcc);
+      setAccountants(p=>[{...newAcc,created_at:new Date().toISOString()},...p]);
+      setResult({ok:true,msg:`✅ "${accName}" ametengenezwa! Anaweza kuingia kwa ${accEmail}`});
       setAccName('');setAccEmail('');setAccPass('');setAccPhone('');
     }catch(e){setResult({ok:false,msg:e.message||'Tatizo!'})}
     setCreating(false);
   };
 
+  const toggleAccountant=async(id,active)=>{
+    await supabase.from('users').update({is_active:!active}).eq('id',id);
+    setAccountants(p=>p.map(a=>a.id===id?{...a,is_active:!active}:a));
+  };
+
+  const deleteAccountant=async(id,email)=>{
+    if(!confirm(`Futa muhasibu ${email}? Hii haiwezi kurudishwa!`))return;
+    await supabase.from('users').delete().eq('id',id);
+    setAccountants(p=>p.filter(a=>a.id!==id));
+  };
+
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('sw-TZ',{day:'numeric',month:'short',year:'numeric'}):'—';
+
   return <div className="card" style={{marginBottom:16,border:'2px solid #8B5CF6'}}>
-    <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px',color:'#8B5CF6'}}>🧮 Ongeza Muhasibu (Accountant)</h3>
-    <p style={{fontSize:12,color:'#64748B',marginBottom:12}}>Muhasibu ataona: mapato, malipo, tokens, wateja — HAWEZI kubadilisha au kufuta chochote.</p>
+    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 14px',color:'#8B5CF6'}}>🧮 Wahasibu (Accountants)</h3>
+    
+    {/* Existing Accountants */}
+    {accountants.length>0&&<div style={{marginBottom:16}}>
+      <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Wahasibu Waliopo ({accountants.length})</div>
+      {accountants.map(a=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:14}}>{a.name}</div>
+          <div style={{fontSize:12,color:'#64748B'}}>{a.email} • {a.phone||'—'}</div>
+          <div style={{fontSize:10,color:'#94A3B8'}}>Ametengenezwa: {fmtDate(a.created_at)} • Login: {fmtDate(a.last_login)}</div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button onClick={()=>toggleAccountant(a.id,a.is_active)} style={{padding:'5px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:a.is_active?'#22C55E':'#EF4444',color:'#fff'}}>{a.is_active?'✅ Active':'🔒 Disabled'}</button>
+          <button onClick={()=>deleteAccountant(a.id,a.email)} style={{padding:'5px 12px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️</button>
+        </div>
+      </div>)}
+    </div>}
+    
+    {/* Create New */}
+    <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>+ Ongeza Muhasibu Mpya</div>
     {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.msg}</div>}
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
       <Input label="Jina" placeholder="Jina la Muhasibu" value={accName} onChange={e=>setAccName(e.target.value)}/>
@@ -547,9 +583,105 @@ function AccountantSection(){
       <Input label="Password" type="password" placeholder="Password (6+)" value={accPass} onChange={e=>setAccPass(e.target.value)}/>
       <Input label="Simu" placeholder="07XXXXXXXX" value={accPhone} onChange={e=>setAccPhone(e.target.value)}/>
     </div>
-    <button onClick={createAccountant} disabled={creating} style={{width:'100%',marginTop:10,padding:13,background:creating?'#C4B5FD':'linear-gradient(135deg,#7C3AED,#6D28D9)',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
+    <button onClick={createAccountant} disabled={creating} style={{width:'100%',marginTop:10,padding:14,background:creating?'#C4B5FD':'linear-gradient(135deg,#7C3AED,#6D28D9)',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
       {creating?'⏳ Inatengeneza...':'🧮 Tengeneza Akaunti ya Muhasibu'}
     </button>
+  </div>;
+}
+
+// ===== DATA CLEANUP =====
+function DataCleanupSection(){
+  const{supabase}=useApp();
+  const[deleting,setDeleting]=useState('');const[result,setResult]=useState(null);
+
+  const cleanTable=async(table,label)=>{
+    if(!confirm(`⚠️ HATARI! Futa data ZOTE za "${label}"?\n\nHii haiwezi kurudishwa! Endelea?`))return;
+    if(!confirm(`UHAKIKI WA MWISHO: Futa ${label}? Andika DELETE kwenye prompt ujayo.`))return;
+    setDeleting(table);setResult(null);
+    try{
+      const{error}=await supabase.from(table).delete().neq('id','00000000-0000-0000-0000-000000000000');
+      if(error)throw error;
+      setResult({ok:true,msg:`✅ ${label} zimefutwa!`});
+    }catch(e){setResult({ok:false,msg:`❌ Error: ${e.message}`})}
+    setDeleting('');
+  };
+
+  const tables=[
+    {key:'payment_requests',label:'Malipo (Payment Requests)',icon:'💰',color:'#F59E0B',desc:'Malipo yote — approved, pending, rejected'},
+    {key:'system_expenses',label:'Matumizi ya Mfumo',icon:'💸',color:'#EF4444',desc:'Matumizi yote yaliyorekodiwa na muhasibu'},
+    {key:'budgets',label:'Bajeti',icon:'📋',color:'#8B5CF6',desc:'Bajeti zote za kila mwezi'},
+    {key:'payroll',label:'Payroll / Mishahara',icon:'👥',color:'#3B82F6',desc:'Rekodi za mishahara zote'},
+    {key:'marketing_debts',label:'Madeni ya Marketing',icon:'💳',color:'#EF4444',desc:'Madeni yote ya washirika'},
+    {key:'debt_payments',label:'Malipo ya Madeni',icon:'💰',color:'#22C55E',desc:'Rekodi za malipo ya madeni'},
+    {key:'audit_logs',label:'Audit Logs',icon:'📝',color:'#64748B',desc:'Historia ya shughuli za muhasibu'},
+    {key:'smart_alerts',label:'Smart Alerts',icon:'⚠️',color:'#F59E0B',desc:'Arifa za mfumo'},
+    {key:'notifications',label:'Notifications',icon:'🔔',color:'#3B82F6',desc:'Arifa zote za mfumo'},
+    {key:'login_logs',label:'Login Logs',icon:'🔑',color:'#64748B',desc:'Historia ya kuingia mfumo'},
+    {key:'otp_codes',label:'OTP Codes',icon:'🔐',color:'#64748B',desc:'OTP codes zilizomalizika'},
+    {key:'support_tickets',label:'Support Tickets',icon:'🎫',color:'#F59E0B',desc:'Tickets za msaada'},
+  ];
+
+  const cleanAll=async()=>{
+    if(!confirm('⚠️ HATARI KUBWA! Futa data ZOTE za majaribio?\n\nHii itafuta: Malipo, Matumizi, Bajeti, Payroll, Madeni, Logs, Alerts, Notifications, OTP\n\nHaiwezi kurudishwa!'))return;
+    setDeleting('all');setResult(null);
+    let cleaned=0;
+    for(const t of tables){
+      try{await supabase.from(t.key).delete().neq('id','00000000-0000-0000-0000-000000000000');cleaned++}catch(e){}
+    }
+    setResult({ok:true,msg:`✅ Tables ${cleaned} zimefutwa! Mfumo safi.`});
+    setDeleting('');
+  };
+
+  return <div className="card" style={{marginBottom:16,border:'2px solid #EF4444'}}>
+    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 6px',color:'#EF4444'}}>🗑️ Futa Data za Majaribio</h3>
+    <p style={{fontSize:12,color:'#64748B',marginBottom:14}}>Futa data za test/majaribio kabla ya kuanza kutumia mfumo kwa uzalishaji. ⚠️ Data zilizofutwa HAZIWEZI kurudishwa!</p>
+    
+    {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.msg}</div>}
+    
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:8,marginBottom:14}}>
+      {tables.map(t=><div key={t.key} style={{background:'#FAFBFC',borderRadius:10,padding:'10px 12px',border:'1px solid #E2E8F0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:12,fontWeight:700}}>{t.icon} {t.label}</div>
+          <div style={{fontSize:10,color:'#94A3B8'}}>{t.desc}</div>
+        </div>
+        <button onClick={()=>cleanTable(t.key,t.label)} disabled={!!deleting} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:10,cursor:'pointer',whiteSpace:'nowrap'}}>
+          {deleting===t.key?'⏳...':'🗑️ Futa'}
+        </button>
+      </div>)}
+    </div>
+    
+    {/* Nuclear button */}
+    <button onClick={cleanAll} disabled={!!deleting} style={{width:'100%',padding:14,background:deleting==='all'?'#FCA5A5':'linear-gradient(135deg,#EF4444,#B91C1C)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 15px rgba(239,68,68,0.3)'}}>
+      {deleting==='all'?'⏳ Inafuta...':'💣 FUTA DATA ZOTE ZA MAJARIBIO'}
+    </button>
+  </div>;
+}
+
+// ===== ADMIN SYSTEM STATUS =====
+function SystemStatusSection(){
+  const{businesses=[],tokens=[],paymentRequests=[],partners=[],systemExpenses=[],supabase}=useApp();
+  const[dbStats,setDbStats]=useState({});
+  
+  useEffect(()=>{
+    const loadStats=async()=>{
+      const counts={};
+      const tables=['users','businesses','tokens','payment_requests','notifications','system_expenses','budgets','payroll','marketing_debts','login_logs','otp_codes'];
+      for(const t of tables){
+        try{const{count}=await supabase.from(t).select('*',{count:'exact',head:true});counts[t]=count||0}catch(e){counts[t]='—'}
+      }
+      setDbStats(counts);
+    };
+    loadStats();
+  },[]);
+
+  return <div className="card" style={{marginBottom:16,border:'2px solid #0B7A3B'}}>
+    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 12px',color:'#0B7A3B'}}>📊 System Status</h3>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
+      {Object.entries(dbStats).map(([t,c])=><div key={t} style={{background:'#F8FAFC',borderRadius:8,padding:'8px 10px',border:'1px solid #E2E8F0',textAlign:'center'}}>
+        <div style={{fontSize:9,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>{t.replace(/_/g,' ')}</div>
+        <div style={{fontSize:18,fontWeight:900,color:'#0B7A3B'}}>{c}</div>
+      </div>)}
+    </div>
   </div>;
 }
 
@@ -602,7 +734,7 @@ function EmailTestSection(){
 
 export function SettingsPage(){
   const{settings,updateSetting}=useApp();
-  return <div style={{maxWidth:580}}>
+  return <div style={{maxWidth:700}}>
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 16px'}}>Mipangilio ya Mfumo</h3>
       <Input label="Bei ya Mfumo (TZS)" type="number" value={settings.system_price} onChange={e=>updateSetting('system_price',e.target.value)}/>
@@ -652,8 +784,12 @@ export function SettingsPage(){
     </div>
     {/* EMAIL TEST */}
     <EmailTestSection/>
-    {/* ACCOUNTANT */}
+    {/* SYSTEM STATUS */}
+    <SystemStatusSection/>
+    {/* ACCOUNTANT MANAGEMENT */}
     <AccountantSection/>
+    {/* DATA CLEANUP */}
+    <DataCleanupSection/>
   </div>;
 }
 
