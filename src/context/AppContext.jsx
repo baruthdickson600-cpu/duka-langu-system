@@ -115,11 +115,27 @@ export function AppProvider({children}){
         const pt=await safeSelect('marketing_partners');setPartners(pt);
       }
       if(role==='accountant'){
-        // Accountant: full financial view (read-only)
-        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        // Accountant loads SAME data as admin (read-only)
+        console.log('[ACCOUNTANT] Loading all financial data...');
+        // Try loading payment_requests
+        let pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});
+        if(!pyAll.length){
+          // Fallback: direct query without ordering
+          const{data:pyDirect}=await supabase.from('payment_requests').select('*');
+          pyAll=pyDirect||[];
+          console.log('[ACCOUNTANT] Fallback payment_requests:',pyAll.length);
+        }
+        setPayReqs(pyAll);
+        console.log('[ACCOUNTANT] payment_requests:',pyAll.length);
+        
         const pt=await safeSelect('marketing_partners');setPartners(pt);
-        const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
-        const se=await safeSelect('system_expenses',{order:{col:'created_at'}});setSystemExpenses(se);
+        
+        // Try system_expenses (table might not exist yet)
+        let se=[];
+        try{const{data:seData}=await supabase.from('system_expenses').select('*');se=seData||[]}catch(e){console.log('[ACCOUNTANT] system_expenses table not found - OK')}
+        setSystemExpenses(se);
+        
+        console.log('[ACCOUNTANT] Loaded: Biz=',bData.length,' Tokens=',tData.length,' Payments=',pyAll.length,' Expenses=',se.length,' Partners=',pt.length);
       }
     }catch(e){console.error('Load:',e)}
   },[]);
