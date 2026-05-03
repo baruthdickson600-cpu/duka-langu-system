@@ -12,36 +12,64 @@ export default async function handler(req, res) {
 
   const auth = Buffer.from(API_KEY + ':' + SECRET_KEY).toString('base64');
   const body = JSON.stringify({
-    source_addr: SENDER_ID, encoding: 0, schedule_time: '',
-    message: 'DUKA LANGU\nTest SMS inafanya kazi!\nCode: 123456\nAsante!',
+    source_addr: SENDER_ID,
+    encoding: 0,
+    schedule_time: '',
+    message: 'DUKA LANGU - Test SMS! Code: 123456',
     recipients: [{ recipient_id: 1, dest_addr: phone }],
   });
 
-  return new Promise((resolve) => {
-    const request = https.request({
-      hostname: 'apisms.bfrnd.com', path: '/api/send-sms', method: 'POST',
-      headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-    }, (response) => {
-      let data = '';
-      response.on('data', c => data += c);
-      response.on('end', () => {
-        let parsed;
-        try { parsed = JSON.parse(data); } catch(e) { parsed = { raw: data }; }
-        res.status(200).json({
-          success: response.statusCode >= 200 && response.statusCode < 300,
-          beem_status: response.statusCode,
-          phone, sender: SENDER_ID,
-          beem_response: parsed,
+  // Try multiple endpoints
+  const endpoints = [
+    { host: 'apisms.beem.africa', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/api/send-sms' },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const request = https.request({
+          hostname: ep.host,
+          path: ep.path,
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + auth,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(body),
+            'User-Agent': 'Mozilla/5.0 DukaLangu/1.0',
+            'Accept': 'application/json',
+          },
+        }, (response) => {
+          let data = '';
+          response.on('data', c => data += c);
+          response.on('end', () => {
+            let parsed;
+            try { parsed = JSON.parse(data); } catch (e) { parsed = { raw: data }; }
+            resolve({ status: response.statusCode, data: parsed, endpoint: ep.host + ep.path });
+          });
         });
-        resolve();
+        request.on('error', reject);
+        request.setTimeout(20000, () => { request.destroy(); reject(new Error('Timeout')); });
+        request.write(body);
+        request.end();
       });
-    });
-    request.on('error', (e) => {
-      res.status(500).json({ success: false, error: e.message, phone });
-      resolve();
-    });
-    request.setTimeout(15000, () => { request.destroy(); });
-    request.write(body);
-    request.end();
+
+      if (result.status >= 200 && result.status < 300) {
+        return res.status(200).json({ success: true, ...result, phone, sender: SENDER_ID });
+      }
+      // Continue to next endpoint if this one returned error
+      console.log('[SMS] Endpoint failed:', ep.host, result.status, result.data);
+    } catch (err) {
+      console.log('[SMS] Endpoint error:', ep.host, err.message);
+      // Try next endpoint
+    }
+  }
+
+  return res.status(500).json({
+    success: false,
+    error: 'All Beem endpoints failed - tried apisms.beem.africa and apisms.bfrnd.com',
+    phone,
+    suggestion: 'Beem SMS may be blocking Vercel IPs. Use email OTP instead.',
   });
 }

@@ -8,37 +8,53 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNub3NmeGFnemdsc3dhb3RyZ3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDcwMDAsImV4cCI6MjA5MDY4MzAwMH0.qS6lEKGJ6IRganQTcpB1sFtw90XDyK0BMaQKSTVLXKE'
 );
 
-// Send SMS via Beem using https module
+// Send SMS via Beem using https module - tries multiple endpoints
 function sendBeemSMS(phone, message) {
-  return new Promise((resolve, reject) => {
-    const apiKey = process.env.BEEM_API_KEY || 'd73c42b7c28a7c3c';
-    const secretKey = process.env.BEEM_SECRET_KEY || 'YzU2NTEwMWY3OGJiNjAxYmZlYWM3Y2UzYTlmNTU5YTEwOTY3MWVmZDcxNmZlMjY4MzYyNTU5MTU0NTIzODUwZQ==';
-    const senderId = process.env.BEEM_SENDER_ID || 'dukalangu';
-    const auth = Buffer.from(apiKey + ':' + secretKey).toString('base64');
-    const body = JSON.stringify({
-      source_addr: senderId,
-      encoding: 0,
-      schedule_time: '',
-      message,
-      recipients: [{ recipient_id: 1, dest_addr: phone }],
-    });
-    const req = https.request({
-      hostname: 'apisms.bfrnd.com',
-      path: '/api/send-sms',
-      method: 'POST',
-      headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-    }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try { resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: JSON.parse(data) }); }
-        catch (e) { resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: { raw: data } }); }
-      });
-    });
-    req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
-    req.write(body);
-    req.end();
+  const apiKey = process.env.BEEM_API_KEY || 'd73c42b7c28a7c3c';
+  const secretKey = process.env.BEEM_SECRET_KEY || 'YzU2NTEwMWY3OGJiNjAxYmZlYWM3Y2UzYTlmNTU5YTEwOTY3MWVmZDcxNmZlMjY4MzYyNTU5MTU0NTIzODUwZQ==';
+  const senderId = process.env.BEEM_SENDER_ID || 'dukalangu';
+  const auth = Buffer.from(apiKey + ':' + secretKey).toString('base64');
+  const body = JSON.stringify({
+    source_addr: senderId, encoding: 0, schedule_time: '',
+    message, recipients: [{ recipient_id: 1, dest_addr: phone }],
+  });
+
+  const endpoints = [
+    { host: 'apisms.beem.africa', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/api/send-sms' },
+  ];
+
+  return new Promise(async (resolve) => {
+    for (const ep of endpoints) {
+      try {
+        const result = await new Promise((res, rej) => {
+          const req = https.request({
+            hostname: ep.host, path: ep.path, method: 'POST',
+            headers: {
+              'Authorization': 'Basic ' + auth,
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body),
+              'User-Agent': 'Mozilla/5.0 DukaLangu/1.0',
+              'Accept': 'application/json',
+            },
+          }, (r) => {
+            let data = '';
+            r.on('data', c => data += c);
+            r.on('end', () => {
+              try { res({ ok: r.statusCode >= 200 && r.statusCode < 300, status: r.statusCode, data: JSON.parse(data) }); }
+              catch (e) { res({ ok: r.statusCode >= 200 && r.statusCode < 300, status: r.statusCode, data: { raw: data } }); }
+            });
+          });
+          req.on('error', rej);
+          req.setTimeout(20000, () => { req.destroy(); rej(new Error('Timeout')); });
+          req.write(body);
+          req.end();
+        });
+        if (result.ok) return resolve(result);
+      } catch (e) { /* try next endpoint */ }
+    }
+    resolve({ ok: false, error: 'All endpoints failed' });
   });
 }
 
