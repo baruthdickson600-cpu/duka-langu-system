@@ -145,11 +145,11 @@ export function AppProvider({children}){
   const[otpSending,setOtpSending]=useState(false);
   const OTP_ROLES=['admin','marketing','agent','office','accountant']; // roles that need OTP
 
-  // Send OTP via Email
-  const sendOTP=useCallback(async(email)=>{
+  // Send OTP via Email or SMS (admin)
+  const sendOTP=useCallback(async(email,isAdmin=false)=>{
     setOtpSending(true);
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email})});
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email,isAdmin})});
       const d=await r.json();
       setOtpSending(false);
       return d;
@@ -187,8 +187,8 @@ export function AppProvider({children}){
     // ADMIN hardcoded login
     if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
       const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin'};
-      setOtpPending({userData:u,email,role:'admin'});
-      const otpResult=await sendOTP(email);
+      setOtpPending({userData:u,email,role:'admin',isAdmin:true});
+      const otpResult=await sendOTP(email,true); // isAdmin=true → SMS
       setLoading(false);
       if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
       return'OTP_REQUIRED';
