@@ -125,7 +125,7 @@ export function SMSCenterPage(){
     try{localStorage.setItem('sms_history',JSON.stringify(newHistory))}catch(e){}
     
     // Audit log
-    supabase?.from('audit_logs').insert({user_role:'admin',action:'sms_broadcast',details:`${TEMPLATES[template].label}: ${success}/${recipientsList.length} sent`}).catch(()=>{});
+    try{await supabase?.from('audit_logs').insert({user_role:'admin',action:'sms_broadcast',details:`${TEMPLATES[template].label}: ${success}/${recipientsList.length} sent`})}catch(e){}
     
     setResult({success,failed,total:recipientsList.length});
     setSending(false);

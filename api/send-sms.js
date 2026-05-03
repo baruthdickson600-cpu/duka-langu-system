@@ -1,24 +1,16 @@
-// Send SMS via Beem Africa — uses https module (not fetch)
+// Send SMS via Beem - tries multiple endpoints (multi-fallback)
 import https from 'https';
 
-function beemSMS(apiKey, secretKey, senderId, phone, message) {
+function tryBeemSMS(host, path, auth, body) {
   return new Promise((resolve, reject) => {
-    const auth = Buffer.from(apiKey + ':' + secretKey).toString('base64');
-    const body = JSON.stringify({
-      source_addr: senderId,
-      encoding: 0,
-      schedule_time: '',
-      message,
-      recipients: [{ recipient_id: 1, dest_addr: phone }],
-    });
     const req = https.request({
-      hostname: 'apisms.bfrnd.com',
-      path: '/api/send-sms',
-      method: 'POST',
+      hostname: host, path, method: 'POST',
       headers: {
         'Authorization': 'Basic ' + auth,
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
+        'User-Agent': 'Mozilla/5.0 DukaLangu/1.0',
+        'Accept': 'application/json',
       },
     }, (res) => {
       let data = '';
@@ -29,7 +21,7 @@ function beemSMS(apiKey, secretKey, senderId, phone, message) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(20000, () => { req.destroy(); reject(new Error('Timeout')); });
     req.write(body);
     req.end();
   });
@@ -46,19 +38,38 @@ export default async function handler(req, res) {
   const SECRET_KEY = process.env.BEEM_SECRET_KEY || 'YzU2NTEwMWY3OGJiNjAxYmZlYWM3Y2UzYTlmNTU5YTEwOTY3MWVmZDcxNmZlMjY4MzYyNTU5MTU0NTIzODUwZQ==';
   const SENDER_ID = process.env.BEEM_SENDER_ID || 'dukalangu';
 
-  const { to, message } = req.body;
-  if (!to || !message) return res.status(400).json({ error: 'Missing to/message' });
+  const { to, message } = req.body || {};
+  if (!to || !message) return res.status(400).json({ success: false, error: 'Missing to/message' });
 
   // Format phone
-  let phone = (to || '').replace(/[^0-9]/g, '');
+  let phone = (to + '').replace(/[^0-9]/g, '');
   if (phone.startsWith('0')) phone = '255' + phone.slice(1);
   if (phone.length > 9 && !phone.startsWith('255')) phone = '255' + phone;
-  if (phone.length < 12) return res.status(400).json({ error: 'Namba si sahihi: ' + phone });
+  if (phone.length < 12) return res.status(400).json({ success: false, error: 'Phone format wrong: ' + phone });
 
-  try {
-    const result = await beemSMS(API_KEY, SECRET_KEY, SENDER_ID, phone, message);
-    return res.status(result.ok ? 200 : 400).json({ success: result.ok, phone, beem_status: result.status, beem_response: result.data });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message, phone });
+  const auth = Buffer.from(API_KEY + ':' + SECRET_KEY).toString('base64');
+  const body = JSON.stringify({
+    source_addr: SENDER_ID, encoding: 0, schedule_time: '',
+    message, recipients: [{ recipient_id: 1, dest_addr: phone }],
+  });
+
+  // Try multiple Beem endpoints
+  const endpoints = [
+    { host: 'apisms.beem.africa', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/v1/send' },
+    { host: 'apisms.bfrnd.com', path: '/api/send-sms' },
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const result = await tryBeemSMS(ep.host, ep.path, auth, body);
+      if (result.ok) {
+        return res.status(200).json({ success: true, phone, sender: SENDER_ID, beem_status: result.status, beem_response: result.data, endpoint: ep.host });
+      }
+    } catch (e) {
+      // Try next
+    }
   }
+
+  return res.status(500).json({ success: false, error: 'All Beem endpoints failed', phone });
 }
