@@ -5,6 +5,7 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage} from './pages/admin/AdminPages';
+import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
@@ -23,6 +24,7 @@ const MENUS={
     {id:'usage',icon:IC.chart,label:'Usage'},
     {id:'reports',icon:IC.file,label:'Ripoti'},
     {id:'broadcast',icon:IC.send,label:'Broadcast'},
+    {id:'sms_center',icon:IC.send,label:'📱 SMS Center'},
     {id:'messaging',icon:IC.send,label:'Ujumbe'},
     {id:'templates',icon:IC.file,label:'Email'},
     {id:'security',icon:IC.shield,label:'Security'},
@@ -143,6 +145,7 @@ export default function App(){
       switch(page){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;case'tokens':return <TokensPage/>;
         case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
+        case'sms_center':return <SMSCenterPage/>;
         case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
