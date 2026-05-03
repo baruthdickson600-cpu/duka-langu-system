@@ -145,11 +145,11 @@ export function AppProvider({children}){
   const[otpSending,setOtpSending]=useState(false);
   const OTP_ROLES=['admin','marketing','agent','office','accountant']; // roles that need OTP
 
-  // Send OTP via Email or SMS (admin)
-  const sendOTP=useCallback(async(email,isAdmin=false)=>{
+  // Send OTP via SMS (preferred) or Email (fallback)
+  const sendOTP=useCallback(async(email,isAdmin=false,phone='')=>{
     setOtpSending(true);
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email,isAdmin})});
+      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email,isAdmin,phone})});
       const d=await r.json();
       setOtpSending(false);
       return d;
@@ -204,8 +204,8 @@ export function AppProvider({children}){
 
         // Check if role needs OTP
         if(OTP_ROLES.includes(uData.role)){
-          setOtpPending({userData:uData,email,role:uData.role});
-          const otpResult=await sendOTP(email);
+          setOtpPending({userData:uData,email,role:uData.role,phone:uData.phone});
+          const otpResult=await sendOTP(email,false,uData.phone||'');
           setLoading(false);
           if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
           return'OTP_REQUIRED';

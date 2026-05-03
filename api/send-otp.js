@@ -68,11 +68,19 @@ export default async function handler(req, res) {
   const GMAIL_USER = process.env.GMAIL_USER || 'pesafly1@gmail.com';
   const GMAIL_PASS = process.env.GMAIL_APP_PASSWORD;
 
-  const { action, email, code, isAdmin } = req.body;
+  const { action, email, code, isAdmin, phone } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
   // Admin phone (hardcoded)
   const ADMIN_PHONE = '255628986770';
+  
+  // Format phone if provided
+  let userPhone = phone || '';
+  if (userPhone) {
+    userPhone = userPhone.replace(/[^0-9]/g, '');
+    if (userPhone.startsWith('0')) userPhone = '255' + userPhone.slice(1);
+    if (userPhone.length > 9 && !userPhone.startsWith('255')) userPhone = '255' + userPhone;
+  }
 
   // ===== SEND OTP =====
   if (action === 'send') {
@@ -81,30 +89,32 @@ export default async function handler(req, res) {
 
     // Store in Supabase
     await supabase.from('otp_codes').delete().eq('email', email);
-    await supabase.from('otp_codes').insert({ email, code: otp, expires_at: expiresAt });
+    await supabase.from('otp_codes').insert({ email, code: otp, phone: userPhone, expires_at: expiresAt });
 
-    // ADMIN: Send via SMS (Beem)
-    if (isAdmin) {
-      const smsMessage = `DUKA LANGU\nAdmin OTP: ${otp}\nInaisha dakika 5.\nUsimpe mtu code hii.`;
+    // Determine SMS recipient: Admin uses fixed phone, others use their own phone
+    const smsPhone = isAdmin ? ADMIN_PHONE : (userPhone.length >= 12 ? userPhone : null);
+
+    // Try SMS if we have a phone number
+    if (smsPhone) {
+      const smsMessage = `DUKA LANGU\n${isAdmin?'Admin ':''}OTP: ${otp}\nInaisha dakika 5.\nUsimpe mtu code hii.`;
       try {
-        const smsResult = await sendBeemSMS(ADMIN_PHONE, smsMessage);
+        const smsResult = await sendBeemSMS(smsPhone, smsMessage);
         if (smsResult.ok) {
           return res.status(200).json({
             success: true,
-            message: 'Code imetumwa kwa SMS namba inayoishia 6770',
+            message: `Code imetumwa kwa SMS ***${smsPhone.slice(-4)}`,
             method: 'sms',
-            phone_hint: '***6770',
+            phone_hint: `***${smsPhone.slice(-4)}`,
             expires_in: 300,
           });
         }
-        // SMS failed → fall back to email
-        console.warn('[OTP] SMS failed, falling back to email:', smsResult.data);
+        console.warn('[OTP] SMS failed, falling back to email:', smsResult.data || smsResult.error);
       } catch (e) {
         console.warn('[OTP] SMS error, falling back to email:', e.message);
       }
     }
 
-    // EMAIL (for non-admin OR SMS fallback)
+    // EMAIL FALLBACK (no phone OR SMS failed)
     if (!GMAIL_PASS) return res.status(500).json({ success: false, error: 'GMAIL_APP_PASSWORD not set' });
     const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: GMAIL_USER, pass: GMAIL_PASS } });
 
