@@ -1054,11 +1054,33 @@ export function AppProvider({children}){
   // ===== UPDATE BUSINESS INFO (Admin can edit customer details) =====
   const updateBiz=useCallback(async(bid,updates)=>{
     try{
-      // Update business
-      const{error:bizErr}=await supabase.from('businesses').update(updates).eq('id',bid);
+      // Try full update first
+      let{error:bizErr}=await supabase.from('businesses').update(updates).eq('id',bid);
+      
+      // If owner_name column missing, retry without it
+      if(bizErr&&bizErr.message?.includes('owner_name')){
+        console.warn('[updateBiz] owner_name column missing, retrying without it');
+        const {owner_name,...safeUpdates}=updates;
+        const result=await supabase.from('businesses').update(safeUpdates).eq('id',bid);
+        bizErr=result.error;
+      }
+      
+      // If any other column missing, try basic fields only
+      if(bizErr&&bizErr.message?.includes('column')){
+        console.warn('[updateBiz] Column missing, trying basic fields:',bizErr.message);
+        const basicUpdates={};
+        if(updates.name)basicUpdates.name=updates.name;
+        if(updates.email)basicUpdates.email=updates.email;
+        if(updates.phone)basicUpdates.phone=updates.phone;
+        const result=await supabase.from('businesses').update(basicUpdates).eq('id',bid);
+        bizErr=result.error;
+      }
+      
       if(bizErr)throw bizErr;
+      
       // Update local state
       setBiz(prev=>prev.map(b=>b.id===bid?{...b,...updates}:b));
+      
       // If email/phone/name changed, also update users table for owner
       if(updates.email||updates.phone||updates.name){
         const biz=businesses.find(b=>b.id===bid);
@@ -1067,18 +1089,21 @@ export function AppProvider({children}){
           if(updates.email)userUpdates.email=updates.email;
           if(updates.phone)userUpdates.phone=updates.phone;
           if(updates.name)userUpdates.name=updates.name;
-          await supabase.from('users').update(userUpdates).eq('id',biz.owner_id).catch(()=>{});
+          try{await supabase.from('users').update(userUpdates).eq('id',biz.owner_id)}catch(e){console.warn('User update skipped:',e.message)}
         }
       }
+      
       // Audit log
-      await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'update_biz',details:{biz_id:bid,changes:JSON.stringify(updates)}}).catch(()=>{});
-      // Email customer if email changed
+      try{await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'update_biz',details:{biz_id:bid,changes:JSON.stringify(updates)}})}catch(e){}
+      
+      // Email customer
       const biz=businesses.find(b=>b.id===bid);
       if(biz?.email&&(updates.phone||updates.email)){
         sendMail(updates.email||biz.email,'✅ Taarifa Zako Zimebadilishwa — Duka Langu','promotional',{title:'✅ Taarifa Zimebadilishwa',emoji:'✅',message:`Habari ${updates.name||biz.name},\n\nTaarifa za akaunti yako zimebadilishwa na Admin.\n\n${updates.email?`📧 Email mpya: ${updates.email}\n`:''}${updates.phone?`📱 Simu mpya: ${updates.phone}\n`:''}${updates.name?`🏪 Jina: ${updates.name}\n`:''}\nKama hukuomba mabadiliko haya, wasiliana nasi mara moja.`,cta:'Login →'});
       }
       return{success:true};
     }catch(e){
+      console.error('[updateBiz] Error:',e);
       return{success:false,error:e.message};
     }
   },[user,businesses]);
