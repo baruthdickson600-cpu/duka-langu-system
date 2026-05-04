@@ -1050,6 +1050,38 @@ export function AppProvider({children}){
 
   // ===== ADMIN ACTIONS =====
   const suspendBiz=useCallback(async(bid,suspend)=>{await safeUpdate('businesses',{is_suspended:suspend},'id',bid);setBiz(prev=>prev.map(b=>b.id===bid?{...b,is_suspended:suspend}:b));await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:suspend?'suspend':'activate',details:{text:'Biz '+bid}})},[user]);
+  
+  // ===== UPDATE BUSINESS INFO (Admin can edit customer details) =====
+  const updateBiz=useCallback(async(bid,updates)=>{
+    try{
+      // Update business
+      const{error:bizErr}=await supabase.from('businesses').update(updates).eq('id',bid);
+      if(bizErr)throw bizErr;
+      // Update local state
+      setBiz(prev=>prev.map(b=>b.id===bid?{...b,...updates}:b));
+      // If email/phone/name changed, also update users table for owner
+      if(updates.email||updates.phone||updates.name){
+        const biz=businesses.find(b=>b.id===bid);
+        if(biz?.owner_id){
+          const userUpdates={};
+          if(updates.email)userUpdates.email=updates.email;
+          if(updates.phone)userUpdates.phone=updates.phone;
+          if(updates.name)userUpdates.name=updates.name;
+          await supabase.from('users').update(userUpdates).eq('id',biz.owner_id).catch(()=>{});
+        }
+      }
+      // Audit log
+      await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'update_biz',details:{biz_id:bid,changes:JSON.stringify(updates)}}).catch(()=>{});
+      // Email customer if email changed
+      const biz=businesses.find(b=>b.id===bid);
+      if(biz?.email&&(updates.phone||updates.email)){
+        sendMail(updates.email||biz.email,'✅ Taarifa Zako Zimebadilishwa — Duka Langu','promotional',{title:'✅ Taarifa Zimebadilishwa',emoji:'✅',message:`Habari ${updates.name||biz.name},\n\nTaarifa za akaunti yako zimebadilishwa na Admin.\n\n${updates.email?`📧 Email mpya: ${updates.email}\n`:''}${updates.phone?`📱 Simu mpya: ${updates.phone}\n`:''}${updates.name?`🏪 Jina: ${updates.name}\n`:''}\nKama hukuomba mabadiliko haya, wasiliana nasi mara moja.`,cta:'Login →'});
+      }
+      return{success:true};
+    }catch(e){
+      return{success:false,error:e.message};
+    }
+  },[user,businesses]);
   const deleteBiz=useCallback(async(bid)=>{await safeDelete('businesses','id',bid);setBiz(prev=>prev.filter(b=>b.id!==bid))},[]);
 
   // ===== EXPORT ALL DATA =====
@@ -1396,7 +1428,7 @@ export function AppProvider({children}){
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin
-    updateSetting,suspendBiz,deleteBiz,exportAllData,
+    updateSetting,suspendBiz,deleteBiz,updateBiz,exportAllData,
     quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,activityFeed,systemUsage,
     generate2FA,verify2FA,twoFAVerified,setTwoFAVerified,
     createPartner,updatePartner,deletePartner,partners,marketingStats,

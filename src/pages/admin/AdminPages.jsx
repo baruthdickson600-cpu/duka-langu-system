@@ -81,13 +81,16 @@ export function AdminDashboard(){
 
 // ===== STORES (with Customer Detail Card) =====
 export function StoresPage(){
-  const{businesses,suspendBiz,deleteBiz,updateSetting,settings,quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,promoCodes,loginLogs,sales,products,employees,branches}=useApp();
+  const{businesses,suspendBiz,deleteBiz,updateBiz,updateSetting,settings,quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,promoCodes,loginLogs,sales,products,employees,branches}=useApp();
   const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');
-  const[detail,setDetail]=useState(null); // Customer detail modal
+  const[detail,setDetail]=useState(null);
   const[extendDays,setExtendDays]=useState('30');
   const[upgradePlan,setUpgradePlan]=useState('');
   const[transferCode,setTransferCode]=useState('');
   const[actionModal,setActionModal]=useState({type:null,biz:null});
+  const[editForm,setEditForm]=useState({name:'',email:'',phone:'',owner_name:''});
+  const[editBusy,setEditBusy]=useState(false);
+  const[editMsg,setEditMsg]=useState(null);
 
   const filtered=businesses.filter(b=>{if(search&&!b.name?.toLowerCase().includes(search.toLowerCase())&&!b.email?.toLowerCase().includes(search.toLowerCase()))return false;if(filter==='active')return b.token_active;if(filter==='suspended')return b.is_suspended;if(filter==='trial')return!b.token_active&&!b.is_suspended;return true});
 
@@ -159,7 +162,8 @@ export function StoresPage(){
 
           {/* Quick Actions */}
           <div style={{display:'flex',gap:4,marginTop:10,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-            <button onClick={()=>setActionModal({type:'extend',biz:b})} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
+            <button onClick={(e)=>{e.stopPropagation();setActionModal({type:'extend',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
+            <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
             <button onClick={()=>toggleBranch(b.id)} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isBranchOn(b.id)?'#F0FDF4':'#F1F5F9',color:isBranchOn(b.id)?'#0B7A3B':'#94A3B8',fontWeight:700,cursor:'pointer'}}>🏪{isBranchOn(b.id)?'ON':'OFF'}</button>
             <Btn v={b.is_suspended?'primary':'warning'} style={{padding:'5px 8px',fontSize:10}} onClick={()=>suspendBiz(b.id,!b.is_suspended)}>{b.is_suspended?'Fungua':'Funga'}</Btn>
@@ -205,6 +209,7 @@ export function StoresPage(){
           <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Vitendo vya Haraka</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:16}}>
             <button onClick={()=>{setDetail(null);setActionModal({type:'extend',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⏳ Ongeza Siku</button>
+            <button onClick={()=>{setEditForm({name:detail.name||'',email:detail.email||'',phone:detail.phone||'',owner_name:detail.owner_name||''});setDetail(null);setActionModal({type:'edit',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>✏️ Hariri Taarifa</button>
             <button onClick={()=>{setUpgradePlan(detail.plan||'basic');setDetail(null);setActionModal({type:'upgrade',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⬆️ Upgrade Plan</button>
             <button onClick={()=>{setDetail(null);setActionModal({type:'transfer',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #93C5FD',background:'#EFF6FF',color:'#2563EB',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔄 Hamisha Agent</button>
             <button onClick={()=>suspendBiz(detail.id,!detail.is_suspended)} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#92400E',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>{detail.is_suspended?'✅ Fungua':'⛔ Suspend'}</button>
@@ -243,6 +248,48 @@ export function StoresPage(){
       <div style={{fontSize:13,color:'#64748B',marginBottom:12}}>Agent wa sasa: <b>{actionModal.biz?.promo_code||'Hakuna'}</b></div>
       <Sel label="Agent Mpya" value={transferCode} onChange={e=>setTransferCode(e.target.value)} options={[{value:'',label:'— Ondoa Agent —'},...promoCodes.map(p=>({value:p.code,label:`${p.agent_name} (${p.code})`}))]}/>
       <Btn onClick={async()=>{await quickTransfer(actionModal.biz.id,transferCode);alert('Imehamishwa!');setActionModal({type:null,biz:null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>🔄 Hamisha</Btn>
+    </Modal>
+
+    {/* ===== EDIT CUSTOMER MODAL ===== */}
+    <Modal open={actionModal.type==='edit'} onClose={()=>{setActionModal({type:null,biz:null});setEditMsg(null)}} title={`✏️ Hariri Taarifa — ${actionModal.biz?.name||''}`} wide>
+      <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#1E40AF'}}>
+        💡 Tumia kipengele hiki kubadilisha taarifa za mteja akipoteza simu, kubadilisha email, au kurekebisha jina la biashara.
+      </div>
+      
+      {editMsg&&<div style={{background:editMsg.ok?'#F0FDF4':'#FEF2F2',color:editMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${editMsg.ok?'#22C55E':'#EF4444'}`}}>{editMsg.msg}</div>}
+      
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <Input label="Jina la Biashara" placeholder="Mf: Duka la Rehema" value={editForm.name} onChange={e=>setEditForm(p=>({...p,name:e.target.value}))}/>
+        <Input label="Jina la Mmiliki" placeholder="Mf: Asha Hassan" value={editForm.owner_name} onChange={e=>setEditForm(p=>({...p,owner_name:e.target.value}))}/>
+        <Input label="Email" type="email" placeholder="email@mfano.com" value={editForm.email} onChange={e=>setEditForm(p=>({...p,email:e.target.value}))}/>
+        <Input label="📱 Namba ya Simu" placeholder="07XXXXXXXX" value={editForm.phone} onChange={e=>setEditForm(p=>({...p,phone:e.target.value}))}/>
+      </div>
+      
+      <div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 14px',marginTop:8,fontSize:11,color:'#92400E',borderLeft:'4px solid #F59E0B'}}>
+        ⚠️ <b>Onyo:</b> Mteja atapata email kwenye anuani mpya kuthibitisha mabadiliko haya. Hakikisha taarifa ni sahihi kabla ya kuhifadhi.
+      </div>
+      
+      <button onClick={async()=>{
+        if(!editForm.name&&!editForm.email&&!editForm.phone&&!editForm.owner_name){
+          setEditMsg({ok:false,msg:'Jaza angalau sehemu moja!'});return;
+        }
+        setEditBusy(true);setEditMsg(null);
+        const updates={};
+        if(editForm.name)updates.name=editForm.name.trim();
+        if(editForm.email)updates.email=editForm.email.trim().toLowerCase();
+        if(editForm.phone)updates.phone=editForm.phone.trim();
+        if(editForm.owner_name)updates.owner_name=editForm.owner_name.trim();
+        const result=await updateBiz(actionModal.biz.id,updates);
+        if(result.success){
+          setEditMsg({ok:true,msg:'✅ Taarifa zimebadilishwa! Mteja amepata email ya kuthibitisha.'});
+          setTimeout(()=>{setActionModal({type:null,biz:null});setEditMsg(null);setEditForm({name:'',email:'',phone:'',owner_name:''})},2000);
+        }else{
+          setEditMsg({ok:false,msg:'❌ Tatizo: '+result.error});
+        }
+        setEditBusy(false);
+      }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+        {editBusy?'⏳ Inahifadhi...':'✅ Hifadhi Mabadiliko'}
+      </button>
     </Modal>
   </div>;
 }
