@@ -1368,3 +1368,110 @@ export function AdminReportsPage(){
     </div>
   </div>;
 }
+
+// ===== INFO UPDATE REQUESTS PAGE =====
+export function InfoRequestsPage(){
+  const{updateBiz,supabase}=useApp();
+  const[requests,setRequests]=useState([]);
+  const[loaded,setLoaded]=useState(false);
+  const[tab,setTab]=useState('pending');
+  const[processing,setProcessing]=useState(null);
+
+  useEffect(()=>{
+    if(loaded)return;
+    supabase?.from('info_update_requests').select('*').order('created_at',{ascending:false})
+      .then(({data})=>{setRequests(data||[]);setLoaded(true)});
+  },[loaded]);
+
+  const filtered=requests.filter(r=>r.status===tab);
+
+  const approveRequest=async(req)=>{
+    if(!confirm(`Thibitisha mabadiliko ya ${req.business_name}?\n\nMabadiliko yatafanyika sasa.`))return;
+    setProcessing(req.id);
+    const updates={};
+    if(req.new_email)updates.email=req.new_email;
+    if(req.new_phone)updates.phone=req.new_phone;
+    if(req.new_name)updates.name=req.new_name;
+    if(req.new_owner_name)updates.owner_name=req.new_owner_name;
+    
+    const result=await updateBiz(req.business_id,updates);
+    if(result.success){
+      try{await supabase.from('info_update_requests').update({status:'approved',processed_at:new Date().toISOString()}).eq('id',req.id)}catch(e){}
+      setRequests(p=>p.map(r=>r.id===req.id?{...r,status:'approved'}:r));
+      alert('✅ Mabadiliko yamefanyika!');
+    }else{
+      alert('❌ Tatizo: '+result.error);
+    }
+    setProcessing(null);
+  };
+
+  const rejectRequest=async(req)=>{
+    const reason=prompt('Sababu ya kukataa ombi:');
+    if(!reason)return;
+    setProcessing(req.id);
+    try{await supabase.from('info_update_requests').update({status:'rejected',reject_reason:reason,processed_at:new Date().toISOString()}).eq('id',req.id)}catch(e){}
+    setRequests(p=>p.map(r=>r.id===req.id?{...r,status:'rejected',reject_reason:reason}:r));
+    alert('Ombi limekataliwa');
+    setProcessing(null);
+  };
+
+  return <div>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0B7A3B'}}>📝 Ombi za Kubadilisha Taarifa</h3>
+    <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Wateja waliopoteza simu/email wanaomba kubadilisha taarifa</p>
+
+    <div className="flex-wrap" style={{marginBottom:14}}>
+      <Stat icon={IC.clock} label="Yanasubiri" value={requests.filter(r=>r.status==='pending').length} color="#F59E0B"/>
+      <Stat icon={IC.ok} label="Yamekubaliwa" value={requests.filter(r=>r.status==='approved').length} color="#22C55E"/>
+      <Stat icon={IC.warn} label="Yamekataliwa" value={requests.filter(r=>r.status==='rejected').length} color="#EF4444"/>
+    </div>
+
+    <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+      {[{id:'pending',l:'⏳ Subiri',c:'#F59E0B'},{id:'approved',l:'✅ Kubaliwa',c:'#22C55E'},{id:'rejected',l:'❌ Kataliwa',c:'#EF4444'}].map(t=>
+        <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.c}`:'1px solid #E2E8F0',background:tab===t.id?t.c+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.c:'#64748B'}}>{t.l}</button>)}
+    </div>
+
+    <div className="card">
+      {filtered.map(r=><div key={r.id} style={{padding:'14px 0',borderBottom:'1px solid #F1F5F9'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10}}>
+          <div style={{flex:1,minWidth:250}}>
+            <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>🏪 {r.business_name}</div>
+            
+            {/* Old vs New comparison */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+              <div style={{background:'#FEF2F2',borderRadius:8,padding:'8px 10px',fontSize:11}}>
+                <div style={{color:'#B91C1C',fontWeight:700,marginBottom:2}}>YA SASA:</div>
+                <div>📧 {r.old_email||'—'}</div>
+                <div>📱 {r.old_phone||'—'}</div>
+              </div>
+              <div style={{background:'#F0FDF4',borderRadius:8,padding:'8px 10px',fontSize:11}}>
+                <div style={{color:'#15803D',fontWeight:700,marginBottom:2}}>MPYA:</div>
+                {r.new_email&&<div>📧 {r.new_email}</div>}
+                {r.new_phone&&<div>📱 {r.new_phone}</div>}
+                {r.new_name&&<div>🏪 {r.new_name}</div>}
+                {r.new_owner_name&&<div>👤 {r.new_owner_name}</div>}
+              </div>
+            </div>
+
+            <div style={{background:'#FFF7ED',borderRadius:8,padding:'8px 10px',fontSize:11,marginBottom:6}}>
+              <b>Sababu:</b> {r.reason}
+            </div>
+            
+            <div style={{fontSize:10,color:'#94A3B8'}}>
+              {r.id_number&&<>🆔 {r.id_number} • </>}
+              {r.whatsapp&&<>💬 {r.whatsapp} • </>}
+              📅 {new Date(r.created_at).toLocaleString('sw-TZ')}
+            </div>
+            
+            {r.reject_reason&&<div style={{fontSize:11,color:'#B91C1C',marginTop:4}}>❌ <b>Kukataa:</b> {r.reject_reason}</div>}
+          </div>
+          
+          {r.status==='pending'&&<div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <button onClick={()=>approveRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'#22C55E',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>{processing===r.id?'⏳':'✅ Thibitisha'}</button>
+            <button onClick={()=>rejectRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>❌ Kataa</button>
+          </div>}
+        </div>
+      </div>)}
+      {!filtered.length&&<Empty icon="📝" text="Hakuna ombi"/>}
+    </div>
+  </div>;
+}

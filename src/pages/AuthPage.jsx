@@ -1,6 +1,7 @@
 import React,{useState,useEffect,useRef} from 'react';
 import {Input} from '../components/UI';
 import {TermsPage,PrivacyPage} from './LegalPages';
+import InfoUpdateRequest from './InfoUpdateRequest';
 
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
@@ -14,6 +15,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
   const[agreed,setAgreed]=useState(false);
   const[legalPage,setLegalPage]=useState(null);
   const[showForgot,setShowForgot]=useState(false);
+  const[showInfoRequest,setShowInfoRequest]=useState(false);
   const[forgotEmail,setForgotEmail]=useState('');
   const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
   const[bgB,setBgB]=useState(null);
@@ -44,6 +46,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
 
   if(legalPage==='terms')return <TermsPage onBack={()=>setLegalPage(null)}/>;
   if(legalPage==='privacy')return <PrivacyPage onBack={()=>setLegalPage(null)}/>;
+  if(showInfoRequest)return <InfoUpdateRequest onBack={()=>setShowInfoRequest(false)}/>;
 
   const submit=async()=>{
     setErr('');setMsg('');
@@ -179,7 +182,10 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
             </>}
             <Input label="Email" type="email" placeholder="email@mfano.com" value={f.email} onChange={e=>s('email',e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/>
             <Input label="Password" type="password" placeholder="••••••••" value={f.password} onChange={e=>s('password',e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/>
-            {tab==='login'&&<p onClick={()=>{setShowForgot(true);setErr('');setForgotEmail(f.email)}} style={{textAlign:'right',fontSize:12,color:'#0B7A3B',cursor:'pointer',fontWeight:600,marginTop:-4,marginBottom:10}}>Umesahau password?</p>}
+            {tab==='login'&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:-4,marginBottom:10,gap:10}}>
+              <p onClick={()=>setShowInfoRequest(true)} style={{fontSize:11,color:'#64748B',cursor:'pointer',fontWeight:600,margin:0,textDecoration:'underline'}}>📝 Badilisha taarifa?</p>
+              <p onClick={()=>{setShowForgot(true);setErr('');setForgotEmail(f.email)}} style={{fontSize:12,color:'#0B7A3B',cursor:'pointer',fontWeight:600,margin:0}}>Umesahau password?</p>
+            </div>}
             {tab==='signup'&&<>
               <Input label="Promo Code (si lazima)" placeholder="PROMO-XXXXXX" value={f.promo} onChange={e=>s('promo',e.target.value)}/>
               <div style={{display:'flex',alignItems:'flex-start',gap:8,marginTop:6,marginBottom:14}}>

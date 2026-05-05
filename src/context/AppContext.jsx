@@ -590,6 +590,8 @@ export function AppProvider({children}){
     safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`}).catch(()=>{});
     // Notify admin — email
     sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
+    // Notify admin — SMS via Beem (kwa Admin namba 0628986770)
+    sendSMS('255628986770',`DUKA LANGU\n💰 MALIPO MAPYA!\n\nMteja: ${myBizName}\nKiasi: TZS ${(+amount).toLocaleString()}\nNjia: ${payMethod}\nTX: ${transactionId}\nSimu: ${phone||'—'}\n\nFungua mfumo kuthibitisha.`);
     // Notify partners
     supabase.from('marketing_partners').select('email').then(({data:pts})=>{
       (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`💰 Malipo Mapya: ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone})});
@@ -622,8 +624,10 @@ export function AppProvider({children}){
     }
     // 6. SMS token to customer phone
     if(pr.phone){
-      sendSMS(pr.phone,`DUKA LANGU\nMalipo yako yamethibitishwa!\nMfumo umefunguliwa siku ${days}.\nToken: ${code}\nFungua: duka-langu-system.vercel.app\nAsante!`);
+      sendSMS(pr.phone,`DUKA LANGU\n✅ MALIPO YAMEPOKELEWA!\n\nMteja: ${pr.business_name}\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nMfumo umefunguliwa siku ${days}\n\nToken: ${code}\n\nFungua: duka-langu-system.vercel.app\n\nAsante kwa kuamini Duka Langu!`);
     }
+    // 7. SMS admin confirmation
+    sendSMS('255628986770',`DUKA LANGU\n✅ Umethibitisha malipo\n\nMteja: ${pr.business_name}\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nSiku: ${days}\nToken: ${code}`);
     console.log('[APPROVE] Payment approved:',pr.business_name,'Token:',code,'Days:',days,'SMS→',pr.phone||'no phone');
     return{code,days};
   },[paymentRequests,user]);
@@ -642,7 +646,7 @@ export function AppProvider({children}){
     }
     // SMS customer
     if(pr.phone){
-      sendSMS(pr.phone,`DUKA LANGU\nMalipo yako yamekataliwa.\nSababu: ${reason||'Transaction ID si sahihi'}\nJaribu tena: duka-langu-system.vercel.app`);
+      sendSMS(pr.phone,`DUKA LANGU\n❌ Malipo Yamekataliwa\n\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nSababu: ${reason||'Transaction ID si sahihi'}\n\nTafadhali jaribu tena na Transaction ID sahihi:\nduka-langu-system.vercel.app\n\nMsaada: 0617288752`);
     }
     console.log('[REJECT] Payment rejected:',pr.business_name,'Reason:',reason);
   },[paymentRequests,user]);
