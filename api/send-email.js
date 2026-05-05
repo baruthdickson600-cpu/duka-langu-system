@@ -26,43 +26,80 @@ export default async function handler(req, res) {
   const wrap = (title, body) => `
 <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body{margin:0;padding:0;background:#F1F5F9;font-family:'Segoe UI',Arial,sans-serif}
-  .container{max-width:600px;margin:20px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
-  .header{background:linear-gradient(135deg,${G},#065F2E);padding:28px 32px;text-align:center;color:#fff}
-  .header h1{margin:0;font-size:22px;letter-spacing:0.5px}
-  .header p{margin:6px 0 0;opacity:0.8;font-size:13px;font-style:italic}
-  .body{padding:28px 32px;color:${D};line-height:1.7;font-size:14px}
-  .body h2{color:${G};font-size:18px;margin:0 0 16px;border-bottom:2px solid #E2E8F0;padding-bottom:8px}
-  .stat-grid{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}
-  .stat{flex:1;min-width:120px;background:#F8FAFC;border-radius:12px;padding:14px;text-align:center;border:1px solid #E2E8F0}
-  .stat .label{font-size:11px;color:${GR};text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
-  .stat .value{font-size:22px;font-weight:800;margin:4px 0;color:${G}}
-  .stat .sub{font-size:11px;color:${GR}}
-  .alert{padding:14px 16px;border-radius:10px;margin:12px 0;font-size:13px}
-  .alert-danger{background:#FEF2F2;border-left:4px solid #EF4444;color:#B91C1C}
-  .alert-warning{background:#FFF7ED;border-left:4px solid #F59E0B;color:#92400E}
-  .alert-success{background:#F0FDF4;border-left:4px solid #22C55E;color:#15803D}
-  .alert-info{background:#EFF6FF;border-left:4px solid #3B82F6;color:#1E40AF}
-  .btn{display:inline-block;padding:12px 28px;background:${G};color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;margin:16px 0}
-  .table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
-  .table th{background:${G};color:#fff;padding:10px 12px;text-align:left;font-size:12px}
-  .table td{padding:10px 12px;border-bottom:1px solid #E2E8F0}
-  .table tr:nth-child(even){background:#F8FAFC}
-  .up{color:#22C55E}.down{color:#EF4444}
-  .footer{background:#F8FAFC;padding:20px 32px;text-align:center;border-top:1px solid #E2E8F0}
+  body{margin:0;padding:0;background:#F8FAFC;font-family:'Inter','Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrapper{padding:24px 12px}
+  .container{max-width:640px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(11,122,59,0.08),0 4px 12px rgba(0,0,0,0.04)}
+  .header{background:linear-gradient(135deg,${G} 0%,#065F2E 60%,#054526 100%);padding:36px 32px;text-align:center;color:#fff;position:relative}
+  .header::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06)}
+  .header::after{content:'';position:absolute;bottom:-40px;left:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.04)}
+  .logo{display:inline-block;width:60px;height:60px;background:rgba(255,255,255,0.15);border-radius:18px;margin-bottom:12px;line-height:60px;font-size:28px;backdrop-filter:blur(10px);position:relative}
+  .header h1{margin:0;font-size:24px;letter-spacing:0.3px;font-weight:800;position:relative}
+  .header p{margin:8px 0 0;opacity:0.85;font-size:13px;letter-spacing:0.5px;position:relative;font-weight:500}
+  .body{padding:32px 28px;color:${D};line-height:1.7;font-size:14px}
+  .body h2{color:${G};font-size:20px;margin:0 0 18px;font-weight:800;letter-spacing:-0.2px}
+  .body h2::after{content:'';display:block;width:50px;height:3px;background:linear-gradient(90deg,${G},#22C55E);border-radius:2px;margin-top:8px}
+  .stat-grid{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+  .stat{flex:1;min-width:130px;background:linear-gradient(135deg,#F8FAFC,#F1F5F9);border-radius:14px;padding:16px 14px;text-align:center;border:1px solid #E2E8F0;transition:transform 0.2s}
+  .stat .label{font-size:10px;color:${GR};text-transform:uppercase;letter-spacing:0.8px;font-weight:700;margin-bottom:6px}
+  .stat .value{font-size:26px;font-weight:900;margin:2px 0;color:${G};letter-spacing:-0.5px}
+  .stat .sub{font-size:10px;color:${GR};font-weight:500}
+  .hero-stat{background:linear-gradient(135deg,${G},#065F2E);color:#fff;border-radius:18px;padding:24px;margin:18px 0;text-align:center;box-shadow:0 8px 25px rgba(11,122,59,0.25)}
+  .hero-stat .label{font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:6px}
+  .hero-stat .value{font-size:36px;font-weight:900;letter-spacing:-1px}
+  .hero-stat .sub{font-size:12px;opacity:0.85;margin-top:4px}
+  .alert{padding:14px 18px;border-radius:12px;margin:12px 0;font-size:13px;display:flex;gap:10px;align-items:flex-start}
+  .alert-danger{background:linear-gradient(135deg,#FEF2F2,#FEE2E2);border-left:4px solid #EF4444;color:#B91C1C}
+  .alert-warning{background:linear-gradient(135deg,#FFF7ED,#FFEDD5);border-left:4px solid #F59E0B;color:#92400E}
+  .alert-success{background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-left:4px solid #22C55E;color:#15803D}
+  .alert-info{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-left:4px solid #3B82F6;color:#1E40AF}
+  .alert-icon{font-size:18px;flex-shrink:0}
+  .btn{display:inline-block;padding:14px 32px;background:linear-gradient(135deg,${G},#065F2E);color:#fff;text-decoration:none;border-radius:12px;font-weight:800;font-size:14px;margin:18px 0;box-shadow:0 6px 18px rgba(11,122,59,0.25);letter-spacing:0.3px}
+  .btn:hover{box-shadow:0 8px 22px rgba(11,122,59,0.35)}
+  .table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;border-radius:12px;overflow:hidden;border:1px solid #E2E8F0}
+  .table th{background:linear-gradient(135deg,${G},#065F2E);color:#fff;padding:12px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:700}
+  .table td{padding:12px 14px;border-bottom:1px solid #F1F5F9}
+  .table tr:nth-child(even){background:#FAFBFC}
+  .table tr:last-child td{border-bottom:none}
+  .table tr:hover{background:#F0FDF4}
+  .up{color:#22C55E;font-weight:700}.down{color:#EF4444;font-weight:700}
+  .section-title{font-size:15px;margin:24px 0 10px;font-weight:800;display:flex;align-items:center;gap:8px;color:${D}}
+  .footer{background:linear-gradient(180deg,#F8FAFC,#F1F5F9);padding:24px 32px;text-align:center;border-top:1px solid #E2E8F0}
   .footer p{margin:4px 0;font-size:12px;color:${GR}}
-  .footer a{color:${G};text-decoration:none;font-weight:600}
-  .divider{border:none;border-top:1px solid #E2E8F0;margin:16px 0}
+  .footer a{color:${G};text-decoration:none;font-weight:700}
+  .footer .brand{font-size:14px;font-weight:800;color:${G};margin-bottom:8px}
+  .footer .contacts{display:inline-flex;gap:14px;margin:8px 0;flex-wrap:wrap;justify-content:center}
+  .divider{border:none;border-top:1px dashed #CBD5E1;margin:18px 0}
+  .badge{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px}
+  .badge-green{background:#DCFCE7;color:#15803D}
+  .badge-yellow{background:#FEF3C7;color:#92400E}
+  .badge-red{background:#FEE2E2;color:#B91C1C}
+  .badge-purple{background:#EDE9FE;color:#5B21B6}
+  @media(max-width:600px){
+    .body{padding:24px 18px}
+    .header{padding:28px 20px}
+    .stat{min-width:100%}
+    .table{font-size:11px}
+    .table th,.table td{padding:8px 10px}
+  }
 </style></head><body>
+<div class="wrapper">
 <div class="container">
-  <div class="header"><h1>${brandName}</h1><p>${tagline}</p></div>
+  <div class="header">
+    <div class="logo">📊</div>
+    <h1>${brandName}</h1>
+    <p>${tagline}</p>
+  </div>
   <div class="body"><h2>${title}</h2>${body}</div>
   <div class="footer">
-    <p><strong>${brandName}</strong></p>
-    <p>📧 <a href="mailto:${email}">${email}</a> | 📞 ${phone}</p>
-    <p>WhatsApp: <a href="https://wa.me/255628319789">${whatsapp}</a></p>
-    <p style="margin-top:10px;font-size:10px;color:#94A3B8">© 2026 PesaFly Technologies</p>
+    <div class="brand">${brandName}</div>
+    <div class="contacts">
+      <span>📧 <a href="mailto:${email}">${email}</a></span>
+      <span>📞 ${phone}</span>
+    </div>
+    <p>💬 WhatsApp: <a href="https://wa.me/255628319789">${whatsapp}</a></p>
+    <p style="margin-top:12px;font-size:10px;color:#94A3B8">© 2026 PesaFly Technologies • Tanzania 🇹🇿</p>
   </div>
+</div>
 </div></body></html>`;
 
   const fm = (n) => `TZS ${(+n || 0).toLocaleString()}`;
@@ -73,61 +110,68 @@ export default async function handler(req, res) {
   try {
     switch (type) {
       case 'admin_daily_report':
-        html = wrap(`📊 Ripoti ya Asubuhi — ${data.date || new Date().toLocaleDateString('sw-TZ')}`, `
-          <!-- SUMMARY -->
+        html = wrap(`📊 Ripoti ya Asubuhi — ${data.date || new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`, `
+          <!-- HERO REVENUE -->
+          <div class="hero-stat">
+            <div class="label">💰 MAPATO JUMLA</div>
+            <div class="value">${fm(data.totalRevenue)}</div>
+            <div class="sub">Mwezi huu: ${fm(data.monthRevenue)}</div>
+          </div>
+
+          <!-- 4 KEY STATS -->
           <div class="stat-grid">
-            <div class="stat"><div class="label">MADUKA JUMLA</div><div class="value">${data.totalBiz||0}</div></div>
-            <div class="stat"><div class="label">ACTIVE</div><div class="value" style="color:#22C55E">${data.activeBiz||0}</div><div class="sub">wanaolipa</div></div>
-            <div class="stat"><div class="label">TRIAL</div><div class="value" style="color:#F59E0B">${data.trialBiz||0}</div><div class="sub">wanajaribu</div></div>
-            <div class="stat"><div class="label">SUSPENDED</div><div class="value" style="color:#EF4444">${data.suspendedBiz||0}</div><div class="sub">wamefungwa</div></div>
+            <div class="stat"><div class="label">Maduka</div><div class="value">${data.totalBiz||0}</div><div class="sub">jumla</div></div>
+            <div class="stat"><div class="label">Active</div><div class="value" style="color:#22C55E">${data.activeBiz||0}</div><div class="sub">wanaolipa</div></div>
+            <div class="stat"><div class="label">Trial</div><div class="value" style="color:#F59E0B">${data.trialBiz||0}</div><div class="sub">wanajaribu</div></div>
+            <div class="stat"><div class="label">Suspended</div><div class="value" style="color:#EF4444">${data.suspendedBiz||0}</div><div class="sub">wamefungwa</div></div>
           </div>
 
           <div class="stat-grid">
-            <div class="stat"><div class="label">MAPATO JUMLA</div><div class="value" style="color:${G}">${fm(data.totalRevenue)}</div><div class="sub">tangu kuanza</div></div>
-            <div class="stat"><div class="label">MWEZI HUU</div><div class="value" style="color:#3B82F6">${fm(data.monthRevenue)}</div></div>
-            <div class="stat"><div class="label">CONVERSION</div><div class="value" style="color:#8B5CF6">${data.convRate||0}%</div><div class="sub">trial→paid</div></div>
-            <div class="stat"><div class="label">MAWAKALA</div><div class="value">${data.agentCount||0}</div></div>
+            <div class="stat"><div class="label">Conversion</div><div class="value" style="color:#8B5CF6">${data.convRate||0}%</div><div class="sub">trial → paid</div></div>
+            <div class="stat"><div class="label">Mawakala</div><div class="value">${data.agentCount||0}</div><div class="sub">washirika</div></div>
+            <div class="stat"><div class="label">Wapya Leo</div><div class="value" style="color:#22C55E">${data.newToday||0}</div><div class="sub">wateja</div></div>
+            <div class="stat"><div class="label">Pending</div><div class="value" style="color:#F59E0B">${data.pendingPayments||0}</div><div class="sub">malipo</div></div>
           </div>
 
-          ${data.newToday>0?`<div class="alert alert-success">🆕 Wateja wapya <strong>${data.newToday}</strong> leo!</div>`:''}
-          ${data.pendingPayments>0?`<div class="alert alert-danger">💰 Malipo <strong>${data.pendingPayments}</strong> yanasubiri kuthibitishwa!</div>`:''}
-          ${data.expiringSoon>0?`<div class="alert alert-warning">⏳ Wateja <strong>${data.expiringSoon}</strong> muda unaisha ndani ya siku 5</div>`:''}
+          ${data.newToday>0?`<div class="alert alert-success"><span class="alert-icon">🆕</span><div><strong>Wateja Wapya:</strong> ${data.newToday} wamejiunga leo!</div></div>`:''}
+          ${data.pendingPayments>0?`<div class="alert alert-danger"><span class="alert-icon">💰</span><div><strong>Malipo Yanasubiri:</strong> ${data.pendingPayments} yanahitaji uthibitisho. <a href="https://duka-langu-system.vercel.app" style="color:#B91C1C;font-weight:700;text-decoration:underline">Thibitisha sasa →</a></div></div>`:''}
+          ${data.expiringSoon>0?`<div class="alert alert-warning"><span class="alert-icon">⏳</span><div><strong>Muda Unaisha:</strong> Wateja ${data.expiringSoon} muda unaisha ndani ya siku 5. Kumbushe walipe!</div></div>`:''}
 
           <!-- NEW CUSTOMERS TODAY -->
           ${(data.newCustomers||[]).length>0?`
-          <h3 style="font-size:15px;margin:20px 0 8px;color:#22C55E">🆕 Wateja Wapya wa Leo</h3>
+          <div class="section-title"><span style="color:#22C55E">🆕</span> Wateja Wapya wa Leo</div>
           <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th></tr>
           ${data.newCustomers.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone||'-'}</td></tr>`).join('')}</table>`:''}
 
           <!-- ACTIVE CUSTOMERS -->
           ${(data.activeList||[]).length>0?`
-          <h3 style="font-size:15px;margin:20px 0 8px;color:#22C55E">✅ Wateja Active (${data.activeBiz})</h3>
+          <div class="section-title"><span class="badge badge-green">Active</span> Wateja Wanaolipa (${data.activeBiz})</div>
           <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Plan</th><th>Siku</th></tr>
-          ${data.activeList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:#8B5CF6;font-weight:700">${c.plan}</td><td style="color:${c.daysLeft<=5?'#EF4444':'#22C55E'};font-weight:700">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
+          ${data.activeList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td><span class="badge badge-purple">${c.plan}</span></td><td style="color:${c.daysLeft<=5?'#EF4444':'#22C55E'};font-weight:800">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
 
-          <!-- TRIAL CUSTOMERS -->
+          <!-- TRIAL -->
           ${(data.trialList||[]).length>0?`
-          <h3 style="font-size:15px;margin:20px 0 8px;color:#F59E0B">⏳ Wateja Trial (${data.trialBiz})</h3>
+          <div class="section-title"><span class="badge badge-yellow">Trial</span> Wanaojaribu (${data.trialBiz})</div>
           <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Siku Zimebaki</th></tr>
-          ${data.trialList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:${c.daysLeft<=2?'#EF4444':'#F59E0B'};font-weight:700">${c.daysLeft} siku</td></tr>`).join('')}</table>`:''}
+          ${data.trialList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:${c.daysLeft<=2?'#EF4444':'#F59E0B'};font-weight:800">${c.daysLeft} siku</td></tr>`).join('')}</table>`:''}
 
-          <!-- EXPIRING SOON -->
+          <!-- EXPIRING -->
           ${(data.expiringList||[]).length>0?`
-          <h3 style="font-size:15px;margin:20px 0 8px;color:#EF4444">⚠️ Muda Unaisha (Siku 5)</h3>
+          <div class="section-title"><span class="badge badge-red">⚠️ Muda</span> Wanaoisha Muda (Siku 5)</div>
           <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th><th>Siku</th></tr>
-          ${data.expiringList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:#EF4444;font-weight:900;font-size:16px">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
+          ${data.expiringList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td><td style="color:#EF4444;font-weight:900;font-size:18px">${c.daysLeft}</td></tr>`).join('')}</table>`:''}
 
           <!-- SUSPENDED -->
           ${(data.suspendedList||[]).length>0?`
-          <h3 style="font-size:15px;margin:20px 0 8px;color:#EF4444">🔒 Wamefungwa (${data.suspendedBiz})</h3>
+          <div class="section-title"><span class="badge badge-red">🔒</span> Wamefungwa (${data.suspendedBiz})</div>
           <table class="table"><tr><th>Jina</th><th>Email</th><th>Simu</th></tr>
           ${data.suspendedList.map(c=>`<tr><td><strong>${c.name}</strong></td><td>${c.email}</td><td>${c.phone}</td></tr>`).join('')}</table>`:''}
 
-          <div style="text-align:center;margin-top:20px">
-            <a href="https://duka-langu-system.vercel.app" class="btn">Fungua Mfumo →</a>
+          <div style="text-align:center;margin-top:24px">
+            <a href="https://duka-langu-system.vercel.app" class="btn">📊 Fungua Mfumo</a>
           </div>
           <hr class="divider">
-          <p style="text-align:center;color:${GR};font-size:12px">Ripoti ya kila siku — PesaFly / Duka Langu<br>Wateja: ${data.totalBiz} | Active: ${data.activeBiz} | Mapato: ${fm(data.totalRevenue)}</p>`);
+          <p style="text-align:center;color:${GR};font-size:12px;line-height:1.6">📅 Ripoti ya kila siku — saa 2:00 asubuhi<br><strong>${data.totalBiz}</strong> wateja • <strong>${data.activeBiz}</strong> active • <strong>${fm(data.totalRevenue)}</strong> mapato</p>`);
         break;
 
       case 'daily_report':
