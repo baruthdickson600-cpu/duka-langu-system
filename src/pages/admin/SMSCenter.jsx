@@ -157,15 +157,18 @@ export function SMSCenterPage(){
     }
     
     let success=0,failed=0;
+    const failedNumbers=[];
     
     // Send personalized SMS to each recipient
     for(const r of recipientsList){
+      // Skip invalid phones early
+      if(!r.phone||r.phone.length<9){failed++;failedNumbers.push({phone:r.phone,reason:'Invalid format'});continue}
       try{
         const personalMsg=personalize(message,r);
         const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:r.phone,message:personalMsg})});
         const d=await res.json();
-        if(d.success)success++;else failed++;
-      }catch(e){failed++}
+        if(d.success)success++;else{failed++;failedNumbers.push({phone:r.phone,reason:d.error||'Unknown'})}
+      }catch(e){failed++;failedNumbers.push({phone:r.phone,reason:e.message})}
     }
     
     const entry={
@@ -174,6 +177,7 @@ export function SMSCenterPage(){
       full_message:message,
       recipients:recipientsList.length,
       success,failed,
+      failed_numbers:failedNumbers.slice(0,5),
       template:TEMPLATES[template].label,
       sent_at:new Date().toISOString(),
       status:failed===0?'delivered':success===0?'failed':'partial',
