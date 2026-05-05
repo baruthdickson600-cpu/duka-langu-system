@@ -159,16 +159,38 @@ export function SMSCenterPage(){
     let success=0,failed=0;
     const failedNumbers=[];
     
-    // Send personalized SMS to each recipient
-    for(const r of recipientsList){
+    // Helper: delay between requests to avoid rate-limiting/timeouts
+    const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+    
+    // Send personalized SMS one by one with small delay
+    for(let i=0;i<recipientsList.length;i++){
+      const r=recipientsList[i];
       // Skip invalid phones early
-      if(!r.phone||r.phone.length<9){failed++;failedNumbers.push({phone:r.phone,reason:'Invalid format'});continue}
+      if(!r.phone||r.phone.length<9){failed++;failedNumbers.push({phone:r.phone,reason:'Invalid'});continue}
+      
       try{
         const personalMsg=personalize(message,r);
-        const res=await fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:r.phone,message:personalMsg})});
-        const d=await res.json();
-        if(d.success)success++;else{failed++;failedNumbers.push({phone:r.phone,reason:d.error||'Unknown'})}
-      }catch(e){failed++;failedNumbers.push({phone:r.phone,reason:e.message})}
+        const controller=new AbortController();
+        const timeoutId=setTimeout(()=>controller.abort(),25000);
+        
+        const res=await fetch('/api/send-sms',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({to:r.phone,message:personalMsg}),
+          signal:controller.signal,
+        });
+        clearTimeout(timeoutId);
+        
+        const d=await res.json().catch(()=>({success:false,error:'Parse error'}));
+        if(d.success){success++}
+        else{failed++;failedNumbers.push({phone:r.phone,reason:d.error||'Failed'})}
+      }catch(e){
+        failed++;
+        failedNumbers.push({phone:r.phone,reason:e.name==='AbortError'?'Timeout':e.message});
+      }
+      
+      // Small delay between sends (300ms) — prevents serverless overload
+      if(i<recipientsList.length-1)await sleep(300);
     }
     
     const entry={

@@ -21,7 +21,7 @@ function tryBeemSMS(host, path, auth, body) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(20000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(12000, () => { req.destroy(); reject(new Error('Timeout')); });
     req.write(body);
     req.end();
   });
@@ -53,11 +53,10 @@ export default async function handler(req, res) {
     message, recipients: [{ recipient_id: 1, dest_addr: phone }],
   });
 
-  // Try multiple Beem endpoints
+  // Beem main endpoint (verified working)
   const endpoints = [
     { host: 'apisms.beem.africa', path: '/v1/send' },
     { host: 'apisms.bfrnd.com', path: '/v1/send' },
-    { host: 'apisms.bfrnd.com', path: '/api/send-sms' },
   ];
 
   const errors = [];
