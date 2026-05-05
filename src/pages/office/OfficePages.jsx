@@ -122,8 +122,22 @@ export function SalesPage({onDone}){
   const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
   const[custId,setCustId]=useState('');const[newCustModal,setNewCustModal]=useState(false);const[newCustName,setNewCustName]=useState('');const[newCustPhone,setNewCustPhone]=useState('');
   const[processing,setProcessing]=useState(false);
-  const subtotal=cart.reduce((s,c)=>s+c.qty*c.price,0);const total=Math.max(0,subtotal-discount);
-  const addToCart=p=>{if(processing)return;const ex=cart.find(c=>c.productId===p.id);if(ex){if(ex.qty>=p.quantity)return alert('Stock haitoshi!');setCart(cart.map(c=>c.productId===p.id?{...c,qty:c.qty+1}:c))}else setCart([...cart,{productId:p.id,name:p.name,price:p.sell_price,buyPrice:p.buy_price,qty:1,image:p.image}])};
+  const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);const total=Math.max(0,subtotal-discount);
+  const addToCart=p=>{if(processing)return;const ex=cart.find(c=>c.productId===p.id);if(ex){if(ex.qty>=p.quantity)return alert('Stock haitoshi!');setCart(cart.map(c=>c.productId===p.id?{...c,qty:c.qty+1}:c))}else setCart([...cart,{productId:p.id,name:p.name,price:p.sell_price,buyPrice:p.buy_price,qty:1,fraction:1,fractionLabel:'Nzima',image:p.image}])};
+  
+  // Fraction options for selling
+  const FRACTIONS=[
+    {v:1,l:'1 (Nzima)',short:'1'},
+    {v:0.75,l:'¾ (Robo Tatu)',short:'¾'},
+    {v:0.5,l:'½ (Nusu)',short:'½'},
+    {v:0.25,l:'¼ (Robo)',short:'¼'},
+    {v:0.125,l:'⅛ (Robo ya Robo)',short:'⅛'},
+  ];
+  
+  const updateFraction=(idx,fraction)=>{
+    const f=FRACTIONS.find(x=>x.v===fraction);
+    setCart(cart.map((x,j)=>j===idx?{...x,fraction,fractionLabel:f?.l||'Nzima'}:x));
+  };
   const doSale=async()=>{
     if(!cart.length||processing)return;
     // Credit sale requires customer
@@ -158,16 +172,40 @@ export function SalesPage({onDone}){
     <div className="card">
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 10px'}}>🛒 Kikapu ({cart.length})</h3>
       {!cart.length?<Empty icon="🛒" text="Bonyeza bidhaa"/>:<>
-        <div style={{maxHeight:220,overflowY:'auto'}}>{cart.map((c,i)=><div key={i} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:18}}>{c.image||'📦'}</span>
-          <div style={{flex:1}}><div style={{fontWeight:600,fontSize:12}}>{c.name}</div><div style={{fontSize:11,color:'#64748B'}}>{fm(c.price)} x {c.qty}</div></div>
-          <div style={{display:'flex',alignItems:'center',gap:4}}>
-            <button disabled={processing} onClick={()=>{if(c.qty<=1)setCart(cart.filter((_,j)=>j!==i));else setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty-1}:x))}} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'4px 8px',fontWeight:700,fontSize:16,cursor:'pointer'}}>−</button>
-            <span style={{fontWeight:700,minWidth:24,textAlign:'center'}}>{c.qty}</span>
-            <button disabled={processing} onClick={()=>{const pr=products.find(p=>p.id===c.productId);if(pr&&c.qty>=pr.quantity)return alert('Stock haitoshi!');setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}} style={{background:'#F0FDF4',border:'none',borderRadius:6,padding:'4px 8px',color:'#0B7A3B',fontWeight:700,fontSize:16,cursor:'pointer'}}>+</button>
-            <button disabled={processing} onClick={()=>setCart(cart.filter((_,j)=>j!==i))} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:'4px 6px',color:'#EF4444',cursor:'pointer',marginLeft:4}}>{IC.del}</button>
+        <div style={{maxHeight:280,overflowY:'auto'}}>{cart.map((c,i)=><div key={i} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+            <span style={{fontSize:18}}>{c.image||'📦'}</span>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:600,fontSize:12}}>{c.name}</div>
+              <div style={{fontSize:10,color:'#64748B'}}>Bei kamili: {fm(c.price)}</div>
+            </div>
+            <button disabled={processing} onClick={()=>setCart(cart.filter((_,j)=>j!==i))} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:'4px 6px',color:'#EF4444',cursor:'pointer'}}>{IC.del}</button>
           </div>
-          <div style={{fontWeight:700,minWidth:65,textAlign:'right',fontSize:12}}>{fm(c.qty*c.price)}</div>
+          
+          {/* Fraction selector */}
+          <div style={{display:'flex',gap:4,marginBottom:6,flexWrap:'wrap'}}>
+            {FRACTIONS.map(f=><button key={f.v} disabled={processing} onClick={()=>updateFraction(i,f.v)} style={{padding:'5px 10px',borderRadius:8,border:c.fraction===f.v?'2px solid #0B7A3B':'1px solid #E2E8F0',background:c.fraction===f.v?'#F0FDF4':'#fff',fontWeight:c.fraction===f.v?700:500,fontSize:11,cursor:'pointer',color:c.fraction===f.v?'#0B7A3B':'#64748B',transition:'all 0.2s'}}>{f.short}</button>)}
+          </div>
+          
+          {/* Quantity controls + Total */}
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <button disabled={processing} onClick={()=>{if(c.qty<=1)setCart(cart.filter((_,j)=>j!==i));else setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty-1}:x))}} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'4px 10px',fontWeight:700,fontSize:14,cursor:'pointer'}}>−</button>
+              <span style={{fontWeight:700,minWidth:24,textAlign:'center',fontSize:13}}>{c.qty}</span>
+              <button disabled={processing} onClick={()=>{const pr=products.find(p=>p.id===c.productId);if(pr&&c.qty>=pr.quantity)return alert('Stock haitoshi!');setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}} style={{background:'#F0FDF4',border:'none',borderRadius:6,padding:'4px 10px',color:'#0B7A3B',fontWeight:700,fontSize:14,cursor:'pointer'}}>+</button>
+            </div>
+            <div style={{flex:1,fontSize:10,color:'#94A3B8',textAlign:'center'}}>
+              {c.fraction!==1?<>
+                <span>{(c.fraction).toFixed(2)} × {c.qty}</span>
+                <br/>
+                <span>= <b style={{color:'#0B7A3B'}}>{(c.fraction*c.qty).toFixed(2)}</b></span>
+              </>:<span>Idadi: {c.qty}</span>}
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#0B7A3B'}}>{fm(c.qty*c.price*(c.fraction||1))}</div>
+              {c.fraction!==1&&<div style={{fontSize:9,color:'#94A3B8'}}>{fm(c.price*c.fraction)} × {c.qty}</div>}
+            </div>
+          </div>
         </div>)}</div>
         <div style={{marginTop:8}}><Input label="Punguzo (TZS)" type="number" value={discount||''} onChange={e=>setDiscount(+e.target.value||0)} style={{background:'#FFF7ED'}}/></div>
         

@@ -273,15 +273,22 @@ export function AppProvider({children}){
   // ===== SALES =====
   const completeSale=useCallback(async(cart,discount=0,payMethod='cash',payDetails=null,custId=null,custName='')=>{
     if(!bizId||!cart.length)return null;
-    const subtotal=cart.reduce((s,c)=>s+c.qty*c.price,0);const total=Math.max(0,subtotal-discount);
-    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice),0)-discount;
+    // Calculate subtotal with fractions (e.g., ½ kg of TZS 10,000 sugar = TZS 5,000)
+    const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);
+    const total=Math.max(0,subtotal-discount);
+    // Profit also accounts for fractions
+    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice)*(c.fraction||1),0)-discount;
     const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:payMethod,payment_details:payDetails,customer_id:custId,customer_name:custName,is_synced:online};
     const saved=await safeInsert('sales',sd);const final=saved||{...sd,id:genId(),created_at:nowISO()};
     setSales(prev=>[final,...prev]);
     for(const item of cart){
       const prod=products.find(p=>p.id===item.productId);
-      if(prod){const nq=Math.max(0,prod.quantity-item.qty);await safeUpdate('products',{quantity:nq},'id',item.productId);
-        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-item.qty,quantity_after:nq,user_id:user?.id});
+      if(prod){
+        // Stock deduction: fraction*qty (e.g., ½ × 1 = 0.5 kg out of stock)
+        const stockOut=item.qty*(item.fraction||1);
+        const nq=Math.max(0,prod.quantity-stockOut);
+        await safeUpdate('products',{quantity:nq},'id',item.productId);
+        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-stockOut,quantity_after:nq,user_id:user?.id});
         setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
       }
     }
