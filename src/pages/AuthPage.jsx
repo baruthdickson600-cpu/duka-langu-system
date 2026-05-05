@@ -156,6 +156,21 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
                 <button onClick={()=>{onCancelOTP();setOtpCode('');setOtpErr('');setMsg('')}} style={{background:'none',border:'none',color:'#EF4444',fontWeight:600,fontSize:13,cursor:'pointer'}}>← Rudi</button>
               </div>
 
+              {/* Email Fallback Button — kama SMS haijafika */}
+              {(otpPending.isAdmin||otpPending.phone)&&<button onClick={async()=>{
+                setMsg('📧 Inatuma OTP kwa email...');
+                const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email:otpPending.email,isAdmin:false,phone:''})});
+                const d=await r.json();
+                if(d.success){
+                  setMsg('✅ Code imetumwa kwa email yako! Angalia inbox.');
+                  setTimeout(()=>setMsg(''),5000);
+                }else{
+                  setMsg('❌ Tatizo: '+(d.error||'Jaribu tena'));
+                }
+              }} style={{width:'100%',marginTop:12,padding:'12px',background:'#EFF6FF',color:'#1E40AF',border:'2px dashed #BFDBFE',borderRadius:12,fontWeight:700,fontSize:13,cursor:'pointer',transition:'all 0.2s'}}>
+                📧 Hujapata SMS? Tuma kwa Email Badala Yake
+              </button>}
+
               <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginTop:16,fontSize:11,color:'#1E40AF',textAlign:'center'}}>
                 🔒 OTP inalinda akaunti yako — hata mtu akijua password yako, hawezi kuingia bila code hii
               </div>
