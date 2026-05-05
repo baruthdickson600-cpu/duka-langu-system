@@ -60,16 +60,18 @@ export default async function handler(req, res) {
     { host: 'apisms.bfrnd.com', path: '/api/send-sms' },
   ];
 
+  const errors = [];
   for (const ep of endpoints) {
     try {
       const result = await tryBeemSMS(ep.host, ep.path, auth, body);
       if (result.ok) {
         return res.status(200).json({ success: true, phone, sender: SENDER_ID, beem_status: result.status, beem_response: result.data, endpoint: ep.host });
       }
+      errors.push({ ep: ep.host + ep.path, status: result.status, data: result.data });
     } catch (e) {
-      // Try next
+      errors.push({ ep: ep.host + ep.path, error: e.message });
     }
   }
 
-  return res.status(500).json({ success: false, error: 'All Beem endpoints failed', phone });
+  return res.status(500).json({ success: false, error: 'All Beem endpoints failed', phone, attempts: errors });
 }
