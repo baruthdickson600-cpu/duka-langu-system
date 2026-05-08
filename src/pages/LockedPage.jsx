@@ -10,7 +10,7 @@ export default function LockedPage(){
   const[tab,setTab]=useState('pay');
   const[txId,setTxId]=useState('');
   const[phone,setPhone]=useState(user?.phone||'');
-  const[payProvider,setPayProvider]=useState('SELCOM');
+  const[payProvider,setPayProvider]=useState('HALOPESA');
   const[token,setToken]=useState('');
   const[submitting,setSubmitting]=useState(false);
   const[submitted,setSubmitted]=useState(false);
@@ -27,8 +27,8 @@ export default function LockedPage(){
   const hasPending=!!myPending;
 
   const price=parseInt(settings?.system_price||'15000');
-  const PAYBILL='6113 4066';
-  const RECIPIENT='BARUTH DICKSON THEO';
+  const PAYBILL='25187616';
+  const RECIPIENT='DUKALANGU';
 
   // Crossfade backgrounds
   useEffect(()=>{
@@ -149,35 +149,40 @@ export default function LockedPage(){
 
                 {step===1&&<>
                   <div style={{textAlign:'center',marginBottom:14}}>
-                    <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Hatua 1 — Lipa SELCOM</div>
+                    <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Hatua 1 — Lipa HaloPesa</div>
                     <div style={{fontSize:12,color:'#64748B'}}>Fuata hatua hizi kwenye simu yako</div>
                   </div>
 
                   {/* Selcom Steps */}
-                  <div style={{background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)',borderRadius:14,padding:'16px 18px',border:'1px solid #FDE68A',marginBottom:14}}>
+                  <div style={{background:'linear-gradient(135deg,#FFF7ED,#FFEDD5)',borderRadius:14,padding:'16px 18px',border:'1px solid #FED7AA',marginBottom:14}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                      <span style={{fontSize:20}}>📱</span>
-                      <span style={{fontWeight:800,fontSize:14,color:'#92400E'}}>Hatua za Kulipa SELCOM</span>
+                      <span style={{fontSize:20}}>🟠</span>
+                      <span style={{fontWeight:800,fontSize:14,color:'#9A3412'}}>Hatua za Kulipa HALOPESA Lipa Namba</span>
                     </div>
                     
                     {[
-                      {n:1,t:'Fungua menu ya SELCOM kwenye simu yako'},
-                      {n:2,t:'Chagua "Lipa Bili"'},
-                      {n:3,t:'Weka namba ya kupokelea',copy:PAYBILL,key:'paybill'},
+                      {n:1,t:'Fungua menu ya simu yako kupiga: *150*88#'},
+                      {n:2,t:'Chagua "Lipa Bili" → "Lipa Namba"'},
+                      {n:3,t:'Weka Lipa Namba:',copy:PAYBILL,key:'paybill'},
                       {n:4,t:'Hakikisha jina:',copy:RECIPIENT,key:'recipient',isText:true},
                       {n:5,t:'Weka kiasi:',copy:`${price}`,key:'amount',isAmount:true},
-                      {n:6,t:'Thibitisha na ingiza PIN'},
-                      {n:7,t:'Hifadhi Transaction ID kutoka SMS'},
+                      {n:6,t:'Thibitisha na ingiza PIN yako'},
+                      {n:7,t:'Hifadhi Reference Number kutoka SMS'},
                     ].map((s,i)=><div key={i} style={{display:'flex',gap:10,marginBottom:8,alignItems:'flex-start'}}>
-                      <div style={{minWidth:24,height:24,borderRadius:'50%',background:'#92400E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11,flexShrink:0}}>{s.n}</div>
+                      <div style={{minWidth:24,height:24,borderRadius:'50%',background:'#EA580C',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11,flexShrink:0}}>{s.n}</div>
                       <div style={{flex:1}}>
-                        <div style={{fontSize:13,color:'#78350F',lineHeight:1.4}}>{s.t}</div>
-                        {s.copy&&<div onClick={()=>copyText(s.copy,s.key)} style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:4,padding:'5px 10px',background:'#fff',borderRadius:8,border:'1px dashed #F59E0B',cursor:'pointer',transition:'all 0.2s'}}>
-                          <span style={{fontFamily:'monospace',fontWeight:800,color:s.isAmount?'#0B7A3B':'#92400E',fontSize:s.isAmount?15:13}}>{s.isAmount?`TZS ${(+s.copy).toLocaleString()}`:s.copy}</span>
+                        <div style={{fontSize:13,color:'#7C2D12',lineHeight:1.4}}>{s.t}</div>
+                        {s.copy&&<div onClick={()=>copyText(s.copy,s.key)} style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:4,padding:'5px 10px',background:'#fff',borderRadius:8,border:'1px dashed #EA580C',cursor:'pointer',transition:'all 0.2s'}}>
+                          <span style={{fontFamily:'monospace',fontWeight:800,color:s.isAmount?'#0B7A3B':'#9A3412',fontSize:s.isAmount?15:13}}>{s.isAmount?`TZS ${(+s.copy).toLocaleString()}`:s.copy}</span>
                           <span style={{fontSize:10,color:copied===s.key?'#22C55E':'#94A3B8',fontWeight:700}}>{copied===s.key?'✓ COPIED':'📋 COPY'}</span>
                         </div>}
                       </div>
                     </div>)}
+                    
+                    <div style={{marginTop:10,padding:'8px 12px',background:'#FEF3C7',borderRadius:8,fontSize:11,color:'#78350F',display:'flex',gap:6,alignItems:'flex-start'}}>
+                      <span style={{fontSize:14}}>💡</span>
+                      <span><b>Mitandao yote:</b> Vodacom, Tigo, Airtel, Halotel — wote wanaweza kulipia HaloPesa Lipa Namba kwa kupiga <b>*150*88#</b></span>
+                    </div>
                   </div>
 
                   <button onClick={()=>setStep(2)} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
@@ -193,13 +198,13 @@ export default function LockedPage(){
 
                   {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
 
-                  <Input label="🧾 Transaction ID (kutoka SMS ya SELCOM)" placeholder="Mf: MP240501ABC123" value={txId} onChange={e=>setTxId(e.target.value)}/>
+                  <Input label="🧾 Transaction ID (kutoka SMS ya HaloPesa)" placeholder="Mf: MP240501ABC123" value={txId} onChange={e=>setTxId(e.target.value)}/>
                   
                   <Input label="📱 Namba uliyolipia" placeholder="07XXXXXXXX" value={phone} onChange={e=>setPhone(e.target.value)}/>
 
                   <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:11,color:'#1E40AF',display:'flex',gap:8,alignItems:'flex-start'}}>
                     <span style={{fontSize:14,flexShrink:0}}>💡</span>
-                    <span>Transaction ID inapatikana kwenye SMS uliyopokea kutoka SELCOM baada ya kulipa. Mfano: <b style={{fontFamily:'monospace'}}>MP240501ABC123</b></span>
+                    <span>Transaction ID inapatikana kwenye SMS uliyopokea kutoka HaloPesa baada ya kulipa. Mfano: <b style={{fontFamily:'monospace'}}>MP240501ABC123</b></span>
                   </div>
 
                   <div style={{display:'flex',gap:8}}>

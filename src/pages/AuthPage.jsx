@@ -222,7 +222,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
           </div>
 
           <div style={{textAlign:'center',marginTop:20}}>
-            <div style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,textShadow:'0 2px 6px rgba(0,0,0,0.4)'}}>Lipa: SELCOM → 6113 4066 • PESAFLY</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,textShadow:'0 2px 6px rgba(0,0,0,0.4)'}}>Lipa: HALOPESA → 25187616 • DUKALANGU</div>
             <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:6}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
           </div>
         </div>

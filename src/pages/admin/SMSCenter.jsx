@@ -8,12 +8,12 @@ const fmtTime=d=>d?new Date(d).toLocaleTimeString('sw-TZ',{hour:'2-digit',minute
 // Templates with personalization variables
 const TEMPLATES={
   update:{label:'📢 Update',cat:'general',msg:'Habari {jina}! Duka Langu imeboreshwa — features mpya zimeongezwa. Fungua mfumo: duka-langu-system.vercel.app\n- Duka Langu'},
-  offer:{label:'🎁 Offer',cat:'promo',msg:'Habari {jina}! OFFER MAALUM — Lipa miezi 3 upate mwezi 1 BURE!\nSELCOM 6113 4066. TZS 15,000/mwezi\n- Duka Langu'},
+  offer:{label:'🎁 Offer',cat:'promo',msg:'Habari {jina}! OFFER MAALUM — Lipa miezi 3 upate mwezi 1 BURE!\nHALOPESA Lipa Namba 25187616. TZS 15,000/mwezi\n- Duka Langu'},
   eid:{label:'🌙 Eid',cat:'holiday',msg:'Heri ya Eid Mubarak {jina}! Tunakutakia siku njema na rehma za Mwenyezi Mungu.\n- Duka Langu'},
   christmas:{label:'🎄 Krismasi',cat:'holiday',msg:'Heri ya Krismasi {jina}! Tunakutakia furaha na mafanikio.\n- Duka Langu'},
   newyear:{label:'🎊 Mwaka Mpya',cat:'holiday',msg:'Heri ya Mwaka Mpya {jina}! Tunakutakia mwaka wa mafanikio.\n- Duka Langu'},
   ramadan:{label:'🌙 Ramadhani',cat:'holiday',msg:'{jina}, tunakutakia funga njema ya Ramadhani Mubarak.\n- Duka Langu'},
-  reminder:{label:'⏰ Kumbusho',cat:'business',msg:'Habari {jina}! Hii ni kumbusho la kulipa Duka Langu. Lipa SELCOM 6113 4066. Msaada: 0617288752'},
+  reminder:{label:'⏰ Kumbusho',cat:'business',msg:'Habari {jina}! Hii ni kumbusho la kulipa Duka Langu. Lipa HALOPESA Lipa Namba 25187616. Msaada: 0617288752'},
   debt:{label:'💳 Deni',cat:'business',msg:'Habari {jina}, una deni la TZS {kiasi}. Tafadhali lipa hivi karibuni.\n- {biashara}'},
   welcome:{label:'👋 Karibu',cat:'general',msg:'Karibu Duka Langu {jina}! Mfumo wako uko tayari.\nLogin: duka-langu-system.vercel.app\nMsaada: 0617288752'},
   thanks:{label:'❤️ Asante',cat:'general',msg:'Asante {jina} kwa kutuamini! Mfumo wako wa Duka Langu uko tayari kukutumikia.\n- Duka Langu'},

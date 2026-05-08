@@ -49,7 +49,7 @@ export function AppProvider({children}){
   const[notifications,setNotifs]=useState([]);
   const[stockHistory,setSH]=useState([]);
   const[loginLogs,setLogs]=useState([]);
-  const[settings,setSettings]=useState({system_price:'15000',trial_days:'5',payment_number:'6113 4066',payment_name:'PESAFLY',payment_provider:'SELCOM',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
+  const[settings,setSettings]=useState({system_price:'15000',trial_days:'5',payment_number:'25187616',payment_name:'DUKALANGU',payment_provider:'HALOPESA',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
   const[popups,setPopups]=useState([]);
   const[systemLogs,setSysLogs]=useState([]);
   const[tickets,setTickets]=useState([]);
@@ -558,7 +558,7 @@ export function AppProvider({children}){
 
   // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
   // Office: submit payment with transaction ID
-  const submitPayment=useCallback(async(transactionId,amount,payMethod='SELCOM',phone='')=>{
+  const submitPayment=useCallback(async(transactionId,amount,payMethod='HALOPESA',phone='')=>{
     const myBizId=bizId||user?.business_id;
     const myBizName=biz?.name||user?.name||'Biashara';
     const myEmail=user?.email||'';
@@ -627,7 +627,7 @@ export function AppProvider({children}){
     await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'success',title:'🎉 Malipo Yamethibitishwa!',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamethibitishwa! Mfumo umefunguliwa kwa siku ${days}. Token: ${code}`});
     // 5. Email customer
     if(pr.user_email){
-      sendMail(pr.user_email,'🎉 Malipo Yamethibitishwa — Duka Langu','payment_received',{customerName:pr.business_name,amount:pr.amount,remaining:0,method:pr.payment_method||'SELCOM'});
+      sendMail(pr.user_email,'🎉 Malipo Yamethibitishwa — Duka Langu','payment_received',{customerName:pr.business_name,amount:pr.amount,remaining:0,method:pr.payment_method||'HALOPESA'});
     }
     // 6. SMS token to customer phone
     if(pr.phone){
@@ -739,7 +739,7 @@ export function AppProvider({children}){
         if(dLeft>0&&dLeft<=5){
           alerts.push({target_type:'business',target_id:bizId,type:'warning',
             title:`⏳ Muda Unakaribia Kuisha — Siku ${dLeft}!`,
-            message:`Muda wako wa mfumo utaisha ${dLeft===1?'KESHO':`baada ya siku ${dLeft}`}. Lipa sasa ili kuendelea: SELCOM > 6113 4066 — PESAFLY.`
+            message:`Muda wako wa mfumo utaisha ${dLeft===1?'KESHO':`baada ya siku ${dLeft}`}. Lipa sasa ili kuendelea: HALOPESA Lipa Namba 25187616 — DUKALANGU.`
           });
         }
       }

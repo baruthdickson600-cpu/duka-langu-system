@@ -400,7 +400,7 @@ export function TokensPage(){
         {approvedPay.map(p=><div key={p.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
           <div>
             <div style={{fontWeight:600,fontSize:13}}>{p.business_name}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'SELCOM'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id}</span></div>
+            <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id}</span></div>
             {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6'}}>Token: {p.token_code} • Siku: {p.days_given}</div>}
           </div>
           <div style={{fontWeight:800,fontSize:15,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</div>
@@ -1033,7 +1033,7 @@ export function PaymentsPage(){
           </div>
           <div>
             <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>NJIA</div>
-            <div style={{fontWeight:600,fontSize:13,marginTop:2}}>{p.payment_method||'SELCOM'}</div>
+            <div style={{fontWeight:600,fontSize:13,marginTop:2}}>{p.payment_method||'HALOPESA'}</div>
           </div>
           <div>
             <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>SIMU</div>

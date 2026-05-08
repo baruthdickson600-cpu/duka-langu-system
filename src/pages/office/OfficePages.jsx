@@ -25,7 +25,7 @@ export function OfficeDash({onReceipt}){
     {!online&&<div style={{background:'#FEF3C7',borderRadius:10,padding:'8px 16px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚡ Offline Mode — mauzo yatahifadhiwa na kusawazishwa baadaye</div>}
     {isOff&&biz&&!biz.token_active&&daysLeft()<=5&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
       <span style={{fontSize:13,fontWeight:600,color:'#92400E'}}>⏳ Siku {daysLeft()} zimebaki</span>
-      <Btn v="warning" style={{padding:'6px 14px',fontSize:12}} onClick={()=>alert('Lipa: SELCOM > 6113 4066\nJina: PESAFLY')}>Lipa Sasa</Btn>
+      <Btn v="warning" style={{padding:'6px 14px',fontSize:12}} onClick={()=>alert('Lipa: HALOPESA - Lipa Namba\n25187616\nJina: DUKALANGU')}>Lipa Sasa</Btn>
     </div>}
 
     <div className="flex-wrap" style={{marginBottom:20}}>
@@ -655,7 +655,7 @@ export function CustomersPage(){
 
   // WhatsApp reminder message
   const sendReminder=(cust)=>{
-    const msg=`Habari ${cust.name},%0A%0ATunakukumbusha kuwa una deni la *TZS ${(cust.credit_balance||0).toLocaleString()}* kwenye duka letu.%0A%0ATafadhali lipa haraka iwezekanavyo.%0A%0AMalipo: SELCOM > 6113 4066%0AJina: PESAFLY%0A%0AAsante! 🙏`;
+    const msg=`Habari ${cust.name},%0A%0ATunakukumbusha kuwa una deni la *TZS ${(cust.credit_balance||0).toLocaleString()}* kwenye duka letu.%0A%0ATafadhali lipa haraka iwezekanavyo.%0A%0AMalipo: HALOPESA - Lipa Namba 25187616%0AJina: DUKALANGU%0A%0AAsante! 🙏`;
     window.open(`https://wa.me/${cust.phone?.replace(/\D/g,'')}?text=${msg}`,'_blank');
   };
 
@@ -1209,7 +1209,7 @@ export function InvoicePage(){
       ${taxRate>0?`<div style="font-size:14px">Kodi (${taxRate}%): TZS ${tax.toLocaleString()}</div>`:''}
       <div class="total-row" style="font-size:20px;margin-top:6px;padding-top:6px;border-top:2px solid #0B7A3B">JUMLA: TZS ${grandTotal.toLocaleString()}</div></div>
       ${notes?`<div style="margin-top:20px;background:#FFF7ED;padding:12px;border-radius:8px;font-size:13px"><b>Maelezo:</b> ${notes}</div>`:''}
-      <div style="margin-top:30px;padding:14px;background:#F0FDF4;border-radius:8px;font-size:13px"><b>Malipo:</b> ${settings.payment_provider||'SELCOM'} > ${settings.payment_number||'6113 4066'} | Jina: ${settings.payment_name||'PESAFLY'}</div>
+      <div style="margin-top:30px;padding:14px;background:#F0FDF4;border-radius:8px;font-size:13px"><b>Malipo:</b> ${settings.payment_provider||'HALOPESA'} - Lipa Namba: ${settings.payment_number||'25187616'} | Jina: ${settings.payment_name||'DUKALANGU'}</div>
       <div class="footer">${biz?.name||'Duka Langu'} — Together for the better<br/>pesafly1@gmail.com | +255 628 986 770 | Huduma: 0617 288 752</div>
     </body></html>`);
     w.document.close();
