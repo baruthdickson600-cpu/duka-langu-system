@@ -161,7 +161,7 @@ export default function LockedPage(){
                     </div>
                     
                     {[
-                      {n:1,t:'Fungua menu ya simu yako kupiga: *150*88#'},
+                      {n:1,t:'Fungua menyu ya mtandao wako wa simu'},
                       {n:2,t:'Chagua "Lipa Bili" → "Lipa Namba"'},
                       {n:3,t:'Weka Lipa Namba:',copy:PAYBILL,key:'paybill'},
                       {n:4,t:'Hakikisha jina:',copy:RECIPIENT,key:'recipient',isText:true},
@@ -181,7 +181,7 @@ export default function LockedPage(){
                     
                     <div style={{marginTop:10,padding:'8px 12px',background:'#FEF3C7',borderRadius:8,fontSize:11,color:'#78350F',display:'flex',gap:6,alignItems:'flex-start'}}>
                       <span style={{fontSize:14}}>💡</span>
-                      <span><b>Mitandao yote:</b> Vodacom, Tigo, Airtel, Halotel — wote wanaweza kulipia HaloPesa Lipa Namba kwa kupiga <b>*150*88#</b></span>
+                      <span><b>Mitandao yote:</b> Vodacom, Tigo, Airtel, Halotel — wote wanaweza kulipia HaloPesa Lipa Namba <b>25187616</b> kwa kupiga menyu ya mtandao wako</span>
                     </div>
                   </div>
 
