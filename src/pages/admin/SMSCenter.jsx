@@ -156,41 +156,46 @@ export function SMSCenterPage(){
       return;
     }
     
+    // BATCH SEND - one API call for all recipients (much faster, more reliable)
     let success=0,failed=0;
     const failedNumbers=[];
     
-    // Helper: delay between requests to avoid rate-limiting/timeouts
-    const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+    // Filter valid recipients and personalize each message
+    const validRecipients=recipientsList
+      .filter(r=>r.phone&&r.phone.length>=9)
+      .map(r=>({phone:r.phone,message:personalize(message,r),name:r.name}));
     
-    // Send personalized SMS one by one with small delay
-    for(let i=0;i<recipientsList.length;i++){
-      const r=recipientsList[i];
-      // Skip invalid phones early
-      if(!r.phone||r.phone.length<9){failed++;failedNumbers.push({phone:r.phone,reason:'Invalid'});continue}
-      
+    const skipped=recipientsList.length-validRecipients.length;
+    failed+=skipped;
+    
+    if(validRecipients.length>0){
       try{
-        const personalMsg=personalize(message,r);
         const controller=new AbortController();
-        const timeoutId=setTimeout(()=>controller.abort(),25000);
+        const timeoutId=setTimeout(()=>controller.abort(),60000); // 60 sec for batch
         
         const res=await fetch('/api/send-sms',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({to:r.phone,message:personalMsg}),
+          body:JSON.stringify({recipients:validRecipients}),
           signal:controller.signal,
         });
         clearTimeout(timeoutId);
         
         const d=await res.json().catch(()=>({success:false,error:'Parse error'}));
-        if(d.success){success++}
-        else{failed++;failedNumbers.push({phone:r.phone,reason:d.error||'Failed'})}
+        if(d.success){
+          success=d.sent||0;
+          failed=failed+(d.failed||0);
+          if(d.results){
+            d.results.filter(r=>!r.ok).forEach(r=>failedNumbers.push({phone:r.phone,reason:r.error||r.status||'Failed'}));
+          }
+        }else{
+          failed+=validRecipients.length;
+          failedNumbers.push({phone:'Bulk',reason:d.error||'Server error'});
+        }
       }catch(e){
-        failed++;
-        failedNumbers.push({phone:r.phone,reason:e.name==='AbortError'?'Timeout':e.message});
+        failed+=validRecipients.length;
+        failedNumbers.push({phone:'Bulk',reason:e.name==='AbortError'?'Timeout':e.message});
       }
-      
-      // Small delay between sends (300ms) — prevents serverless overload
-      if(i<recipientsList.length-1)await sleep(300);
     }
     
     const entry={
