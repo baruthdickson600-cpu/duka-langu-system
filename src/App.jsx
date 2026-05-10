@@ -125,15 +125,14 @@ export default function App(){
   const[sidebar,setSidebar]=useState(false);
   const[receipt,setReceipt]=useState(null);
   
-  // Show landing page first time visitors (unless ?login=1 in URL or returning user)
+  // ALWAYS show landing page when not logged in (unless ?login=1 or ?signup=1 in URL)
   const[showLanding,setShowLanding]=useState(()=>{
     const url=new URL(window.location.href);
     if(url.searchParams.get('login')==='1')return false;
+    if(url.searchParams.get('signup')==='1')return false;
     if(url.searchParams.get('demo')==='1')return false;
-    if(url.pathname==='/welcome')return true;
     if(url.pathname==='/login')return false;
-    // Show landing only on first visit
-    try{return !localStorage.getItem('seen_landing')}catch(e){return false}
+    return true; // Show landing every time someone wants to enter the system
   });
 
   // Reset page to dashboard when user/role changes
@@ -144,9 +143,9 @@ export default function App(){
 
   if(showLanding&&!user){
     return <LandingPage 
-      onLogin={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false)}}
-      onSignup={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false);window.history.pushState({},'','/?signup=1')}}
-      onDemo={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false);window.history.pushState({},'','/?demo=1')}}
+      onLogin={()=>setShowLanding(false)}
+      onSignup={()=>{setShowLanding(false);window.history.pushState({},'','/?signup=1')}}
+      onDemo={()=>{setShowLanding(false);window.history.pushState({},'','/?demo=1')}}
     />;
   }
 

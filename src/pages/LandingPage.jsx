@@ -27,19 +27,28 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
   );
 
   return <div style={{minHeight:'100vh',background:'#fff',fontFamily:'Inter,sans-serif'}}>
+    {/* GLOBAL ANIMATIONS */}
+    <style>{`
+      @keyframes fadeInUp {from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes fadeInLeft {from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+      @keyframes fadeInRight {from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+      @keyframes slideDown {from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes float {0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+      @keyframes pulse {0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:0.7;transform:scale(1.05)}}
+      @keyframes scaleIn {from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+      @keyframes shimmer {0%{background-position:-200% 0}100%{background-position:200% 0}}
+      .anim-card{animation:fadeInUp 0.7s ease both;transition:all 0.35s cubic-bezier(.4,0,.2,1)}
+      .anim-card:hover{transform:translateY(-8px)}
+    `}</style>
     {/* NAV */}
-    <nav style={{position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #E2E8F0',padding:'12px 16px'}}>
+    <nav style={{position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #E2E8F0',padding:'12px 16px',animation:'slideDown 0.6s ease both'}}>
       <div style={{maxWidth:1100,margin:'0 auto',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:40,height:40,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:18}}>D</div>
-          <div>
-            <div style={{fontWeight:900,fontSize:18,color:'#0B7A3B'}}>Duka Langu</div>
-            <div style={{fontSize:10,color:'#64748B'}}>Smart POS Tanzania</div>
-          </div>
+        <div style={{display:'flex',alignItems:'center',gap:10,animation:'fadeInLeft 0.8s ease both'}}>
+          <img src="/logo.png" alt="Duka Langu" style={{height:48,width:'auto'}}/>
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={onLogin} style={{padding:'9px 18px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:13,cursor:'pointer'}}>Login</button>
-          <button onClick={onSignup} style={{padding:'9px 18px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',boxShadow:'0 4px 12px rgba(11,122,59,0.25)'}}>Anza Bure →</button>
+        <div style={{display:'flex',gap:8,animation:'fadeInRight 0.8s ease both'}}>
+          <button onClick={onLogin} style={{padding:'9px 18px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:13,cursor:'pointer',transition:'all 0.25s'}} onMouseOver={e=>{e.currentTarget.style.background='#F0FDF4';e.currentTarget.style.transform='translateY(-2px)'}} onMouseOut={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.transform='translateY(0)'}}>Login</button>
+          <button onClick={onSignup} style={{padding:'9px 18px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',boxShadow:'0 4px 12px rgba(11,122,59,0.25)',transition:'all 0.25s'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 20px rgba(11,122,59,0.4)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 12px rgba(11,122,59,0.25)'}}>Anza Bure →</button>
         </div>
       </div>
     </nav>
@@ -50,28 +59,39 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
       {bgB&&<div style={bgStyle(bgB,showB)}/>}
       <div style={{position:'absolute',inset:0,zIndex:1,background:'linear-gradient(135deg,rgba(11,122,59,0.85),rgba(6,95,46,0.75))'}}/>
       <div style={{position:'relative',zIndex:2,maxWidth:1100,margin:'0 auto',padding:'40px 16px',color:'#fff',width:'100%'}}>
-        <div style={{maxWidth:700}}>
-          <div style={{display:'inline-block',padding:'6px 14px',background:'rgba(255,255,255,0.2)',borderRadius:20,fontSize:12,fontWeight:600,marginBottom:16,backdropFilter:'blur(10px)'}}>🇹🇿 #1 Smart POS Tanzania</div>
-          <h1 style={{fontSize:54,fontWeight:900,lineHeight:1.1,margin:'0 0 16px',textShadow:'0 4px 20px rgba(0,0,0,0.3)'}}>
-            Endesha Duka Lako<br/>Kwa Akili Zaidi
-          </h1>
-          <p style={{fontSize:18,opacity:0.95,lineHeight:1.6,marginBottom:28,maxWidth:550,textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>
-            Mfumo wa kisasa wa POS unaokusaidia kuuza, kufuatilia stock, kupata ripoti za faida, na kusimamia wafanyakazi — kwenye simu yako tu.
-          </p>
-          <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-            <button onClick={onSignup} style={{padding:'14px 28px',borderRadius:12,border:'none',background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.2)'}}>🚀 Anza Trial Bure (Siku 7)</button>
-            <button onClick={onDemo} style={{padding:'14px 28px',borderRadius:12,border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',backdropFilter:'blur(10px)'}}>👁️ Tazama Demo</button>
+        <div style={{display:'flex',alignItems:'center',gap:40,flexWrap:'wrap'}}>
+          <div style={{flex:1,minWidth:300}}>
+            <div style={{display:'inline-block',padding:'6px 14px',background:'rgba(255,255,255,0.2)',borderRadius:20,fontSize:12,fontWeight:600,marginBottom:16,backdropFilter:'blur(10px)',animation:'fadeInUp 0.6s ease both'}}>🇹🇿 Biashara yako mkononi mwako</div>
+            <h1 style={{fontSize:54,fontWeight:900,lineHeight:1.1,margin:'0 0 16px',textShadow:'0 4px 20px rgba(0,0,0,0.3)',animation:'fadeInUp 0.7s ease 0.1s both'}}>
+              Endesha Biashara<br/>Yako Kidijitali
+            </h1>
+            <p style={{fontSize:18,opacity:0.95,lineHeight:1.6,marginBottom:28,maxWidth:550,textShadow:'0 2px 8px rgba(0,0,0,0.3)',animation:'fadeInUp 0.8s ease 0.2s both'}}>
+              Mfumo wa kisasa wa POS unaokusaidia kuuza, kufuatilia stock, kupata ripoti za faida, na kusimamia wafanyakazi — kwenye simu yako tu.
+            </p>
+            <div style={{display:'flex',gap:12,flexWrap:'wrap',animation:'fadeInUp 0.9s ease 0.3s both'}}>
+              <button onClick={onSignup} style={{padding:'14px 28px',borderRadius:12,border:'none',background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.2)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-3px) scale(1.02)';e.currentTarget.style.boxShadow='0 14px 35px rgba(0,0,0,0.3)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 8px 25px rgba(0,0,0,0.2)'}}>🚀 Anza Trial Bure (Siku 7)</button>
+              <button onClick={onDemo} style={{padding:'14px 28px',borderRadius:12,border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',backdropFilter:'blur(10px)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,0.2)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,0.1)';e.currentTarget.style.transform='translateY(0)'}}>👁️ Tazama Demo</button>
+            </div>
+            <div style={{display:'flex',gap:24,marginTop:32,flexWrap:'wrap',animation:'fadeInUp 1s ease 0.4s both'}}>
+              {[
+                {n:'500+',l:'Wateja Tanzania'},
+                {n:'TZS 15K',l:'Bei kwa Mwezi'},
+                {n:'24/7',l:'Msaada'},
+                {n:'4.9★',l:'Maoni ya Wateja'},
+              ].map((s,i)=><div key={i} style={{animation:`fadeInUp 1.1s ease ${0.5+i*0.1}s both`}}>
+                <div style={{fontSize:24,fontWeight:900}}>{s.n}</div>
+                <div style={{fontSize:12,opacity:0.85}}>{s.l}</div>
+              </div>)}
+            </div>
           </div>
-          <div style={{display:'flex',gap:24,marginTop:32,flexWrap:'wrap'}}>
-            {[
-              {n:'500+',l:'Wateja Tanzania'},
-              {n:'TZS 15K',l:'Bei kwa Mwezi'},
-              {n:'24/7',l:'Msaada'},
-              {n:'4.9★',l:'Maoni ya Wateja'},
-            ].map((s,i)=><div key={i}>
-              <div style={{fontSize:24,fontWeight:900}}>{s.n}</div>
-              <div style={{fontSize:12,opacity:0.85}}>{s.l}</div>
-            </div>)}
+          {/* LOGO ANIMATED */}
+          <div style={{flex:'0 0 280px',display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
+            <div style={{position:'relative',animation:'float 3s ease-in-out infinite'}}>
+              <div style={{position:'absolute',inset:-20,borderRadius:'50%',background:'rgba(255,255,255,0.15)',filter:'blur(30px)',animation:'pulse 2s ease-in-out infinite'}}/>
+              <div style={{position:'relative',background:'rgba(255,255,255,0.95)',borderRadius:24,padding:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+                <img src="/logo.png" alt="Duka Langu" style={{width:240,height:'auto',display:'block'}}/>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -95,7 +115,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
           {i:'🔒',t:'Salama 100%',d:'Data yako imefungwa kwa encryption. Hata internet ikienda, mfumo unaendelea kufanya kazi.'},
           {i:'📱',t:'Inafanya Mahali Popote',d:'Tumia kwenye simu, tablet, au kompyuta. Hakuna kufunga programu — fungua na browser tu.'},
           {i:'🆘',t:'Msaada 24/7',d:'Tatizo lolote? Tupigie simu au WhatsApp masaa yote. Tunazungumza Kiswahili.'},
-        ].map((f,i)=><div key={i} style={{background:'#fff',padding:24,borderRadius:16,border:'1px solid #E2E8F0',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.boxShadow='0 12px 30px rgba(11,122,59,0.12)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.borderColor='#BBF7D0'}} onMouseOut={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor='#E2E8F0'}}>
+        ].map((f,i)=><div key={i} className="anim-card" style={{background:'#fff',padding:24,borderRadius:16,border:'1px solid #E2E8F0',animationDelay:`${i*0.08}s`}} onMouseOver={e=>{e.currentTarget.style.boxShadow='0 12px 30px rgba(11,122,59,0.12)';e.currentTarget.style.borderColor='#BBF7D0'}} onMouseOut={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.borderColor='#E2E8F0'}}>
           <div style={{width:54,height:54,background:'#F0FDF4',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,marginBottom:14}}>{f.i}</div>
           <h3 style={{fontSize:17,fontWeight:800,color:'#1E293B',margin:'0 0 8px'}}>{f.t}</h3>
           <p style={{fontSize:13,color:'#64748B',lineHeight:1.6,margin:0}}>{f.d}</p>
@@ -197,8 +217,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:24,marginBottom:30}}>
           <div>
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-              <div style={{width:36,height:36,background:'#0B7A3B',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900}}>D</div>
-              <div style={{fontWeight:900,fontSize:16,color:'#fff'}}>Duka Langu</div>
+              <img src="/logo.png" alt="Duka Langu" style={{height:50,width:'auto',filter:'brightness(1.2)'}}/>
             </div>
             <p style={{fontSize:12,lineHeight:1.6}}>Mfumo wa kisasa wa POS unaowasaidia wajasiriamali Tanzania kuendesha biashara kwa ufanisi.</p>
           </div>
