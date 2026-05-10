@@ -23,9 +23,6 @@ export function OfficeDash({onReceipt}){
   return <div>
     {ann&&<div style={{background:settings.announcement_type==='warning'?'#FFF7ED':settings.announcement_type==='danger'?'#FEF2F2':'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,fontSize:13,fontWeight:600}}>📢 {ann}</div>}
     {!online&&<div style={{background:'#FEF3C7',borderRadius:10,padding:'8px 16px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚡ Offline Mode — mauzo yatahifadhiwa na kusawazishwa baadaye</div>}
-    
-    {/* REFERRAL & SHARE CARD */}
-    {isOff&&<ReferralShareCard biz={biz} user={user}/>}
     {isOff&&biz&&!biz.token_active&&daysLeft()<=5&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
       <span style={{fontSize:13,fontWeight:600,color:'#92400E'}}>⏳ Siku {daysLeft()} zimebaki</span>
       <Btn v="warning" style={{padding:'6px 14px',fontSize:12}} onClick={()=>alert('Lipa: HALOPESA - Lipa Namba\n25187616\nJina: DUKALANGU')}>Lipa Sasa</Btn>
@@ -1288,7 +1285,8 @@ export function InvoicePage(){
 }
 
 // ===== REFERRAL & WHATSAPP SHARE CARD =====
-function ReferralShareCard({biz,user}){
+export function ReferralPage(){
+  const{biz,user}=useApp();
   const[copied,setCopied]=useState('');
   const refCode=biz?.id?'REF-'+biz.id.slice(0,8).toUpperCase():'';
   const refLink=`${window.location.origin}/?ref=${refCode}`;
@@ -1320,22 +1318,30 @@ Wasiliana: 0617 288 752`;
     window.open(url,'_blank');
   };
 
-  return <div style={{background:'linear-gradient(135deg,#0B7A3B 0%,#065F2E 100%)',borderRadius:16,padding:20,marginBottom:14,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 8px 30px rgba(11,122,59,0.3)'}}>
+  return <div>
+    {/* PAGE HEADER */}
+    <div style={{marginBottom:18}}>
+      <h2 style={{fontSize:24,fontWeight:900,color:'#0B7A3B',margin:'0 0 6px'}}>🎁 Karibisha Rafiki</h2>
+      <p style={{fontSize:13,color:'#64748B',margin:0}}>Mwambie rafiki yako kuhusu Duka Langu — wote mtafaidika!</p>
+    </div>
+
+    {/* MAIN CARD */}
+    <div style={{background:'linear-gradient(135deg,#0B7A3B 0%,#065F2E 100%)',borderRadius:16,padding:24,marginBottom:18,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 8px 30px rgba(11,122,59,0.3)'}}>
     <div style={{position:'absolute',top:-30,right:-30,width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
     <div style={{position:'absolute',bottom:-40,left:-40,width:140,height:140,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
     <div style={{position:'relative',zIndex:1}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <div style={{flex:1,minWidth:200}}>
           <div style={{display:'inline-block',padding:'4px 12px',background:'rgba(255,255,255,0.2)',borderRadius:20,fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:8}}>🎁 PROGRAM YA REFERRAL</div>
-          <h3 style={{fontSize:18,fontWeight:900,margin:'0 0 6px'}}>Mwambie Rafiki — Pata Bonus!</h3>
-          <p style={{fontSize:12,opacity:0.9,margin:'0 0 12px',lineHeight:1.5}}>
+          <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 8px'}}>Mwambie Rafiki — Pata Bonus!</h3>
+          <p style={{fontSize:13,opacity:0.9,margin:'0 0 12px',lineHeight:1.6}}>
             Rafiki yako akijiunga kupitia link yako, <b>wote mtafaidika</b>:<br/>
             🎁 Wewe → <b>TZS 5,000</b> kupunguzwa kwenye ada<br/>
             🎁 Rafiki yako → <b>Wiki 1 ya BURE</b>
           </p>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:200}}>
-          <button onClick={shareWA} style={{padding:'12px 18px',borderRadius:12,border:'none',background:'#25D366',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 4px 15px rgba(37,211,102,0.4)'}}>
+          <button onClick={shareWA} style={{padding:'14px 20px',borderRadius:12,border:'none',background:'#25D366',color:'#fff',fontWeight:800,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 4px 15px rgba(37,211,102,0.4)'}}>
             💬 Share WhatsApp
           </button>
           <button onClick={()=>copyText(refLink,'link')} style={{padding:'10px 18px',borderRadius:12,border:'2px solid rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',backdropFilter:'blur(10px)'}}>
@@ -1345,15 +1351,45 @@ Wasiliana: 0617 288 752`;
       </div>
       
       {/* Referral code display */}
-      <div style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(10px)',borderRadius:10,padding:'10px 14px',marginTop:14,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+      <div style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(10px)',borderRadius:10,padding:'12px 16px',marginTop:16,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontSize:10,opacity:0.85,fontWeight:700,letterSpacing:1}}>CODE YAKO:</div>
-          <div style={{fontFamily:'monospace',fontWeight:900,fontSize:16,letterSpacing:1}}>{refCode}</div>
+          <div style={{fontFamily:'monospace',fontWeight:900,fontSize:18,letterSpacing:1}}>{refCode}</div>
         </div>
-        <div onClick={()=>copyText(refCode,'code')} style={{cursor:'pointer',padding:'6px 12px',background:'rgba(255,255,255,0.2)',borderRadius:8,fontSize:11,fontWeight:700}}>
+        <div onClick={()=>copyText(refCode,'code')} style={{cursor:'pointer',padding:'8px 14px',background:'rgba(255,255,255,0.2)',borderRadius:8,fontSize:11,fontWeight:700}}>
           {copied==='code'?'✓ COPIED':'📋 Copy Code'}
         </div>
       </div>
+    </div>
+    </div>
+
+    {/* INSTRUCTIONS */}
+    <div style={{background:'#fff',borderRadius:16,padding:20,marginBottom:14,border:'1px solid #E2E8F0'}}>
+      <h3 style={{fontSize:16,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>📖 Maelekezo — Jinsi Inavyofanya Kazi</h3>
+      
+      {[
+        {n:1,t:'Bonyeza "Share WhatsApp"',d:'Button ya kijani hapo juu — itafungua WhatsApp na ujumbe wako tayari. Chagua mtu unayemtuma au kikundi.'},
+        {n:2,t:'Au copy link/code yako',d:'Bonyeza "Copy Link" — link itacopy. Tuma popote: SMS, Facebook, Instagram, vikundi vya WhatsApp, n.k.'},
+        {n:3,t:'Rafiki yako anajisajili',d:'Akifungua link yako, atajiunga na Duka Langu. Code yako inahesabiwa automatic — sio lazima aweke chochote.'},
+        {n:4,t:'Mnapata bonus wote',d:'Rafiki akilipa kwa mara ya kwanza, atapokea Wiki 1 BURE, na wewe utapokea TZS 5,000 kupunguzwa kwenye ada yako ya mwezi unaofuata!'},
+      ].map(s=><div key={s.n} style={{display:'flex',gap:14,marginBottom:14,paddingBottom:14,borderBottom:'1px solid #F1F5F9'}}>
+        <div style={{minWidth:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:14,flexShrink:0,boxShadow:'0 4px 12px rgba(11,122,59,0.3)'}}>{s.n}</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800,fontSize:14,color:'#1E293B',marginBottom:4}}>{s.t}</div>
+          <div style={{fontSize:12,color:'#64748B',lineHeight:1.6}}>{s.d}</div>
+        </div>
+      </div>)}
+    </div>
+
+    {/* FAIDA */}
+    <div style={{background:'linear-gradient(135deg,#FFF7ED,#FFEDD5)',borderRadius:14,padding:18,border:'1px solid #FED7AA'}}>
+      <h4 style={{fontSize:14,fontWeight:800,color:'#9A3412',margin:'0 0 10px'}}>💡 Vidokezo vya Mafanikio</h4>
+      <ul style={{fontSize:12,color:'#7C2D12',lineHeight:1.8,margin:0,paddingLeft:20}}>
+        <li>Tuma kwa <b>marafiki wenye maduka au biashara</b> — wao ndio wanahitaji</li>
+        <li>Toa hadithi yako: <b>"Mfumo umenisaidia hivyo na hivyo..."</b></li>
+        <li>Share kwenye <b>vikundi vya WhatsApp vya wajasiriamali</b></li>
+        <li>Hakuna kikomo — leta wateja wengi upunguze ada yako kabisa!</li>
+      </ul>
     </div>
   </div>;
 }
