@@ -3,12 +3,13 @@ import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
 import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
+import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage} from './pages/office/OfficePages';
-import {MarketingDash,MktAgentsPage,PipelinePage,CommissionPage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
+import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
@@ -123,9 +124,31 @@ export default function App(){
   const[page,setPage]=useState('dashboard');
   const[sidebar,setSidebar]=useState(false);
   const[receipt,setReceipt]=useState(null);
+  
+  // Show landing page first time visitors (unless ?login=1 in URL or returning user)
+  const[showLanding,setShowLanding]=useState(()=>{
+    const url=new URL(window.location.href);
+    if(url.searchParams.get('login')==='1')return false;
+    if(url.searchParams.get('demo')==='1')return false;
+    if(url.pathname==='/welcome')return true;
+    if(url.pathname==='/login')return false;
+    // Show landing only on first visit
+    try{return !localStorage.getItem('seen_landing')}catch(e){return false}
+  });
 
   // Reset page to dashboard when user/role changes
   useEffect(()=>{if(user?.role)setPage('dashboard')},[user?.role]);
+
+  // If user is logged in, skip landing
+  if(user&&showLanding)setShowLanding(false);
+
+  if(showLanding&&!user){
+    return <LandingPage 
+      onLogin={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false)}}
+      onSignup={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false);window.history.pushState({},'','/?signup=1')}}
+      onDemo={()=>{try{localStorage.setItem('seen_landing','1')}catch(e){};setShowLanding(false);window.history.pushState({},'','/?demo=1')}}
+    />;
+  }
 
   if(!user||otpPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP}/>;
   if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;

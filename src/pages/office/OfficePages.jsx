@@ -23,6 +23,9 @@ export function OfficeDash({onReceipt}){
   return <div>
     {ann&&<div style={{background:settings.announcement_type==='warning'?'#FFF7ED':settings.announcement_type==='danger'?'#FEF2F2':'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,fontSize:13,fontWeight:600}}>📢 {ann}</div>}
     {!online&&<div style={{background:'#FEF3C7',borderRadius:10,padding:'8px 16px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚡ Offline Mode — mauzo yatahifadhiwa na kusawazishwa baadaye</div>}
+    
+    {/* REFERRAL & SHARE CARD */}
+    {isOff&&<ReferralShareCard biz={biz} user={user}/>}
     {isOff&&biz&&!biz.token_active&&daysLeft()<=5&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
       <span style={{fontSize:13,fontWeight:600,color:'#92400E'}}>⏳ Siku {daysLeft()} zimebaki</span>
       <Btn v="warning" style={{padding:'6px 14px',fontSize:12}} onClick={()=>alert('Lipa: HALOPESA - Lipa Namba\n25187616\nJina: DUKALANGU')}>Lipa Sasa</Btn>
@@ -1281,5 +1284,76 @@ export function InvoicePage(){
         </div>
       ))}
     </div>}
+  </div>;
+}
+
+// ===== REFERRAL & WHATSAPP SHARE CARD =====
+function ReferralShareCard({biz,user}){
+  const[copied,setCopied]=useState('');
+  const refCode=biz?.id?'REF-'+biz.id.slice(0,8).toUpperCase():'';
+  const refLink=`${window.location.origin}/?ref=${refCode}`;
+  
+  const shareMessage=`🎉 Hujaribu *Duka Langu*?
+
+Mfumo bora wa POS Tanzania — unakusaidia kuendesha duka lako kwa akili!
+
+✅ Mauzo ya kasi
+✅ Stock automatic
+✅ Ripoti za faida
+✅ Msaada 24/7
+
+Bei TZS 15,000 tu/mwezi.
+
+Tumia link yangu kupata *Wiki 1 ya BURE*:
+${refLink}
+
+Wasiliana: 0617 288 752`;
+
+  const copyText=(text,key)=>{
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(()=>setCopied(''),2000);
+  };
+
+  const shareWA=()=>{
+    const url=`https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+    window.open(url,'_blank');
+  };
+
+  return <div style={{background:'linear-gradient(135deg,#0B7A3B 0%,#065F2E 100%)',borderRadius:16,padding:20,marginBottom:14,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 8px 30px rgba(11,122,59,0.3)'}}>
+    <div style={{position:'absolute',top:-30,right:-30,width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
+    <div style={{position:'absolute',bottom:-40,left:-40,width:140,height:140,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
+    <div style={{position:'relative',zIndex:1}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <div style={{flex:1,minWidth:200}}>
+          <div style={{display:'inline-block',padding:'4px 12px',background:'rgba(255,255,255,0.2)',borderRadius:20,fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:8}}>🎁 PROGRAM YA REFERRAL</div>
+          <h3 style={{fontSize:18,fontWeight:900,margin:'0 0 6px'}}>Mwambie Rafiki — Pata Bonus!</h3>
+          <p style={{fontSize:12,opacity:0.9,margin:'0 0 12px',lineHeight:1.5}}>
+            Rafiki yako akijiunga kupitia link yako, <b>wote mtafaidika</b>:<br/>
+            🎁 Wewe → <b>TZS 5,000</b> kupunguzwa kwenye ada<br/>
+            🎁 Rafiki yako → <b>Wiki 1 ya BURE</b>
+          </p>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:8,minWidth:200}}>
+          <button onClick={shareWA} style={{padding:'12px 18px',borderRadius:12,border:'none',background:'#25D366',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 4px 15px rgba(37,211,102,0.4)'}}>
+            💬 Share WhatsApp
+          </button>
+          <button onClick={()=>copyText(refLink,'link')} style={{padding:'10px 18px',borderRadius:12,border:'2px solid rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer',backdropFilter:'blur(10px)'}}>
+            {copied==='link'?'✓ COPIED':'📋 Copy Link'}
+          </button>
+        </div>
+      </div>
+      
+      {/* Referral code display */}
+      <div style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(10px)',borderRadius:10,padding:'10px 14px',marginTop:14,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+        <div>
+          <div style={{fontSize:10,opacity:0.85,fontWeight:700,letterSpacing:1}}>CODE YAKO:</div>
+          <div style={{fontFamily:'monospace',fontWeight:900,fontSize:16,letterSpacing:1}}>{refCode}</div>
+        </div>
+        <div onClick={()=>copyText(refCode,'code')} style={{cursor:'pointer',padding:'6px 12px',background:'rgba(255,255,255,0.2)',borderRadius:8,fontSize:11,fontWeight:700}}>
+          {copied==='code'?'✓ COPIED':'📋 Copy Code'}
+        </div>
+      </div>
+    </div>
   </div>;
 }
