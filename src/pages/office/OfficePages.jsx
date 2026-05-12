@@ -7,13 +7,38 @@ const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
 
 // ===== OFFICE DASHBOARD with Daily Report + Alerts =====
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights}=useApp();
+  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
-  const tSales=sales.filter(s=>isToday(s.created_at));const wSales=sales.filter(s=>isThisWeek(s.created_at));const mSales=sales.filter(s=>isThisMonth(s.created_at));
-  const tTotal=tSales.reduce((a,s)=>a+s.total,0);const wTotal=wSales.reduce((a,s)=>a+s.total,0);
-  const mProfit=mSales.reduce((a,s)=>a+s.profit,0);const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  
+  // Filter sales by period
+  const tSales=sales.filter(s=>isToday(s.created_at));
+  const wSales=sales.filter(s=>isThisWeek(s.created_at));
+  const mSales=sales.filter(s=>isThisMonth(s.created_at));
+  
+  // Filter returns by SAME period (subtract from sales)
+  const tReturns=(returns||[]).filter(r=>isToday(r.created_at));
+  const wReturns=(returns||[]).filter(r=>isThisWeek(r.created_at));
+  const mReturns=(returns||[]).filter(r=>isThisMonth(r.created_at));
+  
+  // Helper: calculate profit lost from returns
+  const returnProfit=(rs)=>rs.reduce((sum,r)=>sum+((r.items||[]).reduce((s,i)=>{
+    const prod=products.find(p=>p.id===i.productId);
+    const buyPrice=prod?.buy_price||0;
+    return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
+  },0)),0);
+  
+  // Subtract refunds from totals
+  const tRefunds=tReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  const wRefunds=wReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  const mRefunds=mReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  
+  // Net sales (after returns)
+  const tTotal=Math.max(0,tSales.reduce((a,s)=>a+s.total,0)-tRefunds);
+  const wTotal=Math.max(0,wSales.reduce((a,s)=>a+s.total,0)-wRefunds);
+  const mProfit=Math.max(0,mSales.reduce((a,s)=>a+s.profit,0)-returnProfit(mReturns));
+  const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   const isOff=user?.role==='office';
-  const dayData=useMemo(()=>{const d=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const ds=dt.toISOString().split('T')[0];const ds2=sales.filter(s=>s.created_at?.startsWith(ds));d.push({day:dt.toLocaleDateString('en',{weekday:'short'}),total:ds2.reduce((a,s)=>a+s.total,0)})}return d},[sales]);
+  const dayData=useMemo(()=>{const d=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const ds=dt.toISOString().split('T')[0];const ds2=sales.filter(s=>s.created_at?.startsWith(ds));const drs=(returns||[]).filter(r=>r.created_at?.startsWith(ds));const dayTotal=ds2.reduce((a,s)=>a+s.total,0)-drs.reduce((a,r)=>a+(r.refund_amount||0),0);d.push({day:dt.toLocaleDateString('en',{weekday:'short'}),total:Math.max(0,dayTotal)})}return d},[sales,returns]);
   const prodMap={};sales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
   const pieData=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>({name:n,value:q}));
 
@@ -523,9 +548,29 @@ export function ReturnsPage(){
 
 // ===== REPORTS =====
 export function ReportsPage({onReceipt}){
-  const{sales,expenses,currency}=useApp();const fm=n=>fmtMoney(n,currency||'TZS');const[tab,setTab]=useState('day');
+  const{sales,returns,products,expenses,currency}=useApp();const fm=n=>fmtMoney(n,currency||'TZS');const[tab,setTab]=useState('day');
   const ff=tab==='day'?isToday:tab==='week'?isThisWeek:isThisMonth;
-  const fSales=sales.filter(s=>ff(s.created_at));const fTotal=fSales.reduce((a,s)=>a+s.total,0);const fProfit=fSales.reduce((a,s)=>a+s.profit,0);
+  const fSales=sales.filter(s=>ff(s.created_at));
+  const fReturns=(returns||[]).filter(r=>ff(r.created_at));
+  
+  // Gross sales (before returns)
+  const grossTotal=fSales.reduce((a,s)=>a+s.total,0);
+  const grossProfit=fSales.reduce((a,s)=>a+s.profit,0);
+  
+  // Refund amount
+  const refundTotal=fReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  
+  // Profit lost from returns
+  const refundProfit=fReturns.reduce((sum,r)=>sum+((r.items||[]).reduce((s,i)=>{
+    const prod=products.find(p=>p.id===i.productId);
+    const buyPrice=prod?.buy_price||0;
+    return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
+  },0)),0);
+  
+  // Net (after returns)
+  const fTotal=Math.max(0,grossTotal-refundTotal);
+  const fProfit=Math.max(0,grossProfit-refundProfit);
+  
   const fExp=expenses.filter(e=>ff(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -533,11 +578,34 @@ export function ReportsPage({onReceipt}){
   return <div>
     <Tabs tabs={[{id:'day',label:'Siku'},{id:'week',label:'Wiki'},{id:'month',label:'Mwezi'}]} active={tab} onChange={setTab}/>
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.cart} label="Mauzo" value={fm(fTotal)} color="#0B7A3B" sub={`${fSales.length}`}/>
-      <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6"/>
+      <Stat icon={IC.cart} label="Mauzo (Halisi)" value={fm(fTotal)} color="#0B7A3B" sub={refundTotal>0?`Yamerudishwa: ${fm(refundTotal)}`:`${fSales.length} mauzo`}/>
+      <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
       <Stat icon={IC.wallet} label="Matumizi" value={fm(fExp)} color="#EF4444"/>
       <Stat icon={IC.dollar} label="Halisi" value={fm(fProfit-fExp)} color={fProfit-fExp>=0?'#F59E0B':'#EF4444'}/>
     </div>
+    
+    {/* Show breakdown if there are returns */}
+    {refundTotal>0&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'14px 18px',marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:13,color:'#9A3412',marginBottom:8}}>📊 Mchanganuo wa Mauzo:</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,fontSize:12}}>
+        <div>
+          <div style={{color:'#7C2D12',fontWeight:600}}>Mauzo Yaliyofanyika</div>
+          <div style={{fontWeight:900,color:'#0B7A3B',fontSize:15}}>{fm(grossTotal)}</div>
+        </div>
+        <div>
+          <div style={{color:'#7C2D12',fontWeight:600}}>− Yamerudishwa</div>
+          <div style={{fontWeight:900,color:'#EF4444',fontSize:15}}>−{fm(refundTotal)}</div>
+        </div>
+        <div>
+          <div style={{color:'#7C2D12',fontWeight:600}}>= Mauzo Halisi</div>
+          <div style={{fontWeight:900,color:'#9A3412',fontSize:15}}>{fm(fTotal)}</div>
+        </div>
+        <div>
+          <div style={{color:'#7C2D12',fontWeight:600}}>Idadi Rudishwa</div>
+          <div style={{fontWeight:900,color:'#9A3412',fontSize:15}}>{fReturns.length}</div>
+        </div>
+      </div>
+    </div>}
     <div style={{marginBottom:12}}><Btn v="outline" onClick={doExport}>{IC.dl} PDF</Btn></div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Bidhaa Bora</h3>
