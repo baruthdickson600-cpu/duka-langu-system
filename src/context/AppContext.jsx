@@ -228,15 +228,19 @@ export function AppProvider({children}){
   const signup=useCallback(async(name,email,password,businessName,phone,promoCode)=>{
     setLoading(true);
     try{
+      // Capture referral code from URL (?ref=REF-XXXXXXXX)
+      const url=new URL(window.location.href);
+      const refCode=url.searchParams.get('ref')||'';
+      
       const{data:authData,error:authErr}=await supabase.auth.signUp({email,password});
       if(authErr){setLoading(false);return authErr.message}
       const uid=authData.user?.id||genId();
       const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
       await safeInsert('users',{id:uid,email,name,phone,role:'office'});
-      const newBiz=await safeInsert('businesses',{name:businessName,email,phone,owner_id:uid,trial_end:trialEnd,promo_code:promoCode||null});
+      const newBiz=await safeInsert('businesses',{name:businessName,email,phone,owner_id:uid,trial_end:trialEnd,promo_code:promoCode||null,referred_by_code:refCode||null});
       if(newBiz){
         await safeUpdate('users',{business_id:newBiz.id},'id',uid);
-        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya: ${businessName}`,message:`${name} (${email}) amesajili.`});
+        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya: ${businessName}`,message:`${name} (${email}) amesajili.${refCode?' Kupitia referral: '+refCode:''}`});
         setBiz(prev=>[newBiz,...prev]);setUser({id:uid,email,name,phone,role:'office',business_id:newBiz.id});
         await loadData(uid,'office',newBiz.id);
         // Welcome email to new user
@@ -247,10 +251,27 @@ export function AppProvider({children}){
         supabase.from('marketing_partners').select('email').then(({data:pts})=>{
           (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone})});
         }).catch(()=>{});
+        
+        // Record referral if user came from a referral link
+        if(refCode){
+          // Find referrer by code (REF-XXXXXXXX format = first 8 chars of business ID)
+          const refIdPart=refCode.replace('REF-','').toLowerCase();
+          const referrer=businesses.find(b=>b.id?.toLowerCase().startsWith(refIdPart));
+          if(referrer){
+            await safeInsert('referrals',{
+              referrer_business_id:referrer.id,
+              referred_business_id:newBiz.id,
+              ref_code:refCode,
+              status:'pending',
+            });
+            // Notify admin
+            await safeInsert('notifications',{target_type:'admin',type:'success',title:'🎁 Referral Mpya!',message:`${referrer.name} amemkaribisha ${businessName}. Subiri malipo ya rafiki ili kuthibitisha bonus.`});
+          }
+        }
       }
       setLoading(false);return null;
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
-  },[settings.trial_days,loadData]);
+  },[settings.trial_days,loadData,businesses]);
 
   // FORGOT PASSWORD
   const forgotPassword=useCallback(async(email)=>{

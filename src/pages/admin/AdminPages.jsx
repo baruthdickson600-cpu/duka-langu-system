@@ -1475,3 +1475,272 @@ export function InfoRequestsPage(){
     </div>
   </div>;
 }
+
+// ===== REFERRAL MANAGEMENT PAGE (Admin) =====
+export function ReferralManagementPage(){
+  const{businesses,supabase,user,sendMail,sendSMS,settings}=useApp();
+  const[referrals,setReferrals]=useState([]);
+  const[loading,setLoading]=useState(false);
+  const[search,setSearch]=useState('');
+  const[filter,setFilter]=useState('all');
+  const[showConfig,setShowConfig]=useState(false);
+  const[config,setConfig]=useState({
+    bonusAmount:5000,
+    freeWeekForReferred:true,
+    minMonthsBeforeEligible:1,
+    minPaymentForBonus:15000,
+    autoApprove:false,
+  });
+  const[stats,setStats]=useState({totalReferrals:0,pendingApprovals:0,totalBonusGiven:0,activeRefs:0});
+
+  // Load config + referrals
+  useEffect(()=>{
+    loadConfig();
+    loadReferrals();
+  },[]);
+
+  const loadConfig=async()=>{
+    try{
+      const{data}=await supabase.from('settings').select('value').eq('key','referral_config').maybeSingle();
+      if(data?.value){const c=JSON.parse(data.value);setConfig(c)}
+    }catch(e){}
+  };
+
+  const loadReferrals=async()=>{
+    setLoading(true);
+    try{
+      const{data}=await supabase.from('referrals').select('*').order('created_at',{ascending:false});
+      const refs=data||[];
+      setReferrals(refs);
+      // Calculate stats
+      setStats({
+        totalReferrals:refs.length,
+        pendingApprovals:refs.filter(r=>r.status==='pending').length,
+        totalBonusGiven:refs.filter(r=>r.status==='approved').reduce((s,r)=>s+(r.bonus_amount||0),0),
+        activeRefs:refs.filter(r=>r.status==='approved').length,
+      });
+    }catch(e){console.error('Load refs:',e)}
+    setLoading(false);
+  };
+
+  const saveConfig=async()=>{
+    try{
+      await supabase.from('settings').upsert({key:'referral_config',value:JSON.stringify(config)});
+      alert('✅ Mipangilio imehifadhiwa!');
+      setShowConfig(false);
+    }catch(e){alert('Tatizo: '+e.message)}
+  };
+
+  // Get business names by ID
+  const getBizName=id=>businesses.find(b=>b.id===id)?.name||'Haijulikani';
+  const getBizPhone=id=>businesses.find(b=>b.id===id)?.phone||'';
+  const getBizEmail=id=>businesses.find(b=>b.id===id)?.email||'';
+
+  // Check eligibility
+  const checkEligible=(refBy)=>{
+    const referrer=businesses.find(b=>b.id===refBy);
+    if(!referrer)return{eligible:false,reason:'Mteja hajulikani'};
+    // Check how long they've been using the system
+    const createdDate=new Date(referrer.created_at);
+    const monthsActive=(Date.now()-createdDate)/(30*86400000);
+    if(monthsActive<config.minMonthsBeforeEligible)return{eligible:false,reason:`Bado hajatumia mfumo kwa mwezi ${config.minMonthsBeforeEligible}+`};
+    if(!referrer.token_active)return{eligible:false,reason:'Mteja amefungwa au yuko trial'};
+    return{eligible:true,reason:'Anaweza kupata bonus'};
+  };
+
+  // Approve a referral (give bonus)
+  const approveReferral=async(ref)=>{
+    if(!confirm(`Thibitisha bonus ya TZS ${config.bonusAmount.toLocaleString()} kwa ${getBizName(ref.referrer_business_id)}?`))return;
+    
+    try{
+      // Update referral status
+      await supabase.from('referrals').update({
+        status:'approved',
+        bonus_amount:config.bonusAmount,
+        approved_by:user?.id,
+        approved_at:new Date().toISOString(),
+      }).eq('id',ref.id);
+
+      // Apply bonus to referrer's next payment (store as credit)
+      const referrer=businesses.find(b=>b.id===ref.referrer_business_id);
+      if(referrer){
+        const currentCredit=referrer.referral_credit||0;
+        await supabase.from('businesses').update({referral_credit:currentCredit+config.bonusAmount}).eq('id',ref.referrer_business_id);
+      }
+
+      // Notify referrer
+      const phone=getBizPhone(ref.referrer_business_id);
+      const email=getBizEmail(ref.referrer_business_id);
+      const name=getBizName(ref.referrer_business_id);
+      
+      if(phone){
+        sendSMS(phone,`DUKA LANGU\n🎉 HONGERA ${name}!\n\nUmepata BONUS ya TZS ${config.bonusAmount.toLocaleString()} kwa kumkaribisha rafiki.\n\nMwezi unaofuata utalipa TZS ${(15000-config.bonusAmount).toLocaleString()} badala ya TZS 15,000.\n\nAsante!`);
+      }
+      if(email){
+        sendMail(email,'🎉 BONUS YA REFERRAL — Duka Langu','generic',{
+          customerName:name,
+          title:'🎉 Hongera! Umepata Bonus',
+          message:`Umepata BONUS ya TZS ${config.bonusAmount.toLocaleString()} kwa kumkaribisha rafiki kwenye Duka Langu. Mwezi unaofuata utalipa TZS ${(15000-config.bonusAmount).toLocaleString()} badala ya TZS 15,000.`,
+        });
+      }
+      
+      alert('✅ Bonus imethibitishwa!');
+      loadReferrals();
+    }catch(e){alert('Tatizo: '+e.message)}
+  };
+
+  // Reject
+  const rejectReferral=async(ref,reason)=>{
+    if(!reason)reason=prompt('Sababu ya kukataa:');
+    if(!reason)return;
+    try{
+      await supabase.from('referrals').update({status:'rejected',reject_reason:reason,approved_by:user?.id}).eq('id',ref.id);
+      alert('Imekataliwa.');
+      loadReferrals();
+    }catch(e){alert('Tatizo: '+e.message)}
+  };
+
+  // Filter referrals
+  const filtered=referrals.filter(r=>{
+    if(filter!=='all'&&r.status!==filter)return false;
+    if(search){
+      const rName=getBizName(r.referrer_business_id).toLowerCase();
+      const nName=getBizName(r.referred_business_id).toLowerCase();
+      if(!rName.includes(search.toLowerCase())&&!nName.includes(search.toLowerCase()))return false;
+    }
+    return true;
+  });
+
+  return <div>
+    <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
+      <div>
+        <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎁 Ofa ya Referral</h2>
+        <p style={{fontSize:12,color:'#64748B',margin:0}}>Simamia bonus za wateja wanaowakaribisha wengine</p>
+      </div>
+      <button onClick={()=>setShowConfig(true)} style={{padding:'10px 18px',borderRadius:12,border:'2px solid #8B5CF6',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer'}}>
+        ⚙️ Mipangilio
+      </button>
+    </div>
+
+    {/* STATS */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:18}}>
+      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #0B7A3B'}}>
+        <div style={{fontSize:32}}>🎁</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>JUMLA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B'}}>{stats.totalReferrals}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>referrals</div>
+      </div>
+      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #F59E0B'}}>
+        <div style={{fontSize:32}}>⏳</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>WANAOSUBIRI</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B'}}>{stats.pendingApprovals}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>thibitisho</div>
+      </div>
+      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #22C55E'}}>
+        <div style={{fontSize:32}}>✅</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>ZILIZOIDHINISHWA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>{stats.activeRefs}</div>
+      </div>
+      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #3B82F6'}}>
+        <div style={{fontSize:32}}>💰</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>BONUS ZIMETOLEWA</div>
+        <div style={{fontSize:18,fontWeight:900,color:'#3B82F6'}}>{(stats.totalBonusGiven).toLocaleString()}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>TZS</div>
+      </div>
+    </div>
+
+    {/* OFFER PREVIEW */}
+    <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:16,padding:20,marginBottom:14,color:'#fff'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+        <div>
+          <div style={{fontSize:11,fontWeight:700,opacity:0.85,letterSpacing:1,marginBottom:6}}>OFA INAYOENDESHWA SASA:</div>
+          <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 6px'}}>🎉 OFA MAALUM — Karibisha Rafiki!</h3>
+          <p style={{fontSize:13,opacity:0.95,margin:0}}>
+            Mteja akimkaribisha rafiki anayejisajili na kulipa TZS {config.minPaymentForBonus.toLocaleString()},<br/>
+            anapata <b>BONUS ya TZS {config.bonusAmount.toLocaleString()}</b> mwezi unaofuata.
+          </p>
+        </div>
+        <div style={{background:'rgba(255,255,255,0.2)',padding:'12px 18px',borderRadius:12,textAlign:'center'}}>
+          <div style={{fontSize:11,opacity:0.85}}>Bei Anayolipa</div>
+          <div style={{fontSize:28,fontWeight:900}}>TZS {(15000-config.bonusAmount).toLocaleString()}</div>
+          <div style={{fontSize:10,opacity:0.7,textDecoration:'line-through'}}>TZS 15,000</div>
+        </div>
+      </div>
+    </div>
+
+    {/* SEARCH & FILTER */}
+    <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+      <input type="text" placeholder="🔍 Tafuta jina la mteja..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180,padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
+      <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,cursor:'pointer'}}>
+        <option value="all">Zote</option>
+        <option value="pending">⏳ Wanaosubiri</option>
+        <option value="approved">✅ Zilizoidhinishwa</option>
+        <option value="rejected">❌ Zilizokataliwa</option>
+      </select>
+      <button onClick={loadReferrals} disabled={loading} style={{padding:'10px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',cursor:'pointer',fontSize:13,fontWeight:600}}>{loading?'⏳':'🔄'} Refresh</button>
+    </div>
+
+    {/* REFERRALS LIST */}
+    <div className="card" style={{padding:0,overflow:'hidden'}}>
+      <div style={{maxHeight:600,overflowY:'auto'}}>
+        {filtered.length?filtered.map(ref=>{
+          const referrerName=getBizName(ref.referrer_business_id);
+          const referredName=getBizName(ref.referred_business_id);
+          const elig=checkEligible(ref.referrer_business_id);
+          const sColor=ref.status==='approved'?'#22C55E':ref.status==='rejected'?'#EF4444':'#F59E0B';
+          const sLabel=ref.status==='approved'?'✅ Imethibitishwa':ref.status==='rejected'?'❌ Imekataliwa':'⏳ Inasubiri';
+          
+          return <div key={ref.id} style={{padding:'14px 16px',borderBottom:'1px solid #F1F5F9'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+              <div style={{flex:1,minWidth:240}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,flexWrap:'wrap'}}>
+                  <span style={{background:sColor+'20',color:sColor,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>{sLabel}</span>
+                  {ref.status==='pending'&&!elig.eligible&&<span style={{background:'#FEE2E2',color:'#991B1B',padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>⚠️ {elig.reason}</span>}
+                </div>
+                <div style={{fontSize:13,marginBottom:4}}>
+                  <b style={{color:'#0B7A3B'}}>{referrerName}</b>
+                  <span style={{color:'#94A3B8',margin:'0 8px'}}>→ alikaribisha →</span>
+                  <b style={{color:'#3B82F6'}}>{referredName}</b>
+                </div>
+                <div style={{fontSize:11,color:'#64748B'}}>
+                  📅 {fmtDate(ref.created_at)}
+                  {ref.bonus_amount>0&&<span style={{marginLeft:10}}>💰 Bonus: <b>TZS {ref.bonus_amount.toLocaleString()}</b></span>}
+                  {ref.reject_reason&&<span style={{marginLeft:10,color:'#EF4444'}}>💬 {ref.reject_reason}</span>}
+                </div>
+              </div>
+              {ref.status==='pending'&&<div style={{display:'flex',gap:6}}>
+                <button onClick={()=>approveReferral(ref)} disabled={!elig.eligible} style={{padding:'8px 14px',borderRadius:8,border:'none',background:elig.eligible?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:700,fontSize:12,cursor:elig.eligible?'pointer':'not-allowed'}}>✓ Thibitisha</button>
+                <button onClick={()=>rejectReferral(ref)} style={{padding:'8px 14px',borderRadius:8,border:'1.5px solid #EF4444',background:'#fff',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>✗ Kataa</button>
+              </div>}
+            </div>
+          </div>;
+        }):<Empty icon="🎁" text="Hakuna referrals bado"/>}
+      </div>
+    </div>
+
+    {/* CONFIG MODAL */}
+    {showConfig&&<Modal open onClose={()=>setShowConfig(false)} title="⚙️ Mipangilio ya Ofa">
+      <div style={{background:'#F5F3FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#5B21B6'}}>
+        💡 Hapa unaweza kubadilisha vigezo vya ofa ya referral
+      </div>
+      
+      <Input label="💰 Kiasi cha Bonus (TZS)" type="number" value={config.bonusAmount} onChange={e=>setConfig({...config,bonusAmount:+e.target.value||0})}/>
+      <Input label="📅 Miezi ya Chini Kabla ya Kustahili (Mteja wa muda mfupi hawastahili)" type="number" value={config.minMonthsBeforeEligible} onChange={e=>setConfig({...config,minMonthsBeforeEligible:+e.target.value||0})}/>
+      <Input label="💳 Malipo ya Chini ya Rafiki Anayejisajili" type="number" value={config.minPaymentForBonus} onChange={e=>setConfig({...config,minPaymentForBonus:+e.target.value||0})}/>
+      
+      <div style={{padding:'12px',background:'#F0FDF4',borderRadius:10,marginTop:10,marginBottom:14,border:'1px solid #BBF7D0'}}>
+        <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
+          <input type="checkbox" checked={config.autoApprove} onChange={e=>setConfig({...config,autoApprove:e.target.checked})} style={{width:18,height:18}}/>
+          <div>
+            <div style={{fontWeight:700,fontSize:13}}>✨ Auto-Approve</div>
+            <div style={{fontSize:11,color:'#15803D'}}>Thibitisha bonus automatic mteja rafiki akilipa</div>
+          </div>
+        </label>
+      </div>
+      
+      <button onClick={saveConfig} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
+        💾 Hifadhi Mipangilio
+      </button>
+    </Modal>}
+  </div>;
+}

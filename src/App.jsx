@@ -5,7 +5,7 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage} from './pages/office/OfficePages';
@@ -21,6 +21,7 @@ const MENUS={
     {id:'activity',icon:IC.clock,label:'Activity'},
     {id:'tokens',icon:IC.key,label:'Tokens'},
     {id:'promo',icon:IC.gift,label:'Mawakala'},
+    {id:'referrals',icon:IC.gift,label:'🎁 Ofa Maalum'},
     {id:'partners',icon:IC.people,label:'Washirika'},
     {id:'tickets',icon:IC.bell,label:'Tickets'},
     {id:'info_requests',icon:IC.file,label:'📝 Ombi za Mabadiliko'},
@@ -175,6 +176,7 @@ export default function App(){
         case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'info_requests':return <InfoRequestsPage/>;
+        case'referrals':return <ReferralManagementPage/>;
         case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
         case'templates':return <EmailTemplatesPage/>;case'messaging':return <MessagingPage/>;
         case'reports':return <AdminReportsPage/>;
