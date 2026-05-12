@@ -299,21 +299,49 @@ export function AppProvider({children}){
   const processReturn=useCallback(async(saleId,items,reason)=>{
     if(!bizId)return null;
     const sale=sales.find(s=>s.id===saleId);if(!sale)return null;
-    const refundTotal=items.reduce((s,i)=>s+i.qty*i.price,0);
-    const ret={business_id:bizId,sale_id:saleId,items,reason,refund_amount:refundTotal,processed_by:user?.id,status:'completed'};
+    // Calculate refund considering fractions (½ kg of 10K = 5K refund)
+    const refundTotal=items.reduce((s,i)=>s+i.qty*i.price*(i.fraction||1),0);
+    const ret={business_id:bizId,sale_id:saleId,items,reason,refund_amount:refundTotal,processed_by:user?.id,status:'completed',customer_id:sale.customer_id||null,was_credit:sale.payment_method==='credit'};
     const saved=await safeInsert('returns',ret);
     const final=saved||{...ret,id:genId(),created_at:nowISO()};
     setReturns(prev=>[final,...prev]);
-    // Restore stock
+    
+    // Restore stock (accounting for fractions)
     for(const item of items){
       const prod=products.find(p=>p.id===item.productId);
-      if(prod){const nq=prod.quantity+item.qty;await safeUpdate('products',{quantity:nq},'id',item.productId);
-        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'return',quantity_before:prod.quantity,quantity_change:item.qty,quantity_after:nq,user_id:user?.id,note:`Return from sale #${saleId?.slice(0,8)}`});
+      if(prod){
+        // Stock to restore: qty * fraction (e.g., 1 × ½ = 0.5 kg back to stock)
+        const stockBack=item.qty*(item.fraction||1);
+        const nq=prod.quantity+stockBack;
+        await safeUpdate('products',{quantity:nq},'id',item.productId);
+        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'return',quantity_before:prod.quantity,quantity_change:stockBack,quantity_after:nq,user_id:user?.id,note:`Rudisha kutoka mauzo #${saleId?.slice(0,8)} - ${reason}`});
         setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
       }
     }
+    
+    // If sale was on credit, reduce customer's debt by refund amount
+    if(sale.payment_method==='credit'&&sale.customer_id){
+      const cust=customers.find(c=>c.id===sale.customer_id);
+      if(cust){
+        const newBalance=Math.max(0,(cust.credit_balance||0)-refundTotal);
+        const newTotalSpent=Math.max(0,(cust.total_spent||0)-refundTotal);
+        await safeUpdate('customers',{credit_balance:newBalance,total_spent:newTotalSpent},'id',sale.customer_id);
+        setCust(prev=>prev.map(c=>c.id===sale.customer_id?{...c,credit_balance:newBalance,total_spent:newTotalSpent}:c));
+        // Record in credit history
+        await safeInsert('credit_transactions',{business_id:bizId,customer_id:sale.customer_id,type:'refund',amount:refundTotal,balance_after:newBalance,note:`Rudisha bidhaa - ${reason}`,recorded_by:user?.id});
+      }
+    }else if(sale.customer_id){
+      // For cash sales, just reduce total_spent
+      const cust=customers.find(c=>c.id===sale.customer_id);
+      if(cust){
+        const newTotalSpent=Math.max(0,(cust.total_spent||0)-refundTotal);
+        await safeUpdate('customers',{total_spent:newTotalSpent},'id',sale.customer_id);
+        setCust(prev=>prev.map(c=>c.id===sale.customer_id?{...c,total_spent:newTotalSpent}:c));
+      }
+    }
+    
     return final;
-  },[bizId,user,products,sales]);
+  },[bizId,user,products,sales,customers]);
 
   // ===== EXPENSES =====
   const addExpense=useCallback(async(exp)=>{if(!bizId)return;const d=await safeInsert('expenses',{...exp,business_id:bizId,branch_id:activeBranch||null,recorded_by:user?.id});setExp(prev=>[d||{...exp,id:genId(),business_id:bizId,created_at:nowISO()},...prev])},[bizId,activeBranch,user]);

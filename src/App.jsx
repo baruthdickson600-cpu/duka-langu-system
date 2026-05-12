@@ -8,7 +8,7 @@ import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
-import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage} from './pages/office/OfficePages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -64,6 +64,7 @@ const MENUS={
   office:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'products',icon:IC.box,label:'Bidhaa'},
+    {id:'analytics',icon:IC.chart,label:'📊 Uchambuzi'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
     {id:'returns',icon:IC.refresh,label:'Rudisha'},
     {id:'reports',icon:IC.chart,label:'Ripoti'},
@@ -227,6 +228,7 @@ export default function App(){
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
       case'customers':return <CustomersPage/>;
+      case'analytics':return <ProductAnalyticsPage/>;
       case'referral':return <ReferralPage/>;
       case'support':return <SupportPage/>;
       case'notifications':return <NotifsPage/>;
