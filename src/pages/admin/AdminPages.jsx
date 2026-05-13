@@ -1477,23 +1477,25 @@ export function InfoRequestsPage(){
 }
 
 // ===== REFERRAL MANAGEMENT PAGE (Admin) =====
+
+// ===== REFERRAL MANAGEMENT — Tier-Based Token System (Admin Manual) =====
 export function ReferralManagementPage(){
-  const{businesses,supabase,user,sendMail,sendSMS,settings}=useApp();
+  const{businesses,supabase,user,sendMail,sendSMS}=useApp();
   const[referrals,setReferrals]=useState([]);
   const[loading,setLoading]=useState(false);
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState('all');
   const[showConfig,setShowConfig]=useState(false);
-  const[config,setConfig]=useState({
-    bonusAmount:5000,
-    freeWeekForReferred:true,
-    minMonthsBeforeEligible:1,
-    minPaymentForBonus:15000,
-    autoApprove:false,
-  });
-  const[stats,setStats]=useState({totalReferrals:0,pendingApprovals:0,totalBonusGiven:0,activeRefs:0});
+  const[showTokenModal,setShowTokenModal]=useState(null);
+  const[showDetail,setShowDetail]=useState(null);
+  
+  // Default tier configuration
+  const[tiers,setTiers]=useState([
+    {id:1,minRefs:1,tokenValue:5000,label:'Bronze',color:'#CD7F32',icon:'🥉',desc:'Mteja 1 ameleta'},
+    {id:2,minRefs:2,tokenValue:10000,label:'Silver',color:'#94A3B8',icon:'🥈',desc:'Wateja 2 wameleta'},
+    {id:3,minRefs:3,tokenValue:15000,label:'Gold (BURE)',color:'#FFD700',icon:'🥇',desc:'Wateja 3 wameleta — Mwezi BURE!'},
+  ]);
 
-  // Load config + referrals
   useEffect(()=>{
     loadConfig();
     loadReferrals();
@@ -1501,8 +1503,11 @@ export function ReferralManagementPage(){
 
   const loadConfig=async()=>{
     try{
-      const{data}=await supabase.from('settings').select('value').eq('key','referral_config').maybeSingle();
-      if(data?.value){const c=JSON.parse(data.value);setConfig(c)}
+      const{data}=await supabase.from('settings').select('value').eq('key','referral_tiers').maybeSingle();
+      if(data?.value){
+        const t=JSON.parse(data.value);
+        if(Array.isArray(t)&&t.length)setTiers(t);
+      }
     }catch(e){}
   };
 
@@ -1510,237 +1515,307 @@ export function ReferralManagementPage(){
     setLoading(true);
     try{
       const{data}=await supabase.from('referrals').select('*').order('created_at',{ascending:false});
-      const refs=data||[];
-      setReferrals(refs);
-      // Calculate stats
-      setStats({
-        totalReferrals:refs.length,
-        pendingApprovals:refs.filter(r=>r.status==='pending').length,
-        totalBonusGiven:refs.filter(r=>r.status==='approved').reduce((s,r)=>s+(r.bonus_amount||0),0),
-        activeRefs:refs.filter(r=>r.status==='approved').length,
-      });
-    }catch(e){console.error('Load refs:',e)}
+      setReferrals(data||[]);
+    }catch(e){console.error(e)}
     setLoading(false);
   };
 
   const saveConfig=async()=>{
     try{
-      await supabase.from('settings').upsert({key:'referral_config',value:JSON.stringify(config)});
-      alert('✅ Mipangilio imehifadhiwa!');
+      await supabase.from('settings').upsert({key:'referral_tiers',value:JSON.stringify(tiers)});
+      alert('✅ Mipangilio ya tiers imehifadhiwa!');
       setShowConfig(false);
     }catch(e){alert('Tatizo: '+e.message)}
   };
 
-  // Get business names by ID
-  const getBizName=id=>businesses.find(b=>b.id===id)?.name||'Haijulikani';
-  const getBizPhone=id=>businesses.find(b=>b.id===id)?.phone||'';
-  const getBizEmail=id=>businesses.find(b=>b.id===id)?.email||'';
+  // Get business info
+  const getBiz=id=>businesses.find(b=>b.id===id);
 
-  // Check eligibility
-  const checkEligible=(refBy)=>{
-    const referrer=businesses.find(b=>b.id===refBy);
-    if(!referrer)return{eligible:false,reason:'Mteja hajulikani'};
-    // Check how long they've been using the system
-    const createdDate=new Date(referrer.created_at);
-    const monthsActive=(Date.now()-createdDate)/(30*86400000);
-    if(monthsActive<config.minMonthsBeforeEligible)return{eligible:false,reason:`Bado hajatumia mfumo kwa mwezi ${config.minMonthsBeforeEligible}+`};
-    if(!referrer.token_active)return{eligible:false,reason:'Mteja amefungwa au yuko trial'};
-    return{eligible:true,reason:'Anaweza kupata bonus'};
+  // Group referrals by referrer
+  const referrerStats=React.useMemo(()=>{
+    const map={};
+    referrals.forEach(r=>{
+      const rid=r.referrer_business_id;
+      if(!map[rid]){
+        const biz=getBiz(rid);
+        if(!biz)return;
+        map[rid]={
+          businessId:rid,
+          businessName:biz.name,
+          phone:biz.phone,
+          email:biz.email,
+          allRefs:[],
+          confirmedCount:0,
+          pendingCount:0,
+          tokenGenerated:false,
+        };
+      }
+      map[rid]?.allRefs.push(r);
+      if(r.status==='confirmed'||r.status==='token_issued')map[rid].confirmedCount++;
+      if(r.status==='pending')map[rid].pendingCount++;
+      if(r.status==='token_issued')map[rid].tokenGenerated=true;
+    });
+    return Object.values(map).sort((a,b)=>b.confirmedCount-a.confirmedCount);
+  },[referrals,businesses]);
+
+  // Calculate which tier a referrer qualifies for
+  const getCurrentTier=(count)=>{
+    // Find highest tier where minRefs <= count
+    return [...tiers].reverse().find(t=>count>=t.minRefs);
   };
 
-  // Approve a referral (give bonus)
-  const approveReferral=async(ref)=>{
-    if(!confirm(`Thibitisha bonus ya TZS ${config.bonusAmount.toLocaleString()} kwa ${getBizName(ref.referrer_business_id)}?`))return;
-    
+  // Mark referral as "Confirmed" by admin (rafiki amelipa na unathibitisha)
+  const confirmReferral=async(ref)=>{
+    if(!confirm(`Thibitisha kuwa ${getBiz(ref.referred_business_id)?.name} amelipa kwa ushawishi wa ${getBiz(ref.referrer_business_id)?.name}?`))return;
     try{
-      // Update referral status
       await supabase.from('referrals').update({
-        status:'approved',
-        bonus_amount:config.bonusAmount,
-        approved_by:user?.id,
-        approved_at:new Date().toISOString(),
+        status:'confirmed',
+        confirmed_by:user?.id,
+        confirmed_at:new Date().toISOString(),
       }).eq('id',ref.id);
-
-      // Apply bonus to referrer's next payment (store as credit)
-      const referrer=businesses.find(b=>b.id===ref.referrer_business_id);
-      if(referrer){
-        const currentCredit=referrer.referral_credit||0;
-        await supabase.from('businesses').update({referral_credit:currentCredit+config.bonusAmount}).eq('id',ref.referrer_business_id);
-      }
-
-      // Notify referrer
-      const phone=getBizPhone(ref.referrer_business_id);
-      const email=getBizEmail(ref.referrer_business_id);
-      const name=getBizName(ref.referrer_business_id);
-      
-      if(phone){
-        sendSMS(phone,`DUKA LANGU\n🎉 HONGERA ${name}!\n\nUmepata BONUS ya TZS ${config.bonusAmount.toLocaleString()} kwa kumkaribisha rafiki.\n\nMwezi unaofuata utalipa TZS ${(15000-config.bonusAmount).toLocaleString()} badala ya TZS 15,000.\n\nAsante!`);
-      }
-      if(email){
-        sendMail(email,'🎉 BONUS YA REFERRAL — Duka Langu','generic',{
-          customerName:name,
-          title:'🎉 Hongera! Umepata Bonus',
-          message:`Umepata BONUS ya TZS ${config.bonusAmount.toLocaleString()} kwa kumkaribisha rafiki kwenye Duka Langu. Mwezi unaofuata utalipa TZS ${(15000-config.bonusAmount).toLocaleString()} badala ya TZS 15,000.`,
-        });
-      }
-      
-      alert('✅ Bonus imethibitishwa!');
+      alert('✅ Imethibitishwa!');
       loadReferrals();
     }catch(e){alert('Tatizo: '+e.message)}
   };
 
   // Reject
-  const rejectReferral=async(ref,reason)=>{
-    if(!reason)reason=prompt('Sababu ya kukataa:');
+  const rejectReferral=async(ref)=>{
+    const reason=prompt('Sababu ya kukataa:');
     if(!reason)return;
     try{
-      await supabase.from('referrals').update({status:'rejected',reject_reason:reason,approved_by:user?.id}).eq('id',ref.id);
+      await supabase.from('referrals').update({status:'rejected',reject_reason:reason,confirmed_by:user?.id}).eq('id',ref.id);
       alert('Imekataliwa.');
       loadReferrals();
     }catch(e){alert('Tatizo: '+e.message)}
   };
 
-  // Filter referrals
-  const filtered=referrals.filter(r=>{
-    if(filter!=='all'&&r.status!==filter)return false;
-    if(search){
-      const rName=getBizName(r.referrer_business_id).toLowerCase();
-      const nName=getBizName(r.referred_business_id).toLowerCase();
-      if(!rName.includes(search.toLowerCase())&&!nName.includes(search.toLowerCase()))return false;
+  // Generate token for a referrer based on their tier
+  const generateToken=async(stat)=>{
+    const tier=getCurrentTier(stat.confirmedCount);
+    if(!tier)return alert('Mteja huyu hajafikia kiwango chochote bado.');
+    
+    if(!confirm(`Toa TOKEN ya TZS ${tier.tokenValue.toLocaleString()} (${tier.icon} ${tier.label}) kwa ${stat.businessName}?\n\nMteja ana ushawishi wa wateja ${stat.confirmedCount}.`))return;
+    
+    // Generate unique token code
+    const tokenCode='REF-'+Math.random().toString(36).substring(2,8).toUpperCase()+'-'+Date.now().toString(36).toUpperCase();
+    
+    try{
+      // Save token
+      const{data:tokenData,error:tokenErr}=await supabase.from('referral_tokens').insert({
+        token_code:tokenCode,
+        business_id:stat.businessId,
+        value:tier.tokenValue,
+        tier:tier.label,
+        ref_count:stat.confirmedCount,
+        status:'active',
+        issued_by:user?.id,
+        used:false,
+      }).select().maybeSingle();
+      
+      if(tokenErr)throw tokenErr;
+      
+      // Mark all confirmed referrals as "token_issued"
+      const confirmedIds=stat.allRefs.filter(r=>r.status==='confirmed').map(r=>r.id);
+      if(confirmedIds.length){
+        await supabase.from('referrals').update({
+          status:'token_issued',
+          token_code:tokenCode,
+        }).in('id',confirmedIds);
+      }
+      
+      // Notify customer via SMS
+      if(stat.phone){
+        const msg=tier.tokenValue>=15000?
+          `DUKA LANGU\n🎉 HONGERA ${stat.businessName}!\n\nUmepata TOKEN YA MWEZI BURE kwa kuleta wateja ${stat.confirmedCount}!\n\nToken: ${tokenCode}\nThamani: TZS ${tier.tokenValue.toLocaleString()}\nKiwango: ${tier.icon} ${tier.label}\n\nTumia kufungua mfumo BILA MALIPO mwezi unaofuata!\nAsante!`:
+          `DUKA LANGU\n🎉 HONGERA ${stat.businessName}!\n\nUmepata TOKEN ya TZS ${tier.tokenValue.toLocaleString()} kwa kuleta wateja ${stat.confirmedCount}!\n\nToken: ${tokenCode}\nKiwango: ${tier.icon} ${tier.label}\n\nTumia kupunguza ada yako mwezi unaofuata.\nAsante!`;
+        sendSMS(stat.phone,msg);
+      }
+      
+      // Notify customer via Email
+      if(stat.email){
+        sendMail(stat.email,`🎉 TOKEN YAKO TAYARI — ${tier.label}`,'generic',{
+          customerName:stat.businessName,
+          title:`🎉 Hongera! Umepata Token ${tier.icon}`,
+          message:`Kwa kuleta wateja ${stat.confirmedCount} kwenye Duka Langu, umepata TOKEN ya kiwango cha ${tier.label}.\n\nToken Code: ${tokenCode}\nThamani: TZS ${tier.tokenValue.toLocaleString()}\n\n${tier.tokenValue>=15000?'Token hii itakufungulia mfumo BURE mwezi unaofuata!':'Tumia token hii kupunguza ada ya mwezi unaofuata.'}`,
+        });
+      }
+      
+      alert(`✅ Token imetolewa!\n\nCode: ${tokenCode}\nThamani: TZS ${tier.tokenValue.toLocaleString()}`);
+      setShowTokenModal(null);
+      loadReferrals();
+    }catch(e){
+      alert('Tatizo: '+e.message);
     }
+  };
+
+  // Filter
+  const filteredStats=referrerStats.filter(s=>{
+    if(filter==='ready'&&s.confirmedCount===0)return false;
+    if(filter==='pending'&&s.pendingCount===0)return false;
+    if(filter==='gold'&&s.confirmedCount<3)return false;
+    if(search&&!s.businessName?.toLowerCase().includes(search.toLowerCase()))return false;
     return true;
   });
+
+  // Overall stats
+  const totalConfirmed=referrals.filter(r=>r.status==='confirmed'||r.status==='token_issued').length;
+  const totalPending=referrals.filter(r=>r.status==='pending').length;
+  const totalTokensIssued=referrals.filter(r=>r.status==='token_issued').length;
 
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
       <div>
-        <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎁 Ofa ya Referral</h2>
-        <p style={{fontSize:12,color:'#64748B',margin:0}}>Simamia bonus za wateja wanaowakaribisha wengine</p>
+        <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎁 Ofa ya Karibisha Rafiki</h2>
+        <p style={{fontSize:12,color:'#64748B',margin:0}}>Wewe ndio unaamua na kutoa tokens — sio automatic</p>
       </div>
       <button onClick={()=>setShowConfig(true)} style={{padding:'10px 18px',borderRadius:12,border:'2px solid #8B5CF6',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer'}}>
         ⚙️ Mipangilio
       </button>
     </div>
 
+    {/* TIERS DISPLAY */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:12,marginBottom:18}}>
+      {tiers.map(t=><div key={t.id} className="card" style={{padding:16,textAlign:'center',borderTop:`4px solid ${t.color}`,background:`linear-gradient(135deg,#fff,${t.color}10)`}}>
+        <div style={{fontSize:36,marginBottom:6}}>{t.icon}</div>
+        <div style={{fontSize:11,fontWeight:800,color:t.color,letterSpacing:1,marginBottom:4}}>{t.label.toUpperCase()}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#1E293B',marginBottom:4}}>TZS {t.tokenValue.toLocaleString()}</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>{t.desc}</div>
+      </div>)}
+    </div>
+
     {/* STATS */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:18}}>
-      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #0B7A3B'}}>
-        <div style={{fontSize:32}}>🎁</div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>JUMLA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B'}}>{stats.totalReferrals}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>referrals</div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:14}}>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #F59E0B'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>WANAOSUBIRI</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B'}}>{totalPending}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>kuthibitishwa</div>
       </div>
-      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #F59E0B'}}>
-        <div style={{fontSize:32}}>⏳</div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>WANAOSUBIRI</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B'}}>{stats.pendingApprovals}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>thibitisho</div>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #22C55E'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>ZILIZOTHIBITISHWA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>{totalConfirmed}</div>
       </div>
-      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #22C55E'}}>
-        <div style={{fontSize:32}}>✅</div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>ZILIZOIDHINISHWA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>{stats.activeRefs}</div>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #0B7A3B'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>TOKENS ZIMETOLEWA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B'}}>{totalTokensIssued}</div>
       </div>
-      <div className="card" style={{padding:'16px 14px',textAlign:'center',borderTop:'4px solid #3B82F6'}}>
-        <div style={{fontSize:32}}>💰</div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>BONUS ZIMETOLEWA</div>
-        <div style={{fontSize:18,fontWeight:900,color:'#3B82F6'}}>{(stats.totalBonusGiven).toLocaleString()}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>TZS</div>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #8B5CF6'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>WACHANGIAJI</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#8B5CF6'}}>{referrerStats.length}</div>
       </div>
     </div>
 
-    {/* OFFER PREVIEW */}
-    <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:16,padding:20,marginBottom:14,color:'#fff'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
-        <div>
-          <div style={{fontSize:11,fontWeight:700,opacity:0.85,letterSpacing:1,marginBottom:6}}>OFA INAYOENDESHWA SASA:</div>
-          <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 6px'}}>🎉 OFA MAALUM — Karibisha Rafiki!</h3>
-          <p style={{fontSize:13,opacity:0.95,margin:0}}>
-            Mteja akimkaribisha rafiki anayejisajili na kulipa TZS {config.minPaymentForBonus.toLocaleString()},<br/>
-            anapata <b>BONUS ya TZS {config.bonusAmount.toLocaleString()}</b> mwezi unaofuata.
-          </p>
-        </div>
-        <div style={{background:'rgba(255,255,255,0.2)',padding:'12px 18px',borderRadius:12,textAlign:'center'}}>
-          <div style={{fontSize:11,opacity:0.85}}>Bei Anayolipa</div>
-          <div style={{fontSize:28,fontWeight:900}}>TZS {(15000-config.bonusAmount).toLocaleString()}</div>
-          <div style={{fontSize:10,opacity:0.7,textDecoration:'line-through'}}>TZS 15,000</div>
-        </div>
-      </div>
-    </div>
-
-    {/* SEARCH & FILTER */}
+    {/* SEARCH */}
     <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-      <input type="text" placeholder="🔍 Tafuta jina la mteja..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:180,padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
+      <input type="text" placeholder="🔍 Tafuta mteja..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200,padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
       <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,cursor:'pointer'}}>
-        <option value="all">Zote</option>
-        <option value="pending">⏳ Wanaosubiri</option>
-        <option value="approved">✅ Zilizoidhinishwa</option>
-        <option value="rejected">❌ Zilizokataliwa</option>
+        <option value="all">Wote</option>
+        <option value="pending">⏳ Wenye Pending</option>
+        <option value="ready">✅ Wamefikia Kiwango</option>
+        <option value="gold">🥇 Gold (3+ wateja)</option>
       </select>
-      <button onClick={loadReferrals} disabled={loading} style={{padding:'10px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',cursor:'pointer',fontSize:13,fontWeight:600}}>{loading?'⏳':'🔄'} Refresh</button>
+      <button onClick={loadReferrals} disabled={loading} style={{padding:'10px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',cursor:'pointer',fontWeight:600}}>{loading?'⏳':'🔄'}</button>
     </div>
 
-    {/* REFERRALS LIST */}
+    {/* REFERRERS LIST */}
     <div className="card" style={{padding:0,overflow:'hidden'}}>
       <div style={{maxHeight:600,overflowY:'auto'}}>
-        {filtered.length?filtered.map(ref=>{
-          const referrerName=getBizName(ref.referrer_business_id);
-          const referredName=getBizName(ref.referred_business_id);
-          const elig=checkEligible(ref.referrer_business_id);
-          const sColor=ref.status==='approved'?'#22C55E':ref.status==='rejected'?'#EF4444':'#F59E0B';
-          const sLabel=ref.status==='approved'?'✅ Imethibitishwa':ref.status==='rejected'?'❌ Imekataliwa':'⏳ Inasubiri';
-          
-          return <div key={ref.id} style={{padding:'14px 16px',borderBottom:'1px solid #F1F5F9'}}>
+        {filteredStats.length?filteredStats.map(stat=>{
+          const tier=getCurrentTier(stat.confirmedCount);
+          return <div key={stat.businessId} style={{padding:'16px',borderBottom:'1px solid #F1F5F9'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-              <div style={{flex:1,minWidth:240}}>
+              <div style={{flex:1,minWidth:200}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,flexWrap:'wrap'}}>
-                  <span style={{background:sColor+'20',color:sColor,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>{sLabel}</span>
-                  {ref.status==='pending'&&!elig.eligible&&<span style={{background:'#FEE2E2',color:'#991B1B',padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>⚠️ {elig.reason}</span>}
-                </div>
-                <div style={{fontSize:13,marginBottom:4}}>
-                  <b style={{color:'#0B7A3B'}}>{referrerName}</b>
-                  <span style={{color:'#94A3B8',margin:'0 8px'}}>→ alikaribisha →</span>
-                  <b style={{color:'#3B82F6'}}>{referredName}</b>
+                  <span style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>{stat.businessName}</span>
+                  {tier&&<span style={{background:tier.color+'20',color:tier.color,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:800}}>{tier.icon} {tier.label.toUpperCase()}</span>}
+                  {stat.pendingCount>0&&<span style={{background:'#FEF3C7',color:'#92400E',padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>⏳ {stat.pendingCount} pending</span>}
                 </div>
                 <div style={{fontSize:11,color:'#64748B'}}>
-                  📅 {fmtDate(ref.created_at)}
-                  {ref.bonus_amount>0&&<span style={{marginLeft:10}}>💰 Bonus: <b>TZS {ref.bonus_amount.toLocaleString()}</b></span>}
-                  {ref.reject_reason&&<span style={{marginLeft:10,color:'#EF4444'}}>💬 {ref.reject_reason}</span>}
+                  📞 {stat.phone||'—'} • 📧 {stat.email||'—'}
+                </div>
+                <div style={{display:'flex',gap:14,marginTop:8,fontSize:12}}>
+                  <span><b style={{color:'#22C55E'}}>{stat.confirmedCount}</b> wamethibitishwa</span>
+                  <span>⏳ <b style={{color:'#F59E0B'}}>{stat.pendingCount}</b> wanasubiri</span>
+                  <span>📊 Jumla: <b>{stat.allRefs.length}</b></span>
                 </div>
               </div>
-              {ref.status==='pending'&&<div style={{display:'flex',gap:6}}>
-                <button onClick={()=>approveReferral(ref)} disabled={!elig.eligible} style={{padding:'8px 14px',borderRadius:8,border:'none',background:elig.eligible?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:700,fontSize:12,cursor:elig.eligible?'pointer':'not-allowed'}}>✓ Thibitisha</button>
-                <button onClick={()=>rejectReferral(ref)} style={{padding:'8px 14px',borderRadius:8,border:'1.5px solid #EF4444',background:'#fff',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>✗ Kataa</button>
-              </div>}
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                <button onClick={()=>setShowDetail(stat)} style={{padding:'8px 14px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>👁️ Tazama</button>
+                {tier&&!stat.tokenGenerated&&<button onClick={()=>generateToken(stat)} style={{padding:'8px 14px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${tier.color},${tier.color}CC)`,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',boxShadow:`0 4px 12px ${tier.color}40`}}>🎁 Toa Token</button>}
+                {stat.tokenGenerated&&<span style={{padding:'8px 14px',borderRadius:8,background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12}}>✅ Token Imetolewa</span>}
+              </div>
             </div>
           </div>;
         }):<Empty icon="🎁" text="Hakuna referrals bado"/>}
       </div>
     </div>
 
+    {/* DETAIL MODAL */}
+    {showDetail&&<Modal open onClose={()=>setShowDetail(null)} title={`📋 ${showDetail.businessName} — Referrals`} wide>
+      <div style={{background:'#EFF6FF',borderRadius:10,padding:'12px 16px',marginBottom:14,fontSize:12,color:'#1E40AF'}}>
+        💡 Hakikisha mteja huyu kweli alimkaribisha kwa kuwasiliana naye kabla ya kuthibitisha.
+      </div>
+      <div style={{maxHeight:400,overflowY:'auto'}}>
+        {showDetail.allRefs.map(ref=>{
+          const referred=getBiz(ref.referred_business_id);
+          const sColor=ref.status==='confirmed'?'#22C55E':ref.status==='token_issued'?'#0B7A3B':ref.status==='rejected'?'#EF4444':'#F59E0B';
+          const sLabel=ref.status==='confirmed'?'✅ Imethibitishwa':ref.status==='token_issued'?'🎁 Token Imetolewa':ref.status==='rejected'?'❌ Imekataliwa':'⏳ Inasubiri';
+          return <div key={ref.id} style={{padding:12,background:'#F8FAFC',borderRadius:10,marginBottom:8,border:`1px solid ${sColor}30`}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+              <div style={{flex:1,minWidth:200}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{referred?.name||'Haijulikani'}</div>
+                <div style={{fontSize:11,color:'#64748B'}}>
+                  📞 {referred?.phone||'—'} • 📧 {referred?.email||'—'}
+                </div>
+                <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>📅 {fmtDate(ref.created_at)}</div>
+                {referred&&<div style={{fontSize:11,marginTop:4}}>
+                  Hali: {referred.token_active?<span style={{color:'#22C55E',fontWeight:700}}>✅ Active</span>:<span style={{color:'#F59E0B',fontWeight:700}}>⏳ Trial</span>}
+                </div>}
+                {ref.reject_reason&&<div style={{fontSize:11,color:'#EF4444',marginTop:4}}>💬 {ref.reject_reason}</div>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
+                <span style={{background:sColor+'20',color:sColor,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>{sLabel}</span>
+                {ref.status==='pending'&&<div style={{display:'flex',gap:4}}>
+                  <button onClick={()=>confirmReferral(ref)} disabled={!referred?.token_active} title={!referred?.token_active?'Rafiki bado hajalipa':'Thibitisha'} style={{padding:'4px 10px',borderRadius:6,border:'none',background:referred?.token_active?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:700,fontSize:11,cursor:referred?.token_active?'pointer':'not-allowed'}}>✓</button>
+                  <button onClick={()=>rejectReferral(ref)} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #EF4444',background:'#fff',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>✗</button>
+                </div>}
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </Modal>}
+
     {/* CONFIG MODAL */}
-    {showConfig&&<Modal open onClose={()=>setShowConfig(false)} title="⚙️ Mipangilio ya Ofa">
-      <div style={{background:'#F5F3FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#5B21B6'}}>
-        💡 Hapa unaweza kubadilisha vigezo vya ofa ya referral
+    {showConfig&&<Modal open onClose={()=>setShowConfig(false)} title="⚙️ Mipangilio ya Tiers" wide>
+      <div style={{background:'#F5F3FF',borderRadius:10,padding:'12px 16px',marginBottom:14,fontSize:12,color:'#5B21B6'}}>
+        💡 Badilisha thamani za tokens kulingana na idadi ya wateja walioletwa. Mfumo utatumia hizi automatic.
       </div>
       
-      <Input label="💰 Kiasi cha Bonus (TZS)" type="number" value={config.bonusAmount} onChange={e=>setConfig({...config,bonusAmount:+e.target.value||0})}/>
-      <Input label="📅 Miezi ya Chini Kabla ya Kustahili (Mteja wa muda mfupi hawastahili)" type="number" value={config.minMonthsBeforeEligible} onChange={e=>setConfig({...config,minMonthsBeforeEligible:+e.target.value||0})}/>
-      <Input label="💳 Malipo ya Chini ya Rafiki Anayejisajili" type="number" value={config.minPaymentForBonus} onChange={e=>setConfig({...config,minPaymentForBonus:+e.target.value||0})}/>
-      
-      <div style={{padding:'12px',background:'#F0FDF4',borderRadius:10,marginTop:10,marginBottom:14,border:'1px solid #BBF7D0'}}>
-        <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
-          <input type="checkbox" checked={config.autoApprove} onChange={e=>setConfig({...config,autoApprove:e.target.checked})} style={{width:18,height:18}}/>
-          <div>
-            <div style={{fontWeight:700,fontSize:13}}>✨ Auto-Approve</div>
-            <div style={{fontSize:11,color:'#15803D'}}>Thibitisha bonus automatic mteja rafiki akilipa</div>
+      {tiers.map((t,i)=><div key={t.id} style={{padding:14,background:'#F8FAFC',borderRadius:12,marginBottom:10,border:`2px solid ${t.color}40`}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <span style={{fontSize:24}}>{t.icon}</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,color:t.color,fontSize:14}}>{t.label}</div>
+            <div style={{fontSize:11,color:'#64748B'}}>{t.desc}</div>
           </div>
-        </label>
-      </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Wateja Wanaohitajika</label>
+            <input type="number" value={t.minRefs} onChange={e=>{const nt=[...tiers];nt[i].minRefs=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Thamani ya Token (TZS)</label>
+            <input type="number" value={t.tokenValue} onChange={e=>{const nt=[...tiers];nt[i].tokenValue=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Jina la Kiwango</label>
+            <input value={t.label} onChange={e=>{const nt=[...tiers];nt[i].label=e.target.value;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+        </div>
+      </div>)}
       
-      <button onClick={saveConfig} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
-        💾 Hifadhi Mipangilio
-      </button>
+      <button onClick={saveConfig} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',marginTop:10}}>💾 Hifadhi Mipangilio</button>
     </Modal>}
   </div>;
 }
