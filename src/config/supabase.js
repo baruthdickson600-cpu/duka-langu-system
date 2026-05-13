@@ -12,6 +12,17 @@ export const supabase = createClient(URL, KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storageKey: 'duka-langu-auth-v2', // Unique key to avoid conflicts
+    lock: async (name, _acquireTimeout, fn) => {
+      // Skip the navigator lock to avoid "another request stole it" errors
+      // when multiple tabs are open
+      try {
+        return await fn();
+      } catch (e) {
+        console.warn('[Auth lock skipped]', e?.message);
+        return await fn();
+      }
+    },
   },
   global: {
     headers: {
