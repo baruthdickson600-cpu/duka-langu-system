@@ -548,10 +548,71 @@ export function ReturnsPage(){
 
 // ===== REPORTS =====
 export function ReportsPage({onReceipt}){
-  const{sales,returns,products,expenses,currency}=useApp();const fm=n=>fmtMoney(n,currency||'TZS');const[tab,setTab]=useState('day');
-  const ff=tab==='day'?isToday:tab==='week'?isThisWeek:isThisMonth;
-  const fSales=sales.filter(s=>ff(s.created_at));
-  const fReturns=(returns||[]).filter(r=>ff(r.created_at));
+  const{sales,returns,products,expenses,currency}=useApp();
+  const fm=n=>fmtMoney(n,currency||'TZS');
+  const[tab,setTab]=useState('day');
+  
+  // Custom date range
+  const today=new Date().toISOString().slice(0,10);
+  const monthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10);
+  const[customFrom,setCustomFrom]=useState(monthStart);
+  const[customTo,setCustomTo]=useState(today);
+  
+  // Filter function based on selected tab
+  const filterByDate=(dateStr)=>{
+    if(!dateStr)return false;
+    const d=new Date(dateStr);
+    if(tab==='day')return isToday(dateStr);
+    if(tab==='week')return isThisWeek(dateStr);
+    if(tab==='month')return isThisMonth(dateStr);
+    if(tab==='custom'){
+      if(!customFrom||!customTo)return false;
+      const from=new Date(customFrom+'T00:00:00');
+      const to=new Date(customTo+'T23:59:59');
+      return d>=from&&d<=to;
+    }
+    return false;
+  };
+  
+  // ===== MONTHLY STATEMENTS — Past months breakdown =====
+  const monthlyStats=React.useMemo(()=>{
+    const map={};
+    sales.forEach(s=>{
+      const ym=s.created_at?.slice(0,7);
+      if(!ym)return;
+      if(!map[ym])map[ym]={total:0,profit:0,count:0,refunds:0,refundProfit:0};
+      map[ym].total+=s.total||0;
+      map[ym].profit+=s.profit||0;
+      map[ym].count++;
+    });
+    (returns||[]).forEach(r=>{
+      const ym=r.created_at?.slice(0,7);
+      if(!ym)return;
+      if(!map[ym])map[ym]={total:0,profit:0,count:0,refunds:0,refundProfit:0};
+      map[ym].refunds+=r.refund_amount||0;
+      // Subtract profit from returns
+      (r.items||[]).forEach(item=>{
+        const prod=products.find(p=>p.id===item.productId);
+        const bp=prod?.buy_price||0;
+        map[ym].refundProfit+=item.qty*(item.price-bp)*(item.fraction||1);
+      });
+    });
+    // Convert to list, sorted DESC (latest first)
+    return Object.entries(map).map(([ym,v])=>({
+      ym,
+      label:new Date(ym+'-01').toLocaleDateString('sw-TZ',{month:'long',year:'numeric'}),
+      total:v.total,
+      profit:v.profit,
+      count:v.count,
+      refunds:v.refunds,
+      refundProfit:v.refundProfit,
+      netSales:Math.max(0,v.total-v.refunds),
+      netProfit:Math.max(0,v.profit-v.refundProfit),
+    })).sort((a,b)=>b.ym.localeCompare(a.ym));
+  },[sales,returns,products]);
+  
+  const fSales=sales.filter(s=>filterByDate(s.created_at));
+  const fReturns=(returns||[]).filter(r=>filterByDate(r.created_at));
   
   // Gross sales (before returns)
   const grossTotal=fSales.reduce((a,s)=>a+s.total,0);
@@ -571,12 +632,158 @@ export function ReportsPage({onReceipt}){
   const fTotal=Math.max(0,grossTotal-refundTotal);
   const fProfit=Math.max(0,grossProfit-refundProfit);
   
-  const fExp=expenses.filter(e=>ff(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const fExp=expenses.filter(e=>filterByDate(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const doExport=()=>{const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);exportToPDF(`Ripoti (${tab})`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`ripoti-${tab}.pdf`)};
+  
+  // Quick range setters
+  const setQuickRange=(type)=>{
+    const now=new Date();
+    let from,to;
+    if(type==='thisMonth'){
+      from=new Date(now.getFullYear(),now.getMonth(),1);
+      to=now;
+    }else if(type==='lastMonth'){
+      from=new Date(now.getFullYear(),now.getMonth()-1,1);
+      to=new Date(now.getFullYear(),now.getMonth(),0);
+    }else if(type==='last3Months'){
+      from=new Date(now.getFullYear(),now.getMonth()-3,1);
+      to=now;
+    }else if(type==='thisYear'){
+      from=new Date(now.getFullYear(),0,1);
+      to=now;
+    }else if(type==='lastYear'){
+      from=new Date(now.getFullYear()-1,0,1);
+      to=new Date(now.getFullYear()-1,11,31);
+    }
+    setCustomFrom(from.toISOString().slice(0,10));
+    setCustomTo(to.toISOString().slice(0,10));
+  };
+  
+  // Period label
+  const periodLabel=tab==='day'?'Leo':tab==='week'?'Wiki Hii':tab==='month'?'Mwezi Huu':tab==='custom'?`${customFrom} → ${customTo}`:tab==='history'?'Mahesabu ya Nyuma':'';
+  
+  // Export
+  const doExport=()=>{
+    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);
+    exportToPDF(`Ripoti — ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`ripoti-${tab}-${Date.now()}.pdf`);
+  };
+  
+  // Export monthly statement
+  const exportMonthlyStatement=(month)=>{
+    const ms=sales.filter(s=>s.created_at?.startsWith(month.ym));
+    const rows=ms.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);
+    rows.push(['','','','JUMLA',month.total.toLocaleString()]);
+    rows.push(['','','','REJESHO',`-${month.refunds.toLocaleString()}`]);
+    rows.push(['','','','HALISI',month.netSales.toLocaleString()]);
+    rows.push(['','','','FAIDA',month.netProfit.toLocaleString()]);
+    exportToPDF(`Statement — ${month.label}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`statement-${month.ym}.pdf`);
+  };
+
   return <div>
-    <Tabs tabs={[{id:'day',label:'Siku'},{id:'week',label:'Wiki'},{id:'month',label:'Mwezi'}]} active={tab} onChange={setTab}/>
+    {/* HEADER */}
+    <div style={{marginBottom:14}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>📊 Ripoti za Mauzo</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Angalia mauzo ya leo, wiki, mwezi, au chagua tarehe maalum</p>
+    </div>
+    
+    <Tabs tabs={[
+      {id:'day',label:'📅 Leo'},
+      {id:'week',label:'🗓️ Wiki'},
+      {id:'month',label:'📆 Mwezi Huu'},
+      {id:'custom',label:'🎯 Tarehe Maalum'},
+      {id:'history',label:'📚 Mahesabu ya Nyuma'},
+    ]} active={tab} onChange={setTab}/>
+    
+    {/* CUSTOM DATE RANGE PICKER */}
+    {tab==='custom'&&<div style={{background:'linear-gradient(135deg,#EFF6FF,#DBEAFE)',border:'1px solid #BFDBFE',borderRadius:14,padding:18,marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:14,color:'#1E40AF',marginBottom:12}}>🎯 Chagua Tarehe</div>
+      
+      {/* Quick range buttons */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+        {[
+          {id:'thisMonth',l:'Mwezi Huu'},
+          {id:'lastMonth',l:'Mwezi Uliopita'},
+          {id:'last3Months',l:'Miezi 3 Iliyopita'},
+          {id:'thisYear',l:'Mwaka Huu'},
+          {id:'lastYear',l:'Mwaka Uliopita'},
+        ].map(r=><button key={r.id} onClick={()=>setQuickRange(r.id)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #BFDBFE',background:'#fff',color:'#1E40AF',fontWeight:700,fontSize:11,cursor:'pointer'}}>{r.l}</button>)}
+      </div>
+      
+      {/* Manual date pickers */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+        <div>
+          <label style={{fontSize:11,fontWeight:700,color:'#1E40AF',display:'block',marginBottom:4}}>Kuanzia Tarehe:</label>
+          <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BFDBFE',fontSize:13,boxSizing:'border-box'}}/>
+        </div>
+        <div>
+          <label style={{fontSize:11,fontWeight:700,color:'#1E40AF',display:'block',marginBottom:4}}>Mpaka Tarehe:</label>
+          <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BFDBFE',fontSize:13,boxSizing:'border-box'}}/>
+        </div>
+      </div>
+      <div style={{marginTop:10,fontSize:12,color:'#1E40AF'}}>
+        📅 Statement: <b>{new Date(customFrom).toLocaleDateString('sw-TZ')}</b> mpaka <b>{new Date(customTo).toLocaleDateString('sw-TZ')}</b>
+      </div>
+    </div>}
+    
+    {/* MONTHLY HISTORY VIEW */}
+    {tab==='history'&&<div>
+      <div style={{background:'linear-gradient(135deg,#F5F3FF,#EDE9FE)',border:'1px solid #DDD6FE',borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={{fontSize:13,color:'#5B21B6',display:'flex',gap:8,alignItems:'flex-start'}}>
+          <span style={{fontSize:18}}>📚</span>
+          <span><b>Mahesabu ya Nyuma</b> — Kila mwezi una mahesabu yake. Bofya mwezi wowote kuona maelezo kamili au kupakua PDF.</span>
+        </div>
+      </div>
+      
+      {monthlyStats.length?<div style={{display:'grid',gap:10}}>
+        {monthlyStats.map((m,i)=>{
+          const isCurrent=m.ym===new Date().toISOString().slice(0,7);
+          return <div key={m.ym} className="card" style={{padding:18,border:isCurrent?'2px solid #0B7A3B':'1px solid #E2E8F0',background:isCurrent?'linear-gradient(135deg,#F0FDF4,#FFFFFF)':'#fff',transition:'all 0.3s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:12}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:48,height:48,background:isCurrent?'linear-gradient(135deg,#0B7A3B,#065F2E)':'linear-gradient(135deg,#94A3B8,#64748B)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:20}}>📅</div>
+                <div>
+                  <div style={{fontWeight:900,fontSize:16,color:'#1E293B'}}>{m.label}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>{m.count} mauzo {isCurrent&&<span style={{background:'#DCFCE7',color:'#15803D',padding:'2px 8px',borderRadius:6,marginLeft:6,fontWeight:700,fontSize:9}}>SASA</span>}</div>
+                </div>
+              </div>
+              <button onClick={()=>exportMonthlyStatement(m)} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+                📄 Pakua PDF
+              </button>
+            </div>
+            
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,paddingTop:12,borderTop:'1px solid #F1F5F9'}}>
+              <div>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>MAUZO YOTE</div>
+                <div style={{fontSize:16,fontWeight:900,color:'#0B7A3B'}}>{fm(m.total)}</div>
+              </div>
+              {m.refunds>0&&<div>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>YAMERUDISHWA</div>
+                <div style={{fontSize:14,fontWeight:900,color:'#EF4444'}}>−{fm(m.refunds)}</div>
+              </div>}
+              <div>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>MAUZO HALISI</div>
+                <div style={{fontSize:16,fontWeight:900,color:'#22C55E'}}>{fm(m.netSales)}</div>
+              </div>
+              <div>
+                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>FAIDA</div>
+                <div style={{fontSize:16,fontWeight:900,color:'#3B82F6'}}>{fm(m.netProfit)}</div>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>:<Empty icon="📚" text="Hakuna mauzo ya zamani bado"/>}
+    </div>}
+    
+    {/* MAIN STATS — only show for day/week/month/custom */}
+    {tab!=='history'&&<>
+    <div style={{background:tab==='custom'?'linear-gradient(135deg,#0B7A3B,#065F2E)':'#fff',borderRadius:16,padding:tab==='custom'?'16px 20px':0,marginBottom:tab==='custom'?14:0,color:tab==='custom'?'#fff':'inherit'}}>
+      {tab==='custom'&&<div style={{fontSize:11,fontWeight:700,opacity:0.9,letterSpacing:1,marginBottom:8}}>📊 STATEMENT YA TAREHE MAALUM</div>}
+      {tab==='custom'&&<div style={{fontSize:14,fontWeight:700,marginBottom:14}}>
+        Kuanzia: <b>{new Date(customFrom).toLocaleDateString('sw-TZ')}</b> — Mpaka: <b>{new Date(customTo).toLocaleDateString('sw-TZ')}</b>
+      </div>}
+    </div>
+    
     <div className="flex-wrap" style={{marginBottom:16}}>
       <Stat icon={IC.cart} label="Mauzo (Halisi)" value={fm(fTotal)} color="#0B7A3B" sub={refundTotal>0?`Yamerudishwa: ${fm(refundTotal)}`:`${fSales.length} mauzo`}/>
       <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
@@ -621,6 +828,7 @@ export function ReportsPage({onReceipt}){
           <div style={{fontWeight:700,color:'#0B7A3B',fontSize:12}}>{fm(s.total)}</div>
         </div>)}</div></div>
     </div>
+    </>}
   </div>;
 }
 
