@@ -636,6 +636,67 @@ export function ReportsPage({onReceipt}){
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   
+  // ===== ORODHA YA BIDHAA ZILIZOUZWA — Per period with stock remaining =====
+  const productsSold=React.useMemo(()=>{
+    const map={};
+    fSales.forEach(s=>{
+      (s.items||[]).forEach(item=>{
+        const pid=item.productId;
+        if(!map[pid]){
+          const product=products.find(p=>p.id===pid);
+          map[pid]={
+            id:pid,
+            name:item.name,
+            category:product?.category||'Nyingine',
+            image:product?.image||'📦',
+            unit:product?.unit||'Kipande',
+            sellPrice:item.price,
+            qtySold:0,
+            revenue:0,
+            profit:0,
+            returned:0,
+            stockRemaining:product?.quantity||0,
+            minStock:product?.min_stock||5,
+            salesCount:0,
+          };
+        }
+        const qty=item.qty*(item.fraction||1);
+        map[pid].qtySold+=qty;
+        map[pid].revenue+=item.qty*item.price*(item.fraction||1);
+        map[pid].profit+=item.qty*(item.price-(item.buyPrice||0))*(item.fraction||1);
+        map[pid].salesCount++;
+      });
+    });
+    fReturns.forEach(r=>{
+      (r.items||[]).forEach(item=>{
+        if(map[item.productId])map[item.productId].returned+=item.qty*(item.fraction||1);
+      });
+    });
+    return Object.values(map)
+      .map(p=>({...p,netSold:Math.max(0,p.qtySold-p.returned)}))
+      .sort((a,b)=>b.netSold-a.netSold);
+  },[fSales,fReturns,products]);
+  
+  // Export products list to PDF
+  const exportProductsList=()=>{
+    const rows=productsSold.map((p,i)=>[
+      i+1,p.name,p.category,
+      p.netSold.toFixed(1)+' '+p.unit,
+      fm(p.revenue),
+      p.stockRemaining.toFixed(1)+' '+p.unit,
+      p.stockRemaining<=0?'Hakuna':p.stockRemaining<=p.minStock?'Ndogo':'Sawa',
+    ]);
+    const totalQty=productsSold.reduce((s,p)=>s+p.netSold,0);
+    const totalRev=productsSold.reduce((s,p)=>s+p.revenue,0);
+    rows.push(['','JUMLA','',totalQty.toFixed(1),fm(totalRev),'','']);
+    exportToPDF(
+      `Orodha ya Bidhaa Zilizouzwa — ${periodLabel}`,
+      ['#','Bidhaa','Aina','Zilizouzwa','Mapato','Stock Iliyobaki','Hali'],
+      rows,
+      `bidhaa-zilizouzwa-${tab}-${Date.now()}.pdf`
+    );
+  };
+  
   // Quick range setters
   const setQuickRange=(type)=>{
     const now=new Date();
@@ -814,6 +875,60 @@ export function ReportsPage({onReceipt}){
       </div>
     </div>}
     <div style={{marginBottom:12}}><Btn v="outline" onClick={doExport}>{IC.dl} PDF</Btn></div>
+    
+    {/* ===== BIDHAA ZILIZOUZWA — Complete List with Stock ===== */}
+    {productsSold.length>0&&<div className="card" style={{marginBottom:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>📦 Bidhaa Zilizouzwa ({productsSold.length})</h3>
+        <button onClick={exportProductsList} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 Pakua PDF</button>
+      </div>
+      
+      {/* Quick stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8,marginBottom:14,padding:12,background:'#F0FDF4',borderRadius:10,border:'1px solid #BBF7D0'}}>
+        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>AINA ZA BIDHAA</div><div style={{fontSize:18,fontWeight:900,color:'#0B7A3B'}}>{productsSold.length}</div></div>
+        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>JUMLA ZILIZOUZWA</div><div style={{fontSize:18,fontWeight:900,color:'#0B7A3B'}}>{productsSold.reduce((s,p)=>s+p.netSold,0).toFixed(1)}</div></div>
+        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>STOCK NDOGO</div><div style={{fontSize:18,fontWeight:900,color:'#F59E0B'}}>{productsSold.filter(p=>p.stockRemaining<=p.minStock&&p.stockRemaining>0).length}</div></div>
+        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>HAZIPO STOCK</div><div style={{fontSize:18,fontWeight:900,color:'#EF4444'}}>{productsSold.filter(p=>p.stockRemaining<=0).length}</div></div>
+      </div>
+      
+      {/* Table header */}
+      <div style={{display:'grid',gridTemplateColumns:'36px 1fr 90px 100px 100px',gap:6,padding:'8px',background:'#0B7A3B',color:'#fff',borderRadius:6,fontSize:10,fontWeight:800,textTransform:'uppercase',marginBottom:4}}>
+        <div>#</div><div>Bidhaa</div>
+        <div style={{textAlign:'right'}}>Zilizouzwa</div>
+        <div style={{textAlign:'right'}}>Mapato</div>
+        <div style={{textAlign:'right'}}>Stock Imebaki</div>
+      </div>
+      
+      {/* Products list */}
+      <div style={{maxHeight:500,overflowY:'auto'}}>
+        {productsSold.map((p,i)=>{
+          const stockColor=p.stockRemaining<=0?'#EF4444':p.stockRemaining<=p.minStock?'#F59E0B':'#22C55E';
+          const stockIcon=p.stockRemaining<=0?'🚫':p.stockRemaining<=p.minStock?'⚠️':'✅';
+          return <div key={p.id} style={{display:'grid',gridTemplateColumns:'36px 1fr 90px 100px 100px',gap:6,padding:'10px 6px',borderBottom:'1px solid #F1F5F9',alignItems:'center',background:i%2===0?'#fff':'#F8FAFC'}}>
+            <div style={{width:24,height:24,borderRadius:5,background:i<3?'#FEF3C7':'#F1F5F9',color:i<3?'#92400E':'#64748B',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11}}>{i+1}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+              <span style={{fontSize:18}}>{p.image}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                <div style={{fontSize:9,color:'#94A3B8'}}>{p.category} • {p.salesCount} mauzo{p.returned>0&&<span style={{color:'#EF4444'}}> • ↩️ {p.returned.toFixed(1)}</span>}</div>
+              </div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:900,fontSize:13,color:'#0B7A3B'}}>{p.netSold.toFixed(1)}</div>
+              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:800,fontSize:12,color:'#22C55E'}}>{fm(p.revenue)}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:900,fontSize:13,color:stockColor}}>{stockIcon} {p.stockRemaining.toFixed(1)}</div>
+              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>}
+    
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Bidhaa Bora</h3>
         {topProds.map(([n,q],i)=><div key={n} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #F1F5F9'}}>
@@ -1998,5 +2113,166 @@ export function ProductAnalyticsPage(){
         }):<Empty icon="📊" text="Hakuna bidhaa kuanalyze"/>}
       </div>
     </div>
+  </div>;
+}
+
+// ===== EMPLOYEE REPORTS — Products Sold Only (NO Revenue/Profit) =====
+export function EmployeeReportsPage(){
+  const{sales,returns,products,user}=useApp();
+  const[tab,setTab]=useState('day');
+  
+  const filterByDate=(dateStr)=>{
+    if(!dateStr)return false;
+    if(tab==='day')return isToday(dateStr);
+    if(tab==='week')return isThisWeek(dateStr);
+    if(tab==='month')return isThisMonth(dateStr);
+    return false;
+  };
+  
+  // Filter by employee (only their own sales)
+  const myFilter=(s)=>{
+    if(!filterByDate(s.created_at))return false;
+    // Match by seller_id or seller_name
+    return s.seller_id===user?.id||s.seller_name===user?.name;
+  };
+  
+  const fSales=sales.filter(myFilter);
+  const fReturns=(returns||[]).filter(r=>{
+    if(!filterByDate(r.created_at))return false;
+    const sale=sales.find(s=>s.id===r.sale_id);
+    return sale?.seller_id===user?.id||sale?.seller_name===user?.name;
+  });
+  
+  // Products sold list (NO revenue/profit shown to employee)
+  const productsSold=React.useMemo(()=>{
+    const map={};
+    fSales.forEach(s=>{
+      (s.items||[]).forEach(item=>{
+        const pid=item.productId;
+        if(!map[pid]){
+          const product=products.find(p=>p.id===pid);
+          map[pid]={
+            id:pid,
+            name:item.name,
+            category:product?.category||'Nyingine',
+            image:product?.image||'📦',
+            unit:product?.unit||'Kipande',
+            qtySold:0,
+            returned:0,
+            stockRemaining:product?.quantity||0,
+            minStock:product?.min_stock||5,
+            salesCount:0,
+          };
+        }
+        const qty=item.qty*(item.fraction||1);
+        map[pid].qtySold+=qty;
+        map[pid].salesCount++;
+      });
+    });
+    fReturns.forEach(r=>{
+      (r.items||[]).forEach(item=>{
+        if(map[item.productId])map[item.productId].returned+=item.qty*(item.fraction||1);
+      });
+    });
+    return Object.values(map)
+      .map(p=>({...p,netSold:Math.max(0,p.qtySold-p.returned)}))
+      .sort((a,b)=>b.netSold-a.netSold);
+  },[fSales,fReturns,products]);
+  
+  const periodLabel=tab==='day'?'Leo':tab==='week'?'Wiki Hii':'Mwezi Huu';
+  
+  const exportList=()=>{
+    const rows=productsSold.map((p,i)=>[
+      i+1,p.name,p.category,
+      p.netSold.toFixed(1)+' '+p.unit,
+      p.stockRemaining.toFixed(1)+' '+p.unit,
+      p.stockRemaining<=0?'Hakuna':p.stockRemaining<=p.minStock?'Ndogo':'Sawa',
+    ]);
+    const totalQty=productsSold.reduce((s,p)=>s+p.netSold,0);
+    rows.push(['','JUMLA','',totalQty.toFixed(1),'','']);
+    exportToPDF(
+      `Bidhaa Zilizouzwa — ${periodLabel} — ${user?.name||''}`,
+      ['#','Bidhaa','Aina','Zilizouzwa','Stock Imebaki','Hali'],
+      rows,
+      `bidhaa-zangu-${tab}-${Date.now()}.pdf`
+    );
+  };
+  
+  return <div>
+    {/* HEADER */}
+    <div style={{marginBottom:14}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>📦 Bidhaa Nilizouza</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Angalia bidhaa zako ulizouza na stock iliyobaki</p>
+    </div>
+    
+    <Tabs tabs={[
+      {id:'day',label:'📅 Leo'},
+      {id:'week',label:'🗓️ Wiki'},
+      {id:'month',label:'📆 Mwezi Huu'},
+    ]} active={tab} onChange={setTab}/>
+    
+    {/* Summary stats — NO MONEY */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:14}}>
+      <div className="card" style={{padding:14,borderLeft:'4px solid #0B7A3B',textAlign:'center'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>MAUZO</div>
+        <div style={{fontSize:26,fontWeight:900,color:'#0B7A3B'}}>{fSales.length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>nililofanya</div>
+      </div>
+      <div className="card" style={{padding:14,borderLeft:'4px solid #3B82F6',textAlign:'center'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>BIDHAA</div>
+        <div style={{fontSize:26,fontWeight:900,color:'#3B82F6'}}>{productsSold.length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>aina tofauti</div>
+      </div>
+      <div className="card" style={{padding:14,borderLeft:'4px solid #22C55E',textAlign:'center'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>JUMLA</div>
+        <div style={{fontSize:26,fontWeight:900,color:'#22C55E'}}>{productsSold.reduce((s,p)=>s+p.netSold,0).toFixed(1)}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>zilizouzwa</div>
+      </div>
+      <div className="card" style={{padding:14,borderLeft:'4px solid #F59E0B',textAlign:'center'}}>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>STOCK NDOGO</div>
+        <div style={{fontSize:26,fontWeight:900,color:'#F59E0B'}}>{productsSold.filter(p=>p.stockRemaining<=p.minStock&&p.stockRemaining>0).length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>onya bosi</div>
+      </div>
+    </div>
+    
+    {/* Products list */}
+    {productsSold.length>0?<div className="card">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>📋 Orodha ya Bidhaa</h3>
+        <button onClick={exportList} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 Pakua PDF</button>
+      </div>
+      
+      {/* Table header */}
+      <div style={{display:'grid',gridTemplateColumns:'36px 1fr 100px 100px',gap:6,padding:'8px',background:'#0B7A3B',color:'#fff',borderRadius:6,fontSize:10,fontWeight:800,textTransform:'uppercase',marginBottom:4}}>
+        <div>#</div><div>Bidhaa</div>
+        <div style={{textAlign:'right'}}>Zilizouzwa</div>
+        <div style={{textAlign:'right'}}>Stock Imebaki</div>
+      </div>
+      
+      <div style={{maxHeight:500,overflowY:'auto'}}>
+        {productsSold.map((p,i)=>{
+          const stockColor=p.stockRemaining<=0?'#EF4444':p.stockRemaining<=p.minStock?'#F59E0B':'#22C55E';
+          const stockIcon=p.stockRemaining<=0?'🚫':p.stockRemaining<=p.minStock?'⚠️':'✅';
+          return <div key={p.id} style={{display:'grid',gridTemplateColumns:'36px 1fr 100px 100px',gap:6,padding:'10px 6px',borderBottom:'1px solid #F1F5F9',alignItems:'center',background:i%2===0?'#fff':'#F8FAFC'}}>
+            <div style={{width:24,height:24,borderRadius:5,background:i<3?'#FEF3C7':'#F1F5F9',color:i<3?'#92400E':'#64748B',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11}}>{i+1}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+              <span style={{fontSize:18}}>{p.image}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                <div style={{fontSize:10,color:'#94A3B8'}}>{p.category} • {p.salesCount} mauzo{p.returned>0&&<span style={{color:'#EF4444'}}> • ↩️ {p.returned.toFixed(1)}</span>}</div>
+              </div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:900,fontSize:14,color:'#0B7A3B'}}>{p.netSold.toFixed(1)}</div>
+              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:900,fontSize:14,color:stockColor}}>{stockIcon} {p.stockRemaining.toFixed(1)}</div>
+              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>:<Empty icon="📦" text={`Hujauza bidhaa ${periodLabel.toLowerCase()}`}/>}
   </div>;
 }

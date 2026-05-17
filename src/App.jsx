@@ -8,7 +8,7 @@ import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
-import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage} from './pages/office/OfficePages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -81,6 +81,7 @@ const MENUS={
   employee:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'emp_reports',icon:IC.chart,label:'📦 Bidhaa Zilizouzwa'},
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'customers',icon:IC.people,label:'Wateja'},
     {id:'support',icon:IC.send,label:'Msaada'},
@@ -225,6 +226,7 @@ export default function App(){
       case'sales':return <SalesPage onDone={setReceipt}/>;
       case'returns':return role==='office'?<ReturnsPage/>:null;
       case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
+      case'emp_reports':return role==='employee'?<EmployeeReportsPage/>:null;
       case'goals':return <GoalsPage/>;
       case'invoices':return <InvoicePage/>;
       case'expenses':return <ExpensesPage/>;
