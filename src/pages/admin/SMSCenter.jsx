@@ -31,7 +31,7 @@ const personalize=(msg,recipient)=>{
 };
 
 export function SMSCenterPage(){
-  const{businesses=[],partners=[],customers=[],sales=[],supabase,user}=useApp();
+  const{businesses=[],partners=[],promoCodes=[],customers=[],sales=[],supabase,user}=useApp();
   const[recipients,setRecipients]=useState('all_active');
   const[template,setTemplate]=useState('update');
   const[message,setMessage]=useState(TEMPLATES.update.msg);
@@ -91,7 +91,12 @@ export function SMSCenterPage(){
         list=businesses.filter(b=>b.phone&&monthBizIds.includes(b.id)).map(b=>({phone:b.phone,name:b.owner_name||b.name,business:b.name}));
         break;
       case'all_partners':
-        list=partners.filter(p=>p.phone).map(p=>({phone:p.phone,name:p.name||p.email,business:'Mshirika'}));
+        const partnerList=partners.filter(p=>p.phone).map(p=>({phone:p.phone,name:p.name||p.email,business:'Mshirika'}));
+        const agentList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
+        list=[...partnerList,...agentList];
+        break;
+      case'all_agents':
+        list=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
         break;
       case'all_customers':
         list=businesses.filter(b=>b.phone).map(b=>({phone:b.phone,name:b.owner_name||b.name,business:b.name}));
@@ -99,7 +104,8 @@ export function SMSCenterPage(){
       case'everyone':
         const bizList=businesses.filter(b=>b.phone).map(b=>({phone:b.phone,name:b.owner_name||b.name,business:b.name}));
         const ptList=partners.filter(p=>p.phone).map(p=>({phone:p.phone,name:p.name||p.email,business:'Mshirika'}));
-        list=[...bizList,...ptList];
+        const agList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
+        list=[...bizList,...ptList,...agList];
         break;
       case'custom':
         list=customNumbers.map(n=>({phone:n,name:'Mteja',business:'Duka'}));
@@ -295,6 +301,7 @@ export function SMSCenterPage(){
             {value:'this_month',label:`📅 Walio-uza Mwezi Huu`},
             {value:'all_customers',label:`🏪 Wateja Wote`},
             {value:'all_partners',label:`📋 Washirika & Mawakala`},
+            {value:'all_agents',label:`👥 Mawakala Tu (${promoCodes.filter(p=>p.agent_phone).length})`},
             {value:'everyone',label:`🌍 Kila Mtu`},
             {value:'custom',label:`✏️ Namba za Kawaida`},
           ]}/>

@@ -559,7 +559,46 @@ export function AppProvider({children}){
   const activateToken=useCallback(async(code)=>{const tk=tokens.find(t=>t.code===code&&!t.used);if(!tk)return'Token si sahihi au imetumika!';if(!bizId)return'Biashara haijapatikana!';const exp=new Date(Date.now()+tk.days*86400000).toISOString();await safeUpdate('tokens',{used:true,used_by:bizId,used_at:nowISO()},'id',tk.id);await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:tk.plan||'basic',is_suspended:false},'id',bizId);setTokens(prev=>prev.map(t=>t.id===tk.id?{...t,used:true}:t));setBiz(prev=>prev.map(b=>b.id===bizId?{...b,token_active:true,token_expiry:exp,is_suspended:false}:b));return null},[tokens,bizId]);
 
   // ===== PROMO =====
-  const addPromo=useCallback(async(agent,phone,commission=10,email='')=>{const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('promo_codes',{code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission});setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0,total_earned:0}]);return code},[]);
+  const addPromo=useCallback(async(agent,phone,commission=10,email='')=>{
+    const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
+    const d=await safeInsert('promo_codes',{code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission});
+    setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0,total_earned:0}]);
+    
+    // Send welcome SMS to agent
+    if(phone){
+      const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
+      const smsMsg=`DUKA LANGU\n\nKARIBU ${agent}!\n\nUmesajiliwa kama Wakala wa Mauzo.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili.\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+      try{
+        await fetch('/api/send-sms',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({to:cleanPhone,message:smsMsg})
+        });
+      }catch(e){console.warn('Agent SMS failed:',e)}
+    }
+    
+    // Send welcome email to agent
+    if(email){
+      try{
+        await fetch('/api/send-email',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            to:email,
+            subject:`🎉 Karibu Duka Langu — Wakala wa Mauzo`,
+            type:'generic',
+            data:{
+              customerName:agent,
+              title:`🎉 Hongera ${agent}!`,
+              message:`Umesajiliwa kama Wakala wa Mauzo wa Duka Langu.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili: duka-langu-system.vercel.app`,
+            }
+          })
+        });
+      }catch(e){console.warn('Agent email failed:',e)}
+    }
+    
+    return code;
+  },[]);
   const deletePromo=useCallback(async(pid)=>{await safeDelete('promo_codes','id',pid);setPromos(prev=>prev.filter(p=>p.id!==pid))},[]);
 
   // ===== CREATE AGENT ACCOUNT (Marketing → Agent) =====
@@ -574,6 +613,40 @@ export function AppProvider({children}){
       const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
       const promo=await safeInsert('promo_codes',{code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission});
       setPromos(prev=>[...prev,promo||{id:genId(),code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0}]);
+      
+      // 4. Send welcome SMS with login details
+      if(phone){
+        const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
+        const smsMsg=`DUKA LANGU\n\nKARIBU ${name}!\n\nUmesajiliwa kama Wakala.\n\nLogin:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako: ${code}\nCommission: ${commission}%\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+        try{
+          await fetch('/api/send-sms',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({to:cleanPhone,message:smsMsg})
+          });
+        }catch(e){console.warn('Agent SMS failed:',e)}
+      }
+      
+      // 5. Send welcome email with login details
+      if(email){
+        try{
+          await fetch('/api/send-email',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              to:email,
+              subject:`🎉 Karibu Duka Langu — Akaunti ya Wakala`,
+              type:'generic',
+              data:{
+                customerName:name,
+                title:`🎉 Hongera ${name}!`,
+                message:`Umesajiliwa kama Wakala wa Mauzo wa Duka Langu.\n\nDetails za Login:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako ya wakala: ${code}\nCommission: ${commission}%\n\nIngia kwenye mfumo: duka-langu-system.vercel.app\n\nBadilisha password ukiwa ndani ya mfumo.`,
+              }
+            })
+          });
+        }catch(e){console.warn('Agent email failed:',e)}
+      }
+      
       return{uid,code,email};
     }catch(e){console.warn('CreateAgent:',e);return null}
   },[]);
