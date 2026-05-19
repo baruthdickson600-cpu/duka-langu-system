@@ -16,23 +16,33 @@ import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPa
 const MENUS={
   admin:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'stores',icon:IC.store,label:'Maduka'},
-    {id:'payments',icon:IC.dollar,label:'Malipo'},
-    {id:'activity',icon:IC.clock,label:'Activity'},
-    {id:'tokens',icon:IC.key,label:'Tokens'},
-    {id:'promo',icon:IC.gift,label:'Mawakala'},
-    {id:'referrals',icon:IC.gift,label:'🎁 Ofa Maalum'},
-    {id:'partners',icon:IC.people,label:'Washirika'},
-    {id:'tickets',icon:IC.bell,label:'Tickets'},
-    {id:'info_requests',icon:IC.file,label:'📝 Ombi za Mabadiliko'},
-    {id:'usage',icon:IC.chart,label:'Usage'},
-    {id:'reports',icon:IC.file,label:'Ripoti'},
-    {id:'broadcast',icon:IC.send,label:'Broadcast'},
-    {id:'sms_center',icon:IC.send,label:'📱 SMS Center'},
-    {id:'messaging',icon:IC.send,label:'Ujumbe'},
-    {id:'templates',icon:IC.file,label:'Email'},
-    {id:'security',icon:IC.shield,label:'Security'},
-    {id:'settings',icon:IC.gear,label:'Mipangilio'},
+    {group:'biashara',label:'🏢 Biashara',icon:IC.store,items:[
+      {id:'stores',icon:IC.store,label:'Maduka'},
+      {id:'payments',icon:IC.dollar,label:'Malipo'},
+      {id:'tokens',icon:IC.key,label:'Tokens'},
+      {id:'info_requests',icon:IC.file,label:'Ombi za Mabadiliko'},
+    ]},
+    {group:'masoko',label:'📣 Masoko',icon:IC.send,items:[
+      {id:'promo',icon:IC.gift,label:'Mawakala'},
+      {id:'partners',icon:IC.people,label:'Washirika'},
+      {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
+    ]},
+    {group:'mawasiliano',label:'💬 Mawasiliano',icon:IC.send,items:[
+      {id:'sms_center',icon:IC.send,label:'SMS Center'},
+      {id:'broadcast',icon:IC.send,label:'Broadcast'},
+      {id:'messaging',icon:IC.send,label:'Ujumbe'},
+      {id:'templates',icon:IC.file,label:'Email Templates'},
+      {id:'tickets',icon:IC.bell,label:'Tickets'},
+    ]},
+    {group:'ripoti',label:'📊 Ripoti & Uchambuzi',icon:IC.chart,items:[
+      {id:'reports',icon:IC.file,label:'Ripoti'},
+      {id:'usage',icon:IC.chart,label:'Usage'},
+      {id:'activity',icon:IC.clock,label:'Activity'},
+    ]},
+    {group:'mfumo',label:'⚙️ Mfumo',icon:IC.gear,items:[
+      {id:'security',icon:IC.shield,label:'Security'},
+      {id:'settings',icon:IC.gear,label:'Mipangilio'},
+    ]},
   ],
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
@@ -127,6 +137,7 @@ export default function App(){
   const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP}=useApp();
   const[page,setPage]=useState('dashboard');
   const[sidebar,setSidebar]=useState(false);
+  const[openGroups,setOpenGroups]=useState({});
   const[receipt,setReceipt]=useState(null);
   
   // ALWAYS show landing page when not logged in (unless ?login=1 or ?signup=1 in URL)
@@ -270,12 +281,41 @@ export default function App(){
       </div>}
 
       <div style={{padding:6,flex:1,overflowY:'auto'}}>
-        {menu.map(m=><button key={m.id} onClick={()=>{setPage(m.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',background:page===m.id?'rgba(255,255,255,.2)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:page===m.id?700:500,marginBottom:2}}>
-          {m.icon}{m.label}
-          {m.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700}}>{unread}</span>}
-          {m.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
-          {m.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,marginLeft:'auto',fontWeight:700}}>{unreadMsgs}</span>}
-        </button>)}
+        {menu.map((m,idx)=>{
+          // GROUP item with sub-items
+          if(m.group){
+            const isOpen=openGroups[m.group];
+            // Auto-open if current page is in this group
+            const containsCurrent=m.items?.some(it=>it.id===page);
+            const groupOpen=isOpen||containsCurrent;
+            // Count badges in this group
+            const grpUnread=m.items?.some(it=>(it.id==='notifications'&&unread>0)||(it.id==='payments'&&pendingPayments?.length>0)||(it.id==='messaging'&&unreadMsgs>0));
+            
+            return <div key={m.group} style={{marginBottom:4}}>
+              <button onClick={()=>setOpenGroups(p=>({...p,[m.group]:!groupOpen}))} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'10px 12px',background:groupOpen?'rgba(255,255,255,.1)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,letterSpacing:0.3,cursor:'pointer',transition:'all 0.2s'}}>
+                <span style={{flex:1,textAlign:'left'}}>{m.label}</span>
+                {grpUnread&&!groupOpen&&<span style={{width:6,height:6,borderRadius:'50%',background:'#EF4444'}}/>}
+                <span style={{fontSize:11,opacity:0.7,transition:'transform 0.25s',transform:groupOpen?'rotate(90deg)':'rotate(0deg)',display:'inline-block'}}>▶</span>
+              </button>
+              {groupOpen&&<div style={{marginLeft:8,paddingLeft:10,borderLeft:'1.5px solid rgba(255,255,255,.15)',marginTop:2,marginBottom:6}}>
+                {m.items.map(item=><button key={item.id} onClick={()=>{setPage(item.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'8px 12px',background:page===item.id?'rgba(255,255,255,.22)':'transparent',border:'none',borderRadius:8,color:'#fff',fontSize:12.5,fontWeight:page===item.id?700:500,marginBottom:2,cursor:'pointer',transition:'background 0.15s',textAlign:'left'}}>
+                  {item.icon}<span style={{flex:1,textAlign:'left'}}>{item.label}</span>
+                  {item.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
+                  {item.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
+                  {item.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unreadMsgs}</span>}
+                </button>)}
+              </div>}
+            </div>;
+          }
+          
+          // SINGLE item (no group)
+          return <button key={m.id} onClick={()=>{setPage(m.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',background:page===m.id?'rgba(255,255,255,.2)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:page===m.id?700:500,marginBottom:2,cursor:'pointer',textAlign:'left'}}>
+            {m.icon}<span style={{flex:1,textAlign:'left'}}>{m.label}</span>
+            {m.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
+            {m.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
+            {m.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unreadMsgs}</span>}
+          </button>;
+        })}
       </div>
 
       <div style={{padding:10,borderTop:'1px solid rgba(255,255,255,.15)'}}>
