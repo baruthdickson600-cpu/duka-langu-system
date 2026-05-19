@@ -1,15 +1,62 @@
 {
   "name": "Duka Langu - Smart POS",
   "short_name": "Duka Langu",
-  "description": "Mfumo wa kisasa wa Point of Sale kwa wafanyabiashara",
-  "start_url": "/",
+  "description": "Mfumo wa kisasa wa Point of Sale kwa wafanyabiashara wa Tanzania",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0B7A3B",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
+  "background_color": "#0B7A3B",
+  "theme_color": "#0B7A3B",
+  "lang": "sw-TZ",
+  "dir": "ltr",
+  "categories": ["business", "finance", "productivity", "shopping"],
   "icons": [
-    {"src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+    {"src": "/icons/icon-72.png", "sizes": "72x72", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    {"src": "/logo.png", "sizes": "any", "type": "image/png", "purpose": "any"}
   ],
-  "categories": ["business", "finance", "productivity"],
-  "lang": "sw"
+  "shortcuts": [
+    {
+      "name": "Mauzo Mapya",
+      "short_name": "Uza",
+      "description": "Anza kuuza bidhaa haraka",
+      "url": "/?page=sales",
+      "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Bidhaa",
+      "short_name": "Stock",
+      "description": "Tazama bidhaa na stock",
+      "url": "/?page=products",
+      "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Ripoti",
+      "short_name": "Ripoti",
+      "description": "Tazama ripoti za mauzo",
+      "url": "/?page=reports",
+      "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Wateja",
+      "short_name": "Wateja",
+      "description": "Simamia wateja",
+      "url": "/?page=customers",
+      "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  }
 }

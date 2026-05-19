@@ -2,20 +2,128 @@
 <html lang="sw">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0B7A3B" />
-  <meta name="description" content="Duka Langu - Mfumo wa kisasa wa POS" />
+  <meta name="description" content="Duka Langu - Mfumo wa kisasa wa Point of Sale kwa wafanyabiashara wa Tanzania" />
+  
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Duka Langu" />
-  <link rel="apple-touch-icon" href="/logo.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+  
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Duka Langu" />
+  
+  <meta name="msapplication-TileColor" content="#0B7A3B" />
+  <meta name="msapplication-TileImage" content="/icons/icon-144.png" />
+  
   <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/logo.png" />
+  
   <title>Duka Langu - Smart POS</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  
+  <style>
+    #initial-loader {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0B7A3B 0%, #065F2E 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.4s;
+    }
+    #initial-loader.hide { opacity: 0; pointer-events: none; }
+    #initial-loader img {
+      width: 90px;
+      height: 90px;
+      border-radius: 20px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    #initial-loader .text {
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 20px;
+    }
+    #initial-loader .sub {
+      color: rgba(255,255,255,0.8);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.06); opacity: 0.85; }
+    }
+    body { margin: 0; background: #F8FAFC; -webkit-tap-highlight-color: transparent; }
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  </style>
 </head>
 <body>
+  <div id="initial-loader">
+    <img src="/logo.png" alt="Duka Langu" onerror="this.style.display='none'" />
+    <div class="text">Duka Langu</div>
+    <div class="sub">Inafunguka...</div>
+  </div>
+  
   <div id="root"></div>
+  
   <script type="module" src="/src/main.jsx"></script>
-  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>
+  
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.classList.add('hide');
+          setTimeout(() => loader.remove(), 400);
+        }
+      }, 400);
+    });
+    
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => {
+            console.log('✅ SW registered');
+            setInterval(() => reg.update(), 60 * 60 * 1000);
+            
+            reg.addEventListener('updatefound', () => {
+              const newSW = reg.installing;
+              if (newSW) {
+                newSW.addEventListener('statechange', () => {
+                  if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                    if (confirm('🆕 Toleo jipya la mfumo limepatikana! Fungua tena ili kupata?')) {
+                      newSW.postMessage({ type: 'SKIP_WAITING' });
+                      window.location.reload();
+                    }
+                  }
+                });
+              }
+            });
+          })
+          .catch((err) => console.warn('SW registration failed:', err));
+        
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) { refreshing = true; window.location.reload(); }
+        });
+      });
+    }
+    
+    window.addEventListener('online', () => window.dispatchEvent(new CustomEvent('app-online')));
+    window.addEventListener('offline', () => window.dispatchEvent(new CustomEvent('app-offline')));
+    
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) e.preventDefault();
+      lastTouchEnd = now;
+    }, false);
+  </script>
 </body>
 </html>

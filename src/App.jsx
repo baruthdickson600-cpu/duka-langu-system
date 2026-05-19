@@ -1,6 +1,7 @@
 import React,{useState,useEffect} from 'react';
 import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
+import {PWAInstallPrompt,OnlineStatusBar} from './components/PWA';
 import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
@@ -135,7 +136,12 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 
 export default function App(){
   const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP}=useApp();
-  const[page,setPage]=useState('dashboard');
+  const[page,setPage]=useState(()=>{
+    // Support PWA shortcuts via ?page=sales etc.
+    const url=new URL(window.location.href);
+    const initPage=url.searchParams.get('page');
+    return initPage||'dashboard';
+  });
   const[sidebar,setSidebar]=useState(false);
   const[openGroups,setOpenGroups]=useState({});
   const[receipt,setReceipt]=useState(null);
@@ -254,6 +260,8 @@ export default function App(){
   return <div style={{display:'flex',minHeight:'100vh',background:'#F1F5F9',fontFamily:"'Inter',system-ui,sans-serif"}}>
     <NotifPopup items={popups} onDismiss={id=>setPopups(p=>p.filter(n=>n.id!==id))} onClear={()=>setPopups([])}/>
     <ReceiptModal sale={receipt} bizName={biz?.name} footer={biz?.receipt_footer} onClose={()=>setReceipt(null)}/>
+    <PWAInstallPrompt/>
+    <OnlineStatusBar/>
     {sidebar&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:5000}} onClick={()=>setSidebar(false)}/>}
 
     {/* Sidebar */}
