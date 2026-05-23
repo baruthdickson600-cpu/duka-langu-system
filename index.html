@@ -20,54 +20,275 @@
   
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preload" as="image" href="/logo.png" />
   
   <title>Duka Langu - Smart POS</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   
   <style>
-    #initial-loader {
+    body { margin: 0; background: #F8FAFC; -webkit-tap-highlight-color: transparent; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    
+    /* ============================================
+       PREMIUM SPLASH — Using Real Logo
+       ============================================ */
+    #splash {
       position: fixed;
       inset: 0;
-      background: linear-gradient(135deg, #0B7A3B 0%, #065F2E 100%);
+      background: radial-gradient(circle at 50% 40%, #0E8A45 0%, #0B7A3B 50%, #065F2E 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      overflow: hidden;
+    }
+    
+    /* Floating background orbs */
+    #splash::before, #splash::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      animation: orbFloat 8s ease-in-out infinite;
+    }
+    #splash::before {
+      width: 400px; height: 400px;
+      top: -150px; left: -150px;
+    }
+    #splash::after {
+      width: 500px; height: 500px;
+      bottom: -200px; right: -200px;
+      animation-delay: 2s;
+    }
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, 30px); }
+    }
+    
+    .splash-content {
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
+      gap: 28px;
+    }
+    
+    /* Logo wrapper */
+    .logo-ring {
+      position: relative;
+      width: 280px;
+      height: 200px;
+      display: flex;
+      align-items: center;
       justify-content: center;
-      z-index: 9999;
-      transition: opacity 0.4s;
+      animation: breathe 4s ease-in-out infinite;
     }
-    #initial-loader.hide { opacity: 0; pointer-events: none; }
-    #initial-loader img {
-      width: 90px;
-      height: 90px;
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    
+    /* Logo card */
+    .logo-card {
+      position: relative;
+      width: 260px;
+      height: 180px;
+      background: #FFFFFF;
       border-radius: 20px;
-      animation: pulse 1.5s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 
+        0 25px 70px -10px rgba(0,0,0,0.45),
+        0 0 0 1px rgba(255,255,255,0.2),
+        inset 0 2px 4px rgba(255,255,255,0.7);
+      animation: cardPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      opacity: 0;
+      transform: scale(0.3) rotate(-15deg);
+      overflow: hidden;
     }
-    #initial-loader .text {
+    @keyframes cardPop {
+      to { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+    
+    /* Real logo image */
+    .logo-img {
+      width: 90%;
+      height: 80%;
+      object-fit: contain;
+      position: relative;
+      z-index: 2;
+      opacity: 0;
+      transform: scale(0.5);
+      animation: logoReveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
+    }
+    @keyframes logoReveal {
+      0% { opacity: 0; transform: scale(0.5); }
+      60% { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    
+    /* Shine sweep effect */
+    .logo-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.7) 50%, transparent 70%);
+      animation: shineSweep 1.5s ease-out 1.4s;
+      z-index: 3;
+      pointer-events: none;
+    }
+    @keyframes shineSweep {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    /* Inner light burst */
+    .logo-burst {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 60%);
+      opacity: 0;
+      animation: burst 0.8s ease-out 0.5s;
+      z-index: 1;
+      pointer-events: none;
+    }
+    @keyframes burst {
+      0% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.5); }
+      100% { opacity: 0; transform: scale(2); }
+    }
+    
+    /* Tagline */
+    .tagline {
       color: white;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      margin: 0;
+      text-transform: uppercase;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      opacity: 0;
+      animation: taglineFade 0.9s ease-out 1.8s forwards;
     }
-    #initial-loader .sub {
+    @keyframes taglineFade {
+      from { opacity: 0; letter-spacing: 10px; transform: translateY(15px); }
+      to { opacity: 1; letter-spacing: 5px; transform: translateY(0); }
+    }
+    
+    .subtitle {
       color: rgba(255,255,255,0.8);
-      font-size: 13px;
-      margin-top: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      margin: 6px 0 0;
+      opacity: 0;
+      animation: subFade 0.7s ease-out 2.1s forwards;
     }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.06); opacity: 0.85; }
+    @keyframes subFade {
+      to { opacity: 1; }
     }
-    body { margin: 0; background: #F8FAFC; -webkit-tap-highlight-color: transparent; }
-    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    
+    /* Loading dots */
+    .loading-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 14px;
+      opacity: 0;
+      animation: dotsIn 0.5s ease-out 2.4s forwards;
+    }
+    @keyframes dotsIn {
+      to { opacity: 1; }
+    }
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      animation: dotPulse 1.4s ease-in-out infinite;
+    }
+    .loading-dots span:nth-child(1) { animation-delay: 0s; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%, 60%, 100% { transform: scale(1); opacity: 0.5; }
+      30% { transform: scale(1.3); opacity: 1; }
+    }
+    
+    /* Bottom copyright */
+    .company-tag {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      opacity: 0;
+      animation: bottomFade 0.8s ease-out 2.6s forwards;
+      white-space: nowrap;
+    }
+    @keyframes bottomFade {
+      to { opacity: 1; }
+    }
+    
+    /* Final flash before hide */
+    .splash-flash {
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      animation: flashOut 0.6s ease-out 3.1s forwards;
+    }
+    @keyframes flashOut {
+      0% { opacity: 0; }
+      40% { opacity: 0.5; }
+      100% { opacity: 0; }
+    }
+    
+    /* Hide splash */
+    #splash.hide {
+      opacity: 0;
+      transform: scale(1.15);
+      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
-  <div id="initial-loader">
-    <img src="/logo.png" alt="Duka Langu" onerror="this.style.display='none'" />
-    <div class="text">Duka Langu</div>
-    <div class="sub">Inafunguka...</div>
+  <!-- ============================================
+       PREMIUM SPLASH WITH REAL LOGO
+       ============================================ -->
+  <div id="splash">
+    <div class="splash-content">
+      <div class="logo-ring">
+        <div class="logo-card">
+          <div class="logo-burst"></div>
+          <img src="/logo.png" alt="Duka Langu" class="logo-img" 
+               onerror="this.src='/logo.jpeg'" />
+        </div>
+      </div>
+      
+      <div style="text-align: center;">
+        <p class="tagline">Smart POS Tanzania</p>
+        <p class="subtitle">Endesha Biashara Yako Kidijitali</p>
+      </div>
+      
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+    
+    <div class="company-tag">© 2026 DUKA LANGU TANZANIA</div>
+    <div class="splash-flash"></div>
   </div>
   
   <div id="root"></div>
@@ -75,16 +296,113 @@
   <script type="module" src="/src/main.jsx"></script>
   
   <script>
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        const loader = document.getElementById('initial-loader');
-        if (loader) {
-          loader.classList.add('hide');
-          setTimeout(() => loader.remove(), 400);
-        }
-      }, 400);
+    // ============================================
+    // WELCOME CHIME — "Mlango wa Duka Unafunguka"
+    // C Major Arpeggio + Whoosh + Final Ding
+    // ============================================
+    function playWelcomeSound() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        
+        const now = ctx.currentTime;
+        
+        // ===== Door-opening WHOOSH =====
+        const whoosh = ctx.createOscillator();
+        const whooshGain = ctx.createGain();
+        whoosh.type = 'sawtooth';
+        whoosh.frequency.setValueAtTime(80, now);
+        whoosh.frequency.exponentialRampToValueAtTime(40, now + 0.5);
+        whooshGain.gain.setValueAtTime(0, now);
+        whooshGain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+        whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        whoosh.connect(whooshGain).connect(ctx.destination);
+        whoosh.start(now);
+        whoosh.stop(now + 0.5);
+        
+        // ===== C MAJOR ARPEGGIO (Welcome chime) =====
+        const notes = [
+          { freq: 523.25, time: 0.2, dur: 0.4 },   // C5
+          { freq: 659.25, time: 0.35, dur: 0.4 },  // E5
+          { freq: 783.99, time: 0.5, dur: 0.4 },   // G5
+          { freq: 1046.50, time: 0.65, dur: 0.8 }, // C6
+        ];
+        
+        notes.forEach(note => {
+          // Main bell tone
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(note.freq, now + note.time);
+          gain.gain.setValueAtTime(0, now + note.time);
+          gain.gain.linearRampToValueAtTime(0.15, now + note.time + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(now + note.time);
+          osc.stop(now + note.time + note.dur);
+          
+          // Harmonic (octave) for warmth
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(note.freq * 2, now + note.time);
+          gain2.gain.setValueAtTime(0, now + note.time);
+          gain2.gain.linearRampToValueAtTime(0.04, now + note.time + 0.02);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+          osc2.connect(gain2).connect(ctx.destination);
+          osc2.start(now + note.time);
+          osc2.stop(now + note.time + note.dur);
+        });
+        
+        // ===== Final SUCCESS DING =====
+        const ding = ctx.createOscillator();
+        const dingGain = ctx.createGain();
+        ding.type = 'sine';
+        ding.frequency.setValueAtTime(1567.98, now + 1.6);
+        dingGain.gain.setValueAtTime(0, now + 1.6);
+        dingGain.gain.linearRampToValueAtTime(0.1, now + 1.62);
+        dingGain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+        ding.connect(dingGain).connect(ctx.destination);
+        ding.start(now + 1.6);
+        ding.stop(now + 2.4);
+        
+      } catch (e) {
+        console.warn('Sound failed:', e.message);
+      }
+    }
+    
+    let soundPlayed = false;
+    function tryPlaySound() {
+      if (soundPlayed) return;
+      soundPlayed = true;
+      playWelcomeSound();
+    }
+    
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(tryPlaySound, 100);
     });
     
+    ['touchstart', 'click', 'keydown'].forEach(event => {
+      document.addEventListener(event, tryPlaySound, { once: true, passive: true });
+    });
+    
+    // Hide splash after 3.2s
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('splash');
+        if (splash) {
+          splash.classList.add('hide');
+          setTimeout(() => splash.remove(), 700);
+        }
+      }, 3200);
+    });
+    
+    // ============================================
+    // SERVICE WORKER
+    // ============================================
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
