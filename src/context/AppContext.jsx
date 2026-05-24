@@ -549,6 +549,105 @@ export function AppProvider({children}){
   },[user]);
   const closeTicket=useCallback(async(tid)=>{await safeUpdate('support_tickets',{status:'closed'},'id',tid);setTickets(prev=>prev.map(t=>t.id===tid?{...t,status:'closed'}:t))},[]);
 
+  // ===== LIVE CHAT (Need help, ask me) =====
+  const[chatMessages,setChatMessages]=useState([]);
+  const[loadingChat,setLoadingChat]=useState(false);
+  
+  // Load chat messages for a business (or all if admin)
+  const loadChatMessages=useCallback(async(forBusinessId=null)=>{
+    setLoadingChat(true);
+    try{
+      let q=supabase.from('chat_messages').select('*').order('created_at',{ascending:true});
+      const targetBizId=forBusinessId||(user?.role==='admin'?null:bizId);
+      if(targetBizId)q=q.eq('business_id',targetBizId);
+      const{data,error}=await q.limit(500);
+      if(!error)setChatMessages(data||[]);
+    }catch(e){console.warn('Load chat:',e)}
+    setLoadingChat(false);
+  },[user?.role,bizId]);
+  
+  // Send a chat message
+  const sendChatMessage=useCallback(async(message,targetBusinessId=null)=>{
+    if(!message?.trim())return null;
+    const bid=targetBusinessId||bizId;
+    const isAdmin=user?.role==='admin';
+    const msg={
+      business_id:bid,
+      sender_id:user?.id,
+      sender_role:user?.role||'office',
+      sender_name:user?.name||user?.email,
+      message:message.trim(),
+      read_by_admin:isAdmin,
+      read_by_customer:!isAdmin,
+    };
+    const saved=await safeInsert('chat_messages',msg);
+    const final=saved||{...msg,id:genId(),created_at:nowISO(),is_read:false};
+    setChatMessages(prev=>[...prev,final]);
+    
+    // Notify the other party
+    if(isAdmin){
+      // Admin sent to customer
+      const biz=businesses.find(b=>b.id===bid);
+      await safeInsert('notifications',{
+        target_business_id:bid,
+        type:'info',
+        title:'💬 Ujumbe Mpya kutoka Admin',
+        message:`${user?.name||'Admin'}: ${message.slice(0,80)}`,
+      });
+    }else{
+      // Customer sent to admin
+      await safeInsert('notifications',{
+        target_type:'admin',
+        type:'info',
+        title:`💬 Ujumbe kutoka ${biz?.name||user?.name}`,
+        message:message.slice(0,100),
+      });
+    }
+    return final;
+  },[bizId,user,businesses,biz]);
+  
+  // Mark messages as read
+  const markChatRead=useCallback(async(forBusinessId=null)=>{
+    const bid=forBusinessId||bizId;
+    if(!bid)return;
+    const isAdmin=user?.role==='admin';
+    const field=isAdmin?'read_by_admin':'read_by_customer';
+    try{
+      await supabase.from('chat_messages').update({[field]:true}).eq('business_id',bid).eq(field,false);
+      setChatMessages(prev=>prev.map(m=>m.business_id===bid?{...m,[field]:true}:m));
+    }catch(e){console.warn('Mark read:',e)}
+  },[user?.role,bizId]);
+  
+  // Realtime subscribe to chat
+  useEffect(()=>{
+    if(!user?.id)return;
+    const channel=supabase
+      .channel('chat-room')
+      .on('postgres_changes',
+        {event:'INSERT',schema:'public',table:'chat_messages'},
+        (payload)=>{
+          const newMsg=payload.new;
+          // Only add if relevant to this user
+          if(user?.role==='admin'||newMsg.business_id===bizId){
+            setChatMessages(prev=>{
+              if(prev.find(m=>m.id===newMsg.id))return prev;
+              return [...prev,newMsg];
+            });
+          }
+        }
+      )
+      .subscribe();
+    return()=>{supabase.removeChannel(channel)};
+  },[user?.id,user?.role,bizId]);
+  
+  // Get unread chat count
+  const unreadChatCount=useMemo(()=>{
+    const isAdmin=user?.role==='admin';
+    return chatMessages.filter(m=>
+      isAdmin?(!m.read_by_admin&&m.sender_role!=='admin'):(!m.read_by_customer&&m.sender_role==='admin')
+    ).length;
+  },[chatMessages,user?.role]);
+
   // ===== TOKENS =====
   const genToken=useCallback(async(days,plan='basic',assignTo='',assignName='')=>{
     const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
@@ -1581,6 +1680,7 @@ export function AppProvider({children}){
     addBranch,updateBranch,deleteBranch,getBranches,
     // Tickets
     createTicket,replyTicket,closeTicket,
+    chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
     genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,supabase,systemExpenses,
     // Notifications

@@ -2,6 +2,7 @@ import React,{useState,useEffect} from 'react';
 import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
 import {PWAInstallPrompt,OnlineStatusBar} from './components/PWA';
+import {HelpChatWidget,AdminChatPanel} from './components/LiveChat';
 import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
@@ -29,6 +30,7 @@ const MENUS={
       {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
     ]},
     {group:'mawasiliano',label:'💬 Mawasiliano',icon:IC.send,items:[
+      {id:'live_chat',icon:IC.send,label:'💬 Live Chat (Wateja)'},
       {id:'sms_center',icon:IC.send,label:'SMS Center'},
       {id:'broadcast',icon:IC.send,label:'Broadcast'},
       {id:'messaging',icon:IC.send,label:'Ujumbe'},
@@ -191,6 +193,7 @@ export default function App(){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;case'tokens':return <TokensPage/>;
         case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
+        case'live_chat':return <AdminChatPanel/>;
         case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'info_requests':return <InfoRequestsPage/>;
@@ -262,6 +265,7 @@ export default function App(){
     <ReceiptModal sale={receipt} bizName={biz?.name} footer={biz?.receipt_footer} onClose={()=>setReceipt(null)}/>
     <PWAInstallPrompt/>
     <OnlineStatusBar/>
+    <HelpChatWidget/>
     {sidebar&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:5000}} onClick={()=>setSidebar(false)}/>}
 
     {/* Sidebar */}
