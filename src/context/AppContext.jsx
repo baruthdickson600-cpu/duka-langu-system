@@ -587,9 +587,9 @@ export function AppProvider({children}){
     // Notify the other party
     if(isAdmin){
       // Admin sent to customer
-      const biz=businesses.find(b=>b.id===bid);
       await safeInsert('notifications',{
-        target_business_id:bid,
+        target_type:'business',
+        target_id:bid,
         type:'info',
         title:'💬 Ujumbe Mpya kutoka Admin',
         message:`${user?.name||'Admin'}: ${message.slice(0,80)}`,

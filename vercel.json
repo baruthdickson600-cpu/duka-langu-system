@@ -3,6 +3,12 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
+  "functions": {
+    "api/send-sms.js": { "maxDuration": 60 },
+    "api/send-email.js": { "maxDuration": 30 },
+    "api/send-otp.js": { "maxDuration": 15 },
+    "api/cron/daily-reports.js": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/cron/daily-reports",

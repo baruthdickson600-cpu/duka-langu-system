@@ -175,32 +175,41 @@ export function SMSCenterPage(){
     failed+=skipped;
     
     if(validRecipients.length>0){
-      try{
-        const controller=new AbortController();
-        const timeoutId=setTimeout(()=>controller.abort(),60000); // 60 sec for batch
-        
-        const res=await fetch('/api/send-sms',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({recipients:validRecipients}),
-          signal:controller.signal,
-        });
-        clearTimeout(timeoutId);
-        
-        const d=await res.json().catch(()=>({success:false,error:'Parse error'}));
-        if(d.success){
-          success=d.sent||0;
-          failed=failed+(d.failed||0);
-          if(d.results){
-            d.results.filter(r=>!r.ok).forEach(r=>failedNumbers.push({phone:r.phone,reason:r.error||r.status||'Failed'}));
+      // Split into chunks of 20 to avoid Vercel timeout (60s with 5 parallel = ~12s per chunk)
+      const CHUNK_SIZE=20;
+      const chunks=[];
+      for(let i=0;i<validRecipients.length;i+=CHUNK_SIZE){
+        chunks.push(validRecipients.slice(i,i+CHUNK_SIZE));
+      }
+      
+      for(const chunk of chunks){
+        try{
+          const controller=new AbortController();
+          const timeoutId=setTimeout(()=>controller.abort(),55000); // 55s per chunk
+          
+          const res=await fetch('/api/send-sms',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({recipients:chunk}),
+            signal:controller.signal,
+          });
+          clearTimeout(timeoutId);
+          
+          const d=await res.json().catch(()=>({success:false,error:'Parse error'}));
+          if(d.success){
+            success+=d.sent||0;
+            failed+=d.failed||0;
+            if(d.results){
+              d.results.filter(r=>!r.ok).forEach(r=>failedNumbers.push({phone:r.phone,reason:r.error||r.status||'Failed'}));
+            }
+          }else{
+            failed+=chunk.length;
+            failedNumbers.push({phone:`Batch ${chunk.length}`,reason:d.error||'Server error'});
           }
-        }else{
-          failed+=validRecipients.length;
-          failedNumbers.push({phone:'Bulk',reason:d.error||'Server error'});
+        }catch(e){
+          failed+=chunk.length;
+          failedNumbers.push({phone:`Batch ${chunk.length}`,reason:e.name==='AbortError'?'Timeout':e.message});
         }
-      }catch(e){
-        failed+=validRecipients.length;
-        failedNumbers.push({phone:'Bulk',reason:e.name==='AbortError'?'Timeout':e.message});
       }
     }
     
