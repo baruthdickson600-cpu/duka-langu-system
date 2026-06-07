@@ -1083,28 +1083,282 @@ export function ReportsPage({onReceipt}){
 
 // ===== EXPENSES =====
 export function ExpensesPage(){
-  const{expenses,addExpense,currency}=useApp();const fm=n=>fmtMoney(n,currency||'TZS');
-  const total=expenses.reduce((a,e)=>a+(e.amount||0),0);const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const{expenses,addExpense,updateExpense,deleteExpense,currency}=useApp();
+  const fm=n=>fmtMoney(n,currency||'TZS');
+  const total=expenses.reduce((a,e)=>a+(e.amount||0),0);
+  const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const wExp=expenses.filter(e=>isThisWeek(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const tExp=expenses.filter(e=>isToday(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  
   const[f,setF]=useState({category:'kodi',description:'',amount:'',is_recurring:false,recurring_interval:'monthly'});
-  const CATS=[{value:'kodi',label:'Kodi'},{value:'umeme',label:'Umeme'},{value:'maji',label:'Maji'},{value:'mishahara',label:'Mishahara'},{value:'usafiri',label:'Usafiri'},{value:'kodi_nyumba',label:'Rent / Pango'},{value:'taka',label:'Taka'},{value:'ulinzi',label:'Ulinzi'},{value:'chakula',label:'Chakula'},{value:'vifungashio',label:'Vifungashio'},{value:'mafuta',label:'Mafuta'},{value:'madawa',label:'Madawa'},{value:'posho',label:'Posho'},{value:'kodi_serikali',label:'Kodi ya Serikali'},{value:'bima',label:'Bima'},{value:'mawasiliano',label:'Mawasiliano'},{value:'matangazo',label:'Matangazo / Marketing'},{value:'matengenezo',label:'Matengenezo'},{value:'vifaa',label:'Vifaa vya Duka'},{value:'usafi',label:'Usafi'},{value:'internet',label:'Internet'},{value:'nyingine',label:'Nyingine'}];
-  const catMap={};expenses.forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+(e.amount||0)});const pieData=Object.entries(catMap).map(([n,v])=>({name:n,value:v}));
+  const[search,setSearch]=useState('');
+  const[filter,setFilter]=useState('all');
+  const[period,setPeriod]=useState('all');
+  const[editModal,setEditModal]=useState({open:false,exp:null});
+  const[editF,setEditF]=useState({category:'',description:'',amount:'',is_recurring:false,recurring_interval:'monthly'});
+  
+  const CATS=[
+    {value:'kodi',label:'Kodi'},{value:'umeme',label:'Umeme'},{value:'maji',label:'Maji'},
+    {value:'mishahara',label:'Mishahara'},{value:'usafiri',label:'Usafiri'},
+    {value:'kodi_nyumba',label:'Rent / Pango'},{value:'taka',label:'Taka'},
+    {value:'ulinzi',label:'Ulinzi'},{value:'chakula',label:'Chakula'},
+    {value:'vifungashio',label:'Vifungashio'},{value:'mafuta',label:'Mafuta'},
+    {value:'madawa',label:'Madawa'},{value:'posho',label:'Posho'},
+    {value:'kodi_serikali',label:'Kodi ya Serikali'},{value:'bima',label:'Bima'},
+    {value:'mawasiliano',label:'Mawasiliano'},{value:'matangazo',label:'Matangazo / Marketing'},
+    {value:'matengenezo',label:'Matengenezo'},{value:'vifaa',label:'Vifaa vya Duka'},
+    {value:'usafi',label:'Usafi'},{value:'internet',label:'Internet'},
+    {value:'nyingine',label:'Nyingine'},
+  ];
+  const CAT_ICONS={
+    kodi:'🏛️',umeme:'⚡',maji:'💧',mishahara:'💼',usafiri:'🚐',kodi_nyumba:'🏠',
+    taka:'🗑️',ulinzi:'🛡️',chakula:'🍱',vifungashio:'📦',mafuta:'⛽',madawa:'💊',
+    posho:'🎁',kodi_serikali:'📋',bima:'🛟',mawasiliano:'📞',matangazo:'📢',
+    matengenezo:'🔧',vifaa:'🪑',usafi:'🧹',internet:'🌐',nyingine:'📌',
+  };
+  const getCatLabel=(v)=>CATS.find(c=>c.value===v)?.label||v;
+
+  const catMap={};
+  expenses.forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+(e.amount||0)});
+  const pieData=Object.entries(catMap).map(([n,v])=>({name:getCatLabel(n),value:v}));
+  
+  // Filtered list
+  const filtered=expenses.filter(e=>{
+    if(period==='today'&&!isToday(e.created_at))return false;
+    if(period==='week'&&!isThisWeek(e.created_at))return false;
+    if(period==='month'&&!isThisMonth(e.created_at))return false;
+    if(filter!=='all'&&e.category!==filter)return false;
+    if(search){
+      const s=search.toLowerCase();
+      return e.description?.toLowerCase().includes(s)||
+             getCatLabel(e.category).toLowerCase().includes(s);
+    }
+    return true;
+  }).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  
+  const filteredTotal=filtered.reduce((a,e)=>a+(e.amount||0),0);
+  
+  const handleEdit=(exp)=>{
+    setEditF({
+      category:exp.category,
+      description:exp.description||'',
+      amount:String(exp.amount||''),
+      is_recurring:exp.is_recurring||false,
+      recurring_interval:exp.recurring_interval||'monthly',
+    });
+    setEditModal({open:true,exp});
+  };
+  
+  const handleSaveEdit=async()=>{
+    const amt=+editF.amount;
+    if(!amt||amt<=0)return alert('Weka kiasi sahihi!');
+    if(!editModal.exp)return;
+    await updateExpense(editModal.exp.id,{
+      category:editF.category,
+      description:editF.description,
+      amount:amt,
+      is_recurring:editF.is_recurring,
+      recurring_interval:editF.is_recurring?editF.recurring_interval:null,
+    });
+    alert(`✅ MATUMIZI YAMEBADILISHWA!\n\n${CAT_ICONS[editF.category]||'📌'} ${getCatLabel(editF.category)}\n📝 ${editF.description||'—'}\n💰 ${fm(amt)}`);
+    setEditModal({open:false,exp:null});
+  };
+  
+  const handleDelete=async(exp)=>{
+    if(!window.confirm(`Una uhakika unataka kufuta matumizi haya?\n\n${getCatLabel(exp.category)}: ${fm(exp.amount)}\n${exp.description||'—'}\n\nKitendo hiki HAKIWEZI kurudishwa.`))return;
+    await deleteExpense(exp.id);
+    alert('🗑️ Matumizi yamefutwa!');
+  };
+  
   return <div>
-    <div className="flex-wrap" style={{marginBottom:16}}><Stat icon={IC.wallet} label="Jumla" value={fm(total)} color="#EF4444"/><Stat icon={IC.wallet} label="Mwezi" value={fm(mExp)} color="#F59E0B"/></div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>Ongeza</h3>
-        <Sel label="Aina" value={f.category} onChange={e=>setF({...f,category:e.target.value})} options={CATS}/>
-        <Input label="Maelezo" value={f.description} onChange={e=>setF({...f,description:e.target.value})} placeholder="Umeme Aprili"/>
-        <Input label="Kiasi" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}><input type="checkbox" checked={f.is_recurring} onChange={e=>setF({...f,is_recurring:e.target.checked})} id="rec"/><label htmlFor="rec" style={{fontSize:13}}>Inarudia</label></div>
-        <Btn onClick={()=>{if(!+f.amount)return alert('Weka kiasi!');addExpense({category:f.category,description:f.description,amount:+f.amount,is_recurring:f.is_recurring,recurring_interval:f.is_recurring?f.recurring_interval:null});setF({...f,description:'',amount:''})}}>{IC.plus} Hifadhi</Btn></div>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>Kwa Aina</h3>
-        {pieData.length?<ResponsiveContainer width="100%" height={180}><PieChart><Pie data={pieData} cx="50%" cy="50%" outerRadius={65} dataKey="value" label={({name})=>name} style={{fontSize:10}}>{pieData.map((_,i)=><Cell key={i} fill={CL[i%CL.length]}/>)}</Pie></PieChart></ResponsiveContainer>:<Empty text="Hakuna"/>}</div>
-      <div className="card" style={{gridColumn:'1/-1'}}><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>Orodha</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>{expenses.map(e=><div key={e.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between'}}>
-          <div><div style={{fontWeight:600,fontSize:12,textTransform:'capitalize'}}>{e.category} {e.is_recurring?'🔄':''}</div><div style={{fontSize:11,color:'#64748B'}}>{e.description} • {fmtDate(e.created_at)}</div></div>
-          <div style={{fontWeight:700,color:'#EF4444'}}>{fm(e.amount)}</div>
-        </div>)}{!expenses.length&&<Empty text="Hakuna"/>}</div></div>
+    {/* HEADER */}
+    <div style={{marginBottom:16}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>💰 Matumizi</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Hifadhi, hariri, na fuatilia gharama zote za biashara</p>
     </div>
+    
+    {/* STATS */}
+    <div className="flex-wrap" style={{marginBottom:16}}>
+      <Stat icon={IC.wallet} label="Jumla" value={fm(total)} color="#EF4444" sub={`${expenses.length} matumizi`}/>
+      <Stat icon={IC.wallet} label="Mwezi Huu" value={fm(mExp)} color="#F59E0B"/>
+      <Stat icon={IC.wallet} label="Wiki Hii" value={fm(wExp)} color="#3B82F6"/>
+      <Stat icon={IC.wallet} label="Leo" value={fm(tExp)} color="#22C55E"/>
+    </div>
+    
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
+      {/* ADD FORM */}
+      <div className="card" style={{border:'2px solid #BBF7D0'}}>
+        <h3 style={{fontSize:15,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>➕ Ongeza Matumizi Mpya</h3>
+        <Sel label="Aina" value={f.category} onChange={e=>setF({...f,category:e.target.value})} options={CATS}/>
+        <Input label="Maelezo" value={f.description} onChange={e=>setF({...f,description:e.target.value})} placeholder="Mfano: Umeme Aprili"/>
+        <Input label="Kiasi (TZS)" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} placeholder="Mfano: 50000"/>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,padding:'8px 12px',background:'#F0FDF4',borderRadius:8}}>
+          <input type="checkbox" checked={f.is_recurring} onChange={e=>setF({...f,is_recurring:e.target.checked})} id="rec" style={{cursor:'pointer'}}/>
+          <label htmlFor="rec" style={{fontSize:12,fontWeight:600,color:'#0B7A3B',cursor:'pointer'}}>🔄 Inarudia kila mwezi</label>
+        </div>
+        <Btn onClick={()=>{
+          if(!+f.amount||+f.amount<=0)return alert('Weka kiasi sahihi!');
+          addExpense({category:f.category,description:f.description,amount:+f.amount,is_recurring:f.is_recurring,recurring_interval:f.is_recurring?f.recurring_interval:null});
+          setF({...f,description:'',amount:''});
+          alert(`✅ MATUMIZI YAMEHIFADHIWA!\n\n${CAT_ICONS[f.category]||'📌'} ${getCatLabel(f.category)}\n💰 ${fm(+f.amount)}`);
+        }} style={{width:'100%',justifyContent:'center'}}>{IC.plus} Hifadhi Matumizi</Btn>
+      </div>
+      
+      {/* PIE CHART */}
+      <div className="card">
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px',color:'#0B7A3B'}}>📊 Kwa Aina</h3>
+        {pieData.length?<ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie data={pieData} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({name,value})=>`${name}: ${fm(value)}`} style={{fontSize:9}}>
+              {pieData.map((_,i)=><Cell key={i} fill={CL[i%CL.length]}/>)}
+            </Pie>
+            <Tooltip formatter={v=>fm(v)}/>
+          </PieChart>
+        </ResponsiveContainer>:<Empty text="Hakuna matumizi" icon="💰"/>}
+      </div>
+    </div>
+    
+    {/* SEARCH + FILTERS */}
+    <div className="card" style={{marginTop:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:10,marginBottom:12,alignItems:'center'}}>
+        <input
+          type="text"
+          placeholder="🔍 Tafuta matumizi (aina au maelezo)..."
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          style={{padding:'10px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:13,outline:'none',width:'100%',boxSizing:'border-box'}}
+        />
+        <div style={{fontSize:11,color:'#64748B',whiteSpace:'nowrap',padding:'0 8px'}}>
+          <b style={{color:'#0B7A3B',fontSize:15}}>{filtered.length}</b> matumizi • <b style={{color:'#EF4444',fontSize:15}}>{fm(filteredTotal)}</b>
+        </div>
+      </div>
+      
+      {/* Period filter */}
+      <div style={{display:'flex',gap:5,marginBottom:8,flexWrap:'wrap'}}>
+        {[{id:'all',label:'🗓️ Vyote'},{id:'today',label:'📅 Leo'},{id:'week',label:'🗓️ Wiki'},{id:'month',label:'📆 Mwezi'}].map(p=>
+          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{
+            padding:'6px 12px',borderRadius:8,
+            border:period===p.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',
+            background:period===p.id?'#0B7A3B':'#fff',
+            fontWeight:700,fontSize:11,cursor:'pointer',
+            color:period===p.id?'#fff':'#475569',
+          }}>{p.label}</button>
+        )}
+      </div>
+      
+      {/* Category filter */}
+      <div style={{display:'flex',gap:5,flexWrap:'wrap',maxHeight:80,overflowY:'auto',padding:'5px 0'}}>
+        <button onClick={()=>setFilter('all')} style={{
+          padding:'5px 10px',borderRadius:8,
+          border:filter==='all'?'2px solid #0B7A3B':'1px solid #E2E8F0',
+          background:filter==='all'?'#F0FDF4':'#fff',
+          fontWeight:600,fontSize:10,cursor:'pointer',
+          color:filter==='all'?'#0B7A3B':'#64748B',
+        }}>📚 Zote</button>
+        {Object.keys(catMap).map(c=>
+          <button key={c} onClick={()=>setFilter(c)} style={{
+            padding:'5px 10px',borderRadius:8,
+            border:filter===c?'2px solid #0B7A3B':'1px solid #E2E8F0',
+            background:filter===c?'#F0FDF4':'#fff',
+            fontWeight:600,fontSize:10,cursor:'pointer',
+            color:filter===c?'#0B7A3B':'#64748B',
+          }}>{CAT_ICONS[c]||'📌'} {getCatLabel(c)}</button>
+        )}
+      </div>
+    </div>
+    
+    {/* EXPENSES LIST */}
+    <div className="card" style={{marginTop:16}}>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#0B7A3B'}}>📋 Orodha ya Matumizi</h3>
+      
+      {filtered.length>0?<div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:520,overflowY:'auto'}}>
+        {filtered.map(e=><div key={e.id} style={{
+          padding:'12px 14px',
+          background:'#F8FAFC',
+          borderRadius:10,
+          borderLeft:'4px solid #EF4444',
+          display:'grid',
+          gridTemplateColumns:'auto 1fr auto auto',
+          gap:12,
+          alignItems:'center',
+        }}>
+          <div style={{
+            width:42,height:42,borderRadius:10,
+            background:'#FEE2E2',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:22,
+          }}>{CAT_ICONS[e.category]||'📌'}</div>
+          
+          <div style={{minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
+              <span style={{fontWeight:800,fontSize:13,color:'#1E293B',textTransform:'capitalize'}}>{getCatLabel(e.category)}</span>
+              {e.is_recurring&&<span style={{background:'#DBEAFE',color:'#1D4ED8',padding:'1px 8px',borderRadius:6,fontSize:9,fontWeight:700}}>🔄 INARUDIA</span>}
+            </div>
+            {e.description&&<div style={{fontSize:12,color:'#475569',marginBottom:2}}>{e.description}</div>}
+            <div style={{fontSize:10,color:'#94A3B8'}}>📅 {fmtDate(e.created_at)} {e.updated_at&&'• ✏️ Imebadilishwa'}</div>
+          </div>
+          
+          <div style={{fontWeight:900,color:'#EF4444',fontSize:16,textAlign:'right'}}>{fm(e.amount)}</div>
+          
+          <div style={{display:'flex',gap:5}}>
+            <button onClick={()=>handleEdit(e)} title="Hariri" style={{
+              padding:'8px 10px',borderRadius:8,
+              border:'1.5px solid #3B82F6',background:'#fff',
+              cursor:'pointer',color:'#3B82F6',fontWeight:700,fontSize:13,
+            }}>✏️</button>
+            <button onClick={()=>handleDelete(e)} title="Futa" style={{
+              padding:'8px 10px',borderRadius:8,
+              border:'1.5px solid #EF4444',background:'#fff',
+              cursor:'pointer',color:'#EF4444',fontWeight:700,fontSize:13,
+            }}>🗑️</button>
+          </div>
+        </div>)}
+      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:50,marginBottom:10}}>💰</div>
+        <div style={{fontWeight:700}}>{search||filter!=='all'||period!=='all'?'Hakuna matumizi yanayolingana':'Hakuna matumizi bado'}</div>
+        <div style={{fontSize:12,marginTop:4}}>{search||filter!=='all'||period!=='all'?'Badili vichungi':'Ongeza matumizi mapya juu'}</div>
+      </div>}
+    </div>
+    
+    {/* EDIT MODAL */}
+    <Modal open={editModal.open} onClose={()=>setEditModal({open:false,exp:null})} title="✏️ Hariri Matumizi">
+      {editModal.exp&&<>
+        <div style={{background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:11,color:'#92400E'}}>
+          <b>⚠️ ELEKEZO:</b> Unaboresha matumizi yaliyohifadhiwa tarehe <b>{fmtDate(editModal.exp.created_at)}</b>. Mabadiliko yataonyeshwa kila mahali.
+        </div>
+        <Sel label="Aina" value={editF.category} onChange={e=>setEditF({...editF,category:e.target.value})} options={CATS}/>
+        <Input label="Maelezo" value={editF.description} onChange={e=>setEditF({...editF,description:e.target.value})}/>
+        <Input label="Kiasi (TZS)" type="number" value={editF.amount} onChange={e=>setEditF({...editF,amount:e.target.value})}/>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,padding:'8px 12px',background:'#F0FDF4',borderRadius:8}}>
+          <input type="checkbox" checked={editF.is_recurring} onChange={e=>setEditF({...editF,is_recurring:e.target.checked})} id="recE" style={{cursor:'pointer'}}/>
+          <label htmlFor="recE" style={{fontSize:12,fontWeight:600,color:'#0B7A3B',cursor:'pointer'}}>🔄 Inarudia kila mwezi</label>
+        </div>
+        
+        {/* Show before/after if amount changed */}
+        {+editF.amount!==editModal.exp.amount&&+editF.amount>0&&<div style={{background:'#F0FDF4',border:'1.5px solid #BBF7D0',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:12}}>
+          <div style={{fontWeight:700,color:'#15803D',marginBottom:4}}>📊 Mabadiliko ya Kiasi:</div>
+          <div style={{display:'flex',justifyContent:'space-between'}}>
+            <span style={{color:'#64748B'}}>Zamani:</span>
+            <span style={{fontWeight:700,color:'#EF4444',textDecoration:'line-through'}}>{fm(editModal.exp.amount)}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between'}}>
+            <span style={{color:'#64748B'}}>Sasa:</span>
+            <span style={{fontWeight:700,color:'#0B7A3B'}}>{fm(+editF.amount)}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',borderTop:'2px dashed #BBF7D0',paddingTop:5,marginTop:5}}>
+            <span style={{color:'#64748B',fontWeight:600}}>Tofauti:</span>
+            <span style={{fontWeight:800,color:+editF.amount>editModal.exp.amount?'#EF4444':'#22C55E'}}>
+              {+editF.amount>editModal.exp.amount?'+':'−'}{fm(Math.abs(+editF.amount-editModal.exp.amount))}
+            </span>
+          </div>
+        </div>}
+        
+        <div style={{display:'flex',gap:8}}>
+          <Btn v="outline" onClick={()=>setEditModal({open:false,exp:null})} style={{flex:1,justifyContent:'center'}}>Ghairi</Btn>
+          <Btn onClick={handleSaveEdit} style={{flex:1,justifyContent:'center'}}>💾 Hifadhi Mabadiliko</Btn>
+        </div>
+      </>}
+    </Modal>
   </div>;
 }
 

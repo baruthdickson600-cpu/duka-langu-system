@@ -366,6 +366,19 @@ export function AppProvider({children}){
 
   // ===== EXPENSES =====
   const addExpense=useCallback(async(exp)=>{if(!bizId)return;const d=await safeInsert('expenses',{...exp,business_id:bizId,branch_id:activeBranch||null,recorded_by:user?.id});setExp(prev=>[d||{...exp,id:genId(),business_id:bizId,created_at:nowISO()},...prev])},[bizId,activeBranch,user]);
+  
+  const updateExpense=useCallback(async(id,updates)=>{
+    if(!id||!updates)return null;
+    await safeUpdate('expenses',updates,'id',id);
+    setExp(prev=>prev.map(e=>e.id===id?{...e,...updates,updated_at:nowISO()}:e));
+    return updates;
+  },[]);
+  
+  const deleteExpense=useCallback(async(id)=>{
+    if(!id)return;
+    await supabase.from('expenses').delete().eq('id',id);
+    setExp(prev=>prev.filter(e=>e.id!==id));
+  },[]);
 
   // ===== CUSTOMERS =====
   const addCustomer=useCallback(async(c)=>{if(!bizId)return null;const d=await safeInsert('customers',{...c,business_id:bizId,credit_balance:0,total_spent:0});const f=d||{...c,id:genId(),business_id:bizId,credit_balance:0,total_spent:0,created_at:nowISO()};setCust(prev=>[...prev,f]);return f},[bizId]);
@@ -1677,7 +1690,7 @@ export function AppProvider({children}){
     login,signup,logout,forgotPassword,
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
-    addExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
+    addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
     addBranch,updateBranch,deleteBranch,getBranches,
     // Tickets
     createTicket,replyTicket,closeTicket,
