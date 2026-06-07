@@ -1308,6 +1308,219 @@ export function SecurityPage(){
   </div>;
 }
 
+// =====================================================
+// BACKUP MANAGEMENT PAGE
+// Admin anaweza ku-trigger backup manually + kuona historia
+// =====================================================
+export function BackupPage(){
+  const{supabase,user}=useApp();
+  const[backups,setBackups]=React.useState([]);
+  const[loading,setLoading]=React.useState(false);
+  const[triggering,setTriggering]=React.useState(false);
+  
+  // Load backup history
+  React.useEffect(()=>{
+    if(user?.role!=='admin')return;
+    (async()=>{
+      setLoading(true);
+      try{
+        const{data}=await supabase.from('backup_logs')
+          .select('*')
+          .order('created_at',{ascending:false})
+          .limit(30);
+        setBackups(data||[]);
+      }catch(e){console.warn('Load backups:',e)}
+      setLoading(false);
+    })();
+  },[user?.role]);
+  
+  // Security: Admin only
+  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+    <div style={{fontSize:60,marginBottom:14}}>🔒</div>
+    <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
+    <p style={{fontSize:14,color:'#78350F'}}>Ukurasa wa backup unasimamiwa na Admin pekee.</p>
+  </div>;
+  
+  const triggerBackup=async()=>{
+    if(!window.confirm('Anza backup sasa?\n\nBackup itachukua dakika 1-2.\nEmail ya backup itatumwa kwa: dukalangusolution@gmail.com'))return;
+    setTriggering(true);
+    try{
+      const res=await fetch('/api/cron/daily-backup',{method:'GET'});
+      const data=await res.json();
+      if(data.success){
+        alert(`✅ BACKUP IMEKAMILIKA!\n\n📊 Rows: ${data.total_rows.toLocaleString()}\n📁 Tables: ${data.total_tables}\n💾 Size: ${data.size_mb} MB\n⏱️ Muda: ${data.duration_seconds}s\n\n📧 Email imetumwa kwa: ${data.email_sent_to}`);
+        const{data:newBackups}=await supabase.from('backup_logs').select('*').order('created_at',{ascending:false}).limit(30);
+        setBackups(newBackups||[]);
+      }else{
+        alert('❌ Tatizo: '+(data.error||'Backup imeshindwa'));
+      }
+    }catch(e){
+      alert('❌ Tatizo la mtandao: '+e.message);
+    }
+    setTriggering(false);
+  };
+  
+  const fmtSize=(bytes)=>{
+    if(!bytes)return '0 KB';
+    if(bytes<1024)return bytes+' bytes';
+    if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+    return (bytes/1024/1024).toFixed(2)+' MB';
+  };
+  
+  const fmtDuration=(ms)=>{
+    if(!ms)return '—';
+    if(ms<1000)return ms+'ms';
+    return (ms/1000).toFixed(1)+'s';
+  };
+  
+  const lastBackup=backups[0];
+  const totalSize=backups.reduce((s,b)=>s+(b.size_bytes||0),0);
+  const successCount=backups.filter(b=>b.status==='completed').length;
+  const lastBackupDate=lastBackup?new Date(lastBackup.created_at):null;
+  const hoursAgo=lastBackupDate?Math.floor((Date.now()-lastBackupDate.getTime())/(1000*60*60)):null;
+  const isHealthy=hoursAgo!==null&&hoursAgo<26;
+  
+  return <div>
+    <div style={{marginBottom:16}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>💾 Backup ya Database</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Hifadhi na simamia backups za mfumo</p>
+    </div>
+    
+    <div style={{
+      background: isHealthy?'linear-gradient(135deg,#0B7A3B,#065F2E)':'linear-gradient(135deg,#DC2626,#991B1B)',
+      borderRadius:16,padding:'24px 28px',marginBottom:16,color:'#fff',
+      boxShadow:'0 8px 30px rgba(0,0,0,0.15)',
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
+        <div style={{fontSize:42}}>{isHealthy?'✅':'⚠️'}</div>
+        <div>
+          <div style={{fontSize:18,fontWeight:900}}>
+            {isHealthy?'Mfumo Salama':lastBackup?'Backup Imechelewa':'Hakuna Backup Bado'}
+          </div>
+          <div style={{fontSize:12,opacity:0.9}}>
+            {lastBackup?`Backup ya mwisho: ${hoursAgo} saa zilizopita`:'Anza backup ya kwanza chini'}
+          </div>
+        </div>
+      </div>
+      
+      {lastBackup&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:10,marginTop:14,paddingTop:14,borderTop:'1px solid rgba(255,255,255,0.2)'}}>
+        <div>
+          <div style={{fontSize:10,opacity:0.85,letterSpacing:1}}>ROWS</div>
+          <div style={{fontSize:18,fontWeight:900}}>{(lastBackup.total_rows||0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10,opacity:0.85,letterSpacing:1}}>TABLES</div>
+          <div style={{fontSize:18,fontWeight:900}}>{lastBackup.total_tables||0}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10,opacity:0.85,letterSpacing:1}}>SIZE</div>
+          <div style={{fontSize:18,fontWeight:900}}>{fmtSize(lastBackup.size_bytes)}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10,opacity:0.85,letterSpacing:1}}>MUDA</div>
+          <div style={{fontSize:18,fontWeight:900}}>{fmtDuration(lastBackup.duration_ms)}</div>
+        </div>
+      </div>}
+    </div>
+    
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:16}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #0B7A3B'}}>
+        <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>BACKUPS ZOTE</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#0B7A3B',marginTop:4}}>{backups.length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>siku 30 zilizopita</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #22C55E'}}>
+        <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>ZILIZOFANIKIWA</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#22C55E',marginTop:4}}>{successCount}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>{backups.length>0?Math.round(successCount/backups.length*100):0}%</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #3B82F6'}}>
+        <div style={{fontSize:11,color:'#1D4ED8',fontWeight:700,letterSpacing:0.5}}>JUMLA YA DATA</div>
+        <div style={{fontSize:18,fontWeight:900,color:'#3B82F6',marginTop:4}}>{fmtSize(totalSize)}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>hifadhiwa</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #8B5CF6'}}>
+        <div style={{fontSize:11,color:'#6D28D9',fontWeight:700,letterSpacing:0.5}}>RATIBA</div>
+        <div style={{fontSize:14,fontWeight:900,color:'#8B5CF6',marginTop:4}}>Saa 2:00</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>kila usiku</div>
+      </div>
+    </div>
+    
+    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+        <div style={{width:54,height:54,borderRadius:14,background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>⚡</div>
+        <div style={{flex:1,minWidth:200}}>
+          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>Backup ya Haraka</h3>
+          <p style={{fontSize:12,color:'#64748B',margin:'4px 0 0'}}>Anza backup mara moja — itahifadhiwa kwenye email yako</p>
+        </div>
+        <button onClick={triggerBackup} disabled={triggering} style={{
+          padding:'14px 28px',
+          background:triggering?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',
+          color:'#fff',border:'none',borderRadius:12,
+          fontWeight:800,fontSize:14,cursor:triggering?'wait':'pointer',
+          boxShadow:'0 4px 15px rgba(11,122,59,0.3)',
+        }}>{triggering?'⏳ Inafanya backup...':'💾 Anza Backup'}</button>
+      </div>
+    </div>
+    
+    <div style={{background:'#EFF6FF',border:'1.5px solid #93C5FD',borderRadius:12,padding:'14px 18px',marginBottom:16,display:'flex',gap:12}}>
+      <div style={{fontSize:24}}>💡</div>
+      <div style={{flex:1,fontSize:12,color:'#1E40AF',lineHeight:1.6}}>
+        <b>Jinsi backup inavyofanya kazi:</b><br/>
+        • Backup automatic inakuja kila usiku <b>saa 2:00 alfajiri</b><br/>
+        • Email yenye backup inatumwa kwa: <b>dukalangusolution@gmail.com</b><br/>
+        • Backup ina <b>data zote</b> za mfumo: maduka, mauzo, bidhaa, wateja, n.k.<br/>
+        • Hifadhi kwenye Google Drive au Dropbox kwa usalama zaidi<br/>
+        • Backup ikipotea, unaweza kuomba msaada wa restore kupitia Live Chat
+      </div>
+    </div>
+    
+    <div className="card">
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>📋 Historia ya Backups (Siku 30)</h3>
+      
+      {loading?<div style={{textAlign:'center',padding:30,color:'#94A3B8'}}>
+        <div style={{fontSize:30,marginBottom:8}}>⏳</div>
+        <div style={{fontSize:13}}>Inaleta backups...</div>
+      </div>:backups.length>0?<div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:520,overflowY:'auto'}}>
+        {backups.map(b=><div key={b.id} style={{
+          padding:'14px 16px',background:'#F8FAFC',borderRadius:10,
+          borderLeft:`4px solid ${b.status==='completed'?'#22C55E':b.status==='partial'?'#F59E0B':'#EF4444'}`,
+          display:'grid',gridTemplateColumns:'auto 1fr auto',gap:12,alignItems:'center',
+        }}>
+          <div style={{
+            width:46,height:46,borderRadius:12,
+            background:b.status==='completed'?'#DCFCE7':b.status==='partial'?'#FEF3C7':'#FEE2E2',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,
+          }}>{b.status==='completed'?'✅':b.status==='partial'?'⚠️':'❌'}</div>
+          
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:13,color:'#1E293B',marginBottom:3}}>
+              {new Date(b.created_at).toLocaleString('sw-TZ',{dateStyle:'full',timeStyle:'short'})}
+            </div>
+            <div style={{fontSize:11,color:'#64748B',display:'flex',gap:10,flexWrap:'wrap'}}>
+              <span>📊 {(b.total_rows||0).toLocaleString()} rows</span>
+              <span>📁 {b.total_tables||0} tables</span>
+              <span>💾 {fmtSize(b.size_bytes)}</span>
+              <span>⏱️ {fmtDuration(b.duration_ms)}</span>
+              {b.errors&&b.errors.length>0&&<span style={{color:'#EF4444'}}>⚠️ {b.errors.length} errors</span>}
+            </div>
+          </div>
+          
+          <div style={{
+            padding:'4px 12px',borderRadius:8,
+            background:b.status==='completed'?'#22C55E':b.status==='partial'?'#F59E0B':'#EF4444',
+            color:'#fff',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:0.5,
+          }}>{b.status||'unknown'}</div>
+        </div>)}
+      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:50,marginBottom:10}}>💾</div>
+        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna backup bado</div>
+        <div style={{fontSize:12,marginTop:4}}>Bonyeza "Anza Backup" juu kuanza ya kwanza</div>
+      </div>}
+    </div>
+  </div>;
+}
+
 // ===== PAYMENTS (Approve/Reject) =====
 export function PaymentsPage(){
   const{paymentRequests,approvePayment,rejectPayment,pendingPayments,settings,loadData,user}=useApp();

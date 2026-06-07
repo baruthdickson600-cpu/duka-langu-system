@@ -7,7 +7,7 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
@@ -43,6 +43,7 @@ const MENUS={
     ]},
     {group:'mfumo',label:'⚙️ Mfumo',icon:IC.gear,items:[
       {id:'security',icon:IC.shield,label:'Security'},
+      {id:'backup',icon:IC.dl,label:'💾 Backup'},
       {id:'settings',icon:IC.gear,label:'Mipangilio'},
     ]},
   ],
@@ -193,7 +194,9 @@ export default function App(){
         case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'live_chat':return <AdminChatPanel/>;
-        case'security':return <SecurityPage/>;case'settings':return <SettingsPage/>;
+        case'security':return <SecurityPage/>;
+        case'backup':return <BackupPage/>;
+        case'settings':return <SettingsPage/>;
         case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
         case'info_requests':return <InfoRequestsPage/>;
         case'referrals':return <ReferralManagementPage/>;
