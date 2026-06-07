@@ -20,6 +20,7 @@
   
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="preload" as="image" href="/logo-white.png" />
   <link rel="preload" as="image" href="/logo.png" />
   
   <title>Duka Langu - Smart POS</title>
@@ -76,8 +77,8 @@
     /* Logo wrapper */
     .logo-ring {
       position: relative;
-      width: 280px;
-      height: 200px;
+      width: 360px;
+      height: 170px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -88,39 +89,33 @@
       50% { transform: scale(1.04); }
     }
     
-    /* Logo card */
+    /* Logo container — no card, logo directly on green */
     .logo-card {
       position: relative;
-      width: 260px;
-      height: 180px;
-      background: #FFFFFF;
-      border-radius: 20px;
+      width: 340px;
+      height: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 
-        0 25px 70px -10px rgba(0,0,0,0.45),
-        0 0 0 1px rgba(255,255,255,0.2),
-        inset 0 2px 4px rgba(255,255,255,0.7);
       animation: cardPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       opacity: 0;
-      transform: scale(0.3) rotate(-15deg);
-      overflow: hidden;
+      transform: scale(0.3);
     }
     @keyframes cardPop {
-      to { opacity: 1; transform: scale(1) rotate(0deg); }
+      to { opacity: 1; transform: scale(1); }
     }
     
-    /* Real logo image */
+    /* White logo image — shadow follows logo shape, not container */
     .logo-img {
-      width: 90%;
-      height: 80%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       position: relative;
       z-index: 2;
       opacity: 0;
       transform: scale(0.5);
       animation: logoReveal 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s forwards;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,0.35));
     }
     @keyframes logoReveal {
       0% { opacity: 0; transform: scale(0.5); }
@@ -128,39 +123,21 @@
       100% { opacity: 1; transform: scale(1); }
     }
     
-    /* Shine sweep effect */
-    .logo-card::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.7) 50%, transparent 70%);
-      animation: shineSweep 1.5s ease-out 1.4s;
-      z-index: 3;
-      pointer-events: none;
-    }
-    @keyframes shineSweep {
-      0% { left: -100%; }
-      100% { left: 100%; }
-    }
-    
-    /* Inner light burst */
+    /* Soft glow burst behind logo */
     .logo-burst {
       position: absolute;
-      inset: 0;
-      border-radius: 20px;
-      background: radial-gradient(circle at center, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 60%);
+      inset: -60px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
       opacity: 0;
-      animation: burst 0.8s ease-out 0.5s;
+      animation: burst 1.2s ease-out 0.5s forwards;
       z-index: 1;
       pointer-events: none;
     }
     @keyframes burst {
       0% { opacity: 0; transform: scale(0.5); }
-      50% { opacity: 1; transform: scale(1.5); }
-      100% { opacity: 0; transform: scale(2); }
+      50% { opacity: 1; transform: scale(1.2); }
+      100% { opacity: 0.6; transform: scale(1); }
     }
     
     /* Tagline */
@@ -270,8 +247,8 @@
       <div class="logo-ring">
         <div class="logo-card">
           <div class="logo-burst"></div>
-          <img src="/logo.png" alt="Duka Langu" class="logo-img" 
-               onerror="this.src='/logo.jpeg'" />
+          <img src="/logo-white.png" alt="Duka Langu" class="logo-img" 
+               onerror="this.src='/logo.png'" />
         </div>
       </div>
       
