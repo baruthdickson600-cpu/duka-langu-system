@@ -1106,6 +1106,11 @@ export function PaymentsPage(){
 
   const handleApprove=async(id)=>{
     if(processing)return;
+    // SECURITY: Only accountant can approve payments and generate tokens
+    if(user?.role!=='accountant'){
+      alert('🔒 USALAMA WA FEDHA\n\nHuwezi kuthibitisha malipo wala kutoa tokens.\n\nMalipo yote yanasimamiwa na Muhasibu pekee kwa udhibiti wa fedha za biashara.\n\nMtaarifu Muhasibu athibitishe malipo haya.');
+      return;
+    }
     setProcessing(id);
     try{
       const result=await approvePayment(id,+days||30);
@@ -1142,6 +1147,26 @@ export function PaymentsPage(){
   const totalRevenue=paymentRequests.filter(p=>p.status==='approved').reduce((a,p)=>a+(p.amount||0),0);
 
   return <div>
+    {/* Security Notice for Admin */}
+    {user?.role==='admin'&&<div style={{
+      background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+      border:'2px solid #F59E0B',
+      borderRadius:12,
+      padding:'14px 18px',
+      marginBottom:16,
+      display:'flex',
+      alignItems:'center',
+      gap:14,
+    }}>
+      <div style={{fontSize:32}}>🔒</div>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:800,fontSize:14,color:'#92400E',marginBottom:4}}>USALAMA WA FEDHA — Tu Muhasibu Anaweza Kuthibitisha</div>
+        <div style={{fontSize:12,color:'#78350F',lineHeight:1.5}}>
+          Malipo yote yanasimamiwa na <b>Muhasibu</b> pekee. Wewe Admin unaweza kuona malipo lakini huwezi kuthibitisha au kutoa tokens. Hii ni kwa udhibiti wa fedha za biashara.
+        </div>
+      </div>
+    </div>}
+    
     {/* Stats */}
     <div className="flex-wrap" style={{marginBottom:16}}>
       <Stat icon={IC.bell} label="Inasubiri" value={pendingPayments.length} color="#F59E0B"/>

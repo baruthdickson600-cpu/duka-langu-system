@@ -21,7 +21,6 @@ const MENUS={
     {group:'biashara',label:'🏢 Biashara',icon:IC.store,items:[
       {id:'stores',icon:IC.store,label:'Maduka'},
       {id:'payments',icon:IC.dollar,label:'Malipo'},
-      {id:'tokens',icon:IC.key,label:'Tokens'},
       {id:'info_requests',icon:IC.file,label:'Ombi za Mabadiliko'},
     ]},
     {group:'masoko',label:'📣 Masoko',icon:IC.send,items:[
@@ -50,6 +49,7 @@ const MENUS={
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'payments',icon:IC.dollar,label:'Malipo'},
+    {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
     {id:'budget',icon:IC.chart,label:'Bajeti'},
     {id:'expenses',icon:IC.file,label:'Matumizi'},
     {id:'payroll',icon:IC.people,label:'Payroll'},
@@ -190,7 +190,7 @@ export default function App(){
   const renderPage=()=>{
     if(role==='admin'){
       switch(page){
-        case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;case'tokens':return <TokensPage/>;
+        case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;
         case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'live_chat':return <AdminChatPanel/>;
@@ -219,6 +219,7 @@ export default function App(){
     if(role==='accountant'){
       switch(page){
         case'payments':return <AccPaymentsPage/>;
+        case'tokens':return <TokensPage/>;
         case'budget':return <AccBudgetPage/>;
         case'expenses':return <AccExpensesPage/>;
         case'payroll':return <AccPayrollPage/>;

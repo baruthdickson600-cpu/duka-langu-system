@@ -814,12 +814,13 @@ export function AppProvider({children}){
     if(saved)setPayReqs(prev=>[saved,...prev]);
     const final=saved||{...prFull,id:genId(),created_at:nowISO()};
     
-    // Notify admin — in-app notification
-    safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. THIBITISHA SASA!`}).catch(()=>{});
+    // Notify admin AND accountant — in-app notification
+    safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Muhasibu athibitishe!`}).catch(()=>{});
+    safeInsert('notifications',{target_type:'accountant',type:'warning',title:`💰 THIBITISHA MALIPO — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()}. Fungua Tokens → Toa token kwa mteja.`}).catch(()=>{});
     // Notify admin — email
     sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
     // Notify admin — SMS via Beem (kwa Admin namba 0628986770)
-    sendSMS('255628986770',`DUKA LANGU\n💰 MALIPO MAPYA!\n\nMteja: ${myBizName}\nKiasi: TZS ${(+amount).toLocaleString()}\nNjia: ${payMethod}\nTX: ${transactionId}\nSimu: ${phone||'—'}\n\nFungua mfumo kuthibitisha.`);
+    sendSMS('255628986770',`DUKA LANGU\n💰 MALIPO MAPYA!\n\nMteja: ${myBizName}\nKiasi: TZS ${(+amount).toLocaleString()}\nNjia: ${payMethod}\nTX: ${transactionId}\nSimu: ${phone||'—'}\n\nMuhasibu athibitishe.`);
     // Notify partners
     supabase.from('marketing_partners').select('email').then(({data:pts})=>{
       (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`💰 Malipo Mapya: ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone})});
