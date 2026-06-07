@@ -245,6 +245,13 @@ export function AppProvider({children}){
         await loadData(uid,'office',newBiz.id);
         // Welcome email to new user
         sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
+        
+        // Welcome SMS to new user's phone (immediately after signup)
+        if(phone){
+          const welcomeSMS=`Karibu DukaLangu!\nUsajili wako umekamilika. Sasa unaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako popote ulipo.\nIngia kwenye mfumo kupitia: dukalangu.com\nKwa msaada wowote wasiliana nasi +255 617 288 752\nAsante kwa kuchagua DukaLangu`;
+          sendSMS(phone,welcomeSMS);
+        }
+        
         // Notify admin via email
         sendMail(ADMIN_EMAIL,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone});
         // Notify ALL marketing partners
@@ -780,6 +787,13 @@ export function AppProvider({children}){
         await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Mteja Mpya (Wakala): ${bizName}`,message:`${custName||bizName} amesajiliwa na wakala ${user.name}. Code: ${user.promo_code}`});
         // Welcome email
         sendMail(custEmail,'🎉 Karibu kwenye Duka Langu!','welcome',{name:custName||bizName,businessName:bizName});
+        
+        // Welcome SMS to new customer's phone (immediately after registration)
+        if(custPhone){
+          const welcomeSMS=`Karibu DukaLangu!\nUsajili wako umekamilika. Sasa unaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako popote ulipo.\nIngia kwenye mfumo kupitia: dukalangu.com\nKwa msaada wowote wasiliana nasi +255 617 288 752\nAsante kwa kuchagua DukaLangu`;
+          sendSMS(custPhone,welcomeSMS);
+        }
+        
         // Admin + Partners notification
         sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya (Wakala): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'});
         supabase.from('marketing_partners').select('email').then(({data:pts})=>{
