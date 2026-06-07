@@ -473,18 +473,73 @@ export function StoresPage(){
 
 // ===== TOKENS =====
 export function TokensPage(){
-  const{tokens,genToken,partners,businesses,paymentRequests}=useApp();
+  const{tokens,genToken,partners,businesses,paymentRequests,user}=useApp();
   const[days,setDays]=useState('30');const[plan,setPlan]=useState('basic');
   const[assignTo,setAssignTo]=useState('');const[assignName,setAssignName]=useState('');
   const[qty,setQty]=useState('1');const[tab,setTab]=useState('all');const[generating,setGenerating]=useState(false);
+  const[search,setSearch]=useState('');
+  const[period,setPeriod]=useState('all');
 
-  const usedTokens=tokens.filter(t=>t.used);
-  const freeTokens=tokens.filter(t=>!t.used);
-  const filtered=tab==='used'?usedTokens:tab==='free'?freeTokens:tab==='mine'?tokens.filter(t=>!t.assigned_to):tokens;
+  // SECURITY: Only accountant can access this page
+  if(user?.role!=='accountant'){
+    return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+      <div style={{fontSize:60,marginBottom:14}}>🔒</div>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA MUHASIBU TU</h2>
+      <p style={{fontSize:14,color:'#78350F',lineHeight:1.6,maxWidth:500,margin:'0 auto'}}>
+        Ukurasa huu wa Tokens unasimamiwa na <b>Muhasibu pekee</b> kwa udhibiti wa fedha za biashara.
+        <br/><br/>
+        Kama unahitaji kutoa token kwa mteja, wasiliana na Muhasibu.
+      </p>
+    </div>;
+  }
 
-  // Revenue from tokens
-  const approvedPay=paymentRequests.filter(p=>p.status==='approved');
+  // Plan pricing (matches biashara plans)
+  const PLAN_PRICES={basic:15000,premium:30000,enterprise:60000};
+  const PLAN_COLORS={basic:'#64748B',premium:'#8B5CF6',enterprise:'#0B7A3B'};
+  const PLAN_ICONS={basic:'⚡',premium:'⭐',enterprise:'👑'};
+
+  // Period filter
+  const isInPeriod=(dateStr)=>{
+    if(!dateStr||period==='all')return true;
+    const d=new Date(dateStr);const now=new Date();
+    if(period==='today')return d.toDateString()===now.toDateString();
+    if(period==='week'){const w=new Date(now);w.setDate(now.getDate()-7);return d>=w}
+    if(period==='month')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    if(period==='year')return d.getFullYear()===now.getFullYear();
+    return true;
+  };
+
+  const periodTokens=tokens.filter(t=>isInPeriod(t.created_at));
+  const usedTokens=periodTokens.filter(t=>t.used);
+  const freeTokens=periodTokens.filter(t=>!t.used);
+
+  // Revenue calculations
+  const approvedPay=paymentRequests.filter(p=>p.status==='approved'&&isInPeriod(p.created_at));
   const totalRevenue=approvedPay.reduce((a,p)=>a+(p.amount||0),0);
+  
+  // Estimated revenue from tokens (used tokens × plan price)
+  const estimatedRevenue=usedTokens.reduce((sum,t)=>sum+(PLAN_PRICES[t.plan]||PLAN_PRICES.basic),0);
+  
+  // Revenue per plan
+  const revenueByPlan={basic:0,premium:0,enterprise:0};
+  const tokensByPlan={basic:0,premium:0,enterprise:0};
+  usedTokens.forEach(t=>{
+    const p=t.plan||'basic';
+    revenueByPlan[p]=(revenueByPlan[p]||0)+(PLAN_PRICES[p]||0);
+    tokensByPlan[p]=(tokensByPlan[p]||0)+1;
+  });
+
+  // Search filter
+  const matchesSearch=(t)=>{
+    if(!search)return true;
+    const s=search.toLowerCase();
+    const biz=businesses.find(b=>b.id===t.used_by);
+    return t.code?.toLowerCase().includes(s)||
+           t.assigned_name?.toLowerCase().includes(s)||
+           biz?.name?.toLowerCase().includes(s);
+  };
+
+  const filtered=(tab==='used'?usedTokens:tab==='free'?freeTokens:periodTokens).filter(matchesSearch);
 
   const handleGenerate=async()=>{
     if(!days||days<1)return alert('Weka siku!');
@@ -492,100 +547,264 @@ export function TokensPage(){
     const count=Math.min(parseInt(qty)||1,50);
     const codes=[];
     for(let i=0;i<count;i++){
-      const c=await genToken(days,plan,assignTo,assignName||partners.find(p=>p.id===assignTo)?.name||'Admin');
+      const c=await genToken(days,plan,assignTo,assignName||partners.find(p=>p.id===assignTo)?.name||'Muhasibu');
       codes.push(c);
     }
     setGenerating(false);
-    if(count===1)alert('Token: '+codes[0]);
-    else alert(`Token ${count} zimetengenezwa!\n\n${codes.join('\n')}`);
+    if(count===1)alert('✅ Token Imetolewa:\n\n'+codes[0]+'\n\nIpatie mteja apate kufungua mfumo.');
+    else alert(`✅ Tokens ${count} zimetolewa!\n\n${codes.join('\n')}\n\nZipatie wateja husika.`);
   };
 
-  // Get business name for used token
-  const getBizName=(t)=>{const b=businesses.find(b=>b.id===t.used_by);return b?.name||'—'};
+  const getBizInfo=(t)=>{
+    const b=businesses.find(b=>b.id===t.used_by);
+    return b?{name:b.name||'—',phone:b.phone||'—',email:b.email||'—'}:null;
+  };
+
+  const fmtTime=(d)=>{
+    if(!d)return '—';
+    const date=new Date(d);
+    return date.toLocaleDateString('sw-TZ',{day:'numeric',month:'short',year:'numeric'})+' '+
+           date.toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'});
+  };
 
   return <div>
-    {/* Stats */}
-    <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.key} label="Jumla" value={tokens.length} color="#0B7A3B"/>
-      <Stat icon={IC.ok} label="Zinapatikana" value={freeTokens.length} color="#22C55E"/>
-      <Stat icon={IC.clock} label="Zimetumika" value={usedTokens.length} color="#F59E0B"/>
-      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRevenue.toLocaleString()}`} color="#3B82F6"/>
+    {/* HEADER */}
+    <div style={{marginBottom:18}}>
+      <h2 style={{fontSize:24,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🔑 Tokens & Mahesabu</h2>
+      <p style={{fontSize:13,color:'#64748B',margin:0}}>Simamia tokens za wateja na uone mapato ya biashara</p>
     </div>
 
-    {/* Generate Card */}
-    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0'}}>
-      <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 14px',color:'#0B7A3B'}}>🔑 Tengeneza Token Mpya</h3>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:12}}>
+    {/* PERIOD FILTER */}
+    <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+      {[
+        {id:'all',label:'🗓️ Vyote'},
+        {id:'today',label:'📅 Leo'},
+        {id:'week',label:'🗓️ Wiki Hii'},
+        {id:'month',label:'📆 Mwezi Huu'},
+        {id:'year',label:'🎯 Mwaka Huu'},
+      ].map(p=><button key={p.id} onClick={()=>setPeriod(p.id)} style={{padding:'8px 14px',borderRadius:10,border:period===p.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:period===p.id?'#0B7A3B':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:period===p.id?'#fff':'#475569'}}>{p.label}</button>)}
+    </div>
+
+    {/* HERO REVENUE CARD */}
+    <div style={{
+      background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+      borderRadius:16,
+      padding:'24px 28px',
+      marginBottom:16,
+      color:'#fff',
+      boxShadow:'0 8px 30px rgba(11,122,59,0.25)',
+      display:'grid',
+      gridTemplateColumns:'1fr auto',
+      alignItems:'center',
+      gap:20,
+    }}>
+      <div>
+        <div style={{fontSize:12,opacity:0.85,fontWeight:600,letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>JUMLA YA MAPATO</div>
+        <div style={{fontSize:36,fontWeight:900,marginBottom:6,letterSpacing:-1}}>TZS {totalRevenue.toLocaleString()}</div>
+        <div style={{fontSize:12,opacity:0.85}}>
+          Malipo {approvedPay.length} yaliyothibitishwa
+          {period!=='all'&&` • ${period==='today'?'Leo':period==='week'?'Wiki Hii':period==='month'?'Mwezi Huu':'Mwaka Huu'}`}
+        </div>
+      </div>
+      <div style={{textAlign:'right'}}>
+        <div style={{fontSize:11,opacity:0.85,fontWeight:600,letterSpacing:1,marginBottom:4}}>TOKENS</div>
+        <div style={{fontSize:28,fontWeight:900}}>{periodTokens.length}</div>
+        <div style={{fontSize:11,opacity:0.85}}>{usedTokens.length} zimetumika</div>
+      </div>
+    </div>
+
+    {/* QUICK STATS */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:16}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #22C55E',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>ZINAPATIKANA</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#22C55E',marginTop:4}}>{freeTokens.length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>tayari kutolewa</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #F59E0B',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:11,color:'#B45309',fontWeight:700,letterSpacing:0.5}}>ZIMETUMIKA</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#F59E0B',marginTop:4}}>{usedTokens.length}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>na wateja</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #3B82F6',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:11,color:'#1D4ED8',fontWeight:700,letterSpacing:0.5}}>MAPATO YA TOKENS</div>
+        <div style={{fontSize:20,fontWeight:900,color:'#3B82F6',marginTop:4}}>TZS {estimatedRevenue.toLocaleString()}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>kulingana na plans</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #8B5CF6',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:11,color:'#6D28D9',fontWeight:700,letterSpacing:0.5}}>WATEJA WAPYA</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#8B5CF6',marginTop:4}}>{new Set(usedTokens.map(t=>t.used_by)).size}</div>
+        <div style={{fontSize:10,color:'#94A3B8'}}>biashara zilizofunguliwa</div>
+      </div>
+    </div>
+
+    {/* REVENUE BY PLAN — Breakdown */}
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:15,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>📊 Mahesabu kwa Kila Plan</h3>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}}>
+        {['basic','premium','enterprise'].map(p=>{
+          const planRevenue=revenueByPlan[p];
+          const planCount=tokensByPlan[p];
+          const pct=estimatedRevenue>0?(planRevenue/estimatedRevenue*100):0;
+          return <div key={p} style={{
+            border:`2px solid ${PLAN_COLORS[p]}30`,
+            borderRadius:12,
+            padding:'14px 16px',
+            background:`linear-gradient(135deg,${PLAN_COLORS[p]}08,${PLAN_COLORS[p]}03)`,
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <span style={{fontSize:22}}>{PLAN_ICONS[p]}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:800,fontSize:14,color:PLAN_COLORS[p],textTransform:'capitalize'}}>{p}</div>
+                <div style={{fontSize:10,color:'#94A3B8'}}>TZS {PLAN_PRICES[p].toLocaleString()}/mwezi</div>
+              </div>
+            </div>
+            <div style={{fontSize:24,fontWeight:900,color:PLAN_COLORS[p]}}>TZS {planRevenue.toLocaleString()}</div>
+            <div style={{fontSize:11,color:'#64748B',marginTop:4}}>
+              <b>{planCount}</b> token{planCount!==1?'s':''} zimetumika ({pct.toFixed(0)}%)
+            </div>
+            {/* Progress bar */}
+            <div style={{height:5,background:'#F1F5F9',borderRadius:5,marginTop:8,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${pct}%`,background:PLAN_COLORS[p],borderRadius:5,transition:'width 0.5s'}}/>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>
+
+    {/* GENERATE TOKEN — Accountant Only */}
+    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+        <div style={{width:42,height:42,borderRadius:10,background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🔑</div>
         <div>
-          <label style={{fontSize:11,fontWeight:600,color:'#475569',display:'block',marginBottom:4}}>Siku</label>
+          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>Tengeneza Token Mpya</h3>
+          <div style={{fontSize:11,color:'#64748B'}}>Token itamruhusu mteja kufungua mfumo</div>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:14}}>
+        <div>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Muda (Siku)</label>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'6px 12px',borderRadius:8,border:days===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:13,cursor:'pointer',color:days===String(d)?'#0B7A3B':'#64748B'}}>{d}</button>)}
+            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:days===String(d)?'#0B7A3B':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#64748B'}}>{d}</button>)}
           </div>
         </div>
-        <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[{value:'basic',label:'Basic'},{value:'premium',label:'Premium'},{value:'enterprise',label:'Enterprise'}]}/></div>
+        <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[
+          {value:'basic',label:`⚡ Basic — TZS ${PLAN_PRICES.basic.toLocaleString()}`},
+          {value:'premium',label:`⭐ Premium — TZS ${PLAN_PRICES.premium.toLocaleString()}`},
+          {value:'enterprise',label:`👑 Enterprise — TZS ${PLAN_PRICES.enterprise.toLocaleString()}`},
+        ]}/></div>
         <div><Input label="Idadi" type="number" value={qty} onChange={e=>setQty(e.target.value)}/></div>
-        <div><Sel label="Weka kwa Mshirika" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Admin (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
+        <div><Sel label="Weka kwa Mshirika (Optional)" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Muhasibu (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
       </div>
-      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
-        {generating?'⏳ Inatengeneza...':`🔑 Tengeneza Token ${qty>1?qty+' ':''}(Siku ${days})`}
+      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:generating?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+        {generating?'⏳ Inatengeneza...':`🔑 Tengeneza Token ${qty>1?qty+' ':''}— Siku ${days} (${plan})`}
       </button>
     </div>
 
-    {/* Tabs */}
-    <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
-      {[
-        {id:'all',label:`Zote (${tokens.length})`,color:'#0B7A3B'},
-        {id:'free',label:`Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
-        {id:'used',label:`Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
-        {id:'mine',label:'Za Admin',color:'#3B82F6'},
-      ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'7px 14px',borderRadius:8,border:tab===t.id?`2px solid ${t.color}`:'1px solid #E2E8F0',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
-      {/* Partner filter buttons */}
-      {partners.map(p=><button key={p.id} onClick={()=>setTab('p_'+p.id)} style={{padding:'7px 14px',borderRadius:8,border:tab===('p_'+p.id)?'2px solid #8B5CF6':'1px solid #E2E8F0',background:tab===('p_'+p.id)?'#F5F3FF':'#fff',fontWeight:tab===('p_'+p.id)?700:500,fontSize:12,cursor:'pointer',color:tab===('p_'+p.id)?'#8B5CF6':'#64748B'}}>📋 {p.name||p.email}</button>)}
+    {/* SEARCH + TABS */}
+    <div style={{background:'#fff',borderRadius:12,padding:'12px 14px',marginBottom:14,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+      <input
+        type="text"
+        placeholder="🔍 Tafuta kwa token, biashara, au mshirika..."
+        value={search}
+        onChange={e=>setSearch(e.target.value)}
+        style={{
+          width:'100%',
+          padding:'10px 14px',
+          border:'1.5px solid #E2E8F0',
+          borderRadius:10,
+          fontSize:13,
+          outline:'none',
+          boxSizing:'border-box',
+          marginBottom:10,
+        }}
+      />
+      <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+        {[
+          {id:'all',label:`📚 Zote (${periodTokens.length})`,color:'#0B7A3B'},
+          {id:'free',label:`✅ Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
+          {id:'used',label:`🎯 Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
+        ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 14px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:tab===t.id?t.color+'12':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
+      </div>
     </div>
 
-    {/* Token Cards */}
+    {/* TOKENS LIST */}
     <div className="card">
-      {(tab.startsWith('p_')?tokens.filter(t=>t.assigned_to===tab.slice(2)):filtered).map(t=>(
-        <div key={t.id} style={{padding:'12px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          <div style={{width:40,height:40,borderRadius:10,background:t.used?'#FFF7ED':'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>
-            {t.used?'✅':'🔑'}
-          </div>
-          <div style={{flex:1,minWidth:150}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <span style={{fontFamily:'monospace',fontWeight:800,fontSize:14,background:t.used?'#FFF7ED':'#F0FDF4',padding:'3px 10px',borderRadius:6,color:t.used?'#92400E':'#0B7A3B'}}>{t.code}</span>
-              <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#0B7A3B':'#64748B'}>{t.plan||'basic'}</Badge>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#0B7A3B'}}>📋 Orodha ya Tokens ({filtered.length})</h3>
+      
+      {filtered.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {filtered.map(t=>{
+          const biz=getBizInfo(t);
+          return <div key={t.id} style={{
+            padding:'14px 16px',
+            background:t.used?'#FFFBEB':'#F0FDF4',
+            borderRadius:12,
+            border:`1px solid ${t.used?'#FDE68A':'#BBF7D0'}`,
+            display:'grid',
+            gridTemplateColumns:'auto 1fr auto',
+            gap:14,
+            alignItems:'center',
+          }}>
+            <div style={{
+              width:46,
+              height:46,
+              borderRadius:12,
+              background:t.used?'#F59E0B':'#22C55E',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              color:'#fff',
+              fontSize:22,
+              fontWeight:900,
+              boxShadow:`0 4px 12px ${t.used?'#F59E0B':'#22C55E'}40`,
+            }}>{t.used?'✓':'🔑'}</div>
+            
+            <div style={{minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
+                <span style={{fontFamily:'monospace',fontWeight:900,fontSize:15,background:'#fff',padding:'4px 10px',borderRadius:6,color:t.used?'#92400E':'#0B7A3B',border:`1px solid ${t.used?'#FCD34D':'#86EFAC'}`}}>{t.code}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:PLAN_COLORS[t.plan||'basic'],color:'#fff',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:0.5}}>{PLAN_ICONS[t.plan||'basic']} {t.plan||'basic'}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#64748B',fontWeight:700,fontSize:10,border:'1px solid #E2E8F0'}}>📅 Siku {t.days}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:10,border:'1px solid #BBF7D0'}}>💰 TZS {(PLAN_PRICES[t.plan]||PLAN_PRICES.basic).toLocaleString()}</span>
+              </div>
+              <div style={{fontSize:11,color:'#64748B',display:'flex',gap:8,flexWrap:'wrap'}}>
+                <span>🕒 Imetolewa: {fmtTime(t.created_at)}</span>
+                {t.assigned_name&&<span style={{color:'#8B5CF6',fontWeight:600}}>• 👤 Mshirika: {t.assigned_name}</span>}
+              </div>
+              {t.used&&biz&&<div style={{marginTop:8,padding:'8px 12px',background:'#fff',borderRadius:8,border:'1px solid #FDE68A'}}>
+                <div style={{fontSize:11,color:'#92400E',fontWeight:700,marginBottom:2}}>🏪 ALIYETUMIA TOKEN HII:</div>
+                <div style={{fontWeight:700,fontSize:13,color:'#1E293B'}}>{biz.name}</div>
+                <div style={{fontSize:11,color:'#64748B'}}>📞 {biz.phone} • 📧 {biz.email}</div>
+                {t.used_at&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>Alitumia: {fmtTime(t.used_at)}</div>}
+              </div>}
             </div>
-            <div style={{fontSize:11,color:'#94A3B8',marginTop:3}}>
-              Siku: <b>{t.days}</b> • {fmtDate(t.created_at)}
-              {t.assigned_name&&<span> • 📋 <b style={{color:'#8B5CF6'}}>{t.assigned_name}</b></span>}
-            </div>
-          </div>
-          <div style={{textAlign:'right'}}>
-            <Badge color={t.used?'#F59E0B':'#22C55E'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
-            {t.used&&<div style={{fontSize:11,color:'#64748B',marginTop:2}}>→ {getBizName(t)}</div>}
-          </div>
-          {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy: '+t.code)}} style={{padding:'5px 10px',borderRadius:6,border:'1px solid #E2E8F0',background:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:'#64748B'}}>📋 Copy</button>}
-        </div>
-      ))}
-      {filtered.length===0&&<Empty icon="🔑" text="Hakuna token"/>}
+            
+            {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy:\n\n'+t.code)}} style={{padding:'8px 14px',borderRadius:8,border:'2px solid #0B7A3B',background:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',color:'#0B7A3B'}}>📋 Copy</button>}
+          </div>;
+        })}
+      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:50,marginBottom:10}}>🔑</div>
+        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna tokens</div>
+        <div style={{fontSize:12,marginTop:4}}>Tengeneza token mpya juu</div>
+      </div>}
     </div>
 
-    {/* Revenue Breakdown */}
+    {/* REVENUE BREAKDOWN (Approved Payments) */}
     {approvedPay.length>0&&<div className="card" style={{marginTop:16}}>
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>💰 Mapato — Malipo Yaliyothibitishwa</h3>
-      <div style={{maxHeight:300,overflowY:'auto'}}>
-        {approvedPay.map(p=><div key={p.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+      <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px',color:'#0B7A3B'}}>💰 Mapato Halisi — Malipo Yaliyothibitishwa</h3>
+      <div style={{maxHeight:400,overflowY:'auto'}}>
+        {approvedPay.map(p=><div key={p.id} style={{padding:'12px 14px',background:'#F8FAFC',borderRadius:10,marginBottom:6,display:'grid',gridTemplateColumns:'1fr auto',gap:10,alignItems:'center'}}>
           <div>
-            <div style={{fontWeight:600,fontSize:13}}>{p.business_name}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id}</span></div>
-            {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6'}}>Token: {p.token_code} • Siku: {p.days_given}</div>}
+            <div style={{fontWeight:800,fontSize:13,color:'#1E293B'}}>{p.business_name}</div>
+            <div style={{fontSize:11,color:'#64748B',marginTop:2}}>
+              📅 {fmtTime(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace',background:'#fff',padding:'1px 6px',borderRadius:4}}>{p.transaction_id}</span>
+            </div>
+            {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6',marginTop:3,fontWeight:600}}>🔑 Token: {p.token_code} • Siku: {p.days_given}</div>}
           </div>
-          <div style={{fontWeight:800,fontSize:15,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</div>
+          <div style={{fontWeight:900,fontSize:16,color:'#0B7A3B'}}>TZS {(p.amount||0).toLocaleString()}</div>
         </div>)}
       </div>
-      <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 14px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <span style={{fontWeight:700,color:'#15803D'}}>JUMLA YA MAPATO</span>
-        <span style={{fontWeight:900,fontSize:20,color:'#0B7A3B'}}>TZS {totalRevenue.toLocaleString()}</span>
+      <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:12,padding:'14px 18px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center',color:'#fff'}}>
+        <span style={{fontWeight:800,fontSize:14}}>JUMLA YA MAPATO HALISI</span>
+        <span style={{fontWeight:900,fontSize:24}}>TZS {totalRevenue.toLocaleString()}</span>
       </div>
     </div>}
   </div>;

@@ -62,7 +62,6 @@ const MENUS={
   ],
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'tokens',icon:IC.key,label:'Tokens Zangu'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'agents',icon:IC.users,label:'Mawakala'},
     {id:'campaigns',icon:IC.gift,label:'Kampeni'},
@@ -207,7 +206,6 @@ export default function App(){
     if(role==='marketing'){
       switch(page){
         case'pipeline':return <PipelinePage/>;case'agents':return <MktAgentsPage/>;
-        case'tokens':return <MktTokensPage/>;
         case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
         case'messaging':return <MessagingPage/>;case'testimonials':return <TestimonialsPage/>;
         case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;
