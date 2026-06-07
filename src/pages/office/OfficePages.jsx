@@ -7,13 +7,34 @@ const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
 
 // ===== OFFICE DASHBOARD with Daily Report + Alerts =====
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights}=useApp();
+  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[]}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   
   // Filter sales by period
   const tSales=sales.filter(s=>isToday(s.created_at));
   const wSales=sales.filter(s=>isThisWeek(s.created_at));
   const mSales=sales.filter(s=>isThisMonth(s.created_at));
+  
+  // ===== CASH vs CREDIT separation =====
+  // Cash sales = payment_method is NOT 'credit' (cash, mpesa, halopesa, etc.)
+  // Credit sales = payment_method IS 'credit' (uziko ulioko bila pesa)
+  const tCashSales=tSales.filter(s=>s.payment_method!=='credit');
+  const wCashSales=wSales.filter(s=>s.payment_method!=='credit');
+  const mCashSales=mSales.filter(s=>s.payment_method!=='credit');
+  
+  // Credit sales (separate tracking)
+  const tCreditSales=tSales.filter(s=>s.payment_method==='credit');
+  const wCreditSales=wSales.filter(s=>s.payment_method==='credit');
+  const mCreditSales=mSales.filter(s=>s.payment_method==='credit');
+  
+  // Credit payments received TODAY/WEEK/MONTH (this is what shows as "income")
+  const tCreditPayments=creditHistory.filter(t=>t.type==='payment'&&isToday(t.created_at));
+  const wCreditPayments=creditHistory.filter(t=>t.type==='payment'&&isThisWeek(t.created_at));
+  const mCreditPayments=creditHistory.filter(t=>t.type==='payment'&&isThisMonth(t.created_at));
+  
+  const tCreditIncome=tCreditPayments.reduce((s,p)=>s+(p.amount||0),0);
+  const wCreditIncome=wCreditPayments.reduce((s,p)=>s+(p.amount||0),0);
+  const mCreditIncome=mCreditPayments.reduce((s,p)=>s+(p.amount||0),0);
   
   // Filter returns by SAME period (subtract from sales)
   const tReturns=(returns||[]).filter(r=>isToday(r.created_at));
@@ -27,18 +48,41 @@ export function OfficeDash({onReceipt}){
     return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
   },0)),0);
   
-  // Subtract refunds from totals
-  const tRefunds=tReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
-  const wRefunds=wReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
-  const mRefunds=mReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  // Subtract CASH refunds only (credit returns don't reduce cash income)
+  const tCashRefunds=tReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
+  const wCashRefunds=wReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
+  const mCashRefunds=mReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
   
-  // Net sales (after returns)
-  const tTotal=Math.max(0,tSales.reduce((a,s)=>a+s.total,0)-tRefunds);
-  const wTotal=Math.max(0,wSales.reduce((a,s)=>a+s.total,0)-wRefunds);
-  const mProfit=Math.max(0,mSales.reduce((a,s)=>a+s.profit,0)-returnProfit(mReturns));
+  // ===== Net cash income = Cash sales + Credit payments received - Cash refunds =====
+  // Hii ndio HASA inaonekana kama "mauzo ya leo" (pesa zilizoingia)
+  const tTotal=Math.max(0,tCashSales.reduce((a,s)=>a+s.total,0)+tCreditIncome-tCashRefunds);
+  const wTotal=Math.max(0,wCashSales.reduce((a,s)=>a+s.total,0)+wCreditIncome-wCashRefunds);
+  
+  // ===== Profit calculation (CASH BASIS) =====
+  // Only count profit when cash is received (not when credit given)
+  const mCashProfit=mCashSales.reduce((a,s)=>a+s.profit,0);
+  // For credit payments — estimate profit proportionally
+  const mProfit=Math.max(0,mCashProfit-returnProfit(mReturns.filter(r=>!r.was_credit)));
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   const isOff=user?.role==='office';
-  const dayData=useMemo(()=>{const d=[];for(let i=6;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i);const ds=dt.toISOString().split('T')[0];const ds2=sales.filter(s=>s.created_at?.startsWith(ds));const drs=(returns||[]).filter(r=>r.created_at?.startsWith(ds));const dayTotal=ds2.reduce((a,s)=>a+s.total,0)-drs.reduce((a,r)=>a+(r.refund_amount||0),0);d.push({day:dt.toLocaleDateString('en',{weekday:'short'}),total:Math.max(0,dayTotal)})}return d},[sales,returns]);
+  
+  // Bar chart — only cash-based income per day
+  const dayData=useMemo(()=>{
+    const d=[];
+    for(let i=6;i>=0;i--){
+      const dt=new Date();dt.setDate(dt.getDate()-i);
+      const ds=dt.toISOString().split('T')[0];
+      const dCash=sales.filter(s=>s.created_at?.startsWith(ds)&&s.payment_method!=='credit');
+      const dPayments=creditHistory.filter(t=>t.type==='payment'&&t.created_at?.startsWith(ds));
+      const drs=(returns||[]).filter(r=>r.created_at?.startsWith(ds)&&!r.was_credit);
+      const dayTotal=dCash.reduce((a,s)=>a+s.total,0)+
+                     dPayments.reduce((a,p)=>a+(p.amount||0),0)-
+                     drs.reduce((a,r)=>a+(r.refund_amount||0),0);
+      d.push({day:dt.toLocaleDateString('en',{weekday:'short'}),total:Math.max(0,dayTotal)});
+    }
+    return d;
+  },[sales,returns,creditHistory]);
+  
   const prodMap={};sales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
   const pieData=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>({name:n,value:q}));
 
@@ -54,11 +98,33 @@ export function OfficeDash({onReceipt}){
     </div>}
 
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.cart} label="Mauzo Leo" value={fm(tTotal)} color="#0B7A3B" sub={`${tSales.length} mauzo`}/>
-      <Stat icon={IC.chart} label="Wiki" value={fm(wTotal)} color="#3B82F6"/>
+      <Stat icon={IC.cart} label="💵 Pesa Leo" value={fm(tTotal)} color="#0B7A3B" sub={`${tCashSales.length} cash + ${tCreditPayments.length} malipo ya deni`}/>
+      <Stat icon={IC.chart} label="Wiki Hii" value={fm(wTotal)} color="#3B82F6"/>
+      {isOff&&tCreditSales.length>0&&<Stat icon={IC.warn} label="💳 Mikopo Leo" value={fm(tCreditSales.reduce((a,s)=>a+s.total,0))} color="#F59E0B" sub={`${tCreditSales.length} bidhaa zimekopwa`}/>}
       {isOff&&<Stat icon={IC.dollar} label="Faida Mwezi" value={fm(mProfit-mExp)} color={mProfit-mExp>=0?'#F59E0B':'#EF4444'}/>}
       <Stat icon={IC.warn} label="Stock Alert" value={lowStockProducts.length} color="#EF4444" sub={lowMarginProducts.length>0?`${lowMarginProducts.length} margin ndogo`:''}/>
     </div>
+    
+    {/* Credit Sales Info Banner */}
+    {isOff&&tCreditSales.length>0&&<div style={{
+      background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+      border:'1.5px solid #F59E0B',
+      borderRadius:12,
+      padding:'12px 16px',
+      marginBottom:16,
+      display:'flex',
+      alignItems:'center',
+      gap:12,
+      flexWrap:'wrap',
+    }}>
+      <div style={{fontSize:24}}>💳</div>
+      <div style={{flex:1,minWidth:200}}>
+        <div style={{fontWeight:800,fontSize:13,color:'#92400E'}}>Mikopo Leo: TZS {tCreditSales.reduce((a,s)=>a+s.total,0).toLocaleString()}</div>
+        <div style={{fontSize:11,color:'#78350F',marginTop:2}}>
+          Bidhaa <b>{tCreditSales.length}</b> zimekopeshwa. <b>HAZIONEKANI</b> kwenye "Pesa Leo" mpaka wateja walipe deni.
+        </div>
+      </div>
+    </div>}
 
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📈 Mauzo (Siku 7)</h3>
@@ -130,10 +196,22 @@ export function OfficeDash({onReceipt}){
       </div>}
 
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🕐 Mauzo ya Hivi Karibuni</h3>
-        {tSales.slice(0,5).map(s=><div key={s.id} onClick={()=>onReceipt?.(s)} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',cursor:'pointer',display:'flex',justifyContent:'space-between'}}>
-          <div><div style={{fontWeight:600,fontSize:12}}>{s.items?.map(i=>i.name).join(', ').slice(0,35)}</div><div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)} • {s.seller_name}</div></div>
-          <div style={{fontWeight:700,color:'#0B7A3B',fontSize:13}}>{fm(s.total)}</div>
-        </div>)}
+        {tSales.slice(0,5).map(s=>{
+          const isCredit=s.payment_method==='credit';
+          return <div key={s.id} onClick={()=>onReceipt?.(s)} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                <span style={{fontWeight:600,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.items?.map(i=>i.name).join(', ').slice(0,30)}</span>
+                {isCredit&&<span style={{background:'#FEF3C7',color:'#92400E',padding:'1px 8px',borderRadius:6,fontSize:9,fontWeight:800}}>💳 DENI</span>}
+                {!isCredit&&<span style={{background:'#DCFCE7',color:'#15803D',padding:'1px 8px',borderRadius:6,fontSize:9,fontWeight:800}}>💵 CASH</span>}
+              </div>
+              <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)} • {s.seller_name}{isCredit&&s.customer_name?` • ${s.customer_name}`:''}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontWeight:700,color:isCredit?'#F59E0B':'#0B7A3B',fontSize:13}}>{fm(s.total)}</div>
+            </div>
+          </div>;
+        })}
         {!tSales.length&&<Empty icon="🛒" text="Hakuna mauzo ya leo"/>}
       </div>
     </div>
@@ -172,6 +250,14 @@ export function SalesPage({onDone}){
       let sale;
       if(payMethod==='credit'){
         sale=await creditSale(cart,custId,discount);
+        if(sale&&!sale.error){
+          const total=cart.reduce((s,c)=>s+c.qty*c.price,0)-discount;
+          const cust=customers.find(c=>c.id===custId);
+          alert(`💳 BIDHAA ZIMEKOPESHWA!\n\n👤 Mteja: ${cust?.name||'—'}\n💰 Kiasi: TZS ${total.toLocaleString()}\n📦 Stock: Imepunguzwa\n\n⚠️ MUHIMU:\nMauzo haya HAYATAONEKANA kwenye "Pesa Leo" ya Dashboard mpaka mteja alipe deni.\n\nMteja akilipa → pesa itaongezeka kwenye "Pesa Leo" ya siku ya kulipa.`);
+        }else if(sale?.error){
+          alert(sale.error);
+          setProcessing(false);return;
+        }
       }else{
         let pd=null;if(payMethod==='mix')pd={cash:+cashAmt||0,mobile:+mobileAmt||0};
         sale=await completeSale(cart,discount,payMethod,pd,custId||null,custName);
@@ -548,7 +634,7 @@ export function ReturnsPage(){
 
 // ===== REPORTS =====
 export function ReportsPage({onReceipt}){
-  const{sales,returns,products,expenses,currency}=useApp();
+  const{sales,returns,products,expenses,currency,creditHistory=[]}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[tab,setTab]=useState('day');
   
@@ -614,12 +700,26 @@ export function ReportsPage({onReceipt}){
   const fSales=sales.filter(s=>filterByDate(s.created_at));
   const fReturns=(returns||[]).filter(r=>filterByDate(r.created_at));
   
-  // Gross sales (before returns)
+  // ===== CASH vs CREDIT separation =====
+  const fCashSales=fSales.filter(s=>s.payment_method!=='credit');
+  const fCreditSales=fSales.filter(s=>s.payment_method==='credit');
+  
+  // Credit payments received in this period
+  const fCreditPayments=creditHistory.filter(t=>t.type==='payment'&&filterByDate(t.created_at));
+  const fCreditPaymentTotal=fCreditPayments.reduce((s,p)=>s+(p.amount||0),0);
+  
+  // Gross sales (before returns) — for analytics only
   const grossTotal=fSales.reduce((a,s)=>a+s.total,0);
   const grossProfit=fSales.reduce((a,s)=>a+s.profit,0);
   
-  // Refund amount
+  // CASH-only totals (what shows on dashboard)
+  const cashSalesTotal=fCashSales.reduce((a,s)=>a+s.total,0);
+  const cashSalesProfit=fCashSales.reduce((a,s)=>a+s.profit,0);
+  const creditSalesTotal=fCreditSales.reduce((a,s)=>a+s.total,0);
+  
+  // Refund amount (cash refunds only — credit refunds reduce credit_balance not cash)
   const refundTotal=fReturns.reduce((a,r)=>a+(r.refund_amount||0),0);
+  const cashRefundTotal=fReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
   
   // Profit lost from returns
   const refundProfit=fReturns.reduce((sum,r)=>sum+((r.items||[]).reduce((s,i)=>{
@@ -628,9 +728,12 @@ export function ReportsPage({onReceipt}){
     return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
   },0)),0);
   
-  // Net (after returns)
-  const fTotal=Math.max(0,grossTotal-refundTotal);
-  const fProfit=Math.max(0,grossProfit-refundProfit);
+  // ===== Net cash income (REAL income for the period) =====
+  // = Cash sales + Credit payments received - Cash refunds
+  const fTotal=Math.max(0,cashSalesTotal+fCreditPaymentTotal-cashRefundTotal);
+  
+  // Profit on cash basis (only count profit when cash received)
+  const fProfit=Math.max(0,cashSalesProfit-refundProfit);
   
   const fExp=expenses.filter(e=>filterByDate(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
@@ -846,11 +949,42 @@ export function ReportsPage({onReceipt}){
     </div>
     
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.cart} label="Mauzo (Halisi)" value={fm(fTotal)} color="#0B7A3B" sub={refundTotal>0?`Yamerudishwa: ${fm(refundTotal)}`:`${fSales.length} mauzo`}/>
+      <Stat icon={IC.cart} label="💵 Pesa Zilizoingia" value={fm(fTotal)} color="#0B7A3B" sub={`${fCashSales.length} cash + ${fCreditPayments.length} malipo ya deni`}/>
       <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
       <Stat icon={IC.wallet} label="Matumizi" value={fm(fExp)} color="#EF4444"/>
       <Stat icon={IC.dollar} label="Halisi" value={fm(fProfit-fExp)} color={fProfit-fExp>=0?'#F59E0B':'#EF4444'}/>
     </div>
+    
+    {/* ===== CREDIT BREAKDOWN ===== */}
+    {(fCreditSales.length>0||fCreditPayments.length>0)&&<div style={{
+      background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
+      border:'1.5px solid #F59E0B',
+      borderRadius:12,
+      padding:'16px 18px',
+      marginBottom:16,
+    }}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+        <div style={{fontSize:24}}>💳</div>
+        <div style={{fontWeight:800,fontSize:14,color:'#92400E'}}>Mikopo (Kipindi Hiki)</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,fontSize:12}}>
+        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #F59E0B'}}>
+          <div style={{color:'#78350F',fontWeight:600,fontSize:11}}>💳 BIDHAA ZILIZOKOPESHWA</div>
+          <div style={{fontWeight:900,color:'#92400E',fontSize:17,marginTop:2}}>{fm(creditSalesTotal)}</div>
+          <div style={{fontSize:10,color:'#78350F',marginTop:2}}>{fCreditSales.length} mauzo • haijaonyeshwa kwenye "Pesa"</div>
+        </div>
+        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #22C55E'}}>
+          <div style={{color:'#15803D',fontWeight:600,fontSize:11}}>💵 MALIPO YA DENI YAMEPOKEWA</div>
+          <div style={{fontWeight:900,color:'#15803D',fontSize:17,marginTop:2}}>{fm(fCreditPaymentTotal)}</div>
+          <div style={{fontSize:10,color:'#15803D',marginTop:2}}>{fCreditPayments.length} malipo • IMEONGEZWA kwenye "Pesa"</div>
+        </div>
+        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #3B82F6'}}>
+          <div style={{color:'#1D4ED8',fontWeight:600,fontSize:11}}>📊 TOFAUTI (DENI MPYA)</div>
+          <div style={{fontWeight:900,color:creditSalesTotal-fCreditPaymentTotal>=0?'#1D4ED8':'#15803D',fontSize:17,marginTop:2}}>{fm(creditSalesTotal-fCreditPaymentTotal)}</div>
+          <div style={{fontSize:10,color:'#1D4ED8',marginTop:2}}>{creditSalesTotal>fCreditPaymentTotal?'Wateja wanadai zaidi':'Wateja walilipa zaidi'}</div>
+        </div>
+      </div>
+    </div>}
     
     {/* Show breakdown if there are returns */}
     {refundTotal>0&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'14px 18px',marginBottom:16}}>
@@ -1378,9 +1512,10 @@ export function CustomersPage(){
           const amt=+payAmt;if(!amt||amt<=0)return alert('Weka kiasi sahihi!');
           if(amt>(payModal.cust.credit_balance||0))return alert('Kiasi ni kikubwa kuliko deni!');
           await receivePayment(payModal.cust.id,amt,payNote,payMethod);
-          alert(`Malipo ya ${fm(amt)} yamepokewa! Deni jipya: ${fm(Math.max(0,(payModal.cust.credit_balance||0)-amt))}`);
+          const newBal=Math.max(0,(payModal.cust.credit_balance||0)-amt);
+          alert(`✅ MALIPO YAMEPOKEWA!\n\n💵 Kiasi: ${fm(amt)}\n👤 Mteja: ${payModal.cust.name}\n📊 Deni la zamani: ${fm(payModal.cust.credit_balance||0)}\n📊 Deni jipya: ${fm(newBal)}\n\n💡 Pesa hii sasa imeongezwa kwenye "Pesa Leo" ya Dashboard!`);
           setPayModal({open:false,cust:null});setPayAmt('');setPayNote('');
-        }} style={{width:'100%',justifyContent:'center',marginTop:8,background:'#22C55E'}}>💰 Pokea {payAmt?fm(+payAmt):''}</Btn>
+        }} style={{width:'100%',justifyContent:'center',marginTop:8,background:'#22C55E'}}>💰 Pokea Malipo {payAmt?fm(+payAmt):''}</Btn>
       </>}
     </Modal>
 
