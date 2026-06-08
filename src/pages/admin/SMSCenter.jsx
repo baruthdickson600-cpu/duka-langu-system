@@ -47,6 +47,24 @@ export function SMSCenterPage(){
   const[autoConfig,setAutoConfig]=useState({payment:true,welcome:true,reminder:false,daily:false});
   const[showAutoModal,setShowAutoModal]=useState(false);
   const[smsBalance,setSmsBalance]=useState(0);
+  
+  // SCHEDULING - NEW
+  const[showScheduleModal,setShowScheduleModal]=useState(false);
+  const[showScheduledListModal,setShowScheduledListModal]=useState(false);
+  const[scheduledList,setScheduledList]=useState([]);
+  const[loadingScheduled,setLoadingScheduled]=useState(false);
+  const[scheduleForm,setScheduleForm]=useState({
+    name:'',
+    schedule_type:'once', // once, daily, weekly, monthly
+    scheduled_for_date:'',
+    scheduled_for_time:'',
+    schedule_time:'09:00',
+    schedule_days:[1,2,3,4,5], // Mon-Fri default
+    schedule_day_of_month:1,
+    start_date:new Date().toISOString().slice(0,10),
+    end_date:'',
+    max_runs:'',
+  });
 
   // Load history & auto config
   useEffect(()=>{
@@ -133,34 +151,17 @@ export function SMSCenterPage(){
   const sendSMS=async(scheduled=false)=>{
     if(!message.trim())return alert('Andika ujumbe!');
     if(!recipientsList.length)return alert('Hakuna mpokeaji!');
-    if(scheduled&&(!scheduleDate||!scheduleTime))return alert('Weka tarehe na muda wa kutuma!');
     
-    const action=scheduled?`Panga SMS itume ${scheduleDate} saa ${scheduleTime}`:`Tuma SMS sasa kwa watu ${recipientsList.length}?\n\nGharama: TZS ${cost.toLocaleString()}`;
+    if(scheduled){
+      // Open schedule modal instead
+      setShowScheduleModal(true);
+      return;
+    }
+    
+    const action=`Tuma SMS sasa kwa watu ${recipientsList.length}?\n\nGharama: TZS ${cost.toLocaleString()}`;
     if(!confirm(action+'\n\nEndelea?'))return;
     
     setSending(true);setResult(null);
-    
-    if(scheduled){
-      // Save to scheduled queue (localStorage for now)
-      const scheduledItem={
-        id:Date.now(),
-        recipients:recipientsList,
-        message,
-        scheduled_for:`${scheduleDate}T${scheduleTime}:00`,
-        created_at:new Date().toISOString(),
-        status:'scheduled',
-      };
-      try{
-        const scheduled=JSON.parse(localStorage.getItem('sms_scheduled')||'[]');
-        scheduled.push(scheduledItem);
-        localStorage.setItem('sms_scheduled',JSON.stringify(scheduled));
-        await supabase?.from('scheduled_sms').insert({...scheduledItem,recipients_data:JSON.stringify(recipientsList)});
-      }catch(e){console.warn('Scheduled save:',e.message)}
-      
-      setResult({success:0,failed:0,total:recipientsList.length,scheduled:true});
-      setSending(false);
-      return;
-    }
     
     // BATCH SEND - one API call for all recipients (much faster, more reliable)
     let success=0,failed=0;
@@ -239,6 +240,111 @@ export function SMSCenterPage(){
     alert('✅ Mipangilio ya Auto SMS imehifadhiwa!');
     setShowAutoModal(false);
   };
+  
+  // SCHEDULED SMS HANDLERS - NEW
+  const calculateNextRun=(form)=>{
+    const now=new Date();
+    const{schedule_type,scheduled_for_date,scheduled_for_time,schedule_time,schedule_days,schedule_day_of_month,end_date}=form;
+    
+    if(schedule_type==='once'){
+      if(!scheduled_for_date||!scheduled_for_time)return null;
+      const dt=new Date(`${scheduled_for_date}T${scheduled_for_time}:00`);
+      if(dt<=now)return null;
+      return dt.toISOString();
+    }
+    
+    if(!schedule_time)return null;
+    const[hh,mm]=schedule_time.split(':').map(Number);
+    let next=new Date();next.setHours(hh,mm,0,0);
+    if(next<=now)next.setDate(next.getDate()+1);
+    
+    if(schedule_type==='daily'){
+      // Already calculated
+    }else if(schedule_type==='weekly'){
+      if(!schedule_days||schedule_days.length===0)return null;
+      while(!schedule_days.includes(next.getDay()))next.setDate(next.getDate()+1);
+    }else if(schedule_type==='monthly'){
+      if(!schedule_day_of_month)return null;
+      next.setDate(schedule_day_of_month);
+      if(next<=now){next.setMonth(next.getMonth()+1);next.setDate(schedule_day_of_month)}
+    }
+    if(end_date&&new Date(end_date)<next)return null;
+    return next.toISOString();
+  };
+  
+  const saveScheduledSMS=async()=>{
+    if(!message.trim())return alert('Andika ujumbe kwanza!');
+    if(!recipientsList.length)return alert('Hakuna mpokeaji!');
+    if(!scheduleForm.name.trim())return alert('Weka jina la SMS schedule!');
+    
+    const nextRun=calculateNextRun(scheduleForm);
+    if(!nextRun)return alert('❌ Muda wa kutuma ni si sahihi! Hakikisha umechagua tarehe/muda wa baadaye.');
+    
+    const payload={
+      name:scheduleForm.name,
+      message,
+      template,
+      recipients:recipientsList,
+      recipient_count:recipientsList.length,
+      recipient_type:recipients,
+      schedule_type:scheduleForm.schedule_type,
+      scheduled_for:scheduleForm.schedule_type==='once'?nextRun:null,
+      schedule_time:scheduleForm.schedule_type!=='once'?scheduleForm.schedule_time:null,
+      schedule_days:scheduleForm.schedule_type==='weekly'?scheduleForm.schedule_days:[],
+      schedule_day_of_month:scheduleForm.schedule_type==='monthly'?+scheduleForm.schedule_day_of_month:null,
+      start_date:scheduleForm.start_date||null,
+      end_date:scheduleForm.end_date||null,
+      next_run_at:nextRun,
+      max_runs:scheduleForm.max_runs?+scheduleForm.max_runs:null,
+      status:'active',
+      created_by:user?.id,
+    };
+    
+    try{
+      const{error}=await supabase.from('scheduled_sms').insert(payload);
+      if(error)throw error;
+      
+      const nextRunFmt=new Date(nextRun).toLocaleString('sw-TZ');
+      const typeLabel={once:'mara moja',daily:'kila siku',weekly:'kila wiki',monthly:'kila mwezi'}[scheduleForm.schedule_type];
+      
+      alert(`✅ SMS IMEPANGWA!\n\n📛 Jina: ${scheduleForm.name}\n🔁 Aina: ${typeLabel}\n👥 Wapokeaji: ${recipientsList.length}\n⏰ Itatumwa kwa mara ya kwanza: ${nextRunFmt}\n\n💡 Mfumo utatuma automatic kulingana na ratiba uliyowekwa.`);
+      
+      setShowScheduleModal(false);
+      setScheduleForm({...scheduleForm,name:'',scheduled_for_date:'',scheduled_for_time:''});
+    }catch(e){
+      alert('❌ Tatizo la kuhifadhi: '+e.message);
+    }
+  };
+  
+  const loadScheduledList=async()=>{
+    setLoadingScheduled(true);
+    setShowScheduledListModal(true);
+    try{
+      const{data}=await supabase.from('scheduled_sms')
+        .select('*')
+        .order('created_at',{ascending:false})
+        .limit(50);
+      setScheduledList(data||[]);
+    }catch(e){console.warn('Load scheduled:',e)}
+    setLoadingScheduled(false);
+  };
+  
+  const cancelScheduled=async(id)=>{
+    if(!window.confirm('Una uhakika unataka kufuta SMS hii iliyopangwa?\n\nBaada ya kufuta, haitatumwa tena.'))return;
+    try{
+      await supabase.from('scheduled_sms').update({status:'cancelled'}).eq('id',id);
+      setScheduledList(prev=>prev.map(s=>s.id===id?{...s,status:'cancelled'}:s));
+      alert('🗑️ SMS imefutwa!');
+    }catch(e){alert('Tatizo: '+e.message)}
+  };
+  
+  const toggleScheduledStatus=async(id,currentStatus)=>{
+    const newStatus=currentStatus==='active'?'paused':'active';
+    try{
+      await supabase.from('scheduled_sms').update({status:newStatus}).eq('id',id);
+      setScheduledList(prev=>prev.map(s=>s.id===id?{...s,status:newStatus}:s));
+    }catch(e){alert('Tatizo: '+e.message)}
+  };
 
   // Filter history
   const filteredHistory=history.filter(h=>{
@@ -291,7 +397,7 @@ export function SMSCenterPage(){
         {result.scheduled?'⏰ SMS Imepangwa Kutumwa!':result.failed===0?'✅ Imefanikiwa Kabisa!':result.success===0?'❌ Imeshindwa':'⚠️ Sehemu Tu'}
       </div>
       <div style={{fontSize:12,color:'#475569',marginTop:6}}>
-        {result.scheduled?`Itatumwa ${scheduleDate} saa ${scheduleTime} kwa watu ${result.total}`:`Imefanikiwa: ${result.success} | Imeshindwa: ${result.failed} | Jumla: ${result.total}`}
+        {result.scheduled?`Imepangwa kutumwa kwa watu ${result.total}`:`Imefanikiwa: ${result.success} | Imeshindwa: ${result.failed} | Jumla: ${result.total}`}
       </div>
     </div>}
 
@@ -369,32 +475,63 @@ export function SMSCenterPage(){
           </div>
         </div>
 
-        {/* Schedule */}
-        <div className="card" style={{marginBottom:12}}>
-          <h4 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#0B7A3B'}}>⏰ Panga Muda (Hiari)</h4>
+        {/* Send buttons - 3 OPTIONS */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8,marginTop:14}}>
+          {/* Option 1: Send NOW */}
+          <button onClick={()=>sendSMS(false)} disabled={sending||!recipientsList.length||!message.trim()} style={{
+            width:'100%',padding:16,
+            background:sending?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',
+            color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,
+            cursor:sending?'wait':'pointer',
+            boxShadow:'0 8px 25px rgba(11,122,59,0.3)',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+          }}>
+            <span style={{fontSize:22}}>📤</span>
+            {sending?'Inatuma...':`Tuma Sasa (${recipientsList.length})`}
+          </button>
+          
+          {/* Option 2 & 3 — Schedule options */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-            <div>
-              <label style={{fontSize:11,color:'#475569',fontWeight:600,display:'block',marginBottom:4}}>Tarehe</label>
-              <input type="date" value={scheduleDate} min={today} onChange={e=>setScheduleDate(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
-            </div>
-            <div>
-              <label style={{fontSize:11,color:'#475569',fontWeight:600,display:'block',marginBottom:4}}>Muda</label>
-              <input type="time" value={scheduleTime} onChange={e=>setScheduleTime(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
-            </div>
+            <button onClick={()=>{setScheduleForm({...scheduleForm,schedule_type:'once'});setShowScheduleModal(true)}} disabled={!recipientsList.length||!message.trim()} style={{
+              padding:14,
+              background:'linear-gradient(135deg,#3B82F6,#1E40AF)',
+              color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:13,
+              cursor:(!recipientsList.length||!message.trim())?'not-allowed':'pointer',
+              opacity:(!recipientsList.length||!message.trim())?0.5:1,
+              boxShadow:'0 4px 15px rgba(59,130,246,0.25)',
+              display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+            }}>
+              <span style={{fontSize:18}}>⏰</span>
+              Panga Muda
+            </button>
+            
+            <button onClick={()=>{setScheduleForm({...scheduleForm,schedule_type:'daily'});setShowScheduleModal(true)}} disabled={!recipientsList.length||!message.trim()} style={{
+              padding:14,
+              background:'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+              color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:13,
+              cursor:(!recipientsList.length||!message.trim())?'not-allowed':'pointer',
+              opacity:(!recipientsList.length||!message.trim())?0.5:1,
+              boxShadow:'0 4px 15px rgba(139,92,246,0.25)',
+              display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+            }}>
+              <span style={{fontSize:18}}>🔁</span>
+              Recurring
+            </button>
           </div>
-          {scheduleDate&&scheduleTime&&<div style={{marginTop:8,padding:'8px 12px',background:'#EFF6FF',borderRadius:8,fontSize:11,color:'#1E40AF'}}>
-            ⏰ Itatumwa: {new Date(`${scheduleDate}T${scheduleTime}`).toLocaleString('sw-TZ')}
-          </div>}
+          
+          {/* View scheduled list */}
+          <button onClick={loadScheduledList} style={{
+            width:'100%',padding:11,
+            background:'#fff',
+            color:'#0B7A3B',
+            border:'2px solid #BBF7D0',borderRadius:10,fontWeight:700,fontSize:12,
+            cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+          }}>
+            <span style={{fontSize:16}}>📋</span>
+            Tazama SMS Zilizopangwa
+          </button>
         </div>
-
-        {/* Send buttons */}
-        <button onClick={()=>sendSMS(false)} disabled={sending||!recipientsList.length||!message.trim()} style={{width:'100%',padding:16,background:sending?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,cursor:sending?'wait':'pointer',boxShadow:'0 8px 25px rgba(11,122,59,0.3)',transition:'all 0.25s'}}>
-          {sending?'⏳ Inatuma...':`📱 Tuma Sasa (${recipientsList.length})`}
-        </button>
-        
-        {scheduleDate&&scheduleTime&&<button onClick={()=>sendSMS(true)} disabled={sending} style={{width:'100%',marginTop:8,padding:14,background:'linear-gradient(135deg,#3B82F6,#1E40AF)',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer',boxShadow:'0 4px 15px rgba(59,130,246,0.3)'}}>
-          ⏰ Panga Itume Baadaye
-        </button>}
       </div>
     </div>
 
@@ -474,6 +611,181 @@ export function SMSCenterPage(){
       <button onClick={saveAutoConfig} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#7C3AED,#5B21B6)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',marginTop:6,boxShadow:'0 4px 15px rgba(124,58,237,0.3)'}}>
         💾 Hifadhi Mipangilio
       </button>
+    </Modal>}
+    
+    {/* ===== SCHEDULE MODAL — NEW ===== */}
+    {showScheduleModal&&<Modal open={true} onClose={()=>setShowScheduleModal(false)} title={scheduleForm.schedule_type==='once'?'⏰ Panga SMS Itume Wakati Maalum':'🔁 Panga SMS ya Kurudia'}>
+      <div style={{maxHeight:'70vh',overflowY:'auto',paddingRight:8}}>
+        
+        {/* Schedule type selector */}
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Aina ya Ratiba</label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6}}>
+            {[
+              {id:'once',label:'⏰ Mara Moja',desc:'Tarehe maalum'},
+              {id:'daily',label:'📅 Kila Siku',desc:'Saa hizo hizo'},
+              {id:'weekly',label:'🗓️ Kila Wiki',desc:'Siku zilizochaguliwa'},
+              {id:'monthly',label:'📆 Kila Mwezi',desc:'Tarehe ya mwezi'},
+            ].map(t=><button key={t.id} onClick={()=>setScheduleForm({...scheduleForm,schedule_type:t.id})} style={{
+              padding:'10px 8px',
+              border:scheduleForm.schedule_type===t.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',
+              background:scheduleForm.schedule_type===t.id?'#F0FDF4':'#fff',
+              borderRadius:10,cursor:'pointer',textAlign:'left',
+            }}>
+              <div style={{fontWeight:700,fontSize:12,color:scheduleForm.schedule_type===t.id?'#0B7A3B':'#475569'}}>{t.label}</div>
+              <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{t.desc}</div>
+            </button>)}
+          </div>
+        </div>
+        
+        {/* Name */}
+        <Input label="📛 Jina la Schedule" value={scheduleForm.name} onChange={e=>setScheduleForm({...scheduleForm,name:e.target.value})} placeholder="Mfano: SMS ya kila Jumatatu asubuhi"/>
+        
+        {/* ONCE — date + time */}
+        {scheduleForm.schedule_type==='once'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Tarehe</label>
+            <input type="date" value={scheduleForm.scheduled_for_date} min={today} onChange={e=>setScheduleForm({...scheduleForm,scheduled_for_date:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Muda</label>
+            <input type="time" value={scheduleForm.scheduled_for_time} onChange={e=>setScheduleForm({...scheduleForm,scheduled_for_time:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+        </div>}
+        
+        {/* DAILY/WEEKLY/MONTHLY — time of day */}
+        {scheduleForm.schedule_type!=='once'&&<div style={{marginBottom:14}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>⏰ Saa ya Kutuma (kila siku)</label>
+          <input type="time" value={scheduleForm.schedule_time} onChange={e=>setScheduleForm({...scheduleForm,schedule_time:e.target.value})} style={{width:'100%',padding:'12px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box'}}/>
+        </div>}
+        
+        {/* WEEKLY — day selector */}
+        {scheduleForm.schedule_type==='weekly'&&<div style={{marginBottom:14}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📅 Siku za Kutuma</label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
+            {['Jpi','Jts','Jnn','Jtn','Alh','Iju','Jms'].map((d,i)=>{
+              const dayNum=i;
+              const isSelected=scheduleForm.schedule_days.includes(dayNum);
+              return <button key={i} onClick={()=>{
+                const days=isSelected?scheduleForm.schedule_days.filter(x=>x!==dayNum):[...scheduleForm.schedule_days,dayNum];
+                setScheduleForm({...scheduleForm,schedule_days:days});
+              }} style={{
+                padding:'10px 4px',
+                border:isSelected?'2px solid #0B7A3B':'1.5px solid #E2E8F0',
+                background:isSelected?'#0B7A3B':'#fff',
+                color:isSelected?'#fff':'#475569',
+                borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',
+              }}>{d}</button>;
+            })}
+          </div>
+        </div>}
+        
+        {/* MONTHLY — day of month */}
+        {scheduleForm.schedule_type==='monthly'&&<div style={{marginBottom:14}}>
+          <Input label="📅 Tarehe ya Mwezi (1-28)" type="number" value={scheduleForm.schedule_day_of_month} onChange={e=>setScheduleForm({...scheduleForm,schedule_day_of_month:e.target.value})}/>
+          <div style={{fontSize:11,color:'#94A3B8',marginTop:-8,marginBottom:8}}>💡 Tumia 1-28 ili kuepuka miezi mifupi (Feb)</div>
+        </div>}
+        
+        {/* Recurring options - end date + max runs */}
+        {scheduleForm.schedule_type!=='once'&&<div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#475569',marginBottom:8}}>🛑 Kikomo (Hiari)</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div>
+              <label style={{fontSize:10,color:'#64748B',display:'block',marginBottom:3}}>Komea Tarehe</label>
+              <input type="date" value={scheduleForm.end_date} min={today} onChange={e=>setScheduleForm({...scheduleForm,end_date:e.target.value})} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:10,color:'#64748B',display:'block',marginBottom:3}}>Max Mara</label>
+              <input type="number" value={scheduleForm.max_runs} onChange={e=>setScheduleForm({...scheduleForm,max_runs:e.target.value})} placeholder="Bila kikomo" style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid #E2E8F0',fontSize:12,boxSizing:'border-box'}}/>
+            </div>
+          </div>
+        </div>}
+        
+        {/* Preview */}
+        <div style={{background:'#EFF6FF',border:'1.5px solid #BFDBFE',borderRadius:10,padding:'12px 14px',marginBottom:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#1E40AF',marginBottom:6}}>📋 Muhtasari:</div>
+          <div style={{fontSize:11,color:'#1E40AF',lineHeight:1.6}}>
+            • <b>Aina:</b> {scheduleForm.schedule_type==='once'?'Mara moja':scheduleForm.schedule_type==='daily'?'Kila siku':scheduleForm.schedule_type==='weekly'?'Kila wiki':'Kila mwezi'}<br/>
+            • <b>Wapokeaji:</b> {recipientsList.length} watu<br/>
+            • <b>Gharama kwa mara:</b> TZS {cost.toLocaleString()}<br/>
+            {(()=>{
+              const nr=calculateNextRun(scheduleForm);
+              return nr?<>• <b>Itatumwa kwa mara ya kwanza:</b> {new Date(nr).toLocaleString('sw-TZ')}</>:<span style={{color:'#DC2626'}}>⚠️ Weka tarehe/muda sahihi!</span>;
+            })()}
+          </div>
+        </div>
+        
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>setShowScheduleModal(false)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={saveScheduledSMS} style={{flex:2,padding:12,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>💾 Hifadhi Schedule</button>
+        </div>
+      </div>
+    </Modal>}
+    
+    {/* ===== SCHEDULED LIST MODAL — NEW ===== */}
+    {showScheduledListModal&&<Modal open={true} onClose={()=>setShowScheduledListModal(false)} title="📋 SMS Zilizopangwa">
+      <div style={{maxHeight:'70vh',overflowY:'auto'}}>
+        {loadingScheduled?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+          <div style={{fontSize:30,marginBottom:8}}>⏳</div>
+          <div>Inaleta...</div>
+        </div>:scheduledList.length>0?<div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {scheduledList.map(s=>{
+            const typeIcon={once:'⏰',daily:'📅',weekly:'🗓️',monthly:'📆'}[s.schedule_type]||'⏰';
+            const typeLabel={once:'Mara Moja',daily:'Kila Siku',weekly:'Kila Wiki',monthly:'Kila Mwezi'}[s.schedule_type]||s.schedule_type;
+            const statusColors={active:'#22C55E',paused:'#F59E0B',completed:'#3B82F6',cancelled:'#94A3B8',failed:'#EF4444'};
+            const statusLabel={active:'✅ Inafanya',paused:'⏸️ Imesimama',completed:'✓ Imekamilika',cancelled:'🗑️ Imefutwa',failed:'❌ Imeshindwa'}[s.status]||s.status;
+            
+            return <div key={s.id} style={{
+              background:'#fff',
+              border:'1.5px solid #E2E8F0',
+              borderLeft:`4px solid ${statusColors[s.status]||'#94A3B8'}`,
+              borderRadius:10,
+              padding:'12px 14px',
+            }}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:10,marginBottom:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:800,fontSize:13,color:'#1E293B',marginBottom:3}}>
+                    {typeIcon} {s.name||'Schedule bila jina'}
+                  </div>
+                  <div style={{fontSize:11,color:'#64748B'}}>
+                    {typeLabel} • {s.recipient_count} wapokeaji
+                  </div>
+                </div>
+                <span style={{padding:'3px 10px',borderRadius:6,background:`${statusColors[s.status]}15`,color:statusColors[s.status],fontSize:10,fontWeight:800,whiteSpace:'nowrap'}}>{statusLabel}</span>
+              </div>
+              
+              <div style={{fontSize:11,color:'#475569',padding:'8px 10px',background:'#F8FAFC',borderRadius:6,marginBottom:8,lineHeight:1.5}}>
+                "{(s.message||'').slice(0,120)}{s.message?.length>120?'...':''}"
+              </div>
+              
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,fontSize:10,color:'#64748B',marginBottom:8}}>
+                {s.next_run_at&&<div>📅 <b>Ijayo:</b> {new Date(s.next_run_at).toLocaleString('sw-TZ',{dateStyle:'short',timeStyle:'short'})}</div>}
+                {s.last_sent_at&&<div>✓ <b>Mwisho:</b> {new Date(s.last_sent_at).toLocaleString('sw-TZ',{dateStyle:'short',timeStyle:'short'})}</div>}
+                {s.total_runs>0&&<div>🔢 <b>Imetumwa mara:</b> {s.total_runs}{s.max_runs?`/${s.max_runs}`:''}</div>}
+                {s.last_success_count>0&&<div>✅ <b>Mwisho:</b> {s.last_success_count}/{s.recipient_count} success</div>}
+              </div>
+              
+              {(s.status==='active'||s.status==='paused')&&<div style={{display:'flex',gap:6}}>
+                <button onClick={()=>toggleScheduledStatus(s.id,s.status)} style={{
+                  flex:1,padding:'6px 10px',
+                  background:s.status==='active'?'#FEF3C7':'#DCFCE7',
+                  color:s.status==='active'?'#92400E':'#15803D',
+                  border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer',
+                }}>{s.status==='active'?'⏸️ Simamisha':'▶️ Endelea'}</button>
+                <button onClick={()=>cancelScheduled(s.id)} style={{
+                  flex:1,padding:'6px 10px',
+                  background:'#FEE2E2',color:'#991B1B',
+                  border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer',
+                }}>🗑️ Futa</button>
+              </div>}
+            </div>;
+          })}
+        </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+          <div style={{fontSize:50,marginBottom:10}}>📋</div>
+          <div style={{fontWeight:700,color:'#64748B'}}>Hakuna SMS zilizopangwa</div>
+          <div style={{fontSize:12,marginTop:4}}>Tumia "Panga Muda" au "Recurring" kupanga ya kwanza</div>
+        </div>}
+      </div>
     </Modal>}
   </div>;
 }
