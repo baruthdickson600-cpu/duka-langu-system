@@ -286,3 +286,477 @@ export function AgentTiersPage(){
     </div>
   </div>;
 }
+
+// =====================================================
+// AGENT VISITS PAGE - Ufuatiliaji wa Wateja
+// Wakala anajaza taarifa za wateja waliotembelea
+// Taarifa zinaenda kama tiketi kwa Admin
+// =====================================================
+export function AgentVisitsPage(){
+  const{user,businesses,supabase}=useApp();
+  const myCode=user?.promo_code;
+  const myCustomers=useMemo(()=>businesses.filter(b=>b.promo_code===myCode),[businesses,myCode]);
+  
+  const[visits,setVisits]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[showForm,setShowForm]=useState(false);
+  const[viewing,setViewing]=useState(null);
+  const[period,setPeriod]=useState('all');
+  
+  const today=new Date().toISOString().slice(0,10);
+  const initialForm={
+    customer_name:'',
+    customer_phone:'',
+    customer_business:'',
+    customer_location:'',
+    business_id:'',
+    visit_date:today,
+    visit_purpose:'',
+    visit_type:'follow_up',
+    customer_satisfaction:'happy',
+    is_using_system:'yes',
+    has_issues:false,
+    issues_description:'',
+    issue_category:'',
+    urgency:'normal',
+    customer_needs:'',
+    feedback:'',
+    recommendations:'',
+    next_visit_date:'',
+    notes:'',
+  };
+  const[form,setForm]=useState(initialForm);
+  
+  // Load visits
+  React.useEffect(()=>{
+    (async()=>{
+      setLoading(true);
+      try{
+        const{data}=await supabase.from('customer_visits')
+          .select('*')
+          .eq('agent_id',user.id)
+          .order('created_at',{ascending:false})
+          .limit(100);
+        setVisits(data||[]);
+      }catch(e){console.warn('Load visits:',e)}
+      setLoading(false);
+    })();
+  },[user?.id]);
+  
+  // Filtered visits
+  const filteredVisits=visits.filter(v=>{
+    if(period==='all')return true;
+    const d=new Date(v.created_at);
+    const now=new Date();
+    if(period==='today')return d.toDateString()===now.toDateString();
+    if(period==='week'){const w=new Date(now);w.setDate(now.getDate()-7);return d>=w}
+    if(period==='month')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+    return true;
+  });
+  
+  // Stats
+  const totalVisits=visits.length;
+  const newVisits=visits.filter(v=>v.status==='new').length;
+  const inProgressVisits=visits.filter(v=>v.status==='in_progress').length;
+  const resolvedVisits=visits.filter(v=>v.status==='resolved').length;
+  const withIssues=visits.filter(v=>v.has_issues).length;
+  
+  // When customer selected from dropdown, autofill
+  const onCustomerSelect=(bizId)=>{
+    if(!bizId){setForm({...form,business_id:'',customer_business:''});return}
+    const biz=myCustomers.find(b=>b.id===bizId);
+    if(biz){
+      setForm({
+        ...form,
+        business_id:biz.id,
+        customer_name:biz.owner_name||biz.name,
+        customer_phone:biz.phone||'',
+        customer_business:biz.name,
+        customer_location:biz.location||biz.region||'',
+      });
+    }
+  };
+  
+  const submitVisit=async()=>{
+    if(!form.customer_name.trim())return alert('Weka jina la mteja!');
+    if(!form.visit_purpose.trim())return alert('Eleza lengo la ziara!');
+    if(form.has_issues&&!form.issues_description.trim())return alert('Eleza changamoto za mteja!');
+    
+    try{
+      const payload={
+        ...form,
+        agent_id:user.id,
+        agent_name:user.name||user.email,
+        agent_phone:user.phone||'',
+        status:'new',
+      };
+      
+      const{data,error}=await supabase.from('customer_visits').insert(payload).select().single();
+      if(error)throw error;
+      
+      // Tuma notification kwa admin
+      try{
+        await supabase.from('notifications').insert({
+          target_type:'admin',
+          type:form.has_issues?'warning':'info',
+          title:`📋 Ufuatiliaji Mpya - ${form.customer_name}`,
+          message:`Wakala ${user.name||user.email} ametembelea ${form.customer_name}${form.customer_business?' ('+form.customer_business+')':''}. ${form.has_issues?'⚠️ Ana changamoto - inahitaji utekelezaji!':'✅ Ziara imekamilika vizuri.'}`,
+        });
+      }catch(e){console.warn('Notification failed:',e)}
+      
+      setVisits([data,...visits]);
+      setShowForm(false);
+      setForm(initialForm);
+      
+      alert(`✅ TAARIFA IMETUMWA!\n\n📋 Tiketi imefunguliwa kwa Admin\n👤 Mteja: ${form.customer_name}\n${form.has_issues?'⚠️ Changamoto zimerekodi kwa utekelezaji':'✅ Ziara nzuri imerekodi'}\n\nAdmin atapata taarifa hii moja kwa moja.`);
+    }catch(e){
+      alert('❌ Tatizo la kuhifadhi: '+e.message);
+    }
+  };
+  
+  const getSatLabel=(s)=>({
+    very_happy:'😊 Furaha Sana',
+    happy:'🙂 Furaha',
+    neutral:'😐 Wastani',
+    unhappy:'😕 Hairidhiki',
+    very_unhappy:'😡 Hairidhiki Kabisa',
+  }[s]||s);
+  
+  const getStatusColor=(s)=>({
+    new:'#F59E0B',
+    in_progress:'#3B82F6',
+    resolved:'#22C55E',
+    closed:'#94A3B8',
+  }[s]||'#64748B');
+  
+  const getStatusLabel=(s)=>({
+    new:'🆕 Mpya',
+    in_progress:'🔄 Inashughulikiwa',
+    resolved:'✅ Imetatuliwa',
+    closed:'🔒 Imefungwa',
+  }[s]||s);
+  
+  const getUrgencyColor=(u)=>({
+    low:'#94A3B8',
+    normal:'#3B82F6',
+    high:'#F59E0B',
+    critical:'#DC2626',
+  }[u]||'#64748B');
+  
+  return <div>
+    {/* Header */}
+    <div style={{marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'start',flexWrap:'wrap',gap:10}}>
+      <div>
+        <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>📋 Ufuatiliaji wa Wateja</h2>
+        <p style={{fontSize:12,color:'#64748B',margin:0}}>Jaza taarifa za wateja uliowatembelea — zinaenda kwa Admin moja kwa moja</p>
+      </div>
+      <button onClick={()=>{setForm(initialForm);setShowForm(true)}} style={{
+        padding:'12px 20px',
+        background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+        color:'#fff',border:'none',borderRadius:12,
+        fontWeight:800,fontSize:13,cursor:'pointer',
+        boxShadow:'0 4px 15px rgba(11,122,59,0.3)',
+        display:'flex',alignItems:'center',gap:6,
+      }}>
+        <span style={{fontSize:18}}>+</span> Ziara Mpya
+      </button>
+    </div>
+    
+    {/* Stats */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:16}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0B7A3B',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:10,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>JUMLA YA ZIARA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B',marginTop:4}}>{totalVisits}</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:10,color:'#B45309',fontWeight:700,letterSpacing:0.5}}>MPYA (HAZIJASHUGULIKIWA)</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B',marginTop:4}}>{newVisits}</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #3B82F6',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700,letterSpacing:0.5}}>ZINAFANYIWA KAZI</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#3B82F6',marginTop:4}}>{inProgressVisits}</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #22C55E',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:10,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>ZIMETATULIWA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#22C55E',marginTop:4}}>{resolvedVisits}</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #DC2626',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+        <div style={{fontSize:10,color:'#991B1B',fontWeight:700,letterSpacing:0.5}}>ZENYE CHANGAMOTO</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#DC2626',marginTop:4}}>{withIssues}</div>
+      </div>
+    </div>
+    
+    {/* Period filter */}
+    <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+      {[{id:'all',label:'🗓️ Vyote'},{id:'today',label:'📅 Leo'},{id:'week',label:'🗓️ Wiki'},{id:'month',label:'📆 Mwezi'}].map(p=>
+        <button key={p.id} onClick={()=>setPeriod(p.id)} style={{
+          padding:'8px 14px',borderRadius:10,
+          border:period===p.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',
+          background:period===p.id?'#0B7A3B':'#fff',
+          fontWeight:700,fontSize:12,cursor:'pointer',
+          color:period===p.id?'#fff':'#475569',
+        }}>{p.label}</button>
+      )}
+    </div>
+    
+    {/* Visits list */}
+    <div className="card">
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>📋 Orodha ya Ziara ({filteredVisits.length})</h3>
+      
+      {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:30,marginBottom:8}}>⏳</div>
+        <div>Inaleta ziara...</div>
+      </div>:filteredVisits.length>0?<div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {filteredVisits.map(v=><div key={v.id} onClick={()=>setViewing(v)} style={{
+          padding:'14px 16px',
+          background:'#fff',
+          border:'1.5px solid #E2E8F0',
+          borderLeft:`4px solid ${getStatusColor(v.status)}`,
+          borderRadius:10,
+          cursor:'pointer',
+          transition:'all 0.2s',
+        }} onMouseOver={e=>e.currentTarget.style.background='#F8FAFC'}
+            onMouseOut={e=>e.currentTarget.style.background='#fff'}>
+          
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:10,marginBottom:8,flexWrap:'wrap'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>
+                👤 {v.customer_name}
+              </div>
+              {v.customer_business&&<div style={{fontSize:12,color:'#64748B',marginTop:2}}>
+                🏪 {v.customer_business}
+              </div>}
+            </div>
+            <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+              <span style={{padding:'3px 10px',borderRadius:6,background:`${getStatusColor(v.status)}15`,color:getStatusColor(v.status),fontSize:10,fontWeight:800}}>{getStatusLabel(v.status)}</span>
+              {v.has_issues&&<span style={{padding:'3px 10px',borderRadius:6,background:`${getUrgencyColor(v.urgency)}15`,color:getUrgencyColor(v.urgency),fontSize:10,fontWeight:800}}>⚠️ {v.urgency==='critical'?'DHARURA':v.urgency==='high'?'KUBWA':v.urgency==='normal'?'WASTANI':'NDOGO'}</span>}
+            </div>
+          </div>
+          
+          <div style={{fontSize:11,color:'#64748B',marginBottom:6,display:'flex',gap:10,flexWrap:'wrap'}}>
+            <span>📅 {new Date(v.visit_date||v.created_at).toLocaleDateString('sw-TZ')}</span>
+            {v.customer_phone&&<span>📞 {v.customer_phone}</span>}
+            {v.customer_location&&<span>📍 {v.customer_location}</span>}
+          </div>
+          
+          {v.visit_purpose&&<div style={{fontSize:12,color:'#475569',padding:'8px 10px',background:'#F8FAFC',borderRadius:6}}>
+            <b>Lengo:</b> {v.visit_purpose.slice(0,100)}{v.visit_purpose.length>100?'...':''}
+          </div>}
+        </div>)}
+      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:50,marginBottom:10}}>📋</div>
+        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna ziara bado</div>
+        <div style={{fontSize:12,marginTop:4}}>Bonyeza "+ Ziara Mpya" kuanza</div>
+      </div>}
+    </div>
+    
+    {/* VISIT FORM MODAL */}
+    {showForm&&<Modal open={true} onClose={()=>setShowForm(false)} title="📋 Jaza Taarifa za Ziara">
+      <div style={{maxHeight:'72vh',overflowY:'auto',paddingRight:8}}>
+        
+        {/* Pick existing customer */}
+        {myCustomers.length>0&&<div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0'}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#0B7A3B',display:'block',marginBottom:5}}>📋 Chagua Mteja Wako (Optional)</label>
+          <select value={form.business_id} onChange={e=>onCustomerSelect(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'1.5px solid #BBF7D0',fontSize:13,background:'#fff'}}>
+            <option value="">— Au jaza mpya chini —</option>
+            {myCustomers.map(c=><option key={c.id} value={c.id}>{c.name} {c.owner_name?'('+c.owner_name+')':''}</option>)}
+          </select>
+        </div>}
+        
+        {/* Customer info */}
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'0 0 8px'}}>👤 Taarifa za Mteja</h4>
+        <Input label="Jina la Mteja *" value={form.customer_name} onChange={e=>setForm({...form,customer_name:e.target.value})} placeholder="Mfano: Mama Grace"/>
+        <Input label="Jina la Biashara" value={form.customer_business} onChange={e=>setForm({...form,customer_business:e.target.value})} placeholder="Mfano: Duka la Sukari"/>
+        <Input label="Simu" value={form.customer_phone} onChange={e=>setForm({...form,customer_phone:e.target.value})} placeholder="0712345678"/>
+        <Input label="Mahali (Mkoa/Wilaya)" value={form.customer_location} onChange={e=>setForm({...form,customer_location:e.target.value})} placeholder="Mfano: Mbeya, Kawetere"/>
+        
+        {/* Visit details */}
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'14px 0 8px'}}>📅 Taarifa za Ziara</h4>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Tarehe ya Ziara</label>
+            <input type="date" value={form.visit_date} onChange={e=>setForm({...form,visit_date:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Aina ya Ziara</label>
+            <select value={form.visit_type} onChange={e=>setForm({...form,visit_type:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',background:'#fff'}}>
+              <option value="follow_up">🔄 Ufuatiliaji</option>
+              <option value="training">🎓 Mafunzo</option>
+              <option value="support">🛟 Msaada</option>
+              <option value="complaint">😡 Lalama</option>
+              <option value="sales">💰 Kuuza</option>
+              <option value="other">📌 Nyingine</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Lengo la Ziara *</label>
+          <textarea value={form.visit_purpose} onChange={e=>setForm({...form,visit_purpose:e.target.value})} rows="2" placeholder="Mfano: Kukagua matumizi ya mfumo na kusaidia mafunzo" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+        </div>
+        
+        {/* Customer status */}
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'14px 0 8px'}}>📊 Hali ya Mteja</h4>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kuridhika</label>
+            <select value={form.customer_satisfaction} onChange={e=>setForm({...form,customer_satisfaction:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',background:'#fff'}}>
+              <option value="very_happy">😊 Furaha Sana</option>
+              <option value="happy">🙂 Furaha</option>
+              <option value="neutral">😐 Wastani</option>
+              <option value="unhappy">😕 Hairidhiki</option>
+              <option value="very_unhappy">😡 Hairidhiki Kabisa</option>
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Anatumia Mfumo?</label>
+            <select value={form.is_using_system} onChange={e=>setForm({...form,is_using_system:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',background:'#fff'}}>
+              <option value="yes">✅ Ndio, Kila Siku</option>
+              <option value="sometimes">⚠️ Mara Chache</option>
+              <option value="no">❌ Hatumii</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Issues section */}
+        <div style={{background:form.has_issues?'#FEF2F2':'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10,border:`1.5px solid ${form.has_issues?'#FCA5A5':'#E2E8F0'}`}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',marginBottom:form.has_issues?12:0}}>
+            <input type="checkbox" checked={form.has_issues} onChange={e=>setForm({...form,has_issues:e.target.checked})} style={{width:18,height:18,cursor:'pointer'}}/>
+            <span style={{fontWeight:800,fontSize:13,color:form.has_issues?'#991B1B':'#475569'}}>
+              ⚠️ Mteja Ana Changamoto/Lalama
+            </span>
+          </label>
+          
+          {form.has_issues&&<>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Aina ya Changamoto</label>
+                <select value={form.issue_category} onChange={e=>setForm({...form,issue_category:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FCA5A5',fontSize:13,boxSizing:'border-box',background:'#fff'}}>
+                  <option value="">Chagua...</option>
+                  <option value="technical">🔧 Technical (Mfumo)</option>
+                  <option value="payment">💰 Malipo</option>
+                  <option value="training">🎓 Mafunzo</option>
+                  <option value="sms">📱 SMS</option>
+                  <option value="features">✨ Vipengele</option>
+                  <option value="other">📌 Nyingine</option>
+                </select>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Uharaka</label>
+                <select value={form.urgency} onChange={e=>setForm({...form,urgency:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FCA5A5',fontSize:13,boxSizing:'border-box',background:'#fff'}}>
+                  <option value="low">🟢 Ndogo</option>
+                  <option value="normal">🔵 Wastani</option>
+                  <option value="high">🟠 Kubwa</option>
+                  <option value="critical">🔴 DHARURA</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Eleza Changamoto *</label>
+              <textarea value={form.issues_description} onChange={e=>setForm({...form,issues_description:e.target.value})} rows="3" placeholder="Eleza kwa undani kile mteja anachokumbana nacho..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FCA5A5',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+            </div>
+          </>}
+        </div>
+        
+        {/* Customer needs & feedback */}
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'14px 0 8px'}}>💬 Maoni na Mahitaji</h4>
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Mteja Anahitaji Nini?</label>
+          <textarea value={form.customer_needs} onChange={e=>setForm({...form,customer_needs:e.target.value})} rows="2" placeholder="Mfano: Anahitaji mafunzo ya kutumia ripoti..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+        </div>
+        
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Maoni ya Mteja kuhusu Mfumo</label>
+          <textarea value={form.feedback} onChange={e=>setForm({...form,feedback:e.target.value})} rows="2" placeholder="Mfano: Anasema mfumo ni mzuri lakini ungeongeza..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+        </div>
+        
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Mapendekezo Yako (kama Wakala)</label>
+          <textarea value={form.recommendations} onChange={e=>setForm({...form,recommendations:e.target.value})} rows="2" placeholder="Mfano: Napendekeza Admin amfuate mteja huyu kwa mafunzo..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+        </div>
+        
+        {/* Next visit */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8,marginBottom:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📅 Tarehe ya Ziara Ijayo (Optional)</label>
+            <input type="date" value={form.next_visit_date} min={today} onChange={e=>setForm({...form,next_visit_date:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+        </div>
+        
+        {/* Submit */}
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>setShowForm(false)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={submitVisit} style={{flex:2,padding:12,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>📤 Tuma kwa Admin</button>
+        </div>
+      </div>
+    </Modal>}
+    
+    {/* VIEW DETAIL MODAL */}
+    {viewing&&<Modal open={true} onClose={()=>setViewing(null)} title={`📋 Ziara ya ${viewing.customer_name}`}>
+      <div style={{maxHeight:'70vh',overflowY:'auto',paddingRight:8}}>
+        
+        {/* Status badge */}
+        <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+          <span style={{padding:'4px 12px',borderRadius:8,background:`${getStatusColor(viewing.status)}15`,color:getStatusColor(viewing.status),fontSize:11,fontWeight:800}}>{getStatusLabel(viewing.status)}</span>
+          {viewing.has_issues&&<span style={{padding:'4px 12px',borderRadius:8,background:`${getUrgencyColor(viewing.urgency)}15`,color:getUrgencyColor(viewing.urgency),fontSize:11,fontWeight:800}}>⚠️ {viewing.urgency==='critical'?'DHARURA':viewing.urgency==='high'?'KUBWA':viewing.urgency==='normal'?'WASTANI':'NDOGO'}</span>}
+        </div>
+        
+        {/* Customer info */}
+        <div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>👤 MTEJA</div>
+          <div style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>{viewing.customer_name}</div>
+          {viewing.customer_business&&<div style={{fontSize:12,color:'#475569'}}>🏪 {viewing.customer_business}</div>}
+          {viewing.customer_phone&&<div style={{fontSize:12,color:'#475569'}}>📞 {viewing.customer_phone}</div>}
+          {viewing.customer_location&&<div style={{fontSize:12,color:'#475569'}}>📍 {viewing.customer_location}</div>}
+        </div>
+        
+        {/* Visit info */}
+        <div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>📅 ZIARA</div>
+          <div style={{fontSize:12,color:'#475569'}}><b>Tarehe:</b> {new Date(viewing.visit_date||viewing.created_at).toLocaleDateString('sw-TZ')}</div>
+          <div style={{fontSize:12,color:'#475569'}}><b>Aina:</b> {viewing.visit_type}</div>
+          {viewing.visit_purpose&&<div style={{fontSize:12,color:'#475569',marginTop:6}}><b>Lengo:</b><br/>{viewing.visit_purpose}</div>}
+        </div>
+        
+        {/* Status */}
+        <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #BBF7D0'}}>
+          <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:5}}>📊 HALI YA MTEJA</div>
+          <div style={{fontSize:12,color:'#166534'}}><b>Kuridhika:</b> {getSatLabel(viewing.customer_satisfaction)}</div>
+          <div style={{fontSize:12,color:'#166534'}}><b>Anatumia:</b> {viewing.is_using_system==='yes'?'✅ Kila Siku':viewing.is_using_system==='sometimes'?'⚠️ Mara Chache':'❌ Hatumii'}</div>
+        </div>
+        
+        {/* Issues */}
+        {viewing.has_issues&&<div style={{background:'#FEF2F2',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #FCA5A5'}}>
+          <div style={{fontSize:11,color:'#991B1B',fontWeight:700,marginBottom:5}}>⚠️ CHANGAMOTO</div>
+          {viewing.issue_category&&<div style={{fontSize:12,color:'#7F1D1D'}}><b>Aina:</b> {viewing.issue_category}</div>}
+          <div style={{fontSize:12,color:'#7F1D1D',marginTop:6}}>{viewing.issues_description}</div>
+        </div>}
+        
+        {/* Other fields */}
+        {viewing.customer_needs&&<div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>💡 MAHITAJI YA MTEJA</div>
+          <div style={{fontSize:12,color:'#475569'}}>{viewing.customer_needs}</div>
+        </div>}
+        
+        {viewing.feedback&&<div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>💬 MAONI</div>
+          <div style={{fontSize:12,color:'#475569'}}>{viewing.feedback}</div>
+        </div>}
+        
+        {viewing.recommendations&&<div style={{background:'#EFF6FF',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #BFDBFE'}}>
+          <div style={{fontSize:11,color:'#1E40AF',fontWeight:700,marginBottom:5}}>📝 MAPENDEKEZO YAKO</div>
+          <div style={{fontSize:12,color:'#1E3A8A'}}>{viewing.recommendations}</div>
+        </div>}
+        
+        {viewing.admin_notes&&<div style={{background:'#FEF3C7',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #FCD34D'}}>
+          <div style={{fontSize:11,color:'#92400E',fontWeight:700,marginBottom:5}}>📌 ADMIN ALISEMA</div>
+          <div style={{fontSize:12,color:'#78350F'}}>{viewing.admin_notes}</div>
+        </div>}
+        
+        {viewing.next_visit_date&&<div style={{background:'#F0FDF4',padding:'10px 14px',borderRadius:10,marginBottom:10,fontSize:12,color:'#15803D'}}>
+          📅 <b>Ziara Ijayo:</b> {new Date(viewing.next_visit_date).toLocaleDateString('sw-TZ')}
+        </div>}
+      </div>
+    </Modal>}
+  </div>;
+}

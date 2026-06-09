@@ -7,12 +7,12 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,AgentVisitsAdminPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
-import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage} from './pages/agent/AgentPages';
+import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,AgentVisitsPage} from './pages/agent/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
@@ -25,6 +25,7 @@ const MENUS={
     ]},
     {group:'masoko',label:'📣 Masoko',icon:IC.send,items:[
       {id:'promo',icon:IC.gift,label:'Mawakala'},
+      {id:'agent_visits',icon:IC.file,label:'🎫 Tiketi za Ufuatiliaji'},
       {id:'partners',icon:IC.people,label:'Washirika'},
       {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
     ]},
@@ -104,6 +105,7 @@ const MENUS={
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
+    {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
     {id:'tiers',icon:IC.chart,label:'Madaraja'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
@@ -191,7 +193,9 @@ export default function App(){
     if(role==='admin'){
       switch(page){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;
-        case'promo':return <PromoPage/>;case'broadcast':return <BroadcastPage/>;
+        case'promo':return <PromoPage/>;
+        case'agent_visits':return <AgentVisitsAdminPage/>;
+        case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'live_chat':return <AdminChatPanel/>;
         case'security':return <SecurityPage/>;
@@ -237,6 +241,7 @@ export default function App(){
       switch(page){
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;
+        case'visits':return <AgentVisitsPage/>;
         case'tiers':return <AgentTiersPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AgentDashboard/>;
