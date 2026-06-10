@@ -143,7 +143,9 @@ export function AppProvider({children}){
   // ===== OTP STATE =====
   const[otpPending,setOtpPending]=useState(null); // {user, role, bizId, phone}
   const[otpSending,setOtpSending]=useState(false);
-  const OTP_ROLES=['admin','marketing','agent','office','accountant']; // roles that need OTP
+  const OTP_ROLES=['admin','marketing','office','accountant']; // agent hutumii OTP — anatumia promo code
+  // ===== PROMO LOGIN STATE (mawakala) =====
+  const[promoPending,setPromoPending]=useState(null); // {userData, email}
 
   // Send OTP via SMS (preferred) or Email (fallback)
   const sendOTP=useCallback(async(email,isAdmin=false,phone='')=>{
@@ -180,6 +182,27 @@ export function AppProvider({children}){
   },[otpPending,loadData]);
 
   const cancelOTP=useCallback(()=>{setOtpPending(null)},[]);
+  
+  // ===== PROMO CODE LOGIN (mawakala) =====
+  const verifyPromoLogin=useCallback(async(inputCode)=>{
+    if(!promoPending)return{success:false,error:'Hakuna ombi la kuingia'};
+    const u=promoPending.userData;
+    try{
+      // Angalia promo code kwenye DB
+      const{data:promoData,error}=await supabase.from('promo_codes').select('*').eq('agent_email',u.email).single();
+      if(error||!promoData)return{success:false,error:'Promo code haijapatikana kwa akaunti hii. Wasiliana na Admin.'};
+      if(promoData.code.trim().toUpperCase()!==inputCode.trim().toUpperCase())return{success:false,error:'Promo code si sahihi. Jaribu tena.'};
+      // Promo code ni sahihi — ingia
+      setUser({...u,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10});
+      setPromoPending(null);
+      await safeUpdate('users',{last_login:nowISO()},'id',u.id);
+      safeInsert('login_logs',{user_id:u.id,email:u.email,action:'login_promo',device_info:navigator.userAgent}).catch(()=>{});
+      await loadData(u.id,u.role,u.business_id);
+      return{success:true};
+    }catch(e){return{success:false,error:'Tatizo la mtandao. Jaribu tena.'};}
+  },[promoPending,loadData]);
+  
+  const cancelPromoLogin=useCallback(()=>{setPromoPending(null)},[]);
 
   // ===== AUTH =====
   const login=useCallback(async(email,password)=>{
@@ -202,7 +225,13 @@ export function AppProvider({children}){
         const ub=uData.business_id?(await supabase.from('businesses').select('*').eq('id',uData.business_id).single()):null;
         if(ub?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.'}
 
-        // Check if role needs OTP
+        // Wakala: thibitisha kwa promo code (sio OTP)
+        if(uData.role==='agent'){
+          setPromoPending({userData:uData,email});
+          setLoading(false);
+          return'PROMO_REQUIRED';
+        }
+        // Roles nyingine: thibitisha kwa OTP
         if(OTP_ROLES.includes(uData.role)){
           setOtpPending({userData:uData,email,role:uData.role,phone:uData.phone});
           const otpResult=await sendOTP(email,false,uData.phone||'');
@@ -1724,7 +1753,7 @@ export function AppProvider({children}){
     testimonials,addTestimonial,deleteTestimonial,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
-    otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,
+    otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;

@@ -6,7 +6,7 @@ import InfoUpdateRequest from './InfoUpdateRequest';
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
-export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,otpSending,onVerifyOTP,onCancelOTP,onResendOTP}){
+export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,otpSending,onVerifyOTP,onCancelOTP,onResendOTP,promoPending,onVerifyPromo,onCancelPromo}){
   const[tab,setTab]=useState('login');
   const[f,setF]=useState({name:'',email:'',password:'',business:'',phone:'',promo:''});
   const[err,setErr]=useState('');
@@ -24,6 +24,17 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
   const[otpErr,setOtpErr]=useState('');
   const[otpTimer,setOtpTimer]=useState(300);
   const[verifying,setVerifying]=useState(false);
+  const[promoCode,setPromoCode]=useState('');
+  const[promoErr,setPromoErr]=useState('');
+  const[promoVerifying,setPromoVerifying]=useState(false);
+  const handleVerifyPromo=async()=>{
+    if(!promoCode.trim()){setPromoErr('Ingiza promo code yako!');return}
+    setPromoVerifying(true);setPromoErr('');
+    const result=await onVerifyPromo(promoCode);
+    setPromoVerifying(false);
+    if(!result.success){setPromoErr(result.error||'Promo code si sahihi. Jaribu tena.');}
+    else{setPromoCode('');setPromoErr('');}
+  };
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
 
   // Crossfade backgrounds
@@ -174,6 +185,35 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
               <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginTop:16,fontSize:11,color:'#1E40AF',textAlign:'center'}}>
                 🔒 OTP inalinda akaunti yako — hata mtu akijua password yako, hawezi kuingia bila code hii
               </div>
+            </>:promoPending?<>
+            {/* ===== PROMO CODE SCREEN (WAKALA) ===== */}
+            <div style={{textAlign:'center',marginBottom:20}}>
+              <div style={{width:70,height:70,margin:'0 auto 14px',borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>🎯</div>
+              <h3 style={{fontSize:22,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Ingiza Promo Code Yako</h3>
+              <p style={{fontSize:13,color:'#64748B',margin:'0 0 4px'}}>Karibu, <b style={{color:'#0B7A3B'}}>{promoPending?.userData?.name||'Wakala'}</b>!</p>
+              <p style={{fontSize:12,color:'#94A3B8',margin:0}}>Thibitisha utambulisho wako kwa promo code uliyopewa na Admin</p>
+            </div>
+            {promoErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{promoErr}</div>}
+            <div style={{marginBottom:16}}>
+              <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>🔑 PROMO CODE YAKO</label>
+              <input
+                type="text" autoFocus autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+                value={promoCode}
+                onChange={e=>setPromoCode(e.target.value.toUpperCase())}
+                onKeyDown={e=>e.key==='Enter'&&handleVerifyPromo()}
+                placeholder="Mfano: DL-THOMAS01"
+                style={{width:'100%',textAlign:'center',fontSize:22,fontWeight:900,letterSpacing:4,padding:'16px 12px',border:'2px solid #BBF7D0',borderRadius:14,outline:'none',fontFamily:'monospace',boxSizing:'border-box',color:'#0B7A3B',background:'#F0FDF4'}}
+              />
+            </div>
+            <button onClick={handleVerifyPromo} disabled={promoVerifying||!promoCode.trim()} style={{width:'100%',padding:16,background:promoVerifying?'#86EFAC':promoCode.trim()?'linear-gradient(135deg,#0B7A3B,#065F2E)':'#E2E8F0',color:promoCode.trim()?'#fff':'#94A3B8',border:'none',borderRadius:14,fontWeight:800,fontSize:16,cursor:promoCode.trim()?'pointer':'not-allowed',boxShadow:promoCode.trim()?'0 4px 20px rgba(11,122,59,0.35)':'none',transition:'all 0.2s'}}>
+              {promoVerifying?'⏳ Inathibitisha...':'✅ Ingia'}
+            </button>
+            <div style={{textAlign:'center',marginTop:14}}>
+              <button onClick={()=>{onCancelPromo();setPromoCode('');setPromoErr('');}} style={{background:'none',border:'none',color:'#EF4444',fontWeight:600,fontSize:13,cursor:'pointer'}}>← Rudi Nyuma</button>
+            </div>
+            <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 14px',marginTop:16,fontSize:11,color:'#15803D',textAlign:'center',border:'1px solid #BBF7D0'}}>
+              🔒 Promo code yako ndiyo funguo lako la kuingia — isimwambie mtu mwingine
+            </div>
             </>:<>
 
             {/* ===== NORMAL LOGIN/SIGNUP ===== */}

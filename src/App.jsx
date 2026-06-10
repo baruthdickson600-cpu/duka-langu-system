@@ -139,7 +139,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin}=useApp();
   const[page,setPage]=useState(()=>{
     // Support PWA shortcuts via ?page=sales etc.
     const url=new URL(window.location.href);
@@ -174,7 +174,7 @@ export default function App(){
     />;
   }
 
-  if(!user||otpPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP}/>;
+  if(!user||otpPending||promoPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP} promoPending={promoPending} onVerifyPromo={verifyPromoLogin} onCancelPromo={cancelPromoLogin}/>;
   if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
