@@ -295,7 +295,8 @@ export function AgentTiersPage(){
 export function AgentVisitsPage(){
   const{user,businesses,supabase}=useApp();
   const myCode=user?.promo_code;
-  const myCustomers=useMemo(()=>businesses.filter(b=>b.promo_code===myCode),[businesses,myCode]);
+  // Wakala anaona wateja WOTE wanaotumia mfumo (sio wake tu)
+  const myCustomers=useMemo(()=>[...businesses].sort((a,b)=>(a.name||'').localeCompare(b.name||'')),[businesses]);
   
   const[visits,setVisits]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -555,13 +556,15 @@ export function AgentVisitsPage(){
       <div style={{maxHeight:'72vh',overflowY:'auto',paddingRight:8}}>
         
         {/* Pick existing customer */}
-        {myCustomers.length>0&&<div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0'}}>
-          <label style={{fontSize:11,fontWeight:700,color:'#0B7A3B',display:'block',marginBottom:5}}>📋 Chagua Mteja Wako (Optional)</label>
+        <div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0'}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#0B7A3B',display:'block',marginBottom:2}}>🔍 Chagua Mteja (Wateja Wote wa Mfumo)</label>
+          <div style={{fontSize:10,color:'#15803D',marginBottom:6}}>Chagua mteja uliyemtembelea — taarifa zake zitajaza chini moja kwa moja</div>
           <select value={form.business_id} onChange={e=>onCustomerSelect(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'1.5px solid #BBF7D0',fontSize:13,background:'#fff'}}>
-            <option value="">— Au jaza mpya chini —</option>
-            {myCustomers.map(c=><option key={c.id} value={c.id}>{c.name} {c.owner_name?'('+c.owner_name+')':''}</option>)}
+            <option value="">— Chagua mteja au jaza mpya chini —</option>
+            {myCustomers.map(c=><option key={c.id} value={c.id}>{c.name}{c.owner_name?' · '+c.owner_name:''}{c.phone?' · '+c.phone:''}</option>)}
           </select>
-        </div>}
+          <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Wateja {myCustomers.length} wanaotumia mfumo</div>
+        </div>
         
         {/* Customer info */}
         <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'0 0 8px'}}>👤 Taarifa za Mteja</h4>
