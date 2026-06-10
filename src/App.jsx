@@ -7,7 +7,7 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,AgentVisitsAdminPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,AgentVisitsAdminPage,AgentTargetsPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
@@ -25,6 +25,7 @@ const MENUS={
     ]},
     {group:'masoko',label:'📣 Masoko',icon:IC.send,items:[
       {id:'promo',icon:IC.gift,label:'Mawakala'},
+      {id:'agent_targets',icon:IC.chart,label:'🎯 Targets & Performance'},
       {id:'agent_visits',icon:IC.file,label:'🎫 Tiketi za Ufuatiliaji'},
       {id:'partners',icon:IC.people,label:'Washirika'},
       {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
@@ -195,6 +196,7 @@ export default function App(){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;
         case'promo':return <PromoPage/>;
         case'agent_visits':return <AgentVisitsAdminPage/>;
+        case'agent_targets':return <AgentTargetsPage/>;
         case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'live_chat':return <AdminChatPanel/>;

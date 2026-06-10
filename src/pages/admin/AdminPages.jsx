@@ -2733,3 +2733,476 @@ export function AgentVisitsAdminPage(){
     </Modal>}
   </div>;
 }
+
+// =====================================================
+// AGENT TARGETS & PERFORMANCE PAGE
+// Admin anaweka targets na anaona performance ya mawakala
+// =====================================================
+export function AgentTargetsPage(){
+  const{supabase,user,partners,businesses}=useApp();
+  const[targets,setTargets]=React.useState([]);
+  const[visits,setVisits]=React.useState([]);
+  const[loading,setLoading]=React.useState(true);
+  const[period,setPeriod]=React.useState(()=>{
+    const d=new Date();
+    return {year:d.getFullYear(),month:d.getMonth()+1};
+  });
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[viewAgent,setViewAgent]=React.useState(null);
+  const[saving,setSaving]=React.useState(false);
+  
+  // Security: Admin only
+  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+    <div style={{fontSize:60,marginBottom:14}}>🔒</div>
+    <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
+  </div>;
+  
+  // Filter agents (mawakala only - sio washirika wengine)
+  const agents=React.useMemo(()=>partners.filter(p=>p.role==='agent'||p.type==='agent'||p.is_agent||(!p.role&&!p.type)),[partners]);
+  
+  // Load data
+  React.useEffect(()=>{loadData()},[period.year,period.month]);
+  
+  const loadData=async()=>{
+    setLoading(true);
+    try{
+      // Targets ya mwezi huu
+      const{data:tData}=await supabase.from('agent_targets')
+        .select('*')
+        .eq('year',period.year)
+        .eq('month',period.month);
+      setTargets(tData||[]);
+      
+      // Visits zote (kwa mwezi huu)
+      const monthStart=new Date(period.year,period.month-1,1).toISOString();
+      const monthEnd=new Date(period.year,period.month,0,23,59,59).toISOString();
+      const{data:vData}=await supabase.from('customer_visits')
+        .select('*')
+        .gte('visit_date',monthStart.slice(0,10))
+        .lte('visit_date',monthEnd.slice(0,10));
+      setVisits(vData||[]);
+    }catch(e){console.warn('Load:',e)}
+    setLoading(false);
+  };
+  
+  // Helper: Get performance for an agent
+  const getAgentPerformance=(agentId)=>{
+    // Wateja wapya waliosajiliwa na wakala mwezi huu
+    const monthStart=new Date(period.year,period.month-1,1);
+    const monthEnd=new Date(period.year,period.month,0,23,59,59);
+    const agentObj=agents.find(a=>a.id===agentId);
+    const promoCode=agentObj?.promo_code;
+    
+    const newCustomers=businesses.filter(b=>{
+      if(b.promo_code!==promoCode)return false;
+      const cd=new Date(b.created_at);
+      return cd>=monthStart&&cd<=monthEnd;
+    });
+    
+    // Ziara za wakala huyu mwezi huu
+    const agentVisits=visits.filter(v=>v.agent_id===agentId);
+    
+    // Unique customers visited (kila mteja = point moja)
+    const uniqueVisited=new Set(agentVisits.map(v=>v.customer_name?.toLowerCase().trim())).size;
+    
+    // Target ya wakala huyu
+    const target=targets.find(t=>t.agent_id===agentId);
+    
+    return {
+      newCustomers:newCustomers.length,
+      newCustomersList:newCustomers,
+      totalVisits:agentVisits.length,
+      uniqueVisited,
+      visitsList:agentVisits,
+      target:target||null,
+      targetNewCustomers:target?.target_new_customers||10,
+      targetVisits:target?.target_visits||30,
+      bonusPerCustomer:target?.bonus_per_customer||5000,
+      bonusPerVisit:target?.bonus_per_visit||1000,
+      // Achievement %
+      customerPct:target?Math.round((newCustomers.length/target.target_new_customers)*100):0,
+      visitPct:target?Math.round((uniqueVisited/target.target_visits)*100):0,
+      // Bonus earned
+      bonusEarned:(newCustomers.length*(target?.bonus_per_customer||5000))+(uniqueVisited*(target?.bonus_per_visit||1000)),
+      // Issues found
+      issuesFound:agentVisits.filter(v=>v.has_issues).length,
+    };
+  };
+  
+  // Performance for all agents
+  const allPerformance=agents.map(a=>({agent:a,...getAgentPerformance(a.id)}));
+  const sortedByPerformance=[...allPerformance].sort((a,b)=>(b.newCustomers+b.uniqueVisited)-(a.newCustomers+a.uniqueVisited));
+  
+  // Total stats
+  const totalStats={
+    totalAgents:agents.length,
+    totalNewCustomers:allPerformance.reduce((s,a)=>s+a.newCustomers,0),
+    totalVisits:allPerformance.reduce((s,a)=>s+a.totalVisits,0),
+    totalUniqueVisited:allPerformance.reduce((s,a)=>s+a.uniqueVisited,0),
+    totalBonus:allPerformance.reduce((s,a)=>s+a.bonusEarned,0),
+    agentsWithTargets:targets.length,
+    issuesFound:allPerformance.reduce((s,a)=>s+a.issuesFound,0),
+  };
+  
+  const months=['Januari','Februari','Machi','Aprili','Mei','Juni','Julai','Agosti','Septemba','Oktoba','Novemba','Desemba'];
+  const monthLabel=months[period.month-1];
+  
+  // Save target
+  const saveTarget=async()=>{
+    if(!editTarget)return;
+    setSaving(true);
+    try{
+      const payload={
+        agent_id:editTarget.agent.id,
+        agent_name:editTarget.agent.name||editTarget.agent.email,
+        year:period.year,
+        month:period.month,
+        target_new_customers:+editTarget.target_new_customers||10,
+        target_visits:+editTarget.target_visits||30,
+        bonus_per_customer:+editTarget.bonus_per_customer||5000,
+        bonus_per_visit:+editTarget.bonus_per_visit||1000,
+        notes:editTarget.notes||'',
+        created_by:user.id,
+        updated_at:new Date().toISOString(),
+      };
+      
+      // Upsert (insert au update)
+      const{error}=await supabase.from('agent_targets').upsert(payload,{
+        onConflict:'agent_id,year,month',
+      });
+      
+      if(error)throw error;
+      
+      // Notify agent
+      try{
+        await supabase.from('notifications').insert({
+          target_type:'user',
+          target_id:editTarget.agent.id,
+          type:'info',
+          title:`🎯 Target Yako ya ${monthLabel} ${period.year}`,
+          message:`Admin amekupatia target: Wateja Wapya ${payload.target_new_customers}, Ziara ${payload.target_visits}. Bonasi: TZS ${payload.bonus_per_customer.toLocaleString()}/mteja + TZS ${payload.bonus_per_visit.toLocaleString()}/ziara.`,
+        });
+      }catch(e){}
+      
+      alert(`✅ Target imehifadhiwa kwa ${editTarget.agent.name||editTarget.agent.email}!\n\n📅 Mwezi: ${monthLabel} ${period.year}\n👥 Wateja Wapya: ${payload.target_new_customers}\n📋 Ziara: ${payload.target_visits}\n💰 Bonasi: TZS ${(payload.target_new_customers*payload.bonus_per_customer+payload.target_visits*payload.bonus_per_visit).toLocaleString()} (max)`);
+      
+      setEditTarget(null);
+      await loadData();
+    }catch(e){
+      alert('Tatizo: '+e.message);
+    }
+    setSaving(false);
+  };
+  
+  const exportReport=()=>{
+    const csvRows=[
+      ['Mwezi','Wakala','Wateja Wapya','Target','%','Ziara (Unique)','Ziara Target','%','Changamoto','Bonasi (TZS)'],
+      ...sortedByPerformance.map(p=>[
+        `${monthLabel} ${period.year}`,
+        p.agent.name||p.agent.email,
+        p.newCustomers,
+        p.targetNewCustomers,
+        p.customerPct+'%',
+        p.uniqueVisited,
+        p.targetVisits,
+        p.visitPct+'%',
+        p.issuesFound,
+        p.bonusEarned.toLocaleString(),
+      ])
+    ];
+    const csv=csvRows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`mawakala-${period.year}-${period.month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  
+  return <div>
+    {/* Header */}
+    <div style={{marginBottom:16}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎯 Targets & Performance ya Mawakala</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za mawakala</p>
+    </div>
+    
+    {/* Period Selector */}
+    <div className="card" style={{marginBottom:16,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none'}}>
+      <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+        <div style={{fontSize:32}}>📅</div>
+        <div style={{flex:1,minWidth:180}}>
+          <div style={{fontSize:11,opacity:0.85,fontWeight:700,letterSpacing:1}}>MWEZI WA KUSAJILI</div>
+          <div style={{fontSize:24,fontWeight:900}}>{monthLabel} {period.year}</div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <select value={period.month} onChange={e=>setPeriod({...period,month:+e.target.value})} style={{padding:'10px 14px',borderRadius:10,border:'none',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            {months.map((m,i)=><option key={i+1} value={i+1}>{m}</option>)}
+          </select>
+          <select value={period.year} onChange={e=>setPeriod({...period,year:+e.target.value})} style={{padding:'10px 14px',borderRadius:10,border:'none',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            {[2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    {/* Overall Stats */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:16}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0B7A3B'}}>
+        <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>MAWAKALA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B',marginTop:4}}>{totalStats.totalAgents}</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.agentsWithTargets} wana target</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #3B82F6'}}>
+        <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700}}>WATEJA WAPYA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#3B82F6',marginTop:4}}>{totalStats.totalNewCustomers}</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>wameongezwa</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #8B5CF6'}}>
+        <div style={{fontSize:10,color:'#6D28D9',fontWeight:700}}>ZIARA (UNIQUE)</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#8B5CF6',marginTop:4}}>{totalStats.totalUniqueVisited}</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.totalVisits} jumla</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B'}}>
+        <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>BONASI YAILIYOPATIKANA</div>
+        <div style={{fontSize:16,fontWeight:900,color:'#F59E0B',marginTop:4}}>TZS {totalStats.totalBonus.toLocaleString()}</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>kwa mawakala wote</div>
+      </div>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #DC2626'}}>
+        <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>CHANGAMOTO</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#DC2626',marginTop:4}}>{totalStats.issuesFound}</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>za mteja</div>
+      </div>
+    </div>
+    
+    {/* Actions */}
+    <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+      <button onClick={exportReport} style={{padding:'10px 16px',background:'#fff',color:'#0B7A3B',border:'2px solid #BBF7D0',borderRadius:10,fontWeight:700,fontSize:12,cursor:'pointer'}}>
+        📥 Pakua CSV Report
+      </button>
+    </div>
+    
+    {/* Agents Performance Cards */}
+    <div className="card">
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>🏆 Performance ya Mawakala — {monthLabel} {period.year}</h3>
+      
+      {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:30,marginBottom:8}}>⏳</div>
+        <div>Inaleta data...</div>
+      </div>:sortedByPerformance.length===0?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+        <div style={{fontSize:50,marginBottom:10}}>👥</div>
+        <div style={{fontWeight:700}}>Hakuna mawakala</div>
+      </div>:<div style={{display:'flex',flexDirection:'column',gap:12}}>
+        {sortedByPerformance.map((p,idx)=>{
+          const overallPct=p.target?Math.round(((p.newCustomers/p.targetNewCustomers)+(p.uniqueVisited/p.targetVisits))/2*100):0;
+          const isTop3=idx<3&&p.newCustomers+p.uniqueVisited>0;
+          const medal=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
+          
+          return <div key={p.agent.id} style={{
+            padding:'16px 18px',
+            background:'#fff',
+            border:`2px solid ${isTop3?'#FCD34D':'#E2E8F0'}`,
+            borderRadius:12,
+            position:'relative',
+          }}>
+            {isTop3&&<div style={{position:'absolute',top:-10,right:14,background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'#fff',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:800}}>{medal} TOP {idx+1}</div>}
+            
+            {/* Header */}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{
+                  width:48,height:48,borderRadius:12,
+                  background:`hsl(${idx*60},70%,45%)`,
+                  color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:20,fontWeight:900,
+                }}>{(p.agent.name||p.agent.email||'?')[0].toUpperCase()}</div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:15,color:'#1E293B'}}>{p.agent.name||p.agent.email}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>📞 {p.agent.phone||'—'} • Code: {p.agent.promo_code||'—'}</div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                <button onClick={()=>setEditTarget({agent:p.agent,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
+                <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#0B7A3B',border:'2px solid #BBF7D0',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
+              </div>
+            </div>
+            
+            {/* Performance Grid */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:12}}>
+              {/* New Customers */}
+              <div style={{background:'#EFF6FF',padding:'10px 12px',borderRadius:10}}>
+                <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700}}>👥 WATEJA WAPYA</div>
+                <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
+                  <span style={{fontSize:22,fontWeight:900,color:'#3B82F6'}}>{p.newCustomers}</span>
+                  {p.target&&<span style={{fontSize:12,color:'#64748B'}}>/ {p.targetNewCustomers}</span>}
+                </div>
+                {p.target&&<div style={{height:5,background:'#DBEAFE',borderRadius:5,marginTop:6,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.min(100,p.customerPct)}%`,background:p.customerPct>=100?'#22C55E':'#3B82F6',transition:'width 0.5s'}}/>
+                </div>}
+                {p.target&&<div style={{fontSize:10,color:p.customerPct>=100?'#15803D':'#1D4ED8',marginTop:3,fontWeight:700}}>{p.customerPct}% {p.customerPct>=100?'✅':''}</div>}
+              </div>
+              
+              {/* Visits */}
+              <div style={{background:'#F5F3FF',padding:'10px 12px',borderRadius:10}}>
+                <div style={{fontSize:10,color:'#6D28D9',fontWeight:700}}>📋 ZIARA (UNIQUE)</div>
+                <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
+                  <span style={{fontSize:22,fontWeight:900,color:'#8B5CF6'}}>{p.uniqueVisited}</span>
+                  {p.target&&<span style={{fontSize:12,color:'#64748B'}}>/ {p.targetVisits}</span>}
+                </div>
+                {p.target&&<div style={{height:5,background:'#EDE9FE',borderRadius:5,marginTop:6,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.min(100,p.visitPct)}%`,background:p.visitPct>=100?'#22C55E':'#8B5CF6',transition:'width 0.5s'}}/>
+                </div>}
+                {p.target&&<div style={{fontSize:10,color:p.visitPct>=100?'#15803D':'#6D28D9',marginTop:3,fontWeight:700}}>{p.visitPct}% {p.visitPct>=100?'✅':''}</div>}
+                <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>({p.totalVisits} jumla)</div>
+              </div>
+              
+              {/* Bonus Earned */}
+              <div style={{background:'#FEF3C7',padding:'10px 12px',borderRadius:10}}>
+                <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>💰 BONASI</div>
+                <div style={{fontSize:14,fontWeight:900,color:'#F59E0B',marginTop:4}}>TZS {p.bonusEarned.toLocaleString()}</div>
+                <div style={{fontSize:10,color:'#92400E',marginTop:2}}>iliyopatikana</div>
+              </div>
+              
+              {/* Issues */}
+              {p.issuesFound>0&&<div style={{background:'#FEF2F2',padding:'10px 12px',borderRadius:10}}>
+                <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>⚠️ CHANGAMOTO</div>
+                <div style={{fontSize:22,fontWeight:900,color:'#DC2626',marginTop:4}}>{p.issuesFound}</div>
+                <div style={{fontSize:10,color:'#7F1D1D',marginTop:2}}>za mteja</div>
+              </div>}
+            </div>
+            
+            {/* Overall progress bar (if target set) */}
+            {p.target&&<div style={{padding:'8px 12px',background:overallPct>=100?'#F0FDF4':overallPct>=70?'#FEF3C7':'#FEF2F2',borderRadius:8,fontSize:11,color:overallPct>=100?'#15803D':overallPct>=70?'#92400E':'#991B1B',fontWeight:700}}>
+              {overallPct>=100?'✅ Lengo Limefika!':overallPct>=70?'⏳ Karibu na Lengo':'⚠️ Bado Mbali na Lengo'} — Overall: {overallPct}%
+            </div>}
+            
+            {!p.target&&<div style={{padding:'8px 12px',background:'#FEF3C7',borderRadius:8,fontSize:11,color:'#92400E',fontWeight:700}}>
+              ⚠️ Hakuna target — bonyeza "Weka Target" kuanza kufuatilia
+            </div>}
+          </div>;
+        })}
+      </div>}
+    </div>
+    
+    {/* EDIT TARGET MODAL */}
+    {editTarget&&<Modal open={true} onClose={()=>setEditTarget(null)} title={`🎯 Target — ${editTarget.agent.name||editTarget.agent.email}`}>
+      <div style={{maxHeight:'70vh',overflowY:'auto'}}>
+        <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #BBF7D0'}}>
+          <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:4}}>📅 MWEZI</div>
+          <div style={{fontWeight:800,color:'#0B7A3B'}}>{monthLabel} {period.year}</div>
+        </div>
+        
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'14px 0 8px'}}>🎯 Targets</h4>
+        
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>👥 Wateja Wapya</label>
+            <input type="number" value={editTarget.target_new_customers} onChange={e=>setEditTarget({...editTarget,target_new_customers:e.target.value})} placeholder="10" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BBF7D0',fontSize:14,boxSizing:'border-box'}}/>
+            <div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>Idadi ya wateja wapya wa kusajili</div>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📋 Ziara (Unique)</label>
+            <input type="number" value={editTarget.target_visits} onChange={e=>setEditTarget({...editTarget,target_visits:e.target.value})} placeholder="30" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BBF7D0',fontSize:14,boxSizing:'border-box'}}/>
+            <div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>Wateja tofauti wa kutembelea (kila 1 = point 1)</div>
+          </div>
+        </div>
+        
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'14px 0 8px'}}>💰 Bonasi</h4>
+        
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kwa Mteja Mpya (TZS)</label>
+            <input type="number" value={editTarget.bonus_per_customer} onChange={e=>setEditTarget({...editTarget,bonus_per_customer:e.target.value})} placeholder="5000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDE68A',fontSize:14,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kwa Ziara (TZS)</label>
+            <input type="number" value={editTarget.bonus_per_visit} onChange={e=>setEditTarget({...editTarget,bonus_per_visit:e.target.value})} placeholder="1000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDE68A',fontSize:14,boxSizing:'border-box'}}/>
+          </div>
+        </div>
+        
+        {/* Preview */}
+        <div style={{background:'#FEF3C7',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #FCD34D'}}>
+          <div style={{fontSize:11,color:'#92400E',fontWeight:800,marginBottom:6}}>💰 Bonasi ya Kupata (Akifikia Target)</div>
+          <div style={{fontSize:11,color:'#78350F',marginBottom:3}}>
+            • Wateja Wapya: {editTarget.target_new_customers} × TZS {(+editTarget.bonus_per_customer).toLocaleString()} = <b>TZS {(+editTarget.target_new_customers*+editTarget.bonus_per_customer).toLocaleString()}</b>
+          </div>
+          <div style={{fontSize:11,color:'#78350F',marginBottom:6}}>
+            • Ziara: {editTarget.target_visits} × TZS {(+editTarget.bonus_per_visit).toLocaleString()} = <b>TZS {(+editTarget.target_visits*+editTarget.bonus_per_visit).toLocaleString()}</b>
+          </div>
+          <div style={{borderTop:'2px dashed #FCD34D',paddingTop:6,fontSize:14,color:'#92400E',fontWeight:900}}>
+            JUMLA: TZS {(+editTarget.target_new_customers*+editTarget.bonus_per_customer+(+editTarget.target_visits)*+editTarget.bonus_per_visit).toLocaleString()}
+          </div>
+        </div>
+        
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📝 Maelezo (Optional)</label>
+          <textarea value={editTarget.notes} onChange={e=>setEditTarget({...editTarget,notes:e.target.value})} rows="2" placeholder="Mfano: Tuna target kubwa mwezi huu kwa sababu..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+        </div>
+        
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>setEditTarget(null)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={saveTarget} disabled={saving} style={{flex:2,padding:12,background:saving?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:saving?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{saving?'⏳ Inahifadhi...':'💾 Hifadhi Target'}</button>
+        </div>
+      </div>
+    </Modal>}
+    
+    {/* VIEW AGENT DETAIL MODAL */}
+    {viewAgent&&<Modal open={true} onClose={()=>setViewAgent(null)} title={`📊 Detail — ${viewAgent.agent.name||viewAgent.agent.email}`}>
+      <div style={{maxHeight:'72vh',overflowY:'auto'}}>
+        
+        {/* Hero stats */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          <div style={{background:'linear-gradient(135deg,#3B82F6,#1E40AF)',color:'#fff',padding:'14px 16px',borderRadius:12}}>
+            <div style={{fontSize:11,opacity:0.85,fontWeight:700}}>WATEJA WAPYA</div>
+            <div style={{fontSize:32,fontWeight:900}}>{viewAgent.newCustomers}</div>
+            {viewAgent.target&&<div style={{fontSize:11,opacity:0.85,marginTop:2}}>Target: {viewAgent.targetNewCustomers} ({viewAgent.customerPct}%)</div>}
+          </div>
+          <div style={{background:'linear-gradient(135deg,#8B5CF6,#6D28D9)',color:'#fff',padding:'14px 16px',borderRadius:12}}>
+            <div style={{fontSize:11,opacity:0.85,fontWeight:700}}>ZIARA (UNIQUE)</div>
+            <div style={{fontSize:32,fontWeight:900}}>{viewAgent.uniqueVisited}</div>
+            {viewAgent.target&&<div style={{fontSize:11,opacity:0.85,marginTop:2}}>Target: {viewAgent.targetVisits} ({viewAgent.visitPct}%)</div>}
+          </div>
+        </div>
+        
+        {/* Bonus */}
+        <div style={{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'#fff',padding:'14px 16px',borderRadius:12,marginBottom:14}}>
+          <div style={{fontSize:11,opacity:0.85,fontWeight:700}}>💰 BONASI YA KULIPWA</div>
+          <div style={{fontSize:24,fontWeight:900}}>TZS {viewAgent.bonusEarned.toLocaleString()}</div>
+          <div style={{fontSize:11,opacity:0.85,marginTop:4}}>
+            {viewAgent.newCustomers} wateja × TZS {viewAgent.bonusPerCustomer.toLocaleString()} + {viewAgent.uniqueVisited} ziara × TZS {viewAgent.bonusPerVisit.toLocaleString()}
+          </div>
+        </div>
+        
+        {/* New customers list */}
+        {viewAgent.newCustomersList.length>0&&<div style={{marginBottom:14}}>
+          <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'0 0 8px'}}>👥 Wateja Wapya ({viewAgent.newCustomers})</h4>
+          <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:200,overflowY:'auto'}}>
+            {viewAgent.newCustomersList.map(b=><div key={b.id} style={{padding:'8px 12px',background:'#F0FDF4',borderRadius:8,fontSize:12,borderLeft:'3px solid #22C55E'}}>
+              <div style={{fontWeight:700,color:'#15803D'}}>{b.name}</div>
+              <div style={{fontSize:11,color:'#166534'}}>📞 {b.phone||'—'} • {new Date(b.created_at).toLocaleDateString('sw-TZ')}</div>
+            </div>)}
+          </div>
+        </div>}
+        
+        {/* Visits list */}
+        {viewAgent.visitsList.length>0&&<div style={{marginBottom:14}}>
+          <h4 style={{fontSize:13,fontWeight:800,color:'#0B7A3B',margin:'0 0 8px'}}>📋 Ziara ({viewAgent.totalVisits})</h4>
+          <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:300,overflowY:'auto'}}>
+            {viewAgent.visitsList.map(v=><div key={v.id} style={{padding:'8px 12px',background:v.has_issues?'#FEF2F2':'#F5F3FF',borderRadius:8,fontSize:12,borderLeft:`3px solid ${v.has_issues?'#DC2626':'#8B5CF6'}`}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
+                <span style={{fontWeight:700,color:v.has_issues?'#991B1B':'#6D28D9'}}>👤 {v.customer_name}</span>
+                {v.has_issues&&<span style={{fontSize:9,padding:'1px 6px',background:'#DC2626',color:'#fff',borderRadius:4,fontWeight:800}}>⚠️ Tatizo</span>}
+              </div>
+              <div style={{fontSize:11,color:v.has_issues?'#7F1D1D':'#6D28D9'}}>📅 {new Date(v.visit_date||v.created_at).toLocaleDateString('sw-TZ')} • {v.visit_type}</div>
+            </div>)}
+          </div>
+        </div>}
+        
+        {viewAgent.newCustomers===0&&viewAgent.totalVisits===0&&<div style={{textAlign:'center',padding:30,color:'#94A3B8'}}>
+          <div style={{fontSize:40,marginBottom:8}}>📊</div>
+          <div style={{fontWeight:700}}>Hakuna shughuli mwezi huu</div>
+        </div>}
+      </div>
+    </Modal>}
+  </div>;
+}
