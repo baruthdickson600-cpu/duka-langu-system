@@ -27,7 +27,6 @@ const MENUS={
       {id:'promo',icon:IC.gift,label:'Mawakala'},
       {id:'agent_targets',icon:IC.chart,label:'🎯 Targets & Performance'},
       {id:'agent_visits',icon:IC.file,label:'🎫 Tiketi za Ufuatiliaji'},
-      {id:'partners',icon:IC.people,label:'Washirika'},
       {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
     ]},
     {group:'mawasiliano',label:'💬 Mawasiliano',icon:IC.send,items:[

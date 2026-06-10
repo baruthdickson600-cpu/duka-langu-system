@@ -2739,7 +2739,8 @@ export function AgentVisitsAdminPage(){
 // Admin anaweka targets na anaona performance ya mawakala
 // =====================================================
 export function AgentTargetsPage(){
-  const{supabase,user,partners,businesses}=useApp();
+  const{supabase,user,businesses}=useApp();
+  const[agents,setAgents]=React.useState([]);
   const[targets,setTargets]=React.useState([]);
   const[visits,setVisits]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
@@ -2757,23 +2758,40 @@ export function AgentTargetsPage(){
     <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
   </div>;
   
-  // Filter agents (mawakala only - sio washirika wengine)
-  const agents=React.useMemo(()=>partners.filter(p=>p.role==='agent'||p.type==='agent'||p.is_agent||(!p.role&&!p.type)),[partners]);
-  
-  // Load data
+  // Load data — agents from users table + promo_codes
   React.useEffect(()=>{loadData()},[period.year,period.month]);
   
   const loadData=async()=>{
     setLoading(true);
     try{
-      // Targets ya mwezi huu
+      // 1. Pata mawakala WOTE kutoka users table (role='agent')
+      const{data:agentUsers}=await supabase.from('users')
+        .select('*')
+        .eq('role','agent')
+        .order('name',{ascending:true});
+      
+      // 2. Pata promo codes zote za mawakala
+      const{data:promoCodes}=await supabase.from('promo_codes').select('*');
+      const promoMap={};
+      (promoCodes||[]).forEach(p=>{promoMap[p.agent_email]=p});
+      
+      // 3. Unganisha wakala na promo yake
+      const agentsList=(agentUsers||[]).map(a=>({
+        ...a,
+        promo_code:promoMap[a.email]?.code||null,
+        promo_id:promoMap[a.email]?.id||null,
+        commission_rate:promoMap[a.email]?.commission_rate||10,
+      }));
+      setAgents(agentsList);
+      
+      // 4. Targets ya mwezi huu
       const{data:tData}=await supabase.from('agent_targets')
         .select('*')
         .eq('year',period.year)
         .eq('month',period.month);
       setTargets(tData||[]);
       
-      // Visits zote (kwa mwezi huu)
+      // 5. Visits za mwezi huu
       const monthStart=new Date(period.year,period.month-1,1).toISOString();
       const monthEnd=new Date(period.year,period.month,0,23,59,59).toISOString();
       const{data:vData}=await supabase.from('customer_visits')
