@@ -1,4 +1,5 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
+import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
 import {supabase} from '../config/supabase';
 
 const Ctx=createContext(null);
@@ -34,6 +35,7 @@ export function AppProvider({children}){
   const[user,setUser]=useState(null);
   const[loading,setLoading]=useState(false);
   const[online,setOnline]=useState(navigator.onLine);
+  const[pendingSyncCount,setPendingSyncCount]=useState(0);
   const[lang,setLang]=useState('sw');
   const[currency,setCurrency]=useState('TZS');
   const[businesses,setBiz]=useState([]);
@@ -349,24 +351,58 @@ export function AppProvider({children}){
   // ===== SALES =====
   const completeSale=useCallback(async(cart,discount=0,payMethod='cash',payDetails=null,custId=null,custName='')=>{
     if(!bizId||!cart.length)return null;
-    // Calculate subtotal with fractions (e.g., ½ kg of TZS 10,000 sugar = TZS 5,000)
     const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);
     const total=Math.max(0,subtotal-discount);
-    // Profit also accounts for fractions
     const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice)*(c.fraction||1),0)-discount;
-    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:payMethod,payment_details:payDetails,customer_id:custId,customer_name:custName,is_synced:online};
-    const saved=await safeInsert('sales',sd);const final=saved||{...sd,id:genId(),created_at:nowISO()};
-    setSales(prev=>[final,...prev]);
+    const offlineId=genId();
+    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:payMethod,payment_details:payDetails,customer_id:custId,customer_name:custName,is_synced:false,offline_id:offlineId,created_at:nowISO()};
+
+    // Punguza stock kwenye React state SASA HIVI (kwa kasi, bila kusubiri DB)
     for(const item of cart){
       const prod=products.find(p=>p.id===item.productId);
       if(prod){
-        // Stock deduction: fraction*qty (e.g., ½ × 1 = 0.5 kg out of stock)
         const stockOut=item.qty*(item.fraction||1);
         const nq=Math.max(0,prod.quantity-stockOut);
-        await safeUpdate('products',{quantity:nq},'id',item.productId);
-        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-stockOut,quantity_after:nq,user_id:user?.id});
         setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
+        // Punguza pia kwenye IndexedDB snapshot
+        deductStockOffline(item.productId,stockOut).catch(()=>{});
       }
+    }
+
+    if(online){
+      // ===== ONLINE: Tuma Supabase moja kwa moja =====
+      try{
+        const{offline_id,...cleanData}=sd;
+        const saved=await safeInsert('sales',{...cleanData,is_synced:true});
+        const final=saved||{...sd,id:offlineId};
+        setSales(prev=>[final,...prev]);
+        // Hifadhi stock changes kwenye Supabase
+        for(const item of cart){
+          const prod=products.find(p=>p.id===item.productId);
+          if(prod){
+            const stockOut=item.qty*(item.fraction||1);
+            const nq=Math.max(0,prod.quantity-stockOut);
+            await safeUpdate('products',{quantity:nq},'id',item.productId);
+            await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-stockOut,quantity_after:nq,user_id:user?.id});
+          }
+        }
+        return final;
+      }catch(netErr){
+        // Network ilikatika wakati wa kutuma — anguka kwenye offline path
+        console.warn('[Sale] Network failed, saving offline:',netErr);
+      }
+    }
+
+    // ===== OFFLINE: Hifadhi IndexedDB, queue kwa sync baadaye =====
+    const offlineRecord=await saveSaleOffline(sd);
+    const final={...sd,id:offlineId,_offline:true};
+    setSales(prev=>[final,...prev]);
+    const newCount=await getPendingCount();
+    setPendingSyncCount(newCount);
+    // Omba background sync kwa service worker
+    if('serviceWorker' in navigator&&'SyncManager' in window){
+      const reg=await navigator.serviceWorker.ready.catch(()=>null);
+      reg?.sync?.register('sync-sales').catch(()=>{});
     }
     return final;
   },[bizId,activeBranch,user,online,products]);
@@ -1772,7 +1808,7 @@ export function AppProvider({children}){
     testimonials,addTestimonial,deleteTestimonial,
     // Computed
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
-    otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,
+    otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;

@@ -1,3 +1,4 @@
+import {saveStockSnapshot} from './utils/offlineDB';
 import React,{useState,useEffect} from 'react';
 import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus,Sel} from './components/UI';
@@ -139,7 +140,34 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync}=useApp();
+  // Hifadhi stock snapshot kwenye IndexedDB kila wakati products zinabadilika
+  const{products}=useApp?useApp():{}; // accessed via context
+  React.useEffect(()=>{
+    if(products?.length)saveStockSnapshot(products).catch(()=>{});
+  },[products]);
+  // Sikiliza sync complete event kutoka service worker / AppContext
+  React.useEffect(()=>{
+    const handler=(e)=>{
+      const d=e.detail||{};
+      if(d.synced>0){
+        const msg=d.synced===1?'Uuzaji 1 umetumwa Supabase ✅':`Mauzo ${d.synced} yametumwa Supabase ✅`;
+        setPopups(prev=>[...prev,{id:Date.now(),type:'success',msg,duration:4000}]);
+      }
+    };
+    const swMsg=(e)=>{
+      if(e.data?.type==='SYNC_COMPLETE'&&e.data.synced>0){
+        const msg=`Mauzo ${e.data.synced} yaliyohifadhiwa offline yametumwa ✅`;
+        setPopups(prev=>[...prev,{id:Date.now(),type:'success',msg,duration:5000}]);
+      }
+    };
+    window.addEventListener('offline-sync-complete',handler);
+    navigator.serviceWorker?.addEventListener('message',swMsg);
+    return()=>{
+      window.removeEventListener('offline-sync-complete',handler);
+      navigator.serviceWorker?.removeEventListener('message',swMsg);
+    };
+  },[]);
   const[page,setPage]=useState(()=>{
     // Support PWA shortcuts via ?page=sales etc.
     const url=new URL(window.location.href);
@@ -359,7 +387,10 @@ export default function App(){
           {activeBranch&&role==='office'&&<Badge color="#0B7A3B">{myBranches.find(b=>b.id===activeBranch)?.name}</Badge>}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {!online&&<Badge color="#F59E0B">Offline</Badge>}
+          {!online&&<Badge color="#F59E0B">📡 Offline</Badge>}
+          {pendingSyncCount>0&&<button onClick={triggerSync} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F59E0B',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+            ⏳ {pendingSyncCount} pending
+          </button>}
           {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
             {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
           </button>}
