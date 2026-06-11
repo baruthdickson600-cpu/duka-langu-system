@@ -187,19 +187,38 @@ export function AppProvider({children}){
   const verifyPromoLogin=useCallback(async(inputCode)=>{
     if(!promoPending)return{success:false,error:'Hakuna ombi la kuingia'};
     const u=promoPending.userData;
-    try{
-      // Angalia promo code kwenye DB
-      const{data:promoData,error}=await supabase.from('promo_codes').select('*').eq('agent_email',u.email).single();
-      if(error||!promoData)return{success:false,error:'Promo code haijapatikana kwa akaunti hii. Wasiliana na Admin.'};
-      if(promoData.code.trim().toUpperCase()!==inputCode.trim().toUpperCase())return{success:false,error:'Promo code si sahihi. Jaribu tena.'};
-      // Promo code ni sahihi — ingia
+    const completeLogin=async(promoData)=>{
       setUser({...u,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10});
       setPromoPending(null);
       await safeUpdate('users',{last_login:nowISO()},'id',u.id);
       safeInsert('login_logs',{user_id:u.id,email:u.email,action:'login_promo',device_info:navigator.userAgent}).catch(()=>{});
       await loadData(u.id,u.role,u.business_id);
-      return{success:true};
-    }catch(e){return{success:false,error:'Tatizo la mtandao. Jaribu tena.'};}
+    };
+    try{
+      const cleanInput=inputCode.trim().toUpperCase();
+      if(!cleanInput)return{success:false,error:'Ingiza promo code yako!'};
+      
+      // Njia 1: tafuta code moja kwa moja kwenye DB (case-insensitive)
+      const{data:byCode}=await supabase.from('promo_codes').select('*').ilike('code',cleanInput);
+      if(byCode&&byCode.length>0){
+        const matched=byCode.find(p=>(p.agent_email||'').toLowerCase().trim()===(u.email||'').toLowerCase().trim());
+        await completeLogin(matched||byCode[0]);
+        return{success:true};
+      }
+      
+      // Njia 2: tafuta kwa email ya wakala (fallback)
+      const{data:byEmail}=await supabase.from('promo_codes').select('*').ilike('agent_email',u.email.trim());
+      if(byEmail&&byEmail.length>0){
+        const promoData=byEmail[0];
+        if(promoData.code.trim().toUpperCase()!==cleanInput){
+          return{success:false,error:'Code si sahihi. Angalia vizuri na ujaribu tena.'};
+        }
+        await completeLogin(promoData);
+        return{success:true};
+      }
+      
+      return{success:false,error:'Promo code haijapatikana. Hakikisha unaingiza code uliyopewa na Admin.'};
+    }catch(e){console.error('PromoVerify:',e);return{success:false,error:'Tatizo la mtandao. Jaribu tena.'};}
   },[promoPending,loadData]);
   
   const cancelPromoLogin=useCallback(()=>{setPromoPending(null)},[]);
