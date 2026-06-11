@@ -300,11 +300,24 @@ export function AgentVisitsPage(){
   
   const[visits,setVisits]=useState([]);
   const[loading,setLoading]=useState(true);
+  const[custSearch,setCustSearch]=useState('');
+  const[showCustList,setShowCustList]=useState(false);
   const[showForm,setShowForm]=useState(false);
   const[viewing,setViewing]=useState(null);
   const[period,setPeriod]=useState('all');
   
   const today=new Date().toISOString().slice(0,10);
+  const filteredCusts=useMemo(()=>{
+    if(!custSearch.trim())return myCustomers.slice(0,30);
+    const q=custSearch.toLowerCase();
+    return myCustomers.filter(c=>
+      (c.name||'').toLowerCase().includes(q)||
+      (c.owner_name||'').toLowerCase().includes(q)||
+      (c.phone||'').includes(q)||
+      (c.location||'').toLowerCase().includes(q)||
+      (c.region||'').toLowerCase().includes(q)
+    ).slice(0,30);
+  },[myCustomers,custSearch]);
   const initialForm={
     customer_name:'',
     customer_phone:'',
@@ -555,15 +568,32 @@ export function AgentVisitsPage(){
     {showForm&&<Modal open={true} onClose={()=>setShowForm(false)} title="📋 Jaza Taarifa za Ziara">
       <div style={{maxHeight:'72vh',overflowY:'auto',paddingRight:8}}>
         
-        {/* Pick existing customer */}
-        <div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0'}}>
-          <label style={{fontSize:11,fontWeight:700,color:'#0B7A3B',display:'block',marginBottom:2}}>🔍 Chagua Mteja (Wateja Wote wa Mfumo)</label>
-          <div style={{fontSize:10,color:'#15803D',marginBottom:6}}>Chagua mteja uliyemtembelea — taarifa zake zitajaza chini moja kwa moja</div>
-          <select value={form.business_id} onChange={e=>onCustomerSelect(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'1.5px solid #BBF7D0',fontSize:13,background:'#fff'}}>
-            <option value="">— Chagua mteja au jaza mpya chini —</option>
-            {myCustomers.map(c=><option key={c.id} value={c.id}>{c.name}{c.owner_name?' · '+c.owner_name:''}{c.phone?' · '+c.phone:''}</option>)}
-          </select>
-          <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Wateja {myCustomers.length} wanaotumia mfumo</div>
+        {/* Searchable customer picker */}
+        <div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0',position:'relative'}}>
+          <label style={{fontSize:11,fontWeight:700,color:'#0B7A3B',display:'block',marginBottom:2}}>🔍 Tafuta &amp; Chagua Mteja</label>
+          <div style={{fontSize:10,color:'#15803D',marginBottom:6}}>Andika jina, simu au mahali — taarifa zake zitajaza moja kwa moja</div>
+          {/* Selected badge */}
+          {form.business_id&&<div style={{background:'#DCFCE7',border:'1.5px solid #16A34A',borderRadius:8,padding:'6px 10px',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontSize:12,fontWeight:700,color:'#15803D'}}>✅ {form.customer_business||form.customer_name}</span>
+            <button onClick={()=>{onCustomerSelect('');setCustSearch('');setShowCustList(false)}} style={{background:'none',border:'none',color:'#DC2626',cursor:'pointer',fontSize:14,fontWeight:700,padding:'0 2px'}}>✕</button>
+          </div>}
+          <input
+            type="text"
+            value={custSearch}
+            onChange={e=>{setCustSearch(e.target.value);setShowCustList(true)}}
+            onFocus={()=>setShowCustList(true)}
+            placeholder={form.business_id?'Badilisha mteja...':'Andika jina, simu, au mahali...'}
+            style={{width:'100%',padding:'9px 12px',borderRadius:8,border:'1.5px solid #BBF7D0',fontSize:13,background:'#fff',boxSizing:'border-box',outline:'none'}}
+          />
+          {showCustList&&<div style={{position:'absolute',left:12,right:12,background:'#fff',border:'1.5px solid #BBF7D0',borderRadius:10,boxShadow:'0 8px 24px rgba(0,0,0,0.15)',zIndex:999,maxHeight:220,overflowY:'auto',marginTop:4}}>
+            {filteredCusts.length===0?<div style={{padding:'12px',textAlign:'center',color:'#94A3B8',fontSize:12}}>Hakuna mteja anayepatikana</div>:
+            filteredCusts.map(c=><div key={c.id} onMouseDown={()=>{onCustomerSelect(c.id);setCustSearch('');setShowCustList(false)}} style={{padding:'9px 12px',cursor:'pointer',borderBottom:'1px solid #F0FDF4',display:'flex',flexDirection:'column',gap:2}} onMouseEnter={e=>e.currentTarget.style.background='#F0FDF4'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              <span style={{fontSize:13,fontWeight:700,color:'#1E293B'}}>{c.name}</span>
+              <span style={{fontSize:11,color:'#64748B'}}>{[c.owner_name,c.phone,c.location||c.region].filter(Boolean).join(' · ')}</span>
+            </div>)}
+            {!custSearch&&myCustomers.length>30&&<div style={{padding:'8px',textAlign:'center',fontSize:10,color:'#94A3B8'}}>Andika kuzidi {myCustomers.length-30} zaidi...</div>}
+          </div>}
+          <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>Wateja {myCustomers.length} kwenye mfumo</div>
         </div>
         
         {/* Customer info */}

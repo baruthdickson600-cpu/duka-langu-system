@@ -110,9 +110,9 @@ export function AppProvider({children}){
         const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
       if(role==='agent'){
-        // Agent: load businesses (for seeing their registered customers)
-        // promo_code info loaded after login
-        const pt=await safeSelect('marketing_partners');setPartners(pt);
+        // Agent: load businesses WOTE (kwa form ya ziara)
+        const bAll=await safeSelect('businesses',{order:{col:'name'}});
+        if(bAll.length)setBiz(bAll);
       }
       if(role==='accountant'){
         // Accountant loads SAME data as admin (read-only)
