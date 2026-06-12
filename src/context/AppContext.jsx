@@ -4,6 +4,7 @@ import {supabase} from '../config/supabase';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
+const sortProducts=(arr)=>[...arr].sort((a,b)=>(a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase(),'sw'));
 const nowISO=()=>new Date().toISOString();
 const todayStr=()=>new Date().toISOString().split('T')[0];
 const ADMIN_EMAIL='baruthdickson600@gmail.com';
@@ -95,7 +96,7 @@ export function AppProvider({children}){
           safeSelect('returns',{eq:{business_id:bid},order:{col:'created_at'}}),
           safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
         ]);
-        setProds(pr);setSales(sl);setExp(ex);setCust(cu);setEmps(em);setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps(em);setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
         // Load payment requests for this business
         const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
         setPayReqs(pyReqs);
@@ -394,8 +395,23 @@ export function AppProvider({children}){
   },[user]);
 
   // ===== PRODUCTS =====
-  const addProduct=useCallback(async(p)=>{if(!bizId)return;const d=await safeInsert('products',{...p,business_id:bizId,branch_id:activeBranch||null});setProds(prev=>[...prev,d||{...p,id:genId(),business_id:bizId,branch_id:activeBranch,created_at:nowISO()}])},[bizId,activeBranch]);
-  const updateProduct=useCallback(async(pid,u)=>{await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);setProds(prev=>prev.map(p=>p.id===pid?{...p,...u}:p))},[]);
+  const addProduct=useCallback(async(p)=>{
+    if(!bizId)return{success:false,error:'Hakuna biashara'};
+    // Angalia jina linalorudiwa (100% match, case-insensitive)
+    const dupName=(p.name||'').trim().toLowerCase();
+    const existing=products.find(pr=>
+      pr.business_id===bizId&&
+      (pr.name||'').trim().toLowerCase()===dupName
+    );
+    if(existing){
+      return{success:false,duplicate:true,error:`Bidhaa "${existing.name}" ipo tayari kwenye mfumo! Badilisha jina au ongeza stock ya bidhaa hiyo.`};
+    }
+    const d=await safeInsert('products',{...p,business_id:bizId,branch_id:activeBranch||null});
+    const newProd=d||{...p,id:genId(),business_id:bizId,branch_id:activeBranch,created_at:nowISO()};
+    setProds(prev=>sortProducts([...prev,newProd]));
+    return{success:true,product:newProd};
+  },[bizId,activeBranch,products]);
+  const updateProduct=useCallback(async(pid,u)=>{await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);setProds(prev=>sortProducts(prev.map(p=>p.id===pid?{...p,...u}:p)))},[]);
   const deleteProduct=useCallback(async(pid)=>{await safeDelete('products','id',pid);setProds(prev=>prev.filter(p=>p.id!==pid))},[]);
 
   // ===== SALES =====

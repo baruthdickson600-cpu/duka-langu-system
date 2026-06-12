@@ -375,6 +375,7 @@ export function ProductsPage(){
   const{products,addProduct,updateProduct,deleteProduct,bizId,activeBranch}=useApp();
   const myProds=products.filter(p=>p.business_id===bizId&&(!activeBranch||p.branch_id===activeBranch));
   const[search,setSearch]=useState('');const[modal,setModal]=useState({open:false,data:null});
+  const[dupErr,setDupErr]=useState('');
   const filtered=myProds.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()));
   const ProdForm=({init={},onSave})=>{
     const[f,setF]=useState({name:init.name||'',unit:init.unit||'Piece',category:init.category||'Vyakula',image:init.image||'📦',buy_price:init.buy_price||'',sell_price:init.sell_price||'',quantity:init.quantity||'',min_stock:init.min_stock||5,expiry_date:init.expiry_date||''});
@@ -509,8 +510,16 @@ export function ProductsPage(){
       </div>})}
     </div>
     {!filtered.length&&<Empty text={search?'Hakuna':'Ongeza bidhaa'}/>}
-    <Modal open={modal.open} onClose={()=>setModal({open:false})} title={modal.data?'Hariri':'Ongeza Bidhaa'}>
-      <ProdForm init={modal.data||{}} onSave={pr=>{modal.data?updateProduct(modal.data.id,pr):addProduct(pr);setModal({open:false})}}/>
+    <Modal open={modal.open} onClose={()=>{setModal({open:false});setDupErr('')}} title={modal.data?'Hariri':'Ongeza Bidhaa'}>
+      {dupErr&&<div style={{background:'#FEF3C7',border:'2px solid #F59E0B',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚠️ {dupErr}</div>}
+      <ProdForm init={modal.data||{}} onSave={async pr=>{
+        if(modal.data){updateProduct(modal.data.id,pr);setModal({open:false});setDupErr('');}
+        else{
+          const result=await addProduct(pr);
+          if(result?.duplicate){setDupErr(result.error);}
+          else{setModal({open:false});setDupErr('');}
+        }
+      }}/>
     </Modal>
   </div>;
 }
