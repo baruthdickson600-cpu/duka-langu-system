@@ -202,13 +202,14 @@ export default function App(){
   }
 
   if(!user||otpPending||promoPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP} promoPending={promoPending} onVerifyPromo={verifyPromoLogin} onCancelPromo={cancelPromoLogin}/>;
-  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
+  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
   const roleLabel={'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[role]||role;
   const roleColor={'admin':'#F59E0B','marketing':'#8B5CF6','supervisor':'#10B981','agent':'#10B981','office':'#3B82F6','accountant':'#EC4899'}[role]||'#94A3B8';
   // Add branches menu ONLY if canUseBranches
-  let menu=[...MENUS[role]||MENUS.employee];
+  const effectiveRole=(role==='agent')?'supervisor':role;
+  let menu=[...MENUS[effectiveRole]||MENUS.employee];
   if(role==='office'&&canUseBranches){
     const branchItem={id:'branches',icon:IC.store,label:'Matawi'};
     if(!menu.find(m=>m.id==='branches')){menu.splice(1,0,branchItem)}
@@ -267,7 +268,7 @@ export default function App(){
         default:return <AccountantDashboard/>;
       }
     }
-    if(role==='supervisor'){
+    if((role==='supervisor'||role==='agent')){
       switch(page){
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;

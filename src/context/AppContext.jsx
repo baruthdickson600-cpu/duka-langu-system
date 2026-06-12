@@ -118,7 +118,7 @@ export function AppProvider({children}){
         const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
         const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
-      if(role==='supervisor'){
+      if((role==='supervisor'||role==='agent')){
         // Supervisor: load businesses WOTE (kwa form ya ziara)
         const bAll=await safeSelect('businesses',{order:{col:'name'}});
         if(bAll.length)setBiz(bAll);
@@ -181,7 +181,7 @@ export function AppProvider({children}){
       safeInsert('login_logs',{user_id:u.id,email:u.email,action:'login_otp',device_info:navigator.userAgent}).catch(()=>{});
       await loadData(u.id,u.role,u.business_id);
       if(u.role==='employee'&&u.branch_id){setActiveBranch(u.branch_id)}
-      if(u.role==='supervisor'){
+      if(u.role==='supervisor'||u.role==='agent'){
         const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',u.email).single();
         if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
       }
@@ -297,7 +297,7 @@ export function AppProvider({children}){
         if(ub?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.'}
 
         // Supevaiza: thibitisha kwa promo code (sio OTP)
-        if(uData.role==='supervisor'){
+        if(uData.role==='supervisor'||uData.role==='agent'){
           setPromoPending({userData:uData,email});
           setLoading(false);
           return'PROMO_REQUIRED';
@@ -316,7 +316,7 @@ export function AppProvider({children}){
         safeInsert('login_logs',{user_id:uData.id,email,action:'login',device_info:navigator.userAgent}).catch(()=>{});
         await loadData(uData.id,uData.role,uData.business_id);
         if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id)}
-        if(uData.role==='supervisor'){
+        if(uData.role==='supervisor'||uData.role==='agent'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
         }
@@ -1087,7 +1087,7 @@ export function AppProvider({children}){
   // ===== SMART ALERT ENGINE =====
   // Runs once on load — generates auto-notifications for important events
   useEffect(()=>{
-    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||user.role==='supervisor')return;
+    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||(user.role==='supervisor'||user.role==='agent'))return;
     // WAIT for data to load — don't run with empty data
     if(products.length===0&&sales.length===0&&customers.length===0)return;
     const today=todayStr();
