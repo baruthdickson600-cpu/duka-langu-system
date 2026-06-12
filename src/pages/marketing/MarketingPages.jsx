@@ -37,7 +37,7 @@ export function MarketingDash(){
         {agentLeaderboard.slice(0,5).map((a,i)=><div key={a.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
           <span style={{width:24,height:24,borderRadius:'50%',background:i===0?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:i===0?'#0B7A3B':'#64748B'}}>{i+1}</span>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{a.agent_name}</div><div style={{fontSize:11,color:'#64748B'}}>{a.clients} wateja • {fm(a.commission)}</div></div>
-        </div>)}{!agentLeaderboard.length&&<Empty icon="👥" text="Sajili mawakala"/>}</div>
+        </div>)}{!agentLeaderboard.length&&<Empty icon="👥" text="Sajili masupervaiza"/>}</div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px',color:'#EF4444'}}>⚠️ Wanaoondoka ({churnRisk.length})</h3>
         {churnRisk.slice(0,5).map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div><div style={{fontWeight:600,fontSize:12}}>{b.name}</div><div style={{fontSize:11,color:'#94A3B8'}}>{b.email}</div></div>
@@ -55,7 +55,7 @@ export function MktAgentsPage(){
   const[f,setF]=useState({name:'',email:'',phone:'',password:'agent123',commission:'10'});
   const price=parseInt(settings.system_price||15000);
 
-  // Revenue by agent
+  // Revenue by supervisor
   const agentRevenue=useMemo(()=>{
     return agentLeaderboard.map(a=>{
       const months={};
@@ -70,7 +70,7 @@ export function MktAgentsPage(){
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Mawakala ({promoCodes.length})</h3>
-      <Btn onClick={()=>setModal(true)}>{IC.plus} Sajili Wakala</Btn>
+      <Btn onClick={()=>setModal(true)}>{IC.plus} Sajili Supevaiza</Btn>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
       {agentRevenue.map((a,i)=><div key={a.id} className="card">
@@ -110,16 +110,16 @@ export function MktAgentsPage(){
         </div>
         <div style={{display:'flex',gap:6,marginTop:8}}>
           {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{flex:1,padding:'6px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:11,cursor:'pointer',textDecoration:'none',textAlign:'center'}}>💬 WhatsApp</a>}
-          <button onClick={()=>window.confirm(`Futa wakala "${a.agent_name}"?`)&&deletePromo(a.id)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️ Futa</button>
+          <button onClick={()=>window.confirm(`Futa supevaiza "${a.agent_name}"?`)&&deletePromo(a.id)} style={{padding:'6px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️ Futa</button>
         </div>
       </div>)}
     </div>
-    {!agentRevenue.length&&<div className="card"><Empty icon="👥" text="Sajili wakala wa kwanza"/></div>}
-    <Modal open={modal} onClose={()=>setModal(false)} title="Sajili Wakala Mpya">
+    {!agentRevenue.length&&<div className="card"><Empty icon="👥" text="Sajili supevaiza wa kwanza"/></div>}
+    <Modal open={modal} onClose={()=>setModal(false)} title="Sajili Supevaiza Mpya">
       <div style={{background:'#EFF6FF',borderRadius:10,padding:'8px 12px',marginBottom:12,fontSize:12,color:'#1E40AF'}}>
-        Wakala atapata akaunti yake na kuweza kusajili wateja moja kwa moja.
+        Supevaiza atapata akaunti yake na kuweza kusajili wateja moja kwa moja.
       </div>
-      <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili la wakala"/>
+      <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili la supevaiza"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
       <Input label="Namba ya WhatsApp *" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
@@ -128,10 +128,10 @@ export function MktAgentsPage(){
         if(!f.name.trim()||!f.email.trim())return alert('Jaza jina na email!');
         const result=await createAgent(f.name.trim(),f.email.trim(),f.password,f.phone.trim(),+f.commission||10);
         if(result){
-          alert(`Wakala amesajiliwa!\n\nJina: ${f.name}\nEmail: ${f.email}\nPassword: ${f.password}\nPromo Code: ${result.code}\n\nMtumie taarifa hizi aingie kwenye mfumo.`);
+          alert(`Supevaiza amesajiliwa!\n\nJina: ${f.name}\nEmail: ${f.email}\nPassword: ${f.password}\nPromo Code: ${result.code}\n\nMtumie taarifa hizi aingie kwenye mfumo.`);
           setModal(false);setF({name:'',email:'',phone:'',password:'agent123',commission:'10'});
         }else{alert('Tatizo! Jaribu tena.')}
-      }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Wakala</Btn>
+      }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Supevaiza</Btn>
     </Modal>
   </div>;
 }
@@ -197,7 +197,7 @@ export function CampaignPage(){
     {!campaigns.length&&<div className="card"><Empty icon="📢" text="Tengeneza kampeni ya kwanza"/></div>}
     <Modal open={modal} onClose={()=>setModal(false)} title="Kampeni Mpya">
       <Input label="Jina la Kampeni *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Mf: Offer ya Mei"/>
-      <Sel label="Channel" value={f.channel} onChange={e=>setF({...f,channel:e.target.value})} options={[{value:'whatsapp',label:'WhatsApp'},{value:'facebook',label:'Facebook'},{value:'instagram',label:'Instagram'},{value:'tiktok',label:'TikTok'},{value:'sms',label:'SMS'},{value:'email',label:'Email'},{value:'agents',label:'Mawakala'},{value:'other',label:'Nyingine'}]}/>
+      <Sel label="Channel" value={f.channel} onChange={e=>setF({...f,channel:e.target.value})} options={[{value:'whatsapp',label:'WhatsApp'},{value:'facebook',label:'Facebook'},{value:'instagram',label:'Instagram'},{value:'tiktok',label:'TikTok'},{value:'sms',label:'SMS'},{value:'email',label:'Email'},{value:'supervisors',label:'Mawakala'},{value:'other',label:'Nyingine'}]}/>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><Input label="Budget (TZS)" type="number" value={f.budget} onChange={e=>setF({...f,budget:e.target.value})}/><Input label="Lengo (wateja)" type="number" value={f.target} onChange={e=>setF({...f,target:e.target.value})}/></div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><Input label="Kuanza" type="date" value={f.start_date} onChange={e=>setF({...f,start_date:e.target.value})}/><Input label="Kuisha" type="date" value={f.end_date} onChange={e=>setF({...f,end_date:e.target.value})}/></div>
       <Input label="Promo Code (kufuatilia)" value={f.promo_code} onChange={e=>setF({...f,promo_code:e.target.value})} placeholder="Mf: MEI2026"/>

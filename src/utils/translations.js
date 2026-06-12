@@ -107,7 +107,7 @@ const T={
   en:{
     dashboard:'Dashboard',products:'Products',sales:'Sales',reports:'Reports',expenses:'Expenses',
     employees:'Employees',notifications:'Notifications',customers:'Customers',settings:'Settings',
-    stores:'Stores',tokens:'Tokens',promo:'Agents',security:'Security',broadcast:'Broadcast',
+    stores:'Stores',tokens:'Tokens',promo:'Supervisors',security:'Security',broadcast:'Broadcast',
     tickets:'Tickets',payments:'Payments',branches:'Branches',returns:'Returns',support:'Support',
     goals:'Goals',invoices:'Invoices',insights:'Insights',
     login:'Login',signup:'Sign Up',logout:'Logout',forgotPwd:'Forgot password?',

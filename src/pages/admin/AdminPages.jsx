@@ -127,7 +127,7 @@ export function AdminDashboard(){
         <div style={{fontSize:22,fontWeight:900,color:'#3B82F6'}}>{expiringBiz.length}</div>
       </div>
       <div className="card" style={{padding:14,borderLeft:'4px solid #EC4899'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>MAWAKALA</div>
+        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>MASUPERVAIZA</div>
         <div style={{fontSize:22,fontWeight:900,color:'#EC4899'}}>{agentLeaderboard.length}</div>
       </div>
       <div className="card" style={{padding:14,borderLeft:'4px solid #06B6D4'}}>
@@ -208,7 +208,7 @@ export function AdminDashboard(){
         {!expiringBiz.length&&<Empty icon="✅" text="Hakuna zinazoisha"/>}
       </div>
 
-      {/* Agent Leaderboard with Tiers */}
+      {/* Supervisor Leaderboard with Tiers */}
       <div className="card">
         <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#0B7A3B'}}>🏆 Mawakala — Madaraja</h3>
         {agentLeaderboard.slice(0,6).map((a,i)=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
@@ -222,7 +222,7 @@ export function AdminDashboard(){
             <div style={{fontSize:10,color:'#64748B',marginTop:2}}>{fmtMoney(a.tier?.bonus||0)}</div>
           </div>
         </div>)}
-        {!agentLeaderboard.length&&<Empty icon="👥" text="Hakuna mawakala"/>}
+        {!agentLeaderboard.length&&<Empty icon="👥" text="Hakuna masupervaiza"/>}
       </div>
 
       {/* Recent Activity */}
@@ -352,7 +352,7 @@ export function StoresPage(){
 
     {/* ===== CUSTOMER DETAIL MODAL ===== */}
     <Modal open={!!detail} onClose={()=>setDetail(null)} title={`📋 ${detail?.name||''}`} wide>
-      {detail&&(()=>{const dl=getDaysLeft(detail);const st=getBizStats(detail.id);const agent=promoCodes.find(p=>p.code===detail.promo_code);
+      {detail&&(()=>{const dl=getDaysLeft(detail);const st=getBizStats(detail.id);const supervisor=promoCodes.find(p=>p.code===detail.promo_code);
         return <>
           {/* Status Banner */}
           <div style={{background:detail.token_active?'#F0FDF4':detail.is_suspended?'#FEF2F2':'#FFF7ED',borderRadius:12,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -370,7 +370,7 @@ export function StoresPage(){
               <div style={{fontSize:13,marginBottom:4}}>📧 {detail.email}</div>
               {detail.phone&&<div style={{fontSize:13,marginBottom:4}}>📱 {detail.phone}</div>}
               <div style={{fontSize:13,marginBottom:4}}>📅 Alisajili: {fmtDate(detail.created_at)}</div>
-              {agent&&<div style={{fontSize:13}}>👤 Agent: {agent.agent_name} ({agent.code})</div>}
+              {supervisor&&<div style={{fontSize:13}}>👤 Supervisor: {supervisor.agent_name} ({supervisor.code})</div>}
             </div>
             <div style={{background:'#F8FAFC',borderRadius:10,padding:12}}>
               <div style={{fontSize:11,color:'#94A3B8',fontWeight:600,marginBottom:6}}>TAKWIMU</div>
@@ -388,7 +388,7 @@ export function StoresPage(){
             <button onClick={()=>{setDetail(null);setActionModal({type:'extend',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⏳ Ongeza Siku</button>
             <button onClick={()=>{setEditForm({name:detail.name||'',email:detail.email||'',phone:detail.phone||'',owner_name:detail.owner_name||''});setDetail(null);setActionModal({type:'edit',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>✏️ Hariri Taarifa</button>
             <button onClick={()=>{setUpgradePlan(detail.plan||'basic');setDetail(null);setActionModal({type:'upgrade',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⬆️ Upgrade Plan</button>
-            <button onClick={()=>{setDetail(null);setActionModal({type:'transfer',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #93C5FD',background:'#EFF6FF',color:'#2563EB',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔄 Hamisha Agent</button>
+            <button onClick={()=>{setDetail(null);setActionModal({type:'transfer',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #93C5FD',background:'#EFF6FF',color:'#2563EB',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔄 Hamisha Supervisor</button>
             <button onClick={()=>suspendBiz(detail.id,!detail.is_suspended)} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#92400E',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>{detail.is_suspended?'✅ Fungua':'⛔ Suspend'}</button>
             {detail.phone&&<a href={`https://wa.me/${detail.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center',textDecoration:'none'}}>💬 WhatsApp</a>}
             <button onClick={()=>{if(window.confirm(`⚠️ HATARI! Futa data ZOTE za "${detail.name}"? Hii haiwezi kurudishwa!`)){deleteAllCustomerData(detail.id);setDetail(null)}}} style={{padding:'12px',borderRadius:10,border:'1px solid #FECACA',background:'#FEF2F2',color:'#B91C1C',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🗑️ Futa Data (GDPR)</button>
@@ -422,8 +422,8 @@ export function StoresPage(){
 
     {/* ===== TRANSFER MODAL ===== */}
     <Modal open={actionModal.type==='transfer'} onClose={()=>setActionModal({type:null,biz:null})} title={`🔄 Hamisha — ${actionModal.biz?.name||''}`}>
-      <div style={{fontSize:13,color:'#64748B',marginBottom:12}}>Agent wa sasa: <b>{actionModal.biz?.promo_code||'Hakuna'}</b></div>
-      <Sel label="Agent Mpya" value={transferCode} onChange={e=>setTransferCode(e.target.value)} options={[{value:'',label:'— Ondoa Agent —'},...promoCodes.map(p=>({value:p.code,label:`${p.agent_name} (${p.code})`}))]}/>
+      <div style={{fontSize:13,color:'#64748B',marginBottom:12}}>Supervisor wa sasa: <b>{actionModal.biz?.promo_code||'Hakuna'}</b></div>
+      <Sel label="Supervisor Mpya" value={transferCode} onChange={e=>setTransferCode(e.target.value)} options={[{value:'',label:'— Ondoa Supervisor —'},...promoCodes.map(p=>({value:p.code,label:`${p.agent_name} (${p.code})`}))]}/>
       <Btn onClick={async()=>{await quickTransfer(actionModal.biz.id,transferCode);alert('Imehamishwa!');setActionModal({type:null,biz:null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>🔄 Hamisha</Btn>
     </Modal>
 
@@ -811,7 +811,7 @@ export function TokensPage(){
 }
 
 // ===== PROMO + LEADERBOARD =====
-// ===== MAWAKALA (Admin View — Wakala anasajiliwa na Marketing Partner) =====
+// ===== MASUPERVAIZA (Admin View — Supevaiza anasajiliwa na Marketing Partner) =====
 export function PromoPage(){
   const{promoCodes,deletePromo,agentLeaderboard,businesses,AGENT_TIERS}=useApp();
   const[detail,setDetail]=useState(null);
@@ -819,7 +819,7 @@ export function PromoPage(){
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:16,fontWeight:700,margin:0}}>👥 Mawakala ({promoCodes.length})</h3>
-      <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 14px',fontSize:12,color:'#1E40AF',fontWeight:600}}>Wakala anasajiliwa na Mshirika wa Masoko</div>
+      <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 14px',fontSize:12,color:'#1E40AF',fontWeight:600}}>Supevaiza anasajiliwa na Mshirika wa Masoko</div>
     </div>
 
     {/* Tiers Reference */}
@@ -837,7 +837,7 @@ export function PromoPage(){
       </div>
     </div>
 
-    {/* Agent Cards */}
+    {/* Supervisor Cards */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
       {agentLeaderboard.map((a,i)=>{
         const agentBiz=businesses.filter(b=>b.promo_code===a.code);
@@ -859,7 +859,7 @@ export function PromoPage(){
             </div>}
           </div>
 
-          {/* Agent Info */}
+          {/* Supervisor Info */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
             <div style={{width:44,height:44,borderRadius:'50%',background:a.tier?.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:a.tier?.color||'#64748B'}}>{a.agent_name?.[0]?.toUpperCase()}</div>
             <div style={{flex:1}}>
@@ -906,14 +906,14 @@ export function PromoPage(){
           <div style={{display:'flex',gap:6}}>
             <button onClick={()=>setDetail(a)} style={{flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>📋 Wateja Wake</button>
             {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'7px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:12,cursor:'pointer',textDecoration:'none'}}>WhatsApp</a>}
-            <button onClick={()=>window.confirm(`Futa wakala "${a.agent_name}" na promo code ${a.code}?`)&&deletePromo(a.id)} style={{padding:'7px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>🗑️</button>
+            <button onClick={()=>window.confirm(`Futa supevaiza "${a.agent_name}" na promo code ${a.code}?`)&&deletePromo(a.id)} style={{padding:'7px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>🗑️</button>
           </div>
         </div>;
       })}
     </div>
-    {!agentLeaderboard.length&&<div className="card"><Empty icon="👥" text="Hakuna mawakala — Mshirika wa Masoko atasajili mawakala"/></div>}
+    {!agentLeaderboard.length&&<div className="card"><Empty icon="👥" text="Hakuna masupervaiza — Mshirika wa Masoko atasajili masupervaiza"/></div>}
 
-    {/* Agent Detail Modal — shows customers */}
+    {/* Supervisor Detail Modal — shows customers */}
     <Modal open={!!detail} onClose={()=>setDetail(null)} title={`👤 ${detail?.agent_name||''} — Wateja`} wide>
       {detail&&(()=>{
         const agentBiz=businesses.filter(b=>b.promo_code===detail.code);
@@ -1751,7 +1751,7 @@ export function PartnersPage(){
     {!partners.length&&<div className="card" style={{marginTop:12}}><Empty icon="🤝" text="Ongeza mshirika wa kwanza wa masoko"/></div>}
 
     <div style={{background:'#EFF6FF',borderRadius:12,padding:'12px 16px',marginTop:16,fontSize:12,color:'#1E40AF',lineHeight:1.6}}>
-      <b>Jinsi inavyofanya kazi:</b> Mshirika anaingia kwa email na password yake. Anaona Dashboard ya Masoko yenye wateja, mawakala, pipeline, kamisheni, na ripoti. HAONI data za mauzo ya wateja — usalama umehakikishwa.
+      <b>Jinsi inavyofanya kazi:</b> Mshirika anaingia kwa email na password yake. Anaona Dashboard ya Masoko yenye wateja, masupervaiza, pipeline, kamisheni, na ripoti. HAONI data za mauzo ya wateja — usalama umehakikishwa.
     </div>
 
     <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mshirika wa Masoko">
@@ -2456,9 +2456,9 @@ export function ReferralManagementPage(){
 
 // =====================================================
 // AGENT VISITS / FOLLOW-UP TICKETS PAGE
-// Admin anaona ziara za mawakala kwa wateja - tiketi za utekelezaji
+// Admin anaona ziara za masupervaiza kwa wateja - tiketi za utekelezaji
 // =====================================================
-export function AgentVisitsAdminPage(){
+export function SupervisorVisitsAdminPage(){
   const{supabase,user,partners}=useApp();
   const[visits,setVisits]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
@@ -2525,7 +2525,7 @@ export function AgentVisitsAdminPage(){
       
       await supabase.from('customer_visits').update(updates).eq('id',id);
       
-      // Notify agent
+      // Notify supervisor
       const visit=visits.find(v=>v.id===id);
       if(visit){
         try{
@@ -2555,7 +2555,7 @@ export function AgentVisitsAdminPage(){
   return <div>
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎫 Tiketi za Ufuatiliaji</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Taarifa za ziara za mawakala kwa wateja - simamia na fanya utekelezaji</p>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Taarifa za ziara za masupervaiza kwa wateja - simamia na fanya utekelezaji</p>
     </div>
     
     {/* Critical Alert */}
@@ -2593,7 +2593,7 @@ export function AgentVisitsAdminPage(){
     
     {/* Search */}
     <div className="card" style={{marginBottom:14}}>
-      <input type="text" placeholder="🔍 Tafuta mteja, wakala, biashara, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+      <input type="text" placeholder="🔍 Tafuta mteja, supevaiza, biashara, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:13,outline:'none',boxSizing:'border-box'}}/>
       
       <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
         {[
@@ -2628,7 +2628,7 @@ export function AgentVisitsAdminPage(){
                 {v.customer_satisfaction&&<span style={{fontSize:16}}>{getSatLabel(v.customer_satisfaction)}</span>}
               </div>
               <div style={{fontSize:11,color:'#64748B'}}>
-                🤝 <b>Wakala:</b> {v.agent_name}
+                🤝 <b>Supevaiza:</b> {v.agent_name}
                 {v.customer_business&&<> • 🏪 {v.customer_business}</>}
               </div>
             </div>
@@ -2664,7 +2664,7 @@ export function AgentVisitsAdminPage(){
           {viewing.has_issues&&<span style={{padding:'4px 12px',borderRadius:8,background:`${getUrgencyColor(viewing.urgency)}15`,color:getUrgencyColor(viewing.urgency),fontSize:11,fontWeight:800}}>⚠️ {viewing.urgency}</span>}
         </div>
         
-        {/* Agent info */}
+        {/* Supervisor info */}
         <div style={{background:'#EFF6FF',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #BFDBFE'}}>
           <div style={{fontSize:11,color:'#1E40AF',fontWeight:700,marginBottom:5}}>🤝 WAKALA</div>
           <div style={{fontWeight:800,fontSize:14,color:'#1E3A8A'}}>{viewing.agent_name}</div>
@@ -2736,11 +2736,11 @@ export function AgentVisitsAdminPage(){
 
 // =====================================================
 // AGENT TARGETS & PERFORMANCE PAGE
-// Admin anaweka targets na anaona performance ya mawakala
+// Admin anaweka targets na anaona performance ya masupervaiza
 // =====================================================
-export function AgentTargetsPage(){
+export function SupervisorTargetsPage(){
   const{supabase,user,businesses}=useApp();
-  const[agents,setAgents]=React.useState([]);
+  const[supervisors,setAgents]=React.useState([]);
   const[targets,setTargets]=React.useState([]);
   const[visits,setVisits]=React.useState([]);
   const[loading,setLoading]=React.useState(true);
@@ -2758,24 +2758,24 @@ export function AgentTargetsPage(){
     <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
   </div>;
   
-  // Load data — agents from users table + promo_codes
+  // Load data — supervisors from users table + promo_codes
   React.useEffect(()=>{loadData()},[period.year,period.month]);
   
   const loadData=async()=>{
     setLoading(true);
     try{
-      // 1. Pata mawakala WOTE kutoka users table (role='agent')
+      // 1. Pata masupervaiza WOTE kutoka users table (role='supervisor')
       const{data:agentUsers}=await supabase.from('users')
         .select('*')
-        .eq('role','agent')
+        .eq('role','supervisor')
         .order('name',{ascending:true});
       
-      // 2. Pata promo codes zote za mawakala
+      // 2. Pata promo codes zote za masupervaiza
       const{data:promoCodes}=await supabase.from('promo_codes').select('*');
       const promoMap={};
       (promoCodes||[]).forEach(p=>{promoMap[p.agent_email]=p});
       
-      // 3. Unganisha wakala na promo yake
+      // 3. Unganisha supevaiza na promo yake
       const agentsList=(agentUsers||[]).map(a=>({
         ...a,
         promo_code:promoMap[a.email]?.code||null,
@@ -2803,12 +2803,12 @@ export function AgentTargetsPage(){
     setLoading(false);
   };
   
-  // Helper: Get performance for an agent
+  // Helper: Get performance for an supervisor
   const getAgentPerformance=(agentId)=>{
-    // Wateja wapya waliosajiliwa na wakala mwezi huu
+    // Wateja wapya waliosajiliwa na supevaiza mwezi huu
     const monthStart=new Date(period.year,period.month-1,1);
     const monthEnd=new Date(period.year,period.month,0,23,59,59);
-    const agentObj=agents.find(a=>a.id===agentId);
+    const agentObj=supervisors.find(a=>a.id===agentId);
     const promoCode=agentObj?.promo_code;
     
     const newCustomers=businesses.filter(b=>{
@@ -2817,21 +2817,21 @@ export function AgentTargetsPage(){
       return cd>=monthStart&&cd<=monthEnd;
     });
     
-    // Ziara za wakala huyu mwezi huu
-    const agentVisits=visits.filter(v=>v.agent_id===agentId);
+    // Ziara za supevaiza huyu mwezi huu
+    const supervisorVisits=visits.filter(v=>v.agent_id===agentId);
     
     // Unique customers visited (kila mteja = point moja)
-    const uniqueVisited=new Set(agentVisits.map(v=>v.customer_name?.toLowerCase().trim())).size;
+    const uniqueVisited=new Set(supervisorVisits.map(v=>v.customer_name?.toLowerCase().trim())).size;
     
-    // Target ya wakala huyu
+    // Target ya supevaiza huyu
     const target=targets.find(t=>t.agent_id===agentId);
     
     return {
       newCustomers:newCustomers.length,
       newCustomersList:newCustomers,
-      totalVisits:agentVisits.length,
+      totalVisits:supervisorVisits.length,
       uniqueVisited,
-      visitsList:agentVisits,
+      visitsList:supervisorVisits,
       target:target||null,
       targetNewCustomers:target?.target_new_customers||10,
       targetVisits:target?.target_visits||30,
@@ -2843,17 +2843,17 @@ export function AgentTargetsPage(){
       // Bonus earned
       bonusEarned:(newCustomers.length*(target?.bonus_per_customer||5000))+(uniqueVisited*(target?.bonus_per_visit||1000)),
       // Issues found
-      issuesFound:agentVisits.filter(v=>v.has_issues).length,
+      issuesFound:supervisorVisits.filter(v=>v.has_issues).length,
     };
   };
   
-  // Performance for all agents
-  const allPerformance=agents.map(a=>({agent:a,...getAgentPerformance(a.id)}));
+  // Performance for all supervisors
+  const allPerformance=supervisors.map(a=>({supervisor:a,...getAgentPerformance(a.id)}));
   const sortedByPerformance=[...allPerformance].sort((a,b)=>(b.newCustomers+b.uniqueVisited)-(a.newCustomers+a.uniqueVisited));
   
   // Total stats
   const totalStats={
-    totalAgents:agents.length,
+    totalAgents:supervisors.length,
     totalNewCustomers:allPerformance.reduce((s,a)=>s+a.newCustomers,0),
     totalVisits:allPerformance.reduce((s,a)=>s+a.totalVisits,0),
     totalUniqueVisited:allPerformance.reduce((s,a)=>s+a.uniqueVisited,0),
@@ -2871,8 +2871,8 @@ export function AgentTargetsPage(){
     setSaving(true);
     try{
       const payload={
-        agent_id:editTarget.agent.id,
-        agent_name:editTarget.agent.name||editTarget.agent.email,
+        agent_id:editTarget.supervisor.id,
+        agent_name:editTarget.supervisor.name||editTarget.supervisor.email,
         year:period.year,
         month:period.month,
         target_new_customers:+editTarget.target_new_customers||10,
@@ -2891,18 +2891,18 @@ export function AgentTargetsPage(){
       
       if(error)throw error;
       
-      // Notify agent
+      // Notify supervisor
       try{
         await supabase.from('notifications').insert({
           target_type:'user',
-          target_id:editTarget.agent.id,
+          target_id:editTarget.supervisor.id,
           type:'info',
           title:`🎯 Target Yako ya ${monthLabel} ${period.year}`,
           message:`Admin amekupatia target: Wateja Wapya ${payload.target_new_customers}, Ziara ${payload.target_visits}. Bonasi: TZS ${payload.bonus_per_customer.toLocaleString()}/mteja + TZS ${payload.bonus_per_visit.toLocaleString()}/ziara.`,
         });
       }catch(e){}
       
-      alert(`✅ Target imehifadhiwa kwa ${editTarget.agent.name||editTarget.agent.email}!\n\n📅 Mwezi: ${monthLabel} ${period.year}\n👥 Wateja Wapya: ${payload.target_new_customers}\n📋 Ziara: ${payload.target_visits}\n💰 Bonasi: TZS ${(payload.target_new_customers*payload.bonus_per_customer+payload.target_visits*payload.bonus_per_visit).toLocaleString()} (max)`);
+      alert(`✅ Target imehifadhiwa kwa ${editTarget.supervisor.name||editTarget.supervisor.email}!\n\n📅 Mwezi: ${monthLabel} ${period.year}\n👥 Wateja Wapya: ${payload.target_new_customers}\n📋 Ziara: ${payload.target_visits}\n💰 Bonasi: TZS ${(payload.target_new_customers*payload.bonus_per_customer+payload.target_visits*payload.bonus_per_visit).toLocaleString()} (max)`);
       
       setEditTarget(null);
       await loadData();
@@ -2914,10 +2914,10 @@ export function AgentTargetsPage(){
   
   const exportReport=()=>{
     const csvRows=[
-      ['Mwezi','Wakala','Wateja Wapya','Target','%','Ziara (Unique)','Ziara Target','%','Changamoto','Bonasi (TZS)'],
+      ['Mwezi','Supevaiza','Wateja Wapya','Target','%','Ziara (Unique)','Ziara Target','%','Changamoto','Bonasi (TZS)'],
       ...sortedByPerformance.map(p=>[
         `${monthLabel} ${period.year}`,
-        p.agent.name||p.agent.email,
+        p.supervisor.name||p.supervisor.email,
         p.newCustomers,
         p.targetNewCustomers,
         p.customerPct+'%',
@@ -2933,7 +2933,7 @@ export function AgentTargetsPage(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=`mawakala-${period.year}-${period.month}.csv`;
+    a.download=`masupervaiza-${period.year}-${period.month}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -2942,7 +2942,7 @@ export function AgentTargetsPage(){
     {/* Header */}
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🎯 Targets & Performance ya Mawakala</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za mawakala</p>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za masupervaiza</p>
     </div>
     
     {/* Period Selector */}
@@ -2967,7 +2967,7 @@ export function AgentTargetsPage(){
     {/* Overall Stats */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:16}}>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0B7A3B'}}>
-        <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>MAWAKALA</div>
+        <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>MASUPERVAIZA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#0B7A3B',marginTop:4}}>{totalStats.totalAgents}</div>
         <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.agentsWithTargets} wana target</div>
       </div>
@@ -2984,7 +2984,7 @@ export function AgentTargetsPage(){
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B'}}>
         <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>BONASI YAILIYOPATIKANA</div>
         <div style={{fontSize:16,fontWeight:900,color:'#F59E0B',marginTop:4}}>TZS {totalStats.totalBonus.toLocaleString()}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>kwa mawakala wote</div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>kwa masupervaiza wote</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #DC2626'}}>
         <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>CHANGAMOTO</div>
@@ -3000,7 +3000,7 @@ export function AgentTargetsPage(){
       </button>
     </div>
     
-    {/* Agents Performance Cards */}
+    {/* Supervisors Performance Cards */}
     <div className="card">
       <h3 style={{fontSize:14,fontWeight:800,color:'#0B7A3B',margin:'0 0 14px'}}>🏆 Performance ya Mawakala — {monthLabel} {period.year}</h3>
       
@@ -3009,14 +3009,14 @@ export function AgentTargetsPage(){
         <div>Inaleta data...</div>
       </div>:sortedByPerformance.length===0?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
         <div style={{fontSize:50,marginBottom:10}}>👥</div>
-        <div style={{fontWeight:700}}>Hakuna mawakala</div>
+        <div style={{fontWeight:700}}>Hakuna masupervaiza</div>
       </div>:<div style={{display:'flex',flexDirection:'column',gap:12}}>
         {sortedByPerformance.map((p,idx)=>{
           const overallPct=p.target?Math.round(((p.newCustomers/p.targetNewCustomers)+(p.uniqueVisited/p.targetVisits))/2*100):0;
           const isTop3=idx<3&&p.newCustomers+p.uniqueVisited>0;
           const medal=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
           
-          return <div key={p.agent.id} style={{
+          return <div key={p.supervisor.id} style={{
             padding:'16px 18px',
             background:'#fff',
             border:`2px solid ${isTop3?'#FCD34D':'#E2E8F0'}`,
@@ -3033,14 +3033,14 @@ export function AgentTargetsPage(){
                   background:`hsl(${idx*60},70%,45%)`,
                   color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
                   fontSize:20,fontWeight:900,
-                }}>{(p.agent.name||p.agent.email||'?')[0].toUpperCase()}</div>
+                }}>{(p.supervisor.name||p.supervisor.email||'?')[0].toUpperCase()}</div>
                 <div>
-                  <div style={{fontWeight:800,fontSize:15,color:'#1E293B'}}>{p.agent.name||p.agent.email}</div>
-                  <div style={{fontSize:11,color:'#64748B'}}>📞 {p.agent.phone||'—'} • Code: {p.agent.promo_code||'—'}</div>
+                  <div style={{fontWeight:800,fontSize:15,color:'#1E293B'}}>{p.supervisor.name||p.supervisor.email}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>📞 {p.supervisor.phone||'—'} • Code: {p.supervisor.promo_code||'—'}</div>
                 </div>
               </div>
               <div style={{display:'flex',gap:6}}>
-                <button onClick={()=>setEditTarget({agent:p.agent,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
+                <button onClick={()=>setEditTarget({supervisor:p.supervisor,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
                 <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#0B7A3B',border:'2px solid #BBF7D0',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
               </div>
             </div>
@@ -3103,7 +3103,7 @@ export function AgentTargetsPage(){
     </div>
     
     {/* EDIT TARGET MODAL */}
-    {editTarget&&<Modal open={true} onClose={()=>setEditTarget(null)} title={`🎯 Target — ${editTarget.agent.name||editTarget.agent.email}`}>
+    {editTarget&&<Modal open={true} onClose={()=>setEditTarget(null)} title={`🎯 Target — ${editTarget.supervisor.name||editTarget.supervisor.email}`}>
       <div style={{maxHeight:'70vh',overflowY:'auto'}}>
         <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #BBF7D0'}}>
           <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:4}}>📅 MWEZI</div>
@@ -3165,7 +3165,7 @@ export function AgentTargetsPage(){
     </Modal>}
     
     {/* VIEW AGENT DETAIL MODAL */}
-    {viewAgent&&<Modal open={true} onClose={()=>setViewAgent(null)} title={`📊 Detail — ${viewAgent.agent.name||viewAgent.agent.email}`}>
+    {viewAgent&&<Modal open={true} onClose={()=>setViewAgent(null)} title={`📊 Detail — ${viewAgent.supervisor.name||viewAgent.supervisor.email}`}>
       <div style={{maxHeight:'72vh',overflowY:'auto'}}>
         
         {/* Hero stats */}

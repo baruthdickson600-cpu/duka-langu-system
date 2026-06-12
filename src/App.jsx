@@ -8,12 +8,12 @@ import {exportReceiptPDF,shareWhatsApp,fmtDate,fmtMoney} from './utils/helpers';
 import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
-import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,AgentVisitsAdminPage,AgentTargetsPage} from './pages/admin/AdminPages';
+import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
 import InfoUpdateRequest from './pages/InfoUpdateRequest';
 import {SMSCenterPage} from './pages/admin/SMSCenter';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage,MktTokensPage} from './pages/marketing/MarketingPages';
-import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,AgentVisitsPage} from './pages/agent/AgentPages';
+import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
@@ -66,7 +66,7 @@ const MENUS={
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
-    {id:'agents',icon:IC.users,label:'Mawakala'},
+    {id:'supervisors',icon:IC.users,label:'Mawakala'},
     {id:'campaigns',icon:IC.gift,label:'Kampeni'},
     {id:'followups',icon:IC.clock,label:'Follow-up'},
     {id:'messaging',icon:IC.send,label:'Ujumbe'},
@@ -102,7 +102,7 @@ const MENUS={
     {id:'support',icon:IC.send,label:'Msaada'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
-  agent:[
+  supervisor:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
@@ -203,7 +203,7 @@ export default function App(){
   }
 
   if(!user||otpPending||promoPending)return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword} otpPending={otpPending} otpSending={otpSending} onVerifyOTP={verifyOTP} onCancelOTP={cancelOTP} onResendOTP={sendOTP} promoPending={promoPending} onVerifyPromo={verifyPromoLogin} onCancelPromo={cancelPromoLogin}/>;
-  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
+  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
   // Add branches menu ONLY if canUseBranches
@@ -222,8 +222,8 @@ export default function App(){
       switch(page){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;
         case'promo':return <PromoPage/>;
-        case'agent_visits':return <AgentVisitsAdminPage/>;
-        case'agent_targets':return <AgentTargetsPage/>;
+        case'agent_visits':return <SupervisorVisitsAdminPage/>;
+        case'agent_targets':return <SupervisorTargetsPage/>;
         case'broadcast':return <BroadcastPage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'live_chat':return <AdminChatPanel/>;
@@ -241,7 +241,7 @@ export default function App(){
     }
     if(role==='marketing'){
       switch(page){
-        case'pipeline':return <PipelinePage/>;case'agents':return <MktAgentsPage/>;
+        case'pipeline':return <PipelinePage/>;case'supervisors':return <MktAgentsPage/>;
         case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
         case'messaging':return <MessagingPage/>;case'testimonials':return <TestimonialsPage/>;
         case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;
@@ -266,11 +266,11 @@ export default function App(){
         default:return <AccountantDashboard/>;
       }
     }
-    if(role==='agent'){
+    if(role==='supervisor'){
       switch(page){
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;
-        case'visits':return <AgentVisitsPage/>;
+        case'visits':return <SupervisorVisitsPage/>;
         case'tiers':return <AgentTiersPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AgentDashboard/>;

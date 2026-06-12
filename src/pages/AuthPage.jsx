@@ -190,7 +190,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
             <div style={{textAlign:'center',marginBottom:20}}>
               <div style={{width:70,height:70,margin:'0 auto 14px',borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>🎯</div>
               <h3 style={{fontSize:22,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Ingiza Promo Code Yako</h3>
-              <p style={{fontSize:13,color:'#64748B',margin:'0 0 4px'}}>Karibu, <b style={{color:'#0B7A3B'}}>{promoPending?.userData?.name||'Wakala'}</b>!</p>
+              <p style={{fontSize:13,color:'#64748B',margin:'0 0 4px'}}>Karibu, <b style={{color:'#0B7A3B'}}>{promoPending?.userData?.name||'Supevaiza'}</b>!</p>
               <p style={{fontSize:12,color:'#94A3B8',margin:0}}>Thibitisha utambulisho wako kwa promo code uliyopewa na Admin</p>
             </div>
             {promoErr&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{promoErr}</div>}

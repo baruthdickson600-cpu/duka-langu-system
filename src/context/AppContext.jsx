@@ -111,8 +111,8 @@ export function AppProvider({children}){
         const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
         const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
       }
-      if(role==='agent'){
-        // Agent: load businesses WOTE (kwa form ya ziara)
+      if(role==='supervisor'){
+        // Supervisor: load businesses WOTE (kwa form ya ziara)
         const bAll=await safeSelect('businesses',{order:{col:'name'}});
         if(bAll.length)setBiz(bAll);
       }
@@ -145,8 +145,8 @@ export function AppProvider({children}){
   // ===== OTP STATE =====
   const[otpPending,setOtpPending]=useState(null); // {user, role, bizId, phone}
   const[otpSending,setOtpSending]=useState(false);
-  const OTP_ROLES=['admin','marketing','office','accountant']; // agent hutumii OTP — anatumia promo code
-  // ===== PROMO LOGIN STATE (mawakala) =====
+  const OTP_ROLES=['admin','marketing','office','accountant']; // supervisor hutumii OTP — anatumia promo code
+  // ===== PROMO LOGIN STATE (masupervaiza) =====
   const[promoPending,setPromoPending]=useState(null); // {userData, email}
 
   // Send OTP via SMS (preferred) or Email (fallback)
@@ -174,7 +174,7 @@ export function AppProvider({children}){
       safeInsert('login_logs',{user_id:u.id,email:u.email,action:'login_otp',device_info:navigator.userAgent}).catch(()=>{});
       await loadData(u.id,u.role,u.business_id);
       if(u.role==='employee'&&u.branch_id){setActiveBranch(u.branch_id)}
-      if(u.role==='agent'){
+      if(u.role==='supervisor'){
         const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',u.email).single();
         if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
       }
@@ -185,7 +185,7 @@ export function AppProvider({children}){
 
   const cancelOTP=useCallback(()=>{setOtpPending(null)},[]);
   
-  // ===== PROMO CODE LOGIN (mawakala) =====
+  // ===== PROMO CODE LOGIN (masupervaiza) =====
   const verifyPromoLogin=useCallback(async(inputCode)=>{
     if(!promoPending)return{success:false,error:'Hakuna ombi la kuingia'};
     const u=promoPending.userData;
@@ -208,7 +208,7 @@ export function AppProvider({children}){
         return{success:true};
       }
       
-      // Njia 2: tafuta kwa email ya wakala (fallback)
+      // Njia 2: tafuta kwa email ya supevaiza (fallback)
       const{data:byEmail}=await supabase.from('promo_codes').select('*').ilike('agent_email',u.email.trim());
       if(byEmail&&byEmail.length>0){
         const promoData=byEmail[0];
@@ -246,8 +246,8 @@ export function AppProvider({children}){
         const ub=uData.business_id?(await supabase.from('businesses').select('*').eq('id',uData.business_id).single()):null;
         if(ub?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.'}
 
-        // Wakala: thibitisha kwa promo code (sio OTP)
-        if(uData.role==='agent'){
+        // Supevaiza: thibitisha kwa promo code (sio OTP)
+        if(uData.role==='supervisor'){
           setPromoPending({userData:uData,email});
           setLoading(false);
           return'PROMO_REQUIRED';
@@ -266,7 +266,7 @@ export function AppProvider({children}){
         safeInsert('login_logs',{user_id:uData.id,email,action:'login',device_info:navigator.userAgent}).catch(()=>{});
         await loadData(uData.id,uData.role,uData.business_id);
         if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id)}
-        if(uData.role==='agent'){
+        if(uData.role==='supervisor'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}))}
         }
@@ -762,25 +762,25 @@ export function AppProvider({children}){
   const activateToken=useCallback(async(code)=>{const tk=tokens.find(t=>t.code===code&&!t.used);if(!tk)return'Token si sahihi au imetumika!';if(!bizId)return'Biashara haijapatikana!';const exp=new Date(Date.now()+tk.days*86400000).toISOString();await safeUpdate('tokens',{used:true,used_by:bizId,used_at:nowISO()},'id',tk.id);await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:tk.plan||'basic',is_suspended:false},'id',bizId);setTokens(prev=>prev.map(t=>t.id===tk.id?{...t,used:true}:t));setBiz(prev=>prev.map(b=>b.id===bizId?{...b,token_active:true,token_expiry:exp,is_suspended:false}:b));return null},[tokens,bizId]);
 
   // ===== PROMO =====
-  const addPromo=useCallback(async(agent,phone,commission=10,email='')=>{
+  const addPromo=useCallback(async(supervisor,phone,commission=10,email='')=>{
     const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
-    const d=await safeInsert('promo_codes',{code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission});
-    setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:agent,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0,total_earned:0}]);
+    const d=await safeInsert('promo_codes',{code,agent_name:supervisor,agent_phone:phone,agent_email:email,commission_rate:commission});
+    setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:supervisor,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0,total_earned:0}]);
     
-    // Send welcome SMS to agent
+    // Send welcome SMS to supervisor
     if(phone){
       const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
-      const smsMsg=`DUKA LANGU\n\nKARIBU ${agent}!\n\nUmesajiliwa kama Wakala wa Mauzo.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili.\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+      const smsMsg=`DUKA LANGU\n\nKARIBU ${supervisor}!\n\nUmesajiliwa kama Supevaiza wa Mauzo.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili.\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
       try{
         await fetch('/api/send-sms',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({to:cleanPhone,message:smsMsg})
         });
-      }catch(e){console.warn('Agent SMS failed:',e)}
+      }catch(e){console.warn('Supervisor SMS failed:',e)}
     }
     
-    // Send welcome email to agent
+    // Send welcome email to supervisor
     if(email){
       try{
         await fetch('/api/send-email',{
@@ -788,31 +788,31 @@ export function AppProvider({children}){
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
             to:email,
-            subject:`🎉 Karibu Duka Langu — Wakala wa Mauzo`,
+            subject:`🎉 Karibu Duka Langu — Supevaiza wa Mauzo`,
             type:'generic',
             data:{
-              customerName:agent,
-              title:`🎉 Hongera ${agent}!`,
-              message:`Umesajiliwa kama Wakala wa Mauzo wa Duka Langu.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili: duka-langu-system.vercel.app`,
+              customerName:supervisor,
+              title:`🎉 Hongera ${supervisor}!`,
+              message:`Umesajiliwa kama Supevaiza wa Mauzo wa Duka Langu.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili: duka-langu-system.vercel.app`,
             }
           })
         });
-      }catch(e){console.warn('Agent email failed:',e)}
+      }catch(e){console.warn('Supervisor email failed:',e)}
     }
     
     return code;
   },[]);
   const deletePromo=useCallback(async(pid)=>{await safeDelete('promo_codes','id',pid);setPromos(prev=>prev.filter(p=>p.id!==pid))},[]);
 
-  // ===== CREATE AGENT ACCOUNT (Marketing → Agent) =====
+  // ===== CREATE AGENT ACCOUNT (Marketing → Supervisor) =====
   const createAgent=useCallback(async(name,email,password,phone,commission=10)=>{
     try{
       // 1. Create auth account
       const{data:auth}=await supabase.auth.signUp({email,password:password||'agent123'});
       const uid=auth?.user?.id||genId();
-      // 2. Create user with role='agent'
-      await safeInsert('users',{id:uid,email,name,phone,role:'agent',is_active:true});
-      // 3. Create promo code linked to agent email
+      // 2. Create user with role='supervisor'
+      await safeInsert('users',{id:uid,email,name,phone,role:'supervisor',is_active:true});
+      // 3. Create promo code linked to supervisor email
       const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
       const promo=await safeInsert('promo_codes',{code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission});
       setPromos(prev=>[...prev,promo||{id:genId(),code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0}]);
@@ -820,14 +820,14 @@ export function AppProvider({children}){
       // 4. Send welcome SMS with login details
       if(phone){
         const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
-        const smsMsg=`DUKA LANGU\n\nKARIBU ${name}!\n\nUmesajiliwa kama Wakala.\n\nLogin:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako: ${code}\nCommission: ${commission}%\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+        const smsMsg=`DUKA LANGU\n\nKARIBU ${name}!\n\nUmesajiliwa kama Supevaiza.\n\nLogin:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako: ${code}\nCommission: ${commission}%\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
         try{
           await fetch('/api/send-sms',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({to:cleanPhone,message:smsMsg})
           });
-        }catch(e){console.warn('Agent SMS failed:',e)}
+        }catch(e){console.warn('Supervisor SMS failed:',e)}
       }
       
       // 5. Send welcome email with login details
@@ -838,16 +838,16 @@ export function AppProvider({children}){
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
               to:email,
-              subject:`🎉 Karibu Duka Langu — Akaunti ya Wakala`,
+              subject:`🎉 Karibu Duka Langu — Akaunti ya Supevaiza`,
               type:'generic',
               data:{
                 customerName:name,
                 title:`🎉 Hongera ${name}!`,
-                message:`Umesajiliwa kama Wakala wa Mauzo wa Duka Langu.\n\nDetails za Login:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako ya wakala: ${code}\nCommission: ${commission}%\n\nIngia kwenye mfumo: duka-langu-system.vercel.app\n\nBadilisha password ukiwa ndani ya mfumo.`,
+                message:`Umesajiliwa kama Supevaiza wa Mauzo wa Duka Langu.\n\nDetails za Login:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako ya supevaiza: ${code}\nCommission: ${commission}%\n\nIngia kwenye mfumo: duka-langu-system.vercel.app\n\nBadilisha password ukiwa ndani ya mfumo.`,
               }
             })
           });
-        }catch(e){console.warn('Agent email failed:',e)}
+        }catch(e){console.warn('Supervisor email failed:',e)}
       }
       
       return{uid,code,email};
@@ -868,7 +868,7 @@ export function AppProvider({children}){
         await safeUpdate('users',{business_id:newBiz.id},'id',uid);
         setBiz(prev=>[newBiz,...prev]);
         // Notify admin
-        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Mteja Mpya (Wakala): ${bizName}`,message:`${custName||bizName} amesajiliwa na wakala ${user.name}. Code: ${user.promo_code}`});
+        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Mteja Mpya (Supevaiza): ${bizName}`,message:`${custName||bizName} amesajiliwa na supevaiza ${user.name}. Code: ${user.promo_code}`});
         // Welcome email
         sendMail(custEmail,'🎉 Karibu kwenye Duka Langu!','welcome',{name:custName||bizName,businessName:bizName});
         
@@ -879,9 +879,9 @@ export function AppProvider({children}){
         }
         
         // Admin + Partners notification
-        sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya (Wakala): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'});
+        sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya (Supevaiza): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'});
         supabase.from('marketing_partners').select('email').then(({data:pts})=>{
-          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya (Wakala): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'})});
+          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya (Supevaiza): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'})});
         }).catch(()=>{});
       }
       return{success:true,email:custEmail,password,bizName};
@@ -1037,7 +1037,7 @@ export function AppProvider({children}){
   // ===== SMART ALERT ENGINE =====
   // Runs once on load — generates auto-notifications for important events
   useEffect(()=>{
-    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||user.role==='agent')return;
+    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||user.role==='supervisor')return;
     // WAIT for data to load — don't run with empty data
     if(products.length===0&&sales.length===0&&customers.length===0)return;
     const today=todayStr();
@@ -1481,12 +1481,12 @@ export function AppProvider({children}){
     await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`⬆️ Plan Imebadilishwa!`,message:`Plan yako imebadilishwa kuwa ${newPlan.toUpperCase()}. Furahia features mpya!`});
   },[businesses,user]);
 
-  // ===== QUICK TRANSFER (hamisha kwa agent mwingine) =====
+  // ===== QUICK TRANSFER (hamisha kwa supervisor mwingine) =====
   const quickTransfer=useCallback(async(bid,newPromoCode)=>{
     const b=businesses.find(x=>x.id===bid);if(!b)return;
     await safeUpdate('businesses',{promo_code:newPromoCode||null},'id',bid);
     setBiz(prev=>prev.map(x=>x.id===bid?{...x,promo_code:newPromoCode||null}:x));
-    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'transfer',details:{text:`${b.name}: agent → ${newPromoCode||'none'}`}});
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'transfer',details:{text:`${b.name}: supervisor → ${newPromoCode||'none'}`}});
   },[businesses,user]);
 
   // ===== DELETE ALL CUSTOMER DATA (GDPR) =====
@@ -1674,7 +1674,7 @@ export function AppProvider({children}){
   },[businesses]);
 
   // ===== AGENT LEADERBOARD =====
-  // Agent tier definitions
+  // Supervisor tier definitions
   const AGENT_TIERS=[
     {min:51,name:'Shujaa',emoji:'👑',color:'#F59E0B',bonus:650000},
     {min:36,name:'Bingwa',emoji:'💎',color:'#8B5CF6',bonus:400000},

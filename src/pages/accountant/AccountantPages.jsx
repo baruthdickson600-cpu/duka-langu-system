@@ -155,7 +155,7 @@ export function AccPayrollPage(){
   const[f,setF]=useState({name:'',role:'Developer',department:'Tech',salary:'',bonus:'0',allowance:'0',deductions:'0',method:'Bank Transfer',notes:''});
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
   const depts=['Tech','Marketing','Support','Finance','Admin','Operations'];
-  const roles=['Developer','Designer','Marketer','Support Agent','Manager','Accountant','Admin','Other'];
+  const roles=['Developer','Designer','Marketer','Support Supervisor','Manager','Accountant','Admin','Other'];
 
   useEffect(()=>{supabase?.from('payroll').select('*').order('created_at',{ascending:false}).then(({data})=>setPayroll(data||[]))},[]);
   const monthPay=payroll.filter(p=>p.month===month);

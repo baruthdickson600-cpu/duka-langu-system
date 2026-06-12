@@ -110,11 +110,11 @@ export function SMSCenterPage(){
         break;
       case'all_partners':
         const partnerList=partners.filter(p=>p.phone).map(p=>({phone:p.phone,name:p.name||p.email,business:'Mshirika'}));
-        const agentList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
+        const agentList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Supevaiza',business:'Supevaiza'}));
         list=[...partnerList,...agentList];
         break;
       case'all_agents':
-        list=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
+        list=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Supevaiza',business:'Supevaiza'}));
         break;
       case'all_customers':
         list=businesses.filter(b=>b.phone).map(b=>({phone:b.phone,name:b.owner_name||b.name,business:b.name}));
@@ -122,7 +122,7 @@ export function SMSCenterPage(){
       case'everyone':
         const bizList=businesses.filter(b=>b.phone).map(b=>({phone:b.phone,name:b.owner_name||b.name,business:b.name}));
         const ptList=partners.filter(p=>p.phone).map(p=>({phone:p.phone,name:p.name||p.email,business:'Mshirika'}));
-        const agList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Wakala',business:'Wakala'}));
+        const agList=promoCodes.filter(p=>p.agent_phone).map(p=>({phone:p.agent_phone,name:p.agent_name||'Supevaiza',business:'Supevaiza'}));
         list=[...bizList,...ptList,...agList];
         break;
       case'custom':
