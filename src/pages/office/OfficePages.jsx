@@ -117,7 +117,7 @@ export function OfficeDash({onReceipt}){
         </div>
         {/* Pesa ya Benki */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:12,fontWeight:800,color:'#1E293B'}}>🏦 Kwenda Benki</span>
+          <span style={{fontSize:12,fontWeight:800,color:'#1E293B'}}>💰 Mauzo Halisi (Baada ya Matumizi)</span>
           <span style={{fontSize:18,fontWeight:900,color:tBankAmount>0?'#0B7A3B':'#EF4444'}}>{fm(tBankAmount)}</span>
         </div>
         <div style={{fontSize:10,color:'#94A3B8',marginTop:6}}>{tCashSales.length} cash + {tCreditPayments.length} malipo ya deni</div>
@@ -986,7 +986,7 @@ export function ReportsPage({onReceipt}){
         <div style={{fontSize:10,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MUHTASARI WA PESA</div>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(fTotal)}</span></div>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #BBF7D0'}}><span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fExp)}</span></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>🏦 Kwenda Benki</span><span style={{fontSize:20,fontWeight:900,color:'#0B7A3B'}}>{fm(fBankAmount)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>💰 Mauzo Halisi (Baada ya Matumizi)</span><span style={{fontSize:20,fontWeight:900,color:'#0B7A3B'}}>{fm(fBankAmount)}</span></div>
       </div>
       <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
       <Stat icon={IC.dollar} label="Halisi" value={fm(fProfit-fExp)} color={fProfit-fExp>=0?'#F59E0B':'#EF4444'}/>
