@@ -140,7 +140,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,products}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,products,supabase,updateUserProfile}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -166,6 +166,7 @@ export default function App(){
       navigator.serviceWorker?.removeEventListener('message',swMsg);
     };
   },[]);
+  const[profileOpen,setProfileOpen]=useState(false);
   const[page,setPage]=useState(()=>{
     // Support PWA shortcuts via ?page=sales etc.
     const url=new URL(window.location.href);
@@ -204,6 +205,8 @@ export default function App(){
   if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
 
   const role=user.role;
+  const roleLabel={'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[role]||role;
+  const roleColor={'admin':'#F59E0B','marketing':'#8B5CF6','supervisor':'#10B981','agent':'#10B981','office':'#3B82F6','accountant':'#EC4899'}[role]||'#94A3B8';
   // Add branches menu ONLY if canUseBranches
   let menu=[...MENUS[role]||MENUS.employee];
   if(role==='office'&&canUseBranches){
@@ -364,18 +367,33 @@ export default function App(){
         })}
       </div>
 
-      <div style={{padding:10,borderTop:'1px solid rgba(255,255,255,.15)'}}>
-        <div style={{fontSize:12,opacity:.7}}>{user.name}</div>
-        <div style={{fontSize:10,opacity:.5,textTransform:'uppercase',marginBottom:6}}>{role}</div>
-        {trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:6}}>⏳ Siku {trial}</div>}
-        <div style={{display:'flex',gap:4,marginBottom:6}}>
-          <button onClick={()=>setLang(lang==='sw'?'en':'sw')} style={{flex:1,padding:'3px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{lang==='sw'?'EN':'SW'}</button>
-          <button onClick={()=>setCurrency(currency==='TZS'?'USD':'TZS')} style={{flex:1,padding:'3px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{currency==='TZS'?'USD':'TZS'}</button>
+      <div style={{padding:'10px 10px 14px',borderTop:'1px solid rgba(255,255,255,.15)'}}>
+        {trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:8,textAlign:'center'}}>⏳ Siku {trial} zimebaki</div>}
+        {/* Profile Card */}
+        <button onClick={()=>setProfileOpen(true)} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:12,padding:'10px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:10,marginBottom:8,transition:'background 0.2s'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>
+          {user.avatar_url
+            ?<img src={user.avatar_url} alt="" style={{width:38,height:38,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(255,255,255,.3)',flexShrink:0}}/>
+            :<div style={{width:38,height:38,borderRadius:'50%',background:'linear-gradient(135deg,#10B981,#065F2E)',border:'2px solid rgba(255,255,255,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:800,color:'#fff',flexShrink:0}}>{(user.name||'U')[0].toUpperCase()}</div>
+          }
+          <div style={{flex:1,textAlign:'left',overflow:'hidden'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#fff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
+            <div style={{display:'flex',alignItems:'center',gap:4,marginTop:2}}>
+              <span style={{background:roleColor,color:'#fff',fontSize:9,fontWeight:800,padding:'1px 6px',borderRadius:6,textTransform:'uppercase',letterSpacing:.5}}>{roleLabel}</span>
+            </div>
+          </div>
+          <span style={{color:'rgba(255,255,255,.5)',fontSize:12}}>✏️</span>
+        </button>
+        {/* Lang + Currency */}
+        <div style={{display:'flex',gap:4,marginBottom:8}}>
+          <button onClick={()=>setLang(lang==='sw'?'en':'sw')} style={{flex:1,padding:'4px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{lang==='sw'?'EN':'SW'}</button>
+          <button onClick={()=>setCurrency(currency==='TZS'?'USD':'TZS')} style={{flex:1,padding:'4px 6px',borderRadius:6,border:'none',background:'rgba(255,255,255,.1)',color:'#fff',fontSize:10,fontWeight:600,cursor:'pointer'}}>{currency==='TZS'?'USD':'TZS'}</button>
         </div>
-        <button onClick={()=>{logout();setPage('dashboard');setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:6,width:'100%',padding:'7px 12px',background:'rgba(255,255,255,.1)',border:'none',borderRadius:8,color:'#fff',fontSize:12}}>{IC.out} Toka</button>
+        <button onClick={()=>{logout();setPage('dashboard');setSidebar(false)}} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,width:'100%',padding:'8px 12px',background:'rgba(239,68,68,.2)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'#FCA5A5',fontSize:12,fontWeight:600,cursor:'pointer'}}>{IC.out} Toka</button>
       </div>
     </div>
 
+    {/* ===== PROFILE SETTINGS MODAL ===== */}
+    {profileOpen&&<ProfileModal user={user} supabase={supabase} updateUserProfile={updateUserProfile} onClose={()=>setProfileOpen(false)}/>}
     {/* Main */}
     <div className="main-content" style={{flex:1,marginLeft:240,minHeight:'100vh'}}>
       <div style={{background:'#fff',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 1px 3px rgba(0,0,0,.05)',position:'sticky',top:0,zIndex:4000}}>
@@ -398,4 +416,80 @@ export default function App(){
       <div style={{padding:'16px 20px',maxWidth:1200,margin:'0 auto'}}>{renderPage()}</div>
     </div>
   </div>;
+}
+
+// ============================================================
+// PROFILE MODAL — Kisasa kabisa
+// ============================================================
+function ProfileModal({user, updateUserProfile, onClose}){
+  const [form, setForm] = React.useState({name: user?.name||'', phone: user?.phone||''});
+  const [preview, setPreview] = React.useState(user?.avatar_url||null);
+  const [avatarFile, setAvatarFile] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState('');
+  const fileRef = React.useRef();
+
+  const roleLabel = {'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[user?.role]||user?.role;
+  const initials = (user?.name||'U').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+  const onFile = (e) => {
+    const f = e.target.files?.[0];
+    if(!f) return;
+    if(f.size > 3*1024*1024){setMsg('❌ Picha kubwa sana (max 3MB)');return;}
+    setAvatarFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const save = async() => {
+    if(!form.name.trim()){setMsg('❌ Jina linahitajika');return;}
+    setSaving(true); setMsg('');
+    const result = await updateUserProfile({name:form.name.trim(), phone:form.phone.trim(), avatarFile});
+    setSaving(false);
+    if(result.success){setMsg('✅ Imehifadhiwa!');setTimeout(()=>onClose(),1200);}
+    else setMsg('❌ '+(result.error||'Tatizo. Jaribu tena'));
+  };
+
+  return (
+    <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:420,overflow:'hidden',boxShadow:'0 25px 60px rgba(0,0,0,.25)'}}>
+        {/* Header */}
+        <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',padding:'24px 20px 60px',textAlign:'center',position:'relative'}}>
+          <button onClick={onClose} style={{position:'absolute',top:14,right:14,background:'rgba(255,255,255,.15)',border:'none',color:'#fff',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          <h3 style={{color:'#fff',margin:'0 0 4px',fontSize:18,fontWeight:800}}>Wasifu Wangu</h3>
+          <p style={{color:'rgba(255,255,255,.7)',margin:0,fontSize:12}}>Bonyeza picha kubadilisha</p>
+        </div>
+        {/* Avatar — overlaps header */}
+        <div style={{display:'flex',justifyContent:'center',marginTop:-46,marginBottom:12,position:'relative',zIndex:1}}>
+          <div style={{position:'relative',cursor:'pointer'}} onClick={()=>fileRef.current?.click()}>
+            {preview
+              ?<img src={preview} alt="" style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid #fff',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}/>
+              :<div style={{width:90,height:90,borderRadius:'50%',background:'linear-gradient(135deg,#10B981,#065F2E)',border:'4px solid #fff',boxShadow:'0 4px 20px rgba(0,0,0,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,fontWeight:800,color:'#fff'}}>{initials}</div>
+            }
+            <div style={{position:'absolute',bottom:2,right:2,background:'#0B7A3B',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #fff',fontSize:12}}>📷</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:'none'}}/>
+        </div>
+        {/* Badge */}
+        <div style={{textAlign:'center',marginBottom:20}}>
+          <span style={{background:'#DCFCE7',color:'#15803D',fontSize:11,fontWeight:700,padding:'3px 12px',borderRadius:20,border:'1px solid #BBF7D0'}}>{roleLabel}</span>
+          <div style={{fontSize:11,color:'#94A3B8',marginTop:6}}>{user?.email}</div>
+        </div>
+        {/* Form */}
+        <div style={{padding:'0 20px 20px'}}>
+          {msg&&<div style={{background:msg.startsWith('✅')?'#F0FDF4':'#FEF2F2',color:msg.startsWith('✅')?'#15803D':'#B91C1C',padding:'8px 12px',borderRadius:10,fontSize:13,marginBottom:12,textAlign:'center',fontWeight:600}}>{msg}</div>}
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>👤 JINA KAMILI</label>
+            <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Jina lako kamili" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0B7A3B'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📱 NAMBARI YA SIMU</label>
+            <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0B7A3B'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+          </div>
+          <button onClick={save} disabled={saving} style={{width:'100%',padding:14,background:saving?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:saving?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(11,122,59,.3)'}}>
+            {saving?'⏳ Inahifadhi...':'💾 Hifadhi Mabadiliko'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

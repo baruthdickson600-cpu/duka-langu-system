@@ -232,6 +232,32 @@ export function AppProvider({children}){
   
   const cancelPromoLogin=useCallback(()=>{setPromoPending(null)},[]);
 
+  // ===== UPDATE USER PROFILE =====
+  const updateUserProfile=useCallback(async(updates)=>{
+    if(!user?.id)return{success:false,error:'Hakuna mtumiaji'};
+    try{
+      // Upload avatar kama ipo
+      let avatarUrl=user.avatar_url||null;
+      if(updates.avatarFile){
+        const file=updates.avatarFile;
+        const ext=file.name.split('.').pop();
+        const path=`avatars/${user.id}.${ext}`;
+        const{error:upErr}=await supabase.storage.from('profiles').upload(path,file,{upsert:true});
+        if(!upErr){
+          const{data}=supabase.storage.from('profiles').getPublicUrl(path);
+          avatarUrl=data.publicUrl+'?t='+Date.now();
+        }
+      }
+      const patch={...(updates.name?{name:updates.name}:{}),
+        ...(updates.phone?{phone:updates.phone}:{}),
+        ...(avatarUrl?{avatar_url:avatarUrl}:{})};
+      if(Object.keys(patch).length===0)return{success:true};
+      await safeUpdate('users',patch,'id',user.id);
+      setUser(prev=>({...prev,...patch}));
+      return{success:true};
+    }catch(e){return{success:false,error:e.message};}
+  },[user]);
+
   // ===== OFFLINE SYNC TRIGGER =====
   const triggerSync=useCallback(async()=>{
     try{
@@ -1809,6 +1835,7 @@ export function AppProvider({children}){
     stockHistory,loginLogs,settings,popups,setPopups,systemLogs,tickets,returns,creditHistory,totalDebt,
     paymentRequests,pendingPayments,myLatestPayment,overdueCustomers,overdueTotal,debtAging,
     // Auth
+    supabase,updateUserProfile,
     login,signup,logout,forgotPassword,
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
