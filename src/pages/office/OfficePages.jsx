@@ -64,6 +64,10 @@ export function OfficeDash({onReceipt}){
   // For credit payments — estimate profit proportionally
   const mProfit=Math.max(0,mCashProfit-returnProfit(mReturns.filter(r=>!r.was_credit)));
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  // ===== Matumizi ya LEO =====
+  const tExp=expenses.filter(e=>e.business_id===biz?.id&&e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+  // ===== PESA YA BENKI = Mauzo - Matumizi (hii ndiyo muhudumu anaenda kubank) =====
+  const tBankAmount=Math.max(0,tTotal-tExp);
   const isOff=user?.role==='office';
   
   // Bar chart — only cash-based income per day
@@ -98,7 +102,25 @@ export function OfficeDash({onReceipt}){
     </div>}
 
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.cart} label="💵 Pesa Leo" value={fm(tTotal)} color="#0B7A3B" sub={`${tCashSales.length} cash + ${tCreditPayments.length} malipo ya deni`}/>
+      <div style={{background:'#fff',border:'2px solid #0B7A3B',borderRadius:14,padding:'14px 16px',minWidth:180,flex:1}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MAUZO YA LEO</div>
+        {/* Mauzo kamili */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+          <span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo</span>
+          <span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(tTotal)}</span>
+        </div>
+        {/* Matumizi */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #E2E8F0'}}>
+          <span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span>
+          <span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(tExp)}</span>
+        </div>
+        {/* Pesa ya Benki */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:12,fontWeight:800,color:'#1E293B'}}>🏦 Kwenda Benki</span>
+          <span style={{fontSize:18,fontWeight:900,color:tBankAmount>0?'#0B7A3B':'#EF4444'}}>{fm(tBankAmount)}</span>
+        </div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:6}}>{tCashSales.length} cash + {tCreditPayments.length} malipo ya deni</div>
+      </div>
       <Stat icon={IC.chart} label="Wiki Hii" value={fm(wTotal)} color="#3B82F6"/>
       {isOff&&tCreditSales.length>0&&<Stat icon={IC.warn} label="💳 Mikopo Leo" value={fm(tCreditSales.reduce((a,s)=>a+s.total,0))} color="#F59E0B" sub={`${tCreditSales.length} bidhaa zimekopwa`}/>}
       {isOff&&<Stat icon={IC.dollar} label="Faida Mwezi" value={fm(mProfit-mExp)} color={mProfit-mExp>=0?'#F59E0B':'#EF4444'}/>}
@@ -745,6 +767,7 @@ export function ReportsPage({onReceipt}){
   const fProfit=Math.max(0,cashSalesProfit-refundProfit);
   
   const fExp=expenses.filter(e=>filterByDate(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const fBankAmount=Math.max(0,fTotal-fExp);
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   
@@ -958,9 +981,13 @@ export function ReportsPage({onReceipt}){
     </div>
     
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.cart} label="💵 Pesa Zilizoingia" value={fm(fTotal)} color="#0B7A3B" sub={`${fCashSales.length} cash + ${fCreditPayments.length} malipo ya deni`}/>
+      <div style={{background:'#F0FDF4',border:'2px solid #0B7A3B',borderRadius:14,padding:'14px 16px',flex:1}}>
+        <div style={{fontSize:10,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MUHTASARI WA PESA</div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(fTotal)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #BBF7D0'}}><span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fExp)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>🏦 Kwenda Benki</span><span style={{fontSize:20,fontWeight:900,color:'#0B7A3B'}}>{fm(fBankAmount)}</span></div>
+      </div>
       <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
-      <Stat icon={IC.wallet} label="Matumizi" value={fm(fExp)} color="#EF4444"/>
       <Stat icon={IC.dollar} label="Halisi" value={fm(fProfit-fExp)} color={fProfit-fExp>=0?'#F59E0B':'#EF4444'}/>
     </div>
     
