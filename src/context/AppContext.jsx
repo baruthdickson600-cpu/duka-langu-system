@@ -67,7 +67,14 @@ export function AppProvider({children}){
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
   const bizId=biz?.id||user?.business_id;
 
-  useEffect(()=>{const on=()=>setOnline(true);const off=()=>setOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)}},[]);
+  useEffect(()=>{
+    const on=()=>{setOnline(true);setTimeout(()=>{getPendingCount().then(c=>{if(c>0)window.dispatchEvent(new Event('trigger-offline-sync'))}).catch(()=>{})},2000)};
+    const off=()=>setOnline(false);
+    window.addEventListener('online',on);
+    window.addEventListener('offline',off);
+    getPendingCount().then(c=>setPendingSyncCount(c)).catch(()=>{});
+    return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)};
+  },[]);
 
   // ===== LOAD DATA =====
   const loadData=useCallback(async(uid,role,bid)=>{
@@ -224,6 +231,23 @@ export function AppProvider({children}){
   },[promoPending,loadData]);
   
   const cancelPromoLogin=useCallback(()=>{setPromoPending(null)},[]);
+
+  // ===== OFFLINE SYNC TRIGGER =====
+  const triggerSync=useCallback(async()=>{
+    try{
+      const SUPA_URL='https://snosfxagzglswaotrgzv.supabase.co';
+      const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNub3NmeGFnemdsc3dhb3RyZ3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDcwMDAsImV4cCI6MjA5MDY4MzAwMH0.qS6lEKGJ6IRganQTcpB1sFtw90XDyK0BMaQKSTVLXKE';
+      const result=await syncPendingSales(SUPA_URL,SUPA_KEY,(progress)=>{
+        setPendingSyncCount(progress.total-progress.synced-progress.failed);
+      });
+      if(result.synced>0){
+        if(bizId){const freshSales=await safeSelect('sales',{eq:{business_id:bizId},order:{col:'created_at'}});if(freshSales.length)setSales(freshSales);}
+        window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
+      }
+      const newCount=await getPendingCount();
+      setPendingSyncCount(newCount);
+    }catch(e){console.warn('[Sync]',e);}
+  },[bizId]);
 
   // ===== AUTH =====
   const login=useCallback(async(email,password)=>{
