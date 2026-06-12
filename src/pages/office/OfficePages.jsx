@@ -65,7 +65,8 @@ export function OfficeDash({onReceipt}){
   const mProfit=Math.max(0,mCashProfit-returnProfit(mReturns.filter(r=>!r.was_credit)));
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   // ===== Matumizi ya LEO =====
-  const tExp=expenses.filter(e=>e.business_id===biz?.id&&e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+  const _today=new Date().toISOString().slice(0,10);
+  const tExp=expenses.filter(e=>e.business_id===biz?.id&&e.created_at?.startsWith(_today)).reduce((a,e)=>a+(e.amount||0),0);
   // ===== PESA YA BENKI = Mauzo - Matumizi (hii ndiyo muhudumu anaenda kubank) =====
   const tBankAmount=Math.max(0,tTotal-tExp);
   const isOff=user?.role==='office';
