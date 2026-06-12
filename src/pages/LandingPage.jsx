@@ -147,23 +147,27 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     {/* TESTIMONIALS */}
     <Section bg="#fff">
       <div style={{textAlign:'center',marginBottom:48}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#0B7A3B',letterSpacing:2,marginBottom:8}}>WATEJA WANASEMA</div>
-        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:0}}>Wajasiriamali Wanasifu</h2>
+        <div style={{display:'inline-block',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:20,padding:'4px 16px',fontSize:11,fontWeight:700,color:'#0B7A3B',letterSpacing:2,marginBottom:16}}>💬 WATEJA WANASEMA</div>
+        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Wajasiriamali Tanzania Wanaamini</h2>
+        <p style={{fontSize:16,color:'#64748B',margin:0}}>Zaidi ya wajasiriamali 500+ wanategemea Duka Langu kila siku</p>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:20}}>
         {[
-          {q:'"Nilikuwa nashindwa kujua faida halisi. Sasa Duka Langu inaniambia kila siku — naona pesa zinaingia wapi na zinakwenda wapi."',n:'Asha Mwakihaba',b:'Duka la Vipodozi, Mbeya',r:'⭐⭐⭐⭐⭐'},
-          {q:'"Nimepunguza wizi wa wafanyakazi kwa 90%. Kila mauzo yanarekodiwa — sasa najua kila kitu kinachoendelea kwenye duka langu."',n:'Hassan Juma',b:'Duka la Madawa, Dar',r:'⭐⭐⭐⭐⭐'},
-          {q:'"Mfumo umenisaidia kuuza bidhaa zaidi. Wateja wanapenda risiti za professional — wanahisi wanapata huduma ya hadhi."',n:'Mariam Said',b:'Boutique, Arusha',r:'⭐⭐⭐⭐⭐'},
-        ].map((t,i)=><div key={i} style={{padding:24,borderRadius:16,background:'linear-gradient(135deg,#F0FDF4,#FFFFFF)',border:'1px solid #BBF7D0'}}>
-          <div style={{fontSize:14,marginBottom:10}}>{t.r}</div>
-          <p style={{fontSize:14,color:'#1E293B',lineHeight:1.6,margin:'0 0 16px',fontStyle:'italic'}}>{t.q}</p>
-          <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:14,borderTop:'1px solid #E2E8F0'}}>
-            <div style={{width:42,height:42,borderRadius:'50%',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{t.n[0]}</div>
-            <div>
-              <div style={{fontWeight:700,fontSize:13,color:'#1E293B'}}>{t.n}</div>
-              <div style={{fontSize:11,color:'#64748B'}}>{t.b}</div>
+          {q:'Duka Langu imenisaidia kujua faida yangu halisi kila siku. Nilikuwa nadhani ninafanya vizuri, lakini baada ya kutumia mfumo nilifahamu wapi pesa zilikuwa zinaendelea kupotea. Sasa biashara yangu iko imara.',n:'Asha Mwakihaba',b:'Duka la Vipodozi, Mbeya',r:5,color:'#0B7A3B'},
+          {q:'Nimepunguza wizi wa wafanyakazi kwa 90%. Kila mauzo yanarekodiwa automatically — sasa najua kila kitu kinachoendelea kwenye duka langu saa yoyote hata nikiwa mbali.',n:'Hassan Juma',b:'Duka la Madawa, Dar es Salaam',r:5,color:'#8B5CF6'},
+          {q:'Bidhaa zangu za pembejeo zilikuwa zinakwisha bila kujua. Sasa mfumo unaniambia mapema niagize nini. Wateja wangu hawapotei tena kwa sababu ya kukosa bidhaa.',n:'Christina Mbwambo',b:'Duka la Pembejeo, Urambo',r:5,color:'#F59E0B'},
+          {q:'Mfumo umenisaidia kuuza bidhaa zaidi. Wateja wanapenda risiti za professional — wanahisi wanapata huduma ya hadhi ya kweli. Mapato yamepanda kwa 30%.',n:'Mariam Said',b:'Boutique ya Mavazi, Arusha',r:5,color:'#EC4899'},
+        ].map((t,i)=><div key={i} style={{padding:28,borderRadius:20,background:'#fff',border:'1px solid #E2E8F0',boxShadow:'0 4px 24px rgba(0,0,0,.06)',display:'flex',flexDirection:'column',gap:0,position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:4,background:`linear-gradient(90deg,${t.color},${t.color}88)`}}/>
+          <div style={{fontSize:28,marginBottom:12,marginTop:8}}>❝</div>
+          <p style={{fontSize:14,color:'#374151',lineHeight:1.75,margin:'0 0 20px',flex:1}}>{t.q}</p>
+          <div style={{display:'flex',alignItems:'center',gap:12,paddingTop:16,borderTop:'1px solid #F1F5F9'}}>
+            <div style={{width:46,height:46,borderRadius:'50%',background:`linear-gradient(135deg,${t.color},${t.color}88)`,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:18,flexShrink:0}}>{t.n[0]}</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:800,fontSize:13,color:'#1E293B'}}>{t.n}</div>
+              <div style={{fontSize:11,color:'#64748B',marginTop:2}}>{t.b}</div>
             </div>
+            <div style={{fontSize:13,letterSpacing:1}}>{'⭐'.repeat(t.r)}</div>
           </div>
         </div>)}
       </div>
@@ -222,12 +226,12 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
             <p style={{fontSize:12,lineHeight:1.6}}>Mfumo wa kisasa wa POS unaowasaidia wajasiriamali Tanzania kuendesha biashara kwa ufanisi.</p>
           </div>
           <div>
-            <div style={{fontSize:12,fontWeight:800,color:'#fff',marginBottom:14,letterSpacing:1}}>WASILIANA NASI</div>
-            <div style={{fontSize:12,lineHeight:1.8}}>
-              📞 +255 628 986 770<br/>
-              💬 +255 628 319 789<br/>
-              📧 pesafly1@gmail.com<br/>
-              🆘 0617 288 752
+            <div style={{fontSize:12,fontWeight:800,color:'#fff',marginBottom:14,letterSpacing:1}}>📬 WASILIANA NASI</div>
+            <div style={{fontSize:12,lineHeight:2}}>
+              <a href="https://wa.me/255628986770" target="_blank" rel="noreferrer" style={{color:'#BBF7D0',textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>💬 +255 628 986 770 <span style={{background:'#25D366',color:'#fff',fontSize:9,padding:'1px 5px',borderRadius:4,fontWeight:700}}>WhatsApp</span></a>
+              <a href="tel:+255628319789" style={{color:'#BBF7D0',textDecoration:'none'}}>📞 +255 628 319 789</a><br/>
+              <a href="mailto:dukalangusalesmanagement@gmail.com" style={{color:'#BBF7D0',textDecoration:'none'}}>📧 dukalangusalesmanagement@gmail.com</a><br/>
+              <a href="mailto:dukalangusupport@gmail.com" style={{color:'#BBF7D0',textDecoration:'none'}}>🆘 dukalangusupport@gmail.com</a>
             </div>
           </div>
           <div>
