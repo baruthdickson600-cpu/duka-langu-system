@@ -103,25 +103,7 @@ export function OfficeDash({onReceipt}){
     </div>}
 
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <div style={{background:'#fff',border:'2px solid #0B7A3B',borderRadius:14,padding:'14px 16px',minWidth:180,flex:1}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MAUZO YA LEO</div>
-        {/* Mauzo kamili */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-          <span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo</span>
-          <span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(tTotal)}</span>
-        </div>
-        {/* Matumizi */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #E2E8F0'}}>
-          <span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span>
-          <span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(tExp)}</span>
-        </div>
-        {/* Pesa ya Benki */}
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:12,fontWeight:800,color:'#1E293B'}}>💰 Mauzo Halisi (Baada ya Matumizi)</span>
-          <span style={{fontSize:18,fontWeight:900,color:tBankAmount>0?'#0B7A3B':'#EF4444'}}>{fm(tBankAmount)}</span>
-        </div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:6}}>{tCashSales.length} cash + {tCreditPayments.length} malipo ya deni</div>
-      </div>
+      <Stat icon={IC.cart} label="💵 Mauzo ya Leo" value={fm(tBankAmount)} color="#0B7A3B" sub={`${tCashSales.length} cash + ${tCreditPayments.length} malipo ya deni`}/>
       <Stat icon={IC.chart} label="Wiki Hii" value={fm(wTotal)} color="#3B82F6"/>
       {isOff&&tCreditSales.length>0&&<Stat icon={IC.warn} label="💳 Mikopo Leo" value={fm(tCreditSales.reduce((a,s)=>a+s.total,0))} color="#F59E0B" sub={`${tCreditSales.length} bidhaa zimekopwa`}/>}
       {isOff&&<Stat icon={IC.dollar} label="Faida Mwezi" value={fm(mProfit-mExp)} color={mProfit-mExp>=0?'#F59E0B':'#EF4444'}/>}
