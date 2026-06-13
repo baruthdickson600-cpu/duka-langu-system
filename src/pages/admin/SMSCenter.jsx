@@ -282,6 +282,8 @@ export function SMSCenterPage(){
     
     const payload={
       name:scheduleForm.name,
+      business_id:biz?.id||null,
+      created_by_user:user?.id||null,
       message,
       template,
       recipients:recipientsList,
