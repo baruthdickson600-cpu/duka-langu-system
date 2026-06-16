@@ -7,7 +7,7 @@ const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
 
 // ===== OFFICE DASHBOARD with Daily Report + Alerts =====
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[]}=useApp();
+  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   
   // Filter sales by period
