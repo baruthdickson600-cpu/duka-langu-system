@@ -188,8 +188,16 @@ export function OfficeDash({onReceipt}){
         ))}
       </div>}
 
-      {/* AI SMART INSIGHTS */}
-      {isOff&&aiInsights.length>0&&<div className="card" style={{borderLeft:'4px solid #3B82F6'}}>
+      {/* AI SMART INSIGHTS — Premium feature */}
+      {isOff&&!canUseFeature('ai_insights')&&<div className="card" style={{borderLeft:'4px solid #8B5CF6',background:'#FAF5FF'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <h3 style={{fontSize:14,fontWeight:700,margin:0,color:'#8B5CF6'}}>🤖 AI Uchambuzi wa Biashara</h3>
+          <span style={{background:'#8B5CF6',color:'#fff',fontSize:9,fontWeight:800,padding:'2px 8px',borderRadius:20}}>PREMIUM</span>
+        </div>
+        <p style={{fontSize:12,color:'#64748B',margin:'8px 0 10px'}}>Pata maoni ya AI kuhusu biashara yako — siku bora za mauzo, bidhaa zinazouza zaidi, hatari za madeni na zaidi.</p>
+        <button onClick={()=>alert('Wasiliana nasi kuboresha:\n📞 +255 628 986 770\n📧 dukalangusalesmanagement@gmail.com')} style={{background:'linear-gradient(135deg,#8B5CF6,#6D28D9)',color:'#fff',border:'none',borderRadius:8,padding:'8px 16px',fontWeight:700,fontSize:12,cursor:'pointer'}}>⬆️ Boresha hadi Premium — TSH 20,000/mwezi</button>
+      </div>}
+      {isOff&&aiInsights.length>0&&canUseFeature('ai_insights')&&<div className="card" style={{borderLeft:'4px solid #3B82F6'}}>
         <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#3B82F6'}}>🤖 Uchambuzi wa AI</h3>
         {aiInsights.map((ins,i)=>(
           <div key={i} style={{padding:'8px 10px',marginBottom:6,borderRadius:8,background:ins.type==='success'?'#F0FDF4':ins.type==='warning'?'#FFF7ED':ins.type==='danger'?'#FEF2F2':'#EFF6FF',display:'flex',gap:8,alignItems:'flex-start'}}>

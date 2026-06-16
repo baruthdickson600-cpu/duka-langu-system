@@ -256,9 +256,9 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:20,maxWidth:900,margin:'0 auto'}}>
         {[
-          {n:'BASIC',p:'15,000',f:['Mauzo','Stock automatic','Wafanyakazi 3','Ripoti za msingi','Branch 1','Msaada via WhatsApp'],c:'#64748B',pop:false},
-          {n:'PREMIUM',p:'25,000',f:['Yote ya Basic','Wafanyakazi 10','Branch 3','Ripoti za kina','SMS automatic','Madeni na invoice','Msaada wa simu'],c:'#0B7A3B',pop:true},
-          {n:'ENTERPRISE',p:'50,000',f:['Yote ya Premium','Wafanyakazi BILA UKOMO','Branch BILA UKOMO','API access','Custom features','Mafunzo ya bure','Priority support'],c:'#8B5CF6',pop:false},
+          {n:'BASIC',p:'15,000',sub:'Kifurushi cha Kuanza',f:['✅ Mauzo ya POS','✅ Usimamizi wa Stock','✅ Wateja & Madeni','✅ Matumizi','✅ Wafanyakazi 3','✅ Tawi 1','✅ Ripoti za Msingi','✅ Supervisors','✅ Arifa & Notification'],c:'#3B82F6',pop:false},
+          {n:'PREMIUM',p:'20,000',sub:'Biashara Inayokua',f:['🔵 Yote ya Basic','⭐ Matawi Mengi (hadi 10)','⭐ Wafanyakazi Wasio na Kikomo','⭐ Ripoti za Kina','⭐ AI Uchambuzi wa Biashara','⭐ SMS Center (Auto)','⭐ Export CSV & PDF','⭐ Priority Support'],c:'#8B5CF6',pop:true},
+          {n:'ENTERPRISE',p:'150,000',sub:'Biashara Kubwa',f:['🟣 Yote ya Premium','🏆 Matawi Yasio na Kikomo','🏆 API Integration','🏆 EFD/TRA Integration','🏆 Custom Reports','🏆 Dedicated Support','🏆 Mafunzo ya Bure','🏆 Multi-Admin'],c:'#F59E0B',pop:false},
         ].map((p,i)=><div key={i} style={{position:'relative',padding:28,borderRadius:18,background:'#fff',border:p.pop?`2px solid ${p.c}`:'1px solid #E2E8F0',boxShadow:p.pop?'0 12px 40px rgba(11,122,59,0.15)':'none',transform:p.pop?'scale(1.03)':'none'}}>
           {p.pop&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',padding:'4px 16px',background:p.c,color:'#fff',borderRadius:20,fontSize:11,fontWeight:800,letterSpacing:1}}>POPULAR</div>}
           <div style={{fontSize:13,fontWeight:800,color:p.c,letterSpacing:2}}>{p.n}</div>

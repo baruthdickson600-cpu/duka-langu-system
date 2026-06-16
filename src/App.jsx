@@ -140,7 +140,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,products,supabase,updateUserProfile}=useApp();
+  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,lang,setLang,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -227,7 +227,7 @@ export default function App(){
         case'agent_visits':return <SupervisorVisitsAdminPage/>;
         case'agent_targets':return <SupervisorTargetsPage/>;
         case'broadcast':return <BroadcastPage/>;
-        case'sms_center':return <SMSCenterPage/>;
+        case'sms_center':return <PlanGate feature='sms_center'><SMSCenterPage/></PlanGate>;
         case'live_chat':return <AdminChatPanel/>;
         case'security':return <SecurityPage/>;
         case'backup':return <BackupPage/>;
@@ -290,7 +290,7 @@ export default function App(){
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
       case'customers':return <CustomersPage/>;
-      case'analytics':return <ProductAnalyticsPage/>;
+      case'analytics':return <PlanGate feature='advanced_reports'><ProductAnalyticsPage/></PlanGate>;
       case'referral':return <ReferralPage/>;
       case'support':return <SupportPage/>;
       case'notifications':return <NotifsPage/>;
@@ -379,7 +379,7 @@ export default function App(){
           <div style={{flex:1,textAlign:'left',overflow:'hidden'}}>
             <div style={{fontSize:12,fontWeight:700,color:'#fff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</div>
             <div style={{display:'flex',alignItems:'center',gap:4,marginTop:2}}>
-              <span style={{background:roleColor,color:'#fff',fontSize:9,fontWeight:800,padding:'1px 6px',borderRadius:6,textTransform:'uppercase',letterSpacing:.5}}>{roleLabel}</span>
+              <span style={{background:roleColor,color:'#fff',fontSize:9,fontWeight:800,padding:'1px 6px',borderRadius:6,textTransform:'uppercase',letterSpacing:.5}}>{roleLabel}</span>{role==='office'&&<span style={{background:currentPlan?.color||'#3B82F6',color:'#fff',fontSize:9,fontWeight:800,padding:'1px 6px',borderRadius:6,textTransform:'uppercase',letterSpacing:.5}}>{currentPlan?.name||'BASIC'}</span>}
             </div>
           </div>
           <span style={{color:'rgba(255,255,255,.5)',fontSize:12}}>✏️</span>
@@ -491,6 +491,35 @@ function ProfileModal({user, updateUserProfile, onClose}){
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================
+// UPGRADE PROMPT — Inaonyeshwa wakati Basic user anataka Premium feature
+// ============================================================
+export function PlanGate({feature, children, fallback}){
+  const{canUseFeature, currentPlan, PLANS}=useApp();
+  if(canUseFeature(feature)) return children;
+  if(fallback) return fallback;
+  const needed = feature==='ai_insights'||feature==='advanced_reports'||feature==='sms_center'||feature==='unlimited_employees'||feature==='export' ? 'premium' : 'enterprise';
+  const plan = PLANS[needed];
+  return (
+    <div style={{background:'linear-gradient(135deg,#F8FAFC,#EFF6FF)',border:'2px dashed #BFDBFE',borderRadius:16,padding:32,textAlign:'center',maxWidth:480,margin:'40px auto'}}>
+      <div style={{fontSize:48,marginBottom:12}}>{plan?.icon||'🔒'}</div>
+      <h3 style={{fontSize:20,fontWeight:900,color:'#1E293B',margin:'0 0 8px'}}>Inahitaji {plan?.name} au zaidi</h3>
+      <p style={{fontSize:14,color:'#64748B',margin:'0 0 20px',lineHeight:1.6}}>
+        Kipengele hiki kinahitaji kifurushi cha <strong>{plan?.name}</strong> (TSH {(plan?.price||0).toLocaleString()}/mwezi).<br/>
+        Pia unapata: {plan?.features?.slice(1,4).join(', ')}.
+      </p>
+      <div style={{background:'#fff',borderRadius:12,padding:'12px 16px',marginBottom:20,border:'1px solid #E2E8F0',textAlign:'left'}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:8}}>KIFURUSHI CHAKO SASA: {currentPlan?.name?.toUpperCase()}</div>
+        {plan?.features?.map((f,i)=><div key={i} style={{fontSize:12,color:'#374151',padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{color:'#0B7A3B'}}>✓</span>{f}</div>)}
+      </div>
+      <button onClick={()=>alert('Wasiliana nasi kuboresha:\n📞 +255 628 986 770 (WhatsApp)\n📧 dukalangusalesmanagement@gmail.com')}
+        style={{background:`linear-gradient(135deg,${plan?.color||'#8B5CF6'},${plan?.color||'#8B5CF6'}cc)`,color:'#fff',border:'none',borderRadius:12,padding:'12px 28px',fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:`0 4px 20px ${plan?.color||'#8B5CF6'}44`}}>
+        ⬆️ Boresha hadi {plan?.name} — TSH {(plan?.price||0).toLocaleString()}/mwezi
+      </button>
     </div>
   );
 }

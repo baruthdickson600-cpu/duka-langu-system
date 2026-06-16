@@ -52,6 +52,46 @@ export function AppProvider({children}){
   const[notifications,setNotifs]=useState([]);
   const[stockHistory,setSH]=useState([]);
   const[loginLogs,setLogs]=useState([]);
+
+  // ===== PLAN DEFINITIONS =====
+  const PLANS={
+    basic:{
+      name:'Basic',price:15000,color:'#3B82F6',icon:'🟦',
+      features:['Mauzo ya POS','Usimamizi wa Stock','Wateja & Madeni','Matumizi','Wafanyakazi 3','Tawi 1','Ripoti za Msingi','Supervisors'],
+      limits:{employees:3,branches:1,products:200,customers:500},
+    },
+    premium:{
+      name:'Premium',price:20000,color:'#8B5CF6',icon:'🟣',
+      features:['Yote ya Basic','Matawi Mengi (hadi 10)','Wafanyakazi Wasio na Kikomo','Ripoti za Kina','AI Uchambuzi','SMS Center','Export CSV/PDF','Priority Support'],
+      limits:{employees:999,branches:10,products:2000,customers:9999},
+    },
+    enterprise:{
+      name:'Enterprise',price:150000,color:'#F59E0B',icon:'🟡',
+      features:['Yote ya Premium','Matawi Yasio na Kikomo','API Integration','Custom Reports','Dedicated Support','Training ya Bure','Multi-Admin','EFD/TRA Integration'],
+      limits:{employees:9999,branches:999,products:99999,customers:99999},
+    },
+  };
+  const currentPlan=PLANS[biz?.plan||'basic']||PLANS.basic;
+  const isPremium=(biz?.plan==='premium'||biz?.plan==='enterprise');
+  const isEnterprise=biz?.plan==='enterprise';
+  const isBasic=!isPremium;
+  // Check if feature is available on current plan
+  const canUseFeature=useCallback((feature)=>{
+    if(user?.role==='admin')return true;
+    const plan=biz?.plan||'basic';
+    const featureMap={
+      branches:['premium','enterprise'],
+      ai_insights:['premium','enterprise'],
+      sms_center:['premium','enterprise'],
+      advanced_reports:['premium','enterprise'],
+      unlimited_employees:['premium','enterprise'],
+      export:['premium','enterprise'],
+      api:['enterprise'],
+      efd:['enterprise'],
+      multi_admin:['enterprise'],
+    };
+    return featureMap[feature]?featureMap[feature].includes(plan):true;
+  },[user,biz]);
   const[settings,setSettings]=useState({system_price:'15000',trial_days:'5',payment_number:'25187616',payment_name:'DUKALANGU',payment_provider:'HALOPESA',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
   const[popups,setPopups]=useState([]);
   const[systemLogs,setSysLogs]=useState([]);
@@ -692,7 +732,7 @@ export function AppProvider({children}){
     const bizSetting=settings[`branch_biz_${bizId}`];
     if(bizSetting==='true')return true;
     // Plan-based: premium and enterprise = yes, basic and trial = no
-    if(biz?.plan==='premium'||biz?.plan==='enterprise')return true;
+    if(isPremium)return true;
     return false;
   },[user,settings,biz,bizId]);
 
@@ -1877,6 +1917,7 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
+    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }
