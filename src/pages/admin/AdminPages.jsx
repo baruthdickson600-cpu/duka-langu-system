@@ -345,7 +345,9 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
             <button onClick={()=>toggleBranch(b.id)} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isBranchOn(b.id)?'#F0FDF4':'#F1F5F9',color:isBranchOn(b.id)?'#0B7A3B':'#94A3B8',fontWeight:700,cursor:'pointer'}}>🏪{isBranchOn(b.id)?'ON':'OFF'}</button>
-            <button onClick={()=>toggleWholesale(b.id)} title="Washa/Zima Bei ya Jumla na Rejareja" style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isWholesaleOn(b.id)?'#FFF7ED':'#F1F5F9',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:700,cursor:'pointer'}}>{isWholesaleOn(b.id)?'🏷️ JML: ON':'🏷️ JML: OFF'}</button>
+            <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',background:isWholesaleOn(b.id)?'#FFF7ED':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
+              {isWholesaleOn(b.id)?<>🏷️ Jumla: <span style={{color:'#16A34A'}}>ON</span></>:<>🏷️ Jumla: <span>OFF</span></>}
+            </button>
             <Btn v={b.is_suspended?'primary':'warning'} style={{padding:'5px 8px',fontSize:10}} onClick={()=>suspendBiz(b.id,!b.is_suspended)}>{b.is_suspended?'Fungua':'Funga'}</Btn>
           </div>
         </div>;
@@ -382,6 +384,29 @@ export function StoresPage(){
               <div style={{fontSize:13,marginBottom:4}}>💰 Mapato: <b>TZS {st.revenue.toLocaleString()}</b></div>
               <div style={{fontSize:13,marginBottom:4}}>👥 Staff: <b>{st.employees}</b> | 🏪 Matawi: <b>{st.branches}</b></div>
               {st.lastLogin&&<div style={{fontSize:13}}>🔑 Login: {fmtDate(st.lastLogin)}</div>}
+            </div>
+          </div>
+
+          {/* === FEATURES MAALUM === */}
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>⚙️ Features Maalum</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              {/* Wholesale Toggle */}
+              <div style={{background:isWholesaleOn(detail.id)?'#FFF7ED':'#F8FAFC',border:isWholesaleOn(detail.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏷️ BEI YA JUMLA</div>
+                <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kuuza kwa bei ya jumla na rejareja</div>
+                <button onClick={()=>toggleWholesale(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isWholesaleOn(detail.id)?'#C2410C':'#0B7A3B',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                  {isWholesaleOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
+                </button>
+              </div>
+              {/* Branch Toggle */}
+              <div style={{background:isBranchOn(detail.id)?'#F0FDF4':'#F8FAFC',border:isBranchOn(detail.id)?'1.5px solid #0B7A3B':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏪 MATAWI</div>
+                <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kusimamia matawi mengi</div>
+                <button onClick={()=>toggleBranch(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isBranchOn(detail.id)?'#0B7A3B':'#64748B',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                  {isBranchOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
+                </button>
+              </div>
             </div>
           </div>
 

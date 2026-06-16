@@ -694,7 +694,7 @@ export function AppProvider({children}){
     const bizSetting=settings[`branch_biz_${bizId}`];
     if(bizSetting==='true')return true;
     // Plan-based: premium and enterprise = yes, basic and trial = no
-    if(isPremium)return true;
+    if(biz?.plan==='premium'||biz?.plan==='enterprise')return true;
     return false;
   },[user,settings,biz,bizId]);
 
