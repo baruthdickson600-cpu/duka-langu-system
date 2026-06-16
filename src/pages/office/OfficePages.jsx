@@ -233,13 +233,24 @@ export function OfficeDash({onReceipt}){
 
 // ===== POS / SALES =====
 export function SalesPage({onDone}){
-  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch}=useApp();
+  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
   const[custId,setCustId]=useState('');const[newCustModal,setNewCustModal]=useState(false);const[newCustName,setNewCustName]=useState('');const[newCustPhone,setNewCustPhone]=useState('');
   const[processing,setProcessing]=useState(false);
   const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);const total=Math.max(0,subtotal-discount);
-  const addToCart=p=>{if(processing)return;const ex=cart.find(c=>c.productId===p.id);if(ex){if(ex.qty>=p.quantity)return alert('Stock haitoshi!');setCart(cart.map(c=>c.productId===p.id?{...c,qty:c.qty+1}:c))}else setCart([...cart,{productId:p.id,name:p.name,price:p.sell_price,buyPrice:p.buy_price,qty:1,fraction:1,fractionLabel:'Nzima',image:p.image}])};
+  const addToCart=(p,useWholesale=false)=>{
+    if(processing)return;
+    const price=useWholesale&&p.wholesale_price?p.wholesale_price:p.sell_price;
+    const priceType=useWholesale&&p.wholesale_price?'jumla':'rejareja';
+    const ex=cart.find(c=>c.productId===p.id&&c.priceType===priceType);
+    if(ex){
+      if(ex.qty>=p.quantity)return alert('Stock haitoshi!');
+      setCart(cart.map(c=>c.productId===p.id&&c.priceType===priceType?{...c,qty:c.qty+1}:c));
+    } else {
+      setCart([...cart,{productId:p.id,name:p.name,price,buyPrice:p.buy_price,qty:1,fraction:1,fractionLabel:'Nzima',image:p.image,priceType,wholesaleMinQty:p.wholesale_min_qty||5}]);
+    }
+  };
   
   // Fraction options for selling
   const FRACTIONS=[
@@ -289,8 +300,18 @@ export function SalesPage({onDone}){
       <input placeholder="🔍 Tafuta..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:10,outline:'none',boxSizing:'border-box',background:'#F8FAFC'}}/>
       <div style={{maxHeight:450,overflowY:'auto'}}>{avail.map(p=><div key={p.id} onClick={()=>addToCart(p)} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',cursor:processing?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:10,borderRadius:8,opacity:processing?0.5:1}}>
         <span style={{fontSize:28}}>{p.image||'📦'}</span>
-        <div style={{flex:1}}><div style={{fontWeight:600,fontSize:13}}>{p.name}</div><div style={{fontSize:12,color:'#64748B'}}>{fm(p.sell_price)} • Stock: {p.quantity}</div></div>
-        <span style={{color:'#0B7A3B',fontSize:24,fontWeight:700}}>+</span>
+        <div style={{flex:1}}>
+            <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+            <div style={{fontSize:11,color:'#64748B'}}>
+              🛒 {fm(p.sell_price)}
+              {hasWholesale&&p.wholesale_price&&<span style={{color:'#C2410C',marginLeft:8}}>📦 {fm(p.wholesale_price)}</span>}
+              <span style={{marginLeft:6}}>• Stock: {p.quantity}</span>
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:3}} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>addToCart(p,false)} style={{padding:'3px 8px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>+ Rejareja</button>
+            {hasWholesale&&p.wholesale_price&&<button onClick={()=>addToCart(p,true)} style={{padding:'3px 8px',background:'#C2410C',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>+ Jumla</button>}
+          </div>
       </div>)}{!avail.length&&<Empty icon="📦" text="Hakuna"/>}</div>
     </div>
     <div className="card">
@@ -385,14 +406,15 @@ export function SalesPage({onDone}){
 
 // ===== PRODUCTS =====
 export function ProductsPage(){
-  const{products,addProduct,updateProduct,deleteProduct,bizId,activeBranch}=useApp();
+  const{products,addProduct,updateProduct,deleteProduct,bizId,activeBranch,hasWholesale}=useApp();
   const myProds=products.filter(p=>p.business_id===bizId&&(!activeBranch||p.branch_id===activeBranch));
   const[search,setSearch]=useState('');const[modal,setModal]=useState({open:false,data:null});
   const[dupErr,setDupErr]=useState('');
   const filtered=myProds.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()));
   const ProdForm=({init={},onSave})=>{
-    const[f,setF]=useState({name:init.name||'',unit:init.unit||'Piece',category:init.category||'Vyakula',image:init.image||'📦',buy_price:init.buy_price||'',sell_price:init.sell_price||'',quantity:init.quantity||'',min_stock:init.min_stock||5,expiry_date:init.expiry_date||''});
+    const[f,setF]=useState({name:init.name||'',unit:init.unit||'Piece',category:init.category||'Vyakula',image:init.image||'📦',buy_price:init.buy_price||'',sell_price:init.sell_price||'',wholesale_price:init.wholesale_price||'',wholesale_min_qty:init.wholesale_min_qty||'5',quantity:init.quantity||'',min_stock:init.min_stock||5,expiry_date:init.expiry_date||''});
     const margin=f.buy_price&&f.sell_price?((f.sell_price-f.buy_price)/f.sell_price*100).toFixed(1):null;
+    const wMargin=f.buy_price&&f.wholesale_price?((f.wholesale_price-f.buy_price)/f.wholesale_price*100).toFixed(1):null;
     return <div>
       <div style={{marginBottom:12}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Emoji</label><div style={{display:'flex',flexWrap:'wrap',gap:5}}>{EMOJIS.map(e=><button key={e} onClick={()=>setF({...f,image:e})} style={{fontSize:20,padding:5,borderRadius:8,border:f.image===e?'2px solid #0B7A3B':'1px solid #E2E8F0',background:f.image===e?'#F0FDF4':'#fff',cursor:'pointer'}}>{e}</button>)}</div></div>
       <Input label="Jina" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Sukari"/>
@@ -484,20 +506,35 @@ export function ProductsPage(){
           {value:'Nyingine',label:'📦 Nyingine/Other'},
         ]}/>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        <Input label="Bei Kununua" type="number" value={f.buy_price} onChange={e=>setF({...f,buy_price:e.target.value})}/>
-        <Input label="Bei Kuuza" type="number" value={f.sell_price} onChange={e=>setF({...f,sell_price:e.target.value})}/>
+      {/* === BEI YA REJAREJA === */}
+      <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 12px',marginBottom:10,border:'1.5px solid #BBF7D0'}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#0B7A3B',marginBottom:8}}>🛒 BEI YA REJAREJA (Kawaida)</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <Input label="Bei Kununua" type="number" value={f.buy_price} onChange={e=>setF({...f,buy_price:e.target.value})}/>
+          <Input label="Bei Kuuza (Rejareja)" type="number" value={f.sell_price} onChange={e=>setF({...f,sell_price:e.target.value})}/>
+        </div>
+        {margin!==null&&<div style={{background:margin<15?'#FEF2F2':margin<25?'#FFF7ED':'#F0FDF4',borderRadius:8,padding:'5px 10px',marginTop:6,fontSize:11,fontWeight:600,color:margin<15?'#B91C1C':margin<25?'#92400E':'#15803D'}}>
+          Faida Rejareja: {margin}% {margin<15?'⚠️ Ndogo sana!':margin<25?'⚡ Wastani':'✅ Nzuri'}
+        </div>}
       </div>
-      {/* PROFIT MARGIN ALERT */}
-      {margin!==null&&<div style={{background:margin<15?'#FEF2F2':margin<25?'#FFF7ED':'#F0FDF4',borderRadius:8,padding:'6px 10px',marginBottom:10,fontSize:12,fontWeight:600,color:margin<15?'#B91C1C':margin<25?'#92400E':'#15803D'}}>
-        Faida: {margin}% {margin<15?'⚠️ Ndogo sana!':margin<25?'⚡ Wastani':'✅ Nzuri'}
+      {/* === BEI YA JUMLA — inaonyeshwa tu kama feature imewashwa === */}
+      {hasWholesale&&<div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 12px',marginBottom:10,border:'1.5px solid #FED7AA'}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#C2410C',marginBottom:8}}>📦 BEI YA JUMLA (Wholesale)</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <Input label="Bei Kuuza (Jumla)" type="number" value={f.wholesale_price} onChange={e=>setF({...f,wholesale_price:e.target.value})} placeholder="Bei nafuu zaidi"/>
+          <Input label="Kiwango Kidogo (Qty)" type="number" value={f.wholesale_min_qty} onChange={e=>setF({...f,wholesale_min_qty:e.target.value})} placeholder="5"/>
+        </div>
+        {wMargin!==null&&<div style={{background:'#FFF7ED',borderRadius:8,padding:'5px 10px',marginTop:6,fontSize:11,fontWeight:600,color:'#92400E'}}>
+          Faida Jumla: {wMargin}% • Bei ya jumla ikipungua chini ya {f.wholesale_min_qty||5} vipande → itumia bei ya rejareja
+        </div>}
+        {!f.wholesale_price&&<div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>💡 Acha tupu kama bidhaa hii haina bei ya jumla</div>}
       </div>}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
         <Input label="Kiasi" type="number" value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value})}/>
         <Input label="Min Stock" type="number" value={f.min_stock} onChange={e=>setF({...f,min_stock:e.target.value})}/>
       </div>
       <Input label="Expiry Date" type="date" value={f.expiry_date} onChange={e=>setF({...f,expiry_date:e.target.value})}/>
-      <Btn onClick={()=>{if(!f.name||!f.buy_price||!f.sell_price)return alert('Jaza!');onSave({...f,buy_price:+f.buy_price,sell_price:+f.sell_price,quantity:+f.quantity||0,min_stock:+f.min_stock||5,expiry_date:f.expiry_date||null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi</Btn>
+      <Btn onClick={()=>{if(!f.name||!f.buy_price||!f.sell_price)return alert('Jaza!');onSave({...f,buy_price:+f.buy_price,sell_price:+f.sell_price,wholesale_price:f.wholesale_price?+f.wholesale_price:null,wholesale_min_qty:f.wholesale_min_qty?+f.wholesale_min_qty:5,quantity:+f.quantity||0,min_stock:+f.min_stock||5,expiry_date:f.expiry_date||null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi</Btn>
     </div>;
   };
   return <div>

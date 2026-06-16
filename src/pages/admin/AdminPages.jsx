@@ -273,6 +273,8 @@ export function StoresPage(){
 
   const isBranchOn=(bid)=>settings[`branch_biz_${bid}`]==='true';
   const toggleBranch=async(bid)=>{const k=`branch_biz_${bid}`;await updateSetting(k,settings[k]==='true'?'false':'true')};
+  const isWholesaleOn=(bid)=>settings[`wholesale_biz_${bid}`]==='true';
+  const toggleWholesale=async(bid)=>{const k=`wholesale_biz_${bid}`;await updateSetting(k,settings[k]==='true'?'false':'true');};
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
   const getBizStats=(bid)=>{
     const p=products.filter(x=>x.business_id===bid).length;
@@ -343,6 +345,7 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
             <button onClick={()=>toggleBranch(b.id)} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isBranchOn(b.id)?'#F0FDF4':'#F1F5F9',color:isBranchOn(b.id)?'#0B7A3B':'#94A3B8',fontWeight:700,cursor:'pointer'}}>🏪{isBranchOn(b.id)?'ON':'OFF'}</button>
+            <button onClick={()=>toggleWholesale(b.id)} title="Washa/Zima Bei ya Jumla na Rejareja" style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isWholesaleOn(b.id)?'#FFF7ED':'#F1F5F9',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:700,cursor:'pointer'}}>{isWholesaleOn(b.id)?'🏷️ JML: ON':'🏷️ JML: OFF'}</button>
             <Btn v={b.is_suspended?'primary':'warning'} style={{padding:'5px 8px',fontSize:10}} onClick={()=>suspendBiz(b.id,!b.is_suspended)}>{b.is_suspended?'Fungua':'Funga'}</Btn>
           </div>
         </div>;

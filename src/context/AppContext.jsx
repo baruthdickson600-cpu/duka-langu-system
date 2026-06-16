@@ -738,6 +738,11 @@ export function AppProvider({children}){
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
+  // ===== WHOLESALE FEATURE =====
+  const hasWholesale=useMemo(()=>{
+    if(user?.role==='admin')return false; // admin hana duka lake
+    return settings[`wholesale_biz_${bizId}`]==='true';
+  },[settings,bizId,user]);
   // Max branches for this plan
   const maxBranches=useMemo(()=>{
     if(biz?.plan==='enterprise')return 999;
@@ -1917,7 +1922,7 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     otpPending,otpSending,sendOTP,verifyOTP,cancelOTP,promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
-    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,
+    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,hasWholesale,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }
