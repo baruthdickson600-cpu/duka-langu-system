@@ -10,7 +10,7 @@ const todayStr=()=>new Date().toISOString().split('T')[0];
 const ADMIN_EMAIL='baruthdickson600@gmail.com';
 const ADMIN_PASS='baruth@500';
 
-async function safeInsert(t,d){try{const r=await supabase.from(t).insert(d).select();if(r.error){console.warn('Insert:',t,r.error.message);return null}return r?.data?.[0]||null}catch(e){console.warn('DB:',e);return null}}
+async function safeInsert(t,d){try{const r=await supabase.from(t).insert(d).select();if(r.error){console.error('[safeInsert ERROR]',t,r.error.message,r.error);return{__error:true,message:r.error.message}}return r?.data?.[0]||null}catch(e){console.error('[safeInsert CATCH]',t,e);return{__error:true,message:e.message}}}
 async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).eq(c,v);if(r.error)console.warn('Update:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
@@ -408,7 +408,18 @@ export function AppProvider({children}){
     if(existing){
       return{success:false,duplicate:true,error:`Bidhaa "${existing.name}" ipo tayari kwenye mfumo! Badilisha jina au ongeza stock ya bidhaa hiyo.`};
     }
-    const d=await safeInsert('products',{...p,business_id:bizId,branch_id:activeBranch||null});
+    // Strip wholesale fields — ziongezwe tu kama DB ina columns hizo
+    const{wholesale_price,wholesale_min_qty,...baseProduct}=p;
+    // Jaribu na wholesale fields kwanza
+    let d=await safeInsert('products',{...p,business_id:bizId,branch_id:activeBranch||null});
+    // Kama imeshindwa kwa sababu ya wholesale columns — jaribu bila yao
+    if(d?.__error){
+      console.warn('[addProduct] Trying without wholesale fields...');
+      d=await safeInsert('products',{...baseProduct,business_id:bizId,branch_id:activeBranch||null});
+    }
+    if(d?.__error){
+      return{success:false,error:`Tatizo la kuhifadhi: ${d.message}`};
+    }
     const newProd=d||{...p,id:genId(),business_id:bizId,branch_id:activeBranch,created_at:nowISO()};
     setProds(prev=>sortProducts([...prev,newProd]));
     return{success:true,product:newProd};
