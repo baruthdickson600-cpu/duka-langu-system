@@ -258,7 +258,7 @@ export function AdminDashboard(){
 
 // ===== STORES (with Customer Detail Card) =====
 export function StoresPage(){
-  const{businesses,suspendBiz,deleteBiz,updateBiz,updateSetting,settings,quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,promoCodes,loginLogs,sales,products,employees,branches}=useApp();
+  const{businesses,suspendBiz,deleteBiz,updateBiz,updateSetting,settings,quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,promoCodes,loginLogs,sales,products,employees,branches,supabase}=useApp();
   const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');
   const[detail,setDetail]=useState(null);
   const[extendDays,setExtendDays]=useState('30');
@@ -274,7 +274,13 @@ export function StoresPage(){
   const isBranchOn=(bid)=>settings[`branch_biz_${bid}`]==='true';
   const toggleBranch=async(bid)=>{const k=`branch_biz_${bid}`;await updateSetting(k,settings[k]==='true'?'false':'true')};
   const isWholesaleOn=(bid)=>settings[`wholesale_biz_${bid}`]==='true';
-  const toggleWholesale=async(bid)=>{const k=`wholesale_biz_${bid}`;await updateSetting(k,settings[k]==='true'?'false':'true');};
+  const toggleWholesale=async(bid)=>{
+    const k=`wholesale_biz_${bid}`;
+    const newVal=settings[k]==='true'?'false':'true';
+    await updateSetting(k,newVal);
+    // Hifadhi pia kwenye businesses table ili office users waone
+    await supabase.from('businesses').update({wholesale_enabled:newVal==='true'}).eq('id',bid);
+  };
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
   const getBizStats=(bid)=>{
     const p=products.filter(x=>x.business_id===bid).length;

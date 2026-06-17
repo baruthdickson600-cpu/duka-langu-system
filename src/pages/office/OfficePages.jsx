@@ -290,20 +290,25 @@ export function SalesPage({onDone}){
     <div className="card">
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 10px'}}>Chagua Bidhaa</h3>
       <input placeholder="🔍 Tafuta..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:10,outline:'none',boxSizing:'border-box',background:'#F8FAFC'}}/>
-      <div style={{maxHeight:450,overflowY:'auto'}}>{avail.map(p=><div key={p.id} onClick={()=>addToCart(p)} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',cursor:processing?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:10,borderRadius:8,opacity:processing?0.5:1}}>
-        <span style={{fontSize:28}}>{p.image||'📦'}</span>
-        <div style={{flex:1}}>
-            <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
-            <div style={{fontSize:11,color:'#64748B'}}>
-              🛒 {fm(p.sell_price)}
-              {hasWholesale&&p.wholesale_price&&<span style={{color:'#C2410C',marginLeft:8}}>📦 {fm(p.wholesale_price)}</span>}
-              <span style={{marginLeft:6}}>• Stock: {p.quantity}</span>
-            </div>
+      <div style={{maxHeight:450,overflowY:'auto'}}>{avail.map(p=><div key={p.id} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,borderRadius:8,opacity:processing?0.5:1}}>
+        <span style={{fontSize:28,cursor:processing?'not-allowed':'pointer'}} onClick={()=>!processing&&addToCart(p,false)}>{p.image||'📦'}</span>
+        <div style={{flex:1,cursor:processing?'not-allowed':'pointer'}} onClick={()=>!processing&&addToCart(p,false)}>
+          <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+          <div style={{fontSize:11,color:'#64748B'}}>
+            {hasWholesale&&p.wholesale_price
+              ?<><span style={{color:'#0B7A3B'}}>🛒 {fm(p.sell_price)}</span><span style={{color:'#C2410C',marginLeft:6}}>📦 {fm(p.wholesale_price)}</span></>
+              :<span>{fm(p.sell_price)}</span>
+            }
+            <span style={{marginLeft:6}}>• Stock: {p.quantity}</span>
           </div>
-          <div style={{display:'flex',flexDirection:'column',gap:3}} onClick={e=>e.stopPropagation()}>
-            <button onClick={()=>addToCart(p,false)} style={{padding:'3px 8px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>+ Rejareja</button>
-            {hasWholesale&&p.wholesale_price&&<button onClick={()=>addToCart(p,true)} style={{padding:'3px 8px',background:'#C2410C',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer'}}>+ Jumla</button>}
+        </div>
+        {hasWholesale&&p.wholesale_price
+          ?<div style={{display:'flex',flexDirection:'column',gap:3}} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>!processing&&addToCart(p,false)} style={{padding:'3px 8px',background:'#0B7A3B',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>+ Rejareja</button>
+            <button onClick={()=>!processing&&addToCart(p,true)} style={{padding:'3px 8px',background:'#C2410C',color:'#fff',border:'none',borderRadius:5,fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>+ Jumla</button>
           </div>
+          :<span style={{color:'#0B7A3B',fontSize:24,fontWeight:700,cursor:'pointer'}} onClick={()=>!processing&&addToCart(p,false)}>+</span>
+        }
       </div>)}{!avail.length&&<Empty icon="📦" text="Hakuna"/>}</div>
     </div>
     <div className="card">

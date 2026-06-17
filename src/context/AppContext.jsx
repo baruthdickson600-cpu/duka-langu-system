@@ -752,9 +752,13 @@ export function AppProvider({children}){
 
   // ===== WHOLESALE FEATURE =====
   const hasWholesale=useMemo(()=>{
-    if(user?.role==='admin')return false; // admin hana duka lake
-    return settings[`wholesale_biz_${bizId}`]==='true';
-  },[settings,bizId,user]);
+    if(user?.role==='admin')return false;
+    // Angalia settings (admin anaweza kusoma) AU businesses.wholesale_enabled
+    const fromSettings=settings[`wholesale_biz_${bizId}`]==='true';
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    const fromBiz=myBiz?.wholesale_enabled===true||myBiz?.wholesale_enabled==='true';
+    return fromSettings||fromBiz;
+  },[settings,bizId,user,biz]);
   // Max branches for this plan
   const maxBranches=useMemo(()=>{
     if(biz?.plan==='enterprise')return 999;
