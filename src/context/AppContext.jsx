@@ -741,7 +741,6 @@ export function AppProvider({children}){
       branches:['premium','enterprise'],
       ai_insights:['premium','enterprise'],
       sms_center:['premium','enterprise'],
-      advanced_reports:['premium','enterprise'],
       unlimited_employees:['premium','enterprise'],
       export:['premium','enterprise'],
       api:['enterprise'],

@@ -290,7 +290,7 @@ export default function App(){
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
       case'customers':return <CustomersPage/>;
-      case'analytics':return <PlanGate feature='advanced_reports'><ProductAnalyticsPage/></PlanGate>;
+      case'analytics':return <ProductAnalyticsPage/>;
       case'referral':return <ReferralPage/>;
       case'support':return <SupportPage/>;
       case'notifications':return <NotifsPage/>;
@@ -502,7 +502,7 @@ export function PlanGate({feature, children, fallback}){
   const{canUseFeature, currentPlan, PLANS}=useApp();
   if(canUseFeature(feature)) return children;
   if(fallback) return fallback;
-  const needed = feature==='ai_insights'||feature==='advanced_reports'||feature==='sms_center'||feature==='unlimited_employees'||feature==='export' ? 'premium' : 'enterprise';
+  const needed = feature==='ai_insights'||feature==='sms_center'||feature==='unlimited_employees'||feature==='export' ? 'premium' : 'enterprise';
   const plan = PLANS[needed];
   return (
     <div style={{background:'linear-gradient(135deg,#F8FAFC,#EFF6FF)',border:'2px dashed #BFDBFE',borderRadius:16,padding:32,textAlign:'center',maxWidth:480,margin:'40px auto'}}>
