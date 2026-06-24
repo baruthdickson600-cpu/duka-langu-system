@@ -3,7 +3,7 @@
 // PWA Offline + Background Sync ya Mauzo
 // ============================================================
 
-const VERSION = 'v7.0.0';
+const VERSION = 'v8.0.0';
 const STATIC_CACHE = `duka-static-${VERSION}`;
 const DYNAMIC_CACHE = `duka-dynamic-${VERSION}`;
 

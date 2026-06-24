@@ -385,24 +385,25 @@
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
             console.log('✅ SW registered');
-            setInterval(() => reg.update(), 60 * 60 * 1000);
-            
+            // Check for updates every 30 minutes
+            setInterval(() => reg.update(), 30 * 60 * 1000);
+            // Also check immediately
+            reg.update();
+
             reg.addEventListener('updatefound', () => {
               const newSW = reg.installing;
               if (newSW) {
                 newSW.addEventListener('statechange', () => {
-                  if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                    if (confirm('🆕 Toleo jipya la mfumo limepatikana! Fungua tena ili kupata?')) {
-                      newSW.postMessage({ type: 'SKIP_WAITING' });
-                      window.location.reload();
-                    }
+                  if (newSW.state === 'installed') {
+                    // Auto-update without asking — send skipWaiting immediately
+                    newSW.postMessage({ type: 'SKIP_WAITING' });
                   }
                 });
               }
             });
           })
           .catch((err) => console.warn('SW registration failed:', err));
-        
+
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) { refreshing = true; window.location.reload(); }

@@ -405,7 +405,7 @@ export default function App(){
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {!online&&<Badge color="#F59E0B">📡 Offline</Badge>}
-          {pendingSyncCount>0&&<button onClick={triggerSync} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F59E0B',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+          {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F59E0B',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⏳ {pendingSyncCount} pending
           </button>}
           {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
