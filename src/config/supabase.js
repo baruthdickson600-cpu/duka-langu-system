@@ -12,21 +12,45 @@ export const supabase = createClient(URL, KEY, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storageKey: 'duka-langu-auth-v2', // Unique key to avoid conflicts
-    lock: async (name, _acquireTimeout, fn) => {
-      // Skip the navigator lock to avoid "another request stole it" errors
-      // when multiple tabs are open
-      try {
-        return await fn();
-      } catch (e) {
-        console.warn('[Auth lock skipped]', e?.message);
-        return await fn();
-      }
-    },
+    storageKey: 'duka-langu-auth-v2',
   },
   global: {
-    headers: {
-      'x-app-name': 'duka-langu',
-    },
+    headers: { 'x-app-name': 'duka-langu' },
   },
 });
+
+// Safisha session iliyoharibika (Invalid Refresh Token)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') return;
+  if (event === 'SIGNED_OUT' || (!session && event === 'INITIAL_SESSION')) {
+    // Session imeisha — safisha localStorage ili app iweze kuanza upya
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.includes('supabase') || k.includes('duka-langu-auth')) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch(e) {}
+  }
+});
+
+// Catch invalid refresh token errors globally
+const origFetch = window.fetch;
+window.fetch = function(...args) {
+  return origFetch.apply(this, args).then(async res => {
+    if (res.status === 400) {
+      const cloned = res.clone();
+      try {
+        const body = await cloned.json();
+        if (body?.error_description?.includes('Refresh Token') || body?.msg?.includes('Refresh Token')) {
+          console.warn('[Auth] Invalid refresh token - clearing session');
+          Object.keys(localStorage).forEach(k => {
+            if (k.includes('supabase') || k.includes('duka-langu-auth')) localStorage.removeItem(k);
+          });
+          window.location.reload();
+        }
+      } catch(e) {}
+    }
+    return res;
+  });
+};
