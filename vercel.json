@@ -1,38 +1,22 @@
 {
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": "vite",
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/send-sms.js": {
-      "maxDuration": 60
-    },
-    "api/send-email.js": {
-      "maxDuration": 30
-    },
-    "api/send-otp.js": {
-      "maxDuration": 15
-    },
-    "api/cron/daily-reports.js": {
-      "maxDuration": 60
-    },
-    "api/cron/daily-backup.js": {
-      "maxDuration": 120
-    },
-    "api/cron/scheduled-sms.js": {
-      "maxDuration": 60
-    }
+    "api/send-sms.js": { "maxDuration": 60 },
+    "api/send-email.js": { "maxDuration": 30 },
+    "api/send-otp.js": { "maxDuration": 15 },
+    "api/cron/daily-reports.js": { "maxDuration": 60 },
+    "api/cron/daily-backup.js": { "maxDuration": 120 },
+    "api/cron/scheduled-sms.js": { "maxDuration": 60 }
   },
   "crons": [
-    {
-      "path": "/api/cron/daily-backup",
-      "schedule": "0 23 * * *"
-    }
+    { "path": "/api/cron/daily-reports", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/daily-backup", "schedule": "0 23 * * *" },
+    { "path": "/api/cron/scheduled-sms", "schedule": "*/5 * * * *" }
   ]
 }
