@@ -697,17 +697,17 @@ export function AppProvider({children}){
   const canUseBranches=useMemo(()=>{
     if(user?.role==='admin')return true;
     if(!bizId)return false;
-    // Global switch off = no one can use
+    // Global switch off
     if(settings.branch_enabled==='false')return false;
-    // Per-business override from businesses table
-    if(biz?.branch_enabled===true||biz?.branch_enabled==='true')return true;
-    // Per-business override from settings (admin toggle)
-    const bizSetting=settings[`branch_biz_${bizId}`];
-    if(bizSetting==='true')return true;
-    // Plan-based: premium and enterprise = yes, basic and trial = no
-    if(biz?.plan==='premium'||biz?.plan==='enterprise')return true;
+    // Per-business: angalia businesses table (njia ya msingi)
+    const myBiz=businesses.find(b=>b.id===bizId)||biz;
+    if(myBiz?.branch_enabled===true||myBiz?.branch_enabled==='true'||myBiz?.branch_enabled===1)return true;
+    // Per-business: angalia settings (njia ya backup)
+    if(settings[`branch_biz_${bizId}`]==='true')return true;
+    // Plan-based
+    if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
     return false;
-  },[user,settings,biz,bizId]);
+  },[user,settings,biz,bizId,businesses]);
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);

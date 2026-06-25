@@ -275,17 +275,20 @@ export function StoresPage(){
   const toggleBranch=async(bid)=>{
     const k=`branch_biz_${bid}`;
     const newVal=settings[k]==='true'?'false':'true';
-    await updateSetting(k,newVal);
-    // Hifadhi pia kwenye businesses table ili office users waone mara moja
-    await supabase.from('businesses').update({branch_enabled:newVal==='true'}).eq('id',bid);
+    // Hifadhi kwenye settings (kwa admin) NA businesses table (kwa office user)
+    await Promise.all([
+      updateSetting(k,newVal),
+      updateBiz(bid,{branch_enabled:newVal==='true'}),
+    ]);
   };
   const isWholesaleOn=(bid)=>settings[`wholesale_biz_${bid}`]==='true';
   const toggleWholesale=async(bid)=>{
     const k=`wholesale_biz_${bid}`;
     const newVal=settings[k]==='true'?'false':'true';
-    await updateSetting(k,newVal);
-    // Hifadhi pia kwenye businesses table ili office users waone
-    await supabase.from('businesses').update({wholesale_enabled:newVal==='true'}).eq('id',bid);
+    await Promise.all([
+      updateSetting(k,newVal),
+      updateBiz(bid,{wholesale_enabled:newVal==='true'}),
+    ]);
   };
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
   const getBizStats=(bid)=>{
