@@ -378,6 +378,31 @@
     });
     
     // ============================================
+    // CACHE-BUSTING — futa cache za zamani zilizovunjika
+    // ============================================
+    (function() {
+      const APP_VERSION = 'v9.0.0';
+      const stored = localStorage.getItem('app_version');
+      if (stored !== APP_VERSION) {
+        // Toleo jipya — futa cache zote za SW na uregister upya
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then((regs) => {
+            regs.forEach((r) => r.unregister());
+          }).catch(()=>{});
+        }
+        if ('caches' in window) {
+          caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(()=>{});
+        }
+        localStorage.setItem('app_version', APP_VERSION);
+        // Reload mara moja kupata code mpya (mara moja tu)
+        if (stored) {
+          console.log('[App] Toleo jipya:', APP_VERSION, '- inasafisha cache...');
+          setTimeout(() => window.location.reload(true), 100);
+        }
+      }
+    })();
+
+    // ============================================
     // SERVICE WORKER
     // ============================================
     if ('serviceWorker' in navigator) {
