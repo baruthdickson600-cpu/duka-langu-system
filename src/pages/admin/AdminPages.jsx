@@ -1,5 +1,4 @@
 import React,{useState,useEffect} from 'react';
-import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
@@ -273,23 +272,14 @@ export function StoresPage(){
   const filtered=businesses.filter(b=>{if(search&&!b.name?.toLowerCase().includes(search.toLowerCase())&&!b.email?.toLowerCase().includes(search.toLowerCase()))return false;if(filter==='active')return b.token_active;if(filter==='suspended')return b.is_suspended;if(filter==='trial')return!b.token_active&&!b.is_suspended;return true});
 
   const isBranchOn=(bid)=>settings[`branch_biz_${bid}`]==='true';
-  const toggleBranch=async(bid)=>{
-    const k=`branch_biz_${bid}`;
-    const newVal=settings[k]==='true'?'false':'true';
-    // Hifadhi kwenye settings (kwa admin) NA businesses table (kwa office user)
-    await Promise.all([
-      updateSetting(k,newVal),
-      updateBiz(bid,{branch_enabled:newVal==='true'}),
-    ]);
-  };
+  const toggleBranch=async(bid)=>{const k=`branch_biz_${bid}`;await updateSetting(k,settings[k]==='true'?'false':'true')};
   const isWholesaleOn=(bid)=>settings[`wholesale_biz_${bid}`]==='true';
   const toggleWholesale=async(bid)=>{
     const k=`wholesale_biz_${bid}`;
     const newVal=settings[k]==='true'?'false':'true';
-    await Promise.all([
-      updateSetting(k,newVal),
-      updateBiz(bid,{wholesale_enabled:newVal==='true'}),
-    ]);
+    await updateSetting(k,newVal);
+    // Hifadhi pia kwenye businesses table ili office users waone
+    await supabase.from('businesses').update({wholesale_enabled:newVal==='true'}).eq('id',bid);
   };
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
   const getBizStats=(bid)=>{
@@ -360,9 +350,7 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();setActionModal({type:'extend',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
             <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
-            <button onClick={(e)=>{e.stopPropagation();toggleBranch(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isBranchOn(b.id)?'1.5px solid #0B7A3B':'1.5px solid #E2E8F0',background:isBranchOn(b.id)?'#F0FDF4':'#fff',color:isBranchOn(b.id)?'#0B7A3B':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
-              {isBranchOn(b.id)?<>🏪 Matawi: <span style={{color:'#16A34A'}}>ON</span></>:<>🏪 Matawi: <span>OFF</span></>}
-            </button>
+            <button onClick={()=>toggleBranch(b.id)} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'none',background:isBranchOn(b.id)?'#F0FDF4':'#F1F5F9',color:isBranchOn(b.id)?'#0B7A3B':'#94A3B8',fontWeight:700,cursor:'pointer'}}>🏪{isBranchOn(b.id)?'ON':'OFF'}</button>
             <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',background:isWholesaleOn(b.id)?'#FFF7ED':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isWholesaleOn(b.id)?<>🏷️ Jumla: <span style={{color:'#16A34A'}}>ON</span></>:<>🏷️ Jumla: <span>OFF</span></>}
             </button>
@@ -1391,7 +1379,7 @@ export function BackupPage(){
     if(!window.confirm('Anza backup sasa?\n\nBackup itachukua dakika 1-2.\nEmail ya backup itatumwa kwa: dukalangusolution@gmail.com'))return;
     setTriggering(true);
     try{
-      const res=await fetch(API_BASE+'/api/cron/daily-backup',{method:'GET'});
+      const res=await fetch('/api/cron/daily-backup',{method:'GET'});
       const data=await res.json();
       if(data.success){
         alert(`✅ BACKUP IMEKAMILIKA!\n\n📊 Rows: ${data.total_rows.toLocaleString()}\n📁 Tables: ${data.total_tables}\n💾 Size: ${data.size_mb} MB\n⏱️ Muda: ${data.duration_seconds}s\n\n📧 Email imetumwa kwa: ${data.email_sent_to}`);

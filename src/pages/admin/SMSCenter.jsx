@@ -1,5 +1,4 @@
 import React,{useState,useEffect} from 'react';
-import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Stat,Badge,Empty,Input,Sel,Btn,Modal} from '../../components/UI';
 
@@ -189,7 +188,7 @@ export function SMSCenterPage(){
           const controller=new AbortController();
           const timeoutId=setTimeout(()=>controller.abort(),55000); // 55s per chunk
           
-          const res=await fetch(API_BASE+'/api/send-sms',{
+          const res=await fetch('/api/send-sms',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({recipients:chunk}),

@@ -34,4 +34,23 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 });
 
-// Session errors handled by onAuthStateChange above
+// Catch invalid refresh token errors globally
+const origFetch = window.fetch;
+window.fetch = function(...args) {
+  return origFetch.apply(this, args).then(async res => {
+    if (res.status === 400) {
+      const cloned = res.clone();
+      try {
+        const body = await cloned.json();
+        if (body?.error_description?.includes('Refresh Token') || body?.msg?.includes('Refresh Token')) {
+          console.warn('[Auth] Invalid refresh token - clearing session');
+          Object.keys(localStorage).forEach(k => {
+            if (k.includes('supabase') || k.includes('duka-langu-auth')) localStorage.removeItem(k);
+          });
+          window.location.reload();
+        }
+      } catch(e) {}
+    }
+    return res;
+  });
+};
