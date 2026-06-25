@@ -1,56 +1,46 @@
 // ============================================================
-// DUKA LANGU — Service Worker v9.0.0 (SELF-HEALING)
-// Inafuta cache zote za zamani na kuhakikisha mfumo unafunguka
+// DUKA LANGU — Service Worker v11 (MINIMAL — HTML NEVER CACHED)
 // ============================================================
-
-const VERSION = 'v10-no-otp';
+const VERSION = 'v11-fix-mime';
 const CACHE_NAME = `duka-${VERSION}`;
 
-// ===== INSTALL — ruka waiting moja kwa moja =====
 self.addEventListener('install', (e) => {
-  self.skipWaiting(); // Lazimisha SW mpya ichukue nafasi mara moja
+  self.skipWaiting();
 });
 
-// ===== ACTIVATE — FUTA CACHE ZOTE ZA ZAMANI =====
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     (async () => {
-      // Futa cache ZOTE za zamani bila ubaguzi
+      // Futa cache ZOTE za zamani
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
-      // Chukua udhibiti wa tabs zote mara moja
       await self.clients.claim();
-      console.log('[SW v9] Cache zote za zamani zimefutwa');
     })()
   );
 });
 
-// ===== FETCH — NETWORK FIRST (daima pata toleo jipya) =====
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (!url.protocol.startsWith('http')) return;
 
-  // HTML/JS/CSS — DAIMA network first (hakuna stale code)
+  // HTML na JS/CSS — DAIMA NETWORK ONLY (kamwe usicache — kuzuia stale code)
   if (request.mode === 'navigate' ||
       request.destination === 'document' ||
       request.destination === 'script' ||
-      request.destination === 'style') {
+      request.destination === 'style' ||
+      url.pathname.endsWith('.js') ||
+      url.pathname.endsWith('.jsx') ||
+      url.pathname.endsWith('.css') ||
+      url.pathname.endsWith('.html')) {
     e.respondWith(
-      fetch(request)
-        .then((res) => {
-          // Cache nakala mpya
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(request, clone)).catch(()=>{});
-          return res;
-        })
-        .catch(() => caches.match(request).then(r => r || caches.match('/index.html')))
+      fetch(request).catch(() => caches.match(request))
     );
     return;
   }
 
-  // Picha/fonts — cache first (hazibadiliki)
+  // Picha/fonts tu — cache first
   if (request.destination === 'image' || request.destination === 'font') {
     e.respondWith(
       caches.match(request).then((cached) =>
@@ -64,11 +54,10 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Supabase na nyingine — network only
+  // Nyingine zote — network only
   e.respondWith(fetch(request).catch(() => caches.match(request)));
 });
 
-// ===== MESSAGE =====
 self.addEventListener('message', (e) => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
   if (e.data?.type === 'CLEAR_CACHE') {
