@@ -1,4 +1,5 @@
 import React,{useState,useEffect} from 'react';
+import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
@@ -1390,7 +1391,7 @@ export function BackupPage(){
     if(!window.confirm('Anza backup sasa?\n\nBackup itachukua dakika 1-2.\nEmail ya backup itatumwa kwa: dukalangusolution@gmail.com'))return;
     setTriggering(true);
     try{
-      const res=await fetch('/api/cron/daily-backup',{method:'GET'});
+      const res=await fetch(API_BASE+'/api/cron/daily-backup',{method:'GET'});
       const data=await res.json();
       if(data.success){
         alert(`✅ BACKUP IMEKAMILIKA!\n\n📊 Rows: ${data.total_rows.toLocaleString()}\n📁 Tables: ${data.total_tables}\n💾 Size: ${data.size_mb} MB\n⏱️ Muda: ${data.duration_seconds}s\n\n📧 Email imetumwa kwa: ${data.email_sent_to}`);

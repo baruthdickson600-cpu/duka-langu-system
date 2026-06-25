@@ -1,4 +1,5 @@
 import React,{useState,useEffect,useMemo} from 'react';
+import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Modal,Empty,Input,Sel,Btn,Badge} from '../../components/UI';
 
@@ -91,7 +92,7 @@ export default function OfaMaalumPage(){
         setApplied(p=>[data,...p]);
         // Send SMS to customer
         const msg=`DUKA LANGU\n\n🎉 OFA MAALUM!\n\nHongera ${biz.owner_name||biz.name}!\n\nRafiki yako ${referredBiz.name} amejiunga na kulipa.\n\nBONUS YAKO: TSH ${fmt(settings.bonusAmount)}\n\nMwezi unaofuata utalipa:\n* TSH ${fmt(settings.nextMonthPrice)} (badala ya TSH 15,000)\n\nAsante kwa kuwa mteja wetu!\nMsaada: 0617288752`;
-        fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:biz.phone,message:msg})});
+        fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:biz.phone,message:msg})});
         alert(`✅ Bonus imetolewa!\n\n${biz.name} atapata punguzo la TSH ${fmt(settings.bonusAmount)} mwezi unaofuata.`);
       }
     }catch(e){

@@ -1,7 +1,8 @@
+import { API_BASE } from '../config/api';
 // Email sending utility — calls /api/send-email
 const sendEmail = async (to, subject, type, data = {}) => {
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetch(API_BASE+'/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to, subject, type, data }),

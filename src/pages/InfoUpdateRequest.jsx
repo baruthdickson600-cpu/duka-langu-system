@@ -1,6 +1,7 @@
 // Customer-facing form to request info update
 // Accessible without login - public page
 import React,{useState,useEffect} from 'react';
+import { API_BASE } from '../config/api';
 import {createClient} from '@supabase/supabase-js';
 
 const supabase=createClient('https://snosfxagzglswaotrgzv.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNub3NmeGFnemdsc3dhb3RyZ3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDcwMDAsImV4cCI6MjA5MDY4MzAwMH0.qS6lEKGJ6IRganQTcpB1sFtw90XDyK0BMaQKSTVLXKE');
@@ -70,7 +71,7 @@ export default function InfoUpdateRequest({onBack}){
       
       // Email admin
       try{
-        await fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        await fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
           to:'pesafly1@gmail.com',
           subject:`📝 Ombi la Kubadilisha Taarifa — ${foundBiz.name}`,
           type:'promotional',

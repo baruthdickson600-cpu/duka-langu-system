@@ -1,4 +1,5 @@
 import React,{useState,useMemo} from 'react';
+import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,todayStr} from '../../utils/helpers';
@@ -329,7 +330,7 @@ export function EmailCampaignPage(){
     if(!subject||!body)return alert('Jaza kichwa na ujumbe!');
     setSending(true);
     for(const b of targets){
-      try{await fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:b.email,subject:`${emoji} ${subject}`,type:'promotional',data:{title:subject,message:body,emoji,cta:'Fungua Mfumo'}})})}catch(e){}
+      try{await fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:b.email,subject:`${emoji} ${subject}`,type:'promotional',data:{title:subject,message:body,emoji,cta:'Fungua Mfumo'}})})}catch(e){}
     }
     setSending(false);setSent(true);setTimeout(()=>setSent(false),5000);
   };
