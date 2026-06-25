@@ -3,7 +3,7 @@
 // Inafuta cache zote za zamani na kuhakikisha mfumo unafunguka
 // ============================================================
 
-const VERSION = 'v9.0.0';
+const VERSION = 'v10-no-otp';
 const CACHE_NAME = `duka-${VERSION}`;
 
 // ===== INSTALL — ruka waiting moja kwa moja =====
