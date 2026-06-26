@@ -1,4 +1,5 @@
 import React,{useState,useEffect,useMemo} from 'react';
+import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Stat,Badge,Empty,Input,Sel,Btn,Modal} from '../../components/UI';
 
@@ -258,7 +259,7 @@ export function AccDebtsPage(){
     setDebts(p=>p.map(d=>d.id===debt.id?{...d,paid_amount:newPaid,remaining:newRemaining,status:newRemaining<=0?'paid':'partial'}:d));
     // F12: Email notification
     if(debt.marketer_email){
-      fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:debt.marketer_email,subject:`💰 Malipo Yamepokelewa — ${fm(amt)}`,type:'promotional',data:{title:'💰 Malipo Yamepokelewa',emoji:'💰',message:`Umelipa ${fm(amt)}.\nBalance iliyobaki: ${fm(newRemaining)}.\nDeni: ${debt.debt_name}`,cta:'Angalia Akaunti →'}})}).catch(()=>{});
+      fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:debt.marketer_email,subject:`💰 Malipo Yamepokelewa — ${fm(amt)}`,type:'promotional',data:{title:'💰 Malipo Yamepokelewa',emoji:'💰',message:`Umelipa ${fm(amt)}.\nBalance iliyobaki: ${fm(newRemaining)}.\nDeni: ${debt.debt_name}`,cta:'Angalia Akaunti →'}})}).catch(()=>{});
     }
     await supabase.from('audit_logs').insert({user_role:'accountant',action:'debt_payment',details:`${debt.marketer_name}: Paid ${fm(amt)}, Balance: ${fm(newRemaining)}`}).catch(()=>{});
     setPayModal(null);setPayF({amount:'',method:'Cash',reference:'',notes:''});

@@ -378,40 +378,26 @@
     });
     
     // ============================================
-    // SERVICE WORKER
+    // ONDOA SERVICE WORKER KABISA — kuzuia matatizo ya cache
+    // Mfumo upakie moja kwa moja kutoka server kila wakati
     // ============================================
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((reg) => {
-            console.log('✅ SW registered');
-            // Check for updates every 30 minutes
-            setInterval(() => reg.update(), 30 * 60 * 1000);
-            // Also check immediately
-            reg.update();
-
-            reg.addEventListener('updatefound', () => {
-              const newSW = reg.installing;
-              if (newSW) {
-                newSW.addEventListener('statechange', () => {
-                  if (newSW.state === 'installed') {
-                    // Auto-update without asking — send skipWaiting immediately
-                    newSW.postMessage({ type: 'SKIP_WAITING' });
-                  }
-                });
-              }
-            });
-          })
-          .catch((err) => console.warn('SW registration failed:', err));
-
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) { refreshing = true; window.location.reload(); }
-        });
-      });
+      // Futa SW zote za zamani zilizosababisha matatizo
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((r) => r.unregister());
+        if (regs.length > 0) {
+          console.log('[App] SW za zamani zimefutwa');
+        }
+      }).catch(() => {});
+      // Futa cache zote za zamani
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((k) => caches.delete(k));
+        }).catch(() => {});
+      }
     }
-    
-    window.addEventListener('online', () => window.dispatchEvent(new CustomEvent('app-online')));
+
+        window.addEventListener('online', () => window.dispatchEvent(new CustomEvent('app-online')));
     window.addEventListener('offline', () => window.dispatchEvent(new CustomEvent('app-offline')));
     
     let lastTouchEnd = 0;

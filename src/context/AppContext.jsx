@@ -1,4 +1,5 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
+import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
 import {supabase} from '../config/supabase';
 
@@ -20,14 +21,14 @@ async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq
 // Email helper (calls API directly - no imports needed)
 const sendMail=(to,subject,type,data)=>{
   console.log('[EMAIL] Sending:',type,'to:',to);
-  fetch('/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})})
+  fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})})
   .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[EMAIL FAIL]',to,d.error||r.status)}else{console.log('[EMAIL OK]',to,d.id)}})
   .catch(e=>console.error('[EMAIL NET ERROR]',to,e.message));
 };
 const sendSMS=(to,message)=>{
   if(!to)return;
   console.log('[SMS] Sending to:',to);
-  fetch('/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,message})})
+  fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,message})})
   .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[SMS FAIL]',to,d.error||d.beem_response)}else{console.log('[SMS OK]',to)}})
   .catch(e=>console.error('[SMS NET ERROR]',to,e.message));
 };
@@ -163,7 +164,7 @@ export function AppProvider({children}){
   const sendOTP=useCallback(async(email,isAdmin=false,phone='')=>{
     setOtpSending(true);
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email,isAdmin,phone})});
+      const r=await fetch(API_BASE+'/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email,isAdmin,phone})});
       const d=await r.json();
       setOtpSending(false);
       return d;
@@ -174,7 +175,7 @@ export function AppProvider({children}){
   const verifyOTP=useCallback(async(code)=>{
     if(!otpPending)return{success:false,error:'Hakuna OTP inayosubiri'};
     try{
-      const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',code,email:otpPending.email})});
+      const r=await fetch(API_BASE+'/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',code,email:otpPending.email})});
       const d=await r.json();
       if(!d.success)return d;
       // OTP verified — complete login
@@ -281,14 +282,13 @@ export function AppProvider({children}){
   // ===== AUTH =====
   const login=useCallback(async(email,password)=>{
     setLoading(true);
-    // ADMIN hardcoded login
+    // ADMIN hardcoded login — ingia moja kwa moja (hakuna OTP)
     if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
       const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin'};
-      setOtpPending({userData:u,email,role:'admin',isAdmin:true});
-      const otpResult=await sendOTP(email,true); // isAdmin=true → SMS
+      setUser(u);
+      await loadData(u.id,'admin',null);
       setLoading(false);
-      if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
-      return'OTP_REQUIRED';
+      return null;
     }
     try{
       const{data,error}=await supabase.auth.signInWithPassword({email,password});
@@ -305,16 +305,7 @@ export function AppProvider({children}){
           setLoading(false);
           return'PROMO_REQUIRED';
         }
-        // Roles nyingine: thibitisha kwa OTP
-        if(OTP_ROLES.includes(uData.role)){
-          setOtpPending({userData:uData,email,role:uData.role,phone:uData.phone});
-          const otpResult=await sendOTP(email,false,uData.phone||'');
-          setLoading(false);
-          if(!otpResult.success)return'OTP haikutumwa: '+(otpResult.error||'Jaribu tena');
-          return'OTP_REQUIRED';
-        }
-
-        // No OTP needed (employee or no phone) — login directly
+        // Hakuna OTP — ingia moja kwa moja kwa password (haraka zaidi)
         setUser(uData);await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
         safeInsert('login_logs',{user_id:uData.id,email,action:'login',device_info:navigator.userAgent}).catch(()=>{});
         await loadData(uData.id,uData.role,uData.business_id);
@@ -697,17 +688,17 @@ export function AppProvider({children}){
   const canUseBranches=useMemo(()=>{
     if(user?.role==='admin')return true;
     if(!bizId)return false;
-    // Global switch off = no one can use
+    // Global switch off
     if(settings.branch_enabled==='false')return false;
-    // Per-business override from businesses table
-    if(biz?.branch_enabled===true||biz?.branch_enabled==='true')return true;
-    // Per-business override from settings (admin toggle)
-    const bizSetting=settings[`branch_biz_${bizId}`];
-    if(bizSetting==='true')return true;
-    // Plan-based: premium and enterprise = yes, basic and trial = no
-    if(biz?.plan==='premium'||biz?.plan==='enterprise')return true;
+    // Per-business: angalia businesses table (njia ya msingi)
+    const myBiz=businesses.find(b=>b.id===bizId)||biz;
+    if(myBiz?.branch_enabled===true||myBiz?.branch_enabled==='true'||myBiz?.branch_enabled===1)return true;
+    // Per-business: angalia settings (njia ya backup)
+    if(settings[`branch_biz_${bizId}`]==='true')return true;
+    // Plan-based
+    if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
     return false;
-  },[user,settings,biz,bizId]);
+  },[user,settings,biz,bizId,businesses]);
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
@@ -899,7 +890,7 @@ export function AppProvider({children}){
       const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
       const smsMsg=`DUKA LANGU\n\nKARIBU ${supervisor}!\n\nUmesajiliwa kama Supevaiza wa Mauzo.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili.\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
       try{
-        await fetch('/api/send-sms',{
+        await fetch(API_BASE+'/api/send-sms',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({to:cleanPhone,message:smsMsg})
@@ -910,7 +901,7 @@ export function AppProvider({children}){
     // Send welcome email to supervisor
     if(email){
       try{
-        await fetch('/api/send-email',{
+        await fetch(API_BASE+'/api/send-email',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
@@ -949,7 +940,7 @@ export function AppProvider({children}){
         const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
         const smsMsg=`DUKA LANGU\n\nKARIBU ${name}!\n\nUmesajiliwa kama Supevaiza.\n\nLogin:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako: ${code}\nCommission: ${commission}%\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
         try{
-          await fetch('/api/send-sms',{
+          await fetch(API_BASE+'/api/send-sms',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({to:cleanPhone,message:smsMsg})
@@ -960,7 +951,7 @@ export function AppProvider({children}){
       // 5. Send welcome email with login details
       if(email){
         try{
-          await fetch('/api/send-email',{
+          await fetch(API_BASE+'/api/send-email',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({

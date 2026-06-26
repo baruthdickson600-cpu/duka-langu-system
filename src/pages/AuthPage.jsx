@@ -1,4 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
+import { API_BASE } from '../config/api';
 import {Input} from '../components/UI';
 import {TermsPage,PrivacyPage} from './LegalPages';
 import InfoUpdateRequest from './InfoUpdateRequest';
@@ -66,7 +67,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
     if(tab==='login'){
       if(!f.email||!f.password){setErr('Jaza email na password!');setBusy(false);return}
       const e=await onLogin(f.email,f.password);
-      if(e&&e!=='OTP_REQUIRED')setErr(e);
+      if(e)setErr(e);
     }else{
       if(!f.name||!f.email||!f.password||!f.business){setErr('Jaza taarifa zote!');setBusy(false);return}
       if(f.password.length<6){setErr('Password lazima iwe angalau herufi 6!');setBusy(false);return}
@@ -170,7 +171,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword,otpPending,o
               {/* Email Fallback Button — kama SMS haijafika */}
               {(otpPending.isAdmin||otpPending.phone)&&<button onClick={async()=>{
                 setMsg('📧 Inatuma OTP kwa email...');
-                const r=await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email:otpPending.email,isAdmin:false,phone:''})});
+                const r=await fetch(API_BASE+'/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'send',email:otpPending.email,isAdmin:false,phone:''})});
                 const d=await r.json();
                 if(d.success){
                   setMsg('✅ Code imetumwa kwa email yako! Angalia inbox.');

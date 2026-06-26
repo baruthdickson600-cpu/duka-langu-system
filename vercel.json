@@ -1,4 +1,7 @@
 {
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": "vite",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
@@ -12,17 +15,8 @@
     "api/cron/scheduled-sms.js": { "maxDuration": 60 }
   },
   "crons": [
-    {
-      "path": "/api/cron/daily-reports",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/daily-backup",
-      "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/cron/scheduled-sms",
-      "schedule": "*/5 * * * *"
-    }
+    { "path": "/api/cron/daily-reports", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/daily-backup", "schedule": "0 23 * * *" },
+    { "path": "/api/cron/scheduled-sms", "schedule": "*/5 * * * *" }
   ]
 }

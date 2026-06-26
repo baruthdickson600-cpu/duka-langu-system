@@ -44,6 +44,7 @@ const MENUS={
       {id:'activity',icon:IC.clock,label:'Activity'},
     ]},
     {group:'mfumo',label:'⚙️ Mfumo',icon:IC.gear,items:[
+      {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
       {id:'security',icon:IC.shield,label:'Security'},
       {id:'backup',icon:IC.dl,label:'💾 Backup'},
       {id:'settings',icon:IC.gear,label:'Mipangilio'},
