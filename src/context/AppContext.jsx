@@ -26,7 +26,7 @@ const sendMail=(to,subject,type,data)=>{
 };
 const sendSMS=(to,message)=>{
   if(!to)return;
-  fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,message})})
+  fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:to,message})})
   .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[SMS FAIL]',to,d.error||d.beem_response)}else{console.log('[SMS OK]',to)}})
   .catch(e=>console.error('[SMS NET ERROR]',to,e.message));
 };
@@ -1033,25 +1033,34 @@ export function AppProvider({children}){
     }
     
     
-    // Basic columns (always exist)
+    // Columns halisi za table: business_id, transaction_id, amount, status, payer_name, payer_phone, requested_by
     const prBasic={business_id:myBizId,transaction_id:transactionId.trim(),amount:+amount,status:'pending'};
-    // Extra columns (may not exist yet)
-    const prFull={...prBasic,business_name:myBizName,user_email:myEmail,payment_method:payMethod,phone,plan:biz?.plan||'basic'};
+    // Tumia payer_name/payer_phone (majina halisi ya table hii)
+    const prFull={...prBasic,payer_name:myBizName,payer_phone:phone,requested_by:user?.id};
     
-    // Try full insert first, fallback to basic
+    // Insert: jaribu full, kisha basic. Ondoa columns zinazokosekana kiotomatiki.
     let saved=null;
-    let{data:d1,error:e1}=await supabase.from('payment_requests').insert(prFull).select().single();
-    if(e1){
-      console.warn('[PAYMENT] Full insert failed:',e1.message,'→ trying basic...');
-      let{data:d2,error:e2}=await supabase.from('payment_requests').insert(prBasic).select().single();
-      if(e2){
-        console.error('[PAYMENT] Basic insert also failed:',e2.message);
-        return{error:'Tatizo la database: '+e2.message};
-      }
-      saved=d2;
-    }else{
-      saved=d1;
+    const tryInsert=async(obj)=>{
+      const{data,error}=await supabase.from('payment_requests').insert(obj).select().single();
+      return{data,error};
+    };
+    let attempt=await tryInsert(prFull);
+    // Kama column haipo, iondoe na jaribu tena (mara kadhaa)
+    let tries=0;
+    while(attempt.error&&attempt.error.message&&attempt.error.message.includes('column')&&tries<8){
+      const m=attempt.error.message.match(/column "([^"]+)"/);
+      if(m&&m[1]){delete prFull[m[1]];tries++;attempt=await tryInsert(prFull);}
+      else break;
     }
+    if(attempt.error){
+      // Fallback ya mwisho - basic tu
+      attempt=await tryInsert(prBasic);
+      if(attempt.error){
+        console.error('[PAYMENT] All inserts failed:',attempt.error.message);
+        return{error:'Tatizo la database: '+attempt.error.message};
+      }
+    }
+    saved=attempt.data;
     
     if(saved)setPayReqs(prev=>[saved,...prev]);
     const final=saved||{...prFull,id:genId(),created_at:nowISO()};

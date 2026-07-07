@@ -341,8 +341,13 @@ export function AccAuditPage(){
 
 // ===== MALIPO PAGE =====
 export function AccPaymentsPage(){
-  const{paymentRequests=[],tokens=[],supabase}=useApp();
+  const{paymentRequests=[],tokens=[],supabase,approvePayment,rejectPayment}=useApp();
   const[tab,setTab]=useState('all');const[period,setPeriod]=useState('all');const[flagging,setFlagging]=useState(null);const[flagReason,setFlagReason]=useState('');
+  const[approving,setApproving]=useState(null);const[approveDays,setApproveDays]=useState(30);
+  const[rejecting,setRejecting]=useState(null);const[rejectReason,setRejectReason]=useState('');
+  const[busy,setBusy]=useState(false);
+  const doApprove=async()=>{setBusy(true);const r=await approvePayment(approving,approveDays);setBusy(false);if(r){alert(`✅ Malipo yamethibitishwa! Mfumo umefunguliwa siku ${approveDays}.`);setApproving(null);}else{alert('Tatizo limetokea');}};
+  const doReject=async()=>{setBusy(true);await rejectPayment(rejecting,rejectReason);setBusy(false);alert('Ombi limekataliwa.');setRejecting(null);setRejectReason('');};
   const today=new Date().toISOString().split('T')[0];const weekAgo=new Date(Date.now()-7*86400000).toISOString();const ms=today.slice(0,7);
   let filtered=tab==='approved'?paymentRequests.filter(p=>p.status==='approved'):tab==='pending'?paymentRequests.filter(p=>p.status==='pending'):tab==='rejected'?paymentRequests.filter(p=>p.status==='rejected'):tab==='flagged'?paymentRequests.filter(p=>p.flagged):paymentRequests;
   if(period==='today')filtered=filtered.filter(p=>p.created_at?.startsWith(today));
@@ -362,8 +367,23 @@ export function AccPaymentsPage(){
     <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>{[{id:'all',l:'Yote'},{id:'today',l:'Leo'},{id:'week',l:'Wiki'},{id:'month',l:'Mwezi'}].map(t=><button key={t.id} onClick={()=>setPeriod(t.id)} style={{padding:'4px 10px',borderRadius:6,border:period===t.id?'2px solid #3B82F6':'1px solid #E2E8F0',background:period===t.id?'#EFF6FF':'#fff',fontWeight:period===t.id?700:500,fontSize:10,cursor:'pointer',color:period===t.id?'#3B82F6':'#94A3B8'}}>{t.l}</button>)}</div>
     <div className="card"><div style={{maxHeight:500,overflowY:'auto'}}>{filtered.length?filtered.map(p=>{const tk=tokens.find(t=>t.code===p.token_code);return<div key={p.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
       <div style={{flex:1,minWidth:180}}><div style={{display:'flex',alignItems:'center',gap:6}}><b style={{fontSize:13}}>{p.business_name||'Biashara'}</b><Badge color={p.status==='approved'?'#22C55E':p.status==='pending'?'#F59E0B':'#EF4444'}>{p.status}</Badge>{p.flagged&&<Badge color="#EF4444">⚠️</Badge>}</div><div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{fmtDate(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id||'—'}</span>{tk?.assigned_name?` • 📋 ${tk.assigned_name}`:''}</div></div>
-      <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{fontWeight:800,fontSize:15,color:p.status==='approved'?'#0B7A3B':'#94A3B8'}}>{fm(p.amount)}</span>{!p.flagged&&<button onClick={()=>setFlagging(p.id)} style={{padding:'2px 6px',borderRadius:4,border:'1px solid #FCA5A5',background:'#fff',fontSize:9,cursor:'pointer',color:'#EF4444'}}>⚠️</button>}</div>
+      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><span style={{fontWeight:800,fontSize:15,color:p.status==='approved'?'#0B7A3B':'#94A3B8'}}>{fm(p.amount)}</span>
+      {p.status==='pending'&&<><button onClick={()=>{setApproving(p.id);setApproveDays(30);}} style={{padding:'5px 12px',borderRadius:6,border:'none',background:'#0B7A3B',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>✅ Thibitisha</button><button onClick={()=>{setRejecting(p.id);setRejectReason('');}} style={{padding:'5px 12px',borderRadius:6,border:'1px solid #EF4444',background:'#fff',color:'#EF4444',fontSize:11,fontWeight:700,cursor:'pointer'}}>❌ Kataa</button></>}
+      {!p.flagged&&p.status!=='pending'&&<button onClick={()=>setFlagging(p.id)} style={{padding:'2px 6px',borderRadius:4,border:'1px solid #FCA5A5',background:'#fff',fontSize:9,cursor:'pointer',color:'#EF4444'}}>⚠️</button>}</div>
     </div>}):<Empty icon="💰" text="Hakuna malipo"/>}</div></div>
+
+    {/* Approve modal */}
+    {approving&&<Modal open onClose={()=>setApproving(null)} title="✅ Thibitisha Malipo">
+      <div style={{fontSize:13,color:'#64748B',marginBottom:12}}>Chagua idadi ya siku za kumfungulia mteja mfumo:</div>
+      <Sel label="Siku" value={approveDays} onChange={e=>setApproveDays(+e.target.value)} options={[{value:30,label:'Siku 30 (Mwezi 1)'},{value:60,label:'Siku 60 (Miezi 2)'},{value:90,label:'Siku 90 (Miezi 3)'},{value:180,label:'Siku 180 (Miezi 6)'},{value:365,label:'Siku 365 (Mwaka 1)'}]}/>
+      <Btn onClick={doApprove} disabled={busy} style={{marginTop:8,width:'100%',justifyContent:'center'}}>{busy?'Inathibitisha...':'✅ Thibitisha & Fungua Mfumo'}</Btn>
+    </Modal>}
+
+    {/* Reject modal */}
+    {rejecting&&<Modal open onClose={()=>setRejecting(null)} title="❌ Kataa Ombi">
+      <Input label="Sababu ya kukataa" placeholder="Mf: Kiasi hakilingani..." value={rejectReason} onChange={e=>setRejectReason(e.target.value)}/>
+      <Btn onClick={doReject} disabled={busy} style={{marginTop:8,width:'100%',justifyContent:'center',background:'#EF4444'}}>{busy?'Inakataa...':'❌ Kataa Ombi'}</Btn>
+    </Modal>}
     {flagging&&<Modal open onClose={()=>setFlagging(null)} title="⚠️ Flag Malipo"><Input label="Sababu" placeholder="Mf: Transaction ID fake..." value={flagReason} onChange={e=>setFlagReason(e.target.value)}/><Btn onClick={()=>handleFlag(flagging)} style={{marginTop:8,background:'#EF4444',width:'100%'}}>⚠️ Tuma kwa Admin</Btn></Modal>}
   </div>;
 }

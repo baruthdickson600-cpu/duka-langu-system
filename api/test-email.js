@@ -6,8 +6,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const GMAIL_USER = process.env.GMAIL_USER || 'pesafly1@gmail.com';
-  const GMAIL_PASS = process.env.GMAIL_APP_PASSWORD;
+  const GMAIL_USER = process.env.MAIL_USER || process.env.GMAIL_USER || 'pesafly1@gmail.com';
+  const GMAIL_PASS = process.env.MAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
 
   if (!GMAIL_PASS) return res.status(500).json({
     success: false,

@@ -11,6 +11,7 @@ import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPag
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
+import SMSCenterPage from './pages/admin/SMSCenter';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -31,6 +32,7 @@ const MENUS={
     ]},
     {group:'mawasiliano',label:'💬 Mawasiliano',icon:IC.send,items:[
       {id:'broadcast',icon:IC.send,label:'Broadcast'},
+      {id:'sms_center',icon:IC.send,label:'📱 SMS Center'},
       {id:'messaging',icon:IC.send,label:'Ujumbe'},
       {id:'templates',icon:IC.file,label:'Email Templates'},
       {id:'tickets',icon:IC.bell,label:'Tickets'},
@@ -188,6 +190,12 @@ export default function App(){
 
   // Reset page to dashboard when user/role changes
   useEffect(()=>{if(user?.role)setPage('dashboard')},[user?.role]);
+  // Widget buttons navigation (Renew, Support, n.k.)
+  useEffect(()=>{
+    const handler=(e)=>{if(e.detail)setPage(e.detail)};
+    window.addEventListener('navigate-page',handler);
+    return()=>window.removeEventListener('navigate-page',handler);
+  },[]);
 
   // If user is logged in, skip landing
   if(user&&showLanding)setShowLanding(false);
@@ -236,6 +244,7 @@ export default function App(){
         case'templates':return <EmailTemplatesPage/>;case'messaging':return <MessagingPage/>;
         case'reports':return <AdminReportsPage/>;
         case'faq':return <FaqManagePage/>;
+        case'sms_center':return <SMSCenterPage/>;
         default:return <AdminDashboard/>;
       }
     }
