@@ -25,6 +25,14 @@ const DEFAULT_TEMPLATES=[
 ];
 
 // Vikundi vya wateja
+// Vikundi vya wafanyakazi wa DukaLangu
+const STAFF_GROUPS=[
+  {id:'all',label:'Wote',icon:'👥'},
+  {id:'accountant',label:'Wahasibu',icon:'💼'},
+  {id:'agent',label:'Mawakala',icon:'🤝'},
+  {id:'marketing',label:'Masoko',icon:'📣'},
+];
+
 const GROUPS=[
   {id:'all',label:'Wote',icon:'👥'},
   {id:'active',label:'Wanaolipa',icon:'✅'},
@@ -40,6 +48,8 @@ export default function CommsCenterPage(){
   const[subject,setSubject]=useState('');
   const[notifType,setNotifType]=useState('info');
   const[emailSaved,setEmailSaved]=useState(false);
+  const[staff,setStaff]=useState([]);
+  const[audience,setAudience]=useState('customers'); // customers | staff
   const[message,setMessage]=useState('');
   const[phone,setPhone]=useState('');
   const[sending,setSending]=useState(false);
@@ -79,8 +89,21 @@ export default function CommsCenterPage(){
     return withPhone;
   };
   const groupCustomers=getGroupCustomers(group);
-  const searchedCustomers=groupCustomers.filter(c=>!custSearch||(c.name||'').toLowerCase().includes(custSearch.toLowerCase())||(c.phone||'').includes(custSearch));
-  const targets=selectedCust.length?withPhone.filter(c=>selectedCust.includes(c.id)):groupCustomers;
+
+  // Wafanyakazi kwa kikundi
+  const getGroupStaff=(g)=>{
+    if(g==='accountant')return staff.filter(s=>s.role==='accountant');
+    if(g==='agent')return staff.filter(s=>s.role==='agent'||s.role==='supervisor');
+    if(g==='marketing')return staff.filter(s=>s.role==='marketing');
+    return staff;
+  };
+  const groupStaff=getGroupStaff(group);
+
+  // Chagua chanzo: wateja au wafanyakazi
+  const sourceList=audience==='staff'?groupStaff:groupCustomers;
+  const searchedCustomers=sourceList.filter(c=>!custSearch||(c.name||'').toLowerCase().includes(custSearch.toLowerCase())||(c.phone||'').includes(custSearch));
+  const allSource=audience==='staff'?staff:withPhone;
+  const targets=selectedCust.length?allSource.filter(c=>selectedCust.includes(c.id)):sourceList.filter(c=>c.phone&&c.phone.trim());
 
   // ===== Load =====
   const loadHistory=async()=>{
@@ -88,6 +111,15 @@ export default function CommsCenterPage(){
     try{const{data}=await supabase.from('sms_logs').select('*').order('created_at',{ascending:false}).limit(1000);setHistory(data||[]);}catch(e){}
     try{const{data:tpls}=await supabase.from('sms_templates').select('*').order('created_at',{ascending:false});if(tpls&&tpls.length)setTemplates([...tpls,...DEFAULT_TEMPLATES.filter(d=>!tpls.find(t=>t.name===d.name))]);}catch(e){}
     setLoading(false);
+  };
+
+  // Pakia wafanyakazi wa DukaLangu (accountant, agent, supervisor, marketing)
+  const loadStaff=async()=>{
+    try{
+      const{data}=await supabase.from('users').select('id,name,email,phone,role')
+        .in('role',['accountant','agent','supervisor','marketing','admin']);
+      setStaff(data||[]);
+    }catch(e){console.warn('[staff]',e?.message);}
   };
 
   // Pata salio la SMS kutoka Beem
@@ -125,7 +157,7 @@ export default function CommsCenterPage(){
     setSavingCfg(false);
   };
 
-  useEffect(()=>{loadHistory();loadBalance();loadSettings();},[]);
+  useEffect(()=>{loadHistory();loadBalance();loadSettings();loadStaff();},[]);
 
   // ===== Dashboard stats =====
   const stats=useMemo(()=>{
@@ -481,10 +513,31 @@ export default function CommsCenterPage(){
 
       {/* Customer Groups */}
       <div className="card" style={{marginBottom:12}}>
-        <label style={{fontSize:12,fontWeight:700,color:'#334155',display:'block',marginBottom:8}}>👥 Chagua Kikundi</label>
+        {/* CHAGUA: WATEJA au WAFANYAKAZI */}
+        <div style={{display:'flex',gap:6,marginBottom:12,padding:4,background:'#F4F6F8',borderRadius:11}}>
+          {[
+            {id:'customers',icon:'🏪',label:'Wateja',n:withPhone.length},
+            {id:'staff',icon:'👔',label:'Wafanyakazi wa DukaLangu',n:staff.filter(s=>s.phone).length},
+          ].map(a=>(
+            <button key={a.id} onClick={()=>{setAudience(a.id);setGroup('all');setSelectedCust([]);setCustSearch('')}} style={{
+              flex:1,padding:'9px 12px',borderRadius:8,border:'none',cursor:'pointer',
+              background:audience===a.id?'#fff':'transparent',
+              color:audience===a.id?'#0B7A3B':'#667085',
+              fontWeight:audience===a.id?800:600,fontSize:12.5,
+              boxShadow:audience===a.id?'0 1px 3px rgba(16,24,40,0.1)':'none',
+              transition:'all 0.2s',
+            }}>
+              {a.icon} {a.label} ({a.n})
+            </button>
+          ))}
+        </div>
+
+        <label style={{fontSize:12,fontWeight:700,color:'#334155',display:'block',marginBottom:8}}>
+          {audience==='staff'?'👔 Chagua Kikundi cha Wafanyakazi':'👥 Chagua Kikundi cha Wateja'}
+        </label>
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
-          {GROUPS.map(g=>{
-            const n=getGroupCustomers(g.id).length;
+          {(audience==='staff'?STAFF_GROUPS:GROUPS).map(g=>{
+            const n=audience==='staff'?getGroupStaff(g.id).filter(s=>s.phone).length:getGroupCustomers(g.id).length;
             return <button key={g.id} onClick={()=>{setGroup(g.id);setSelectedCust([])}} style={{padding:'7px 12px',borderRadius:9,border:group===g.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:group===g.id?'#F0FDF4':'#fff',color:group===g.id?'#0B7A3B':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>
               {g.icon} {g.label} ({n})
             </button>;
@@ -492,11 +545,11 @@ export default function CommsCenterPage(){
         </div>
 
         {/* Customer search + select */}
-        <Input placeholder="🔍 Tafuta mteja (jina au namba)..." value={custSearch} onChange={e=>setCustSearch(e.target.value)} style={{marginBottom:8}}/>
+        <Input placeholder={audience==='staff'?"🔍 Tafuta mfanyakazi...":"🔍 Tafuta mteja (jina au namba)..."} value={custSearch} onChange={e=>setCustSearch(e.target.value)} style={{marginBottom:8}}/>
         {custSearch&&<div style={{maxHeight:150,overflowY:'auto',border:'1px solid #E2E8F0',borderRadius:8,marginBottom:8}}>
           {searchedCustomers.slice(0,20).map(c=>(
             <div key={c.id} onClick={()=>setSelectedCust(p=>p.includes(c.id)?p.filter(x=>x!==c.id):[...p,c.id])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderBottom:'1px solid #F1F5F9',cursor:'pointer',background:selectedCust.includes(c.id)?'#F0FDF4':'#fff'}}>
-              <div><div style={{fontSize:12.5,fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:'#94A3B8'}}>{c.phone}</div></div>
+              <div><div style={{fontSize:12.5,fontWeight:600}}>{c.name}{audience==='staff'&&c.role&&<span style={{marginLeft:6,fontSize:10,padding:'1px 6px',borderRadius:6,background:'#F0FDF4',color:'#0B7A3B',fontWeight:700}}>{c.role}</span>}</div><div style={{fontSize:11,color:'#94A3B8'}}>{c.phone}</div></div>
               {selectedCust.includes(c.id)&&<span style={{color:'#0B7A3B',fontWeight:800}}>✓</span>}
             </div>
           ))}
@@ -547,7 +600,7 @@ export default function CommsCenterPage(){
             {sending?'Inatuma...':
              channel==='email'?`✉️ Tuma Email kwa ${targets.filter(t=>t.email).length}`:
              channel==='notif'?'🔔 Tuma Arifa kwa Wote':
-             `📱 Tuma SMS kwa ${targets.length}`}
+             `📱 Tuma SMS kwa ${targets.length} ${audience==='staff'?'Wafanyakazi':'Wateja'}`}
           </Btn>
         </div>
 
