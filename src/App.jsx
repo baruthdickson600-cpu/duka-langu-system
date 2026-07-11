@@ -12,6 +12,7 @@ import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage
 import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
+import CommsCenterPage from './pages/admin/CommsCenter';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -31,8 +32,7 @@ const MENUS={
       {id:'referrals',icon:IC.gift,label:'Ofa Maalum'},
     ]},
     {group:'mawasiliano',label:'💬 Mawasiliano',icon:IC.send,items:[
-      {id:'broadcast',icon:IC.send,label:'Broadcast'},
-      {id:'sms_center',icon:IC.send,label:'📱 SMS Center'},
+      {id:'comms_center',icon:IC.send,label:'💬 Kituo cha Mawasiliano'},
       {id:'messaging',icon:IC.send,label:'Ujumbe'},
       {id:'templates',icon:IC.file,label:'Email Templates'},
       {id:'tickets',icon:IC.bell,label:'Tickets'},
@@ -245,6 +245,7 @@ export default function App(){
         case'reports':return <AdminReportsPage/>;
         case'faq':return <FaqManagePage/>;
         case'sms_center':return <SMSCenterPage/>;
+        case'comms_center':return <CommsCenterPage/>;
         default:return <AdminDashboard/>;
       }
     }
