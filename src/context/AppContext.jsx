@@ -311,7 +311,7 @@ export function AppProvider({children}){
         
         // Welcome SMS to new user's phone (immediately after signup)
         if(phone){
-          const welcomeSMS=`Karibu DukaLangu!\nUsajili wako umekamilika. Sasa unaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako popote ulipo.\nIngia kwenye mfumo kupitia: dukalangu.com\nKwa msaada wowote wasiliana nasi +255 617 288 752\nAsante kwa kuchagua DukaLangu`;
+          const welcomeSMS=`Karibu DukaLangu Smart POS!\n\nHabari ${name||businessName},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu Smart POS.\n\nKupitia mfumo huu utaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako kwa wakati halisi ukiwa popote.\n\nIngia: dukalangu.com\nMsaada: +255 617 288 752\n\nTunakutakia mafanikio makubwa katika biashara yako.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`;
           sendSMS(phone,welcomeSMS);
         }
         
@@ -1006,7 +1006,7 @@ export function AppProvider({children}){
         
         // Welcome SMS to new customer's phone (immediately after registration)
         if(custPhone){
-          const welcomeSMS=`Karibu DukaLangu!\nUsajili wako umekamilika. Sasa unaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako popote ulipo.\nIngia kwenye mfumo kupitia: dukalangu.com\nKwa msaada wowote wasiliana nasi +255 617 288 752\nAsante kwa kuchagua DukaLangu`;
+          const welcomeSMS=`Karibu DukaLangu Smart POS!\n\nHabari ${name||businessName},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu Smart POS.\n\nKupitia mfumo huu utaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako kwa wakati halisi ukiwa popote.\n\nIngia: dukalangu.com\nMsaada: +255 617 288 752\n\nTunakutakia mafanikio makubwa katika biashara yako.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`;
           sendSMS(custPhone,welcomeSMS);
         }
         
@@ -1103,7 +1103,7 @@ export function AppProvider({children}){
     }
     // 6. SMS token to customer phone
     if(pr.phone){
-      sendSMS(pr.phone,`DUKA LANGU\n✅ MALIPO YAMEPOKELEWA!\n\nMteja: ${pr.business_name}\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nMfumo umefunguliwa siku ${days}\n\nToken: ${code}\n\nFungua: duka-langu-system.vercel.app\n\nAsante kwa kuamini Duka Langu!`);
+      sendSMS(pr.phone,`Habari ${pr.payer_name||pr.business_name||'Mteja'},\n\nMalipo yako yamepokelewa kikamilifu.\n\nAkaunti yako ya DukaLangu Smart POS imefunguliwa na huduma zote zimeanza kufanya kazi tena.\n\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nMuda: Siku ${days}\n\nIngia: dukalangu.com\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`);
     }
     // 7. SMS admin confirmation
     sendSMS('255628986770',`DUKA LANGU\n✅ Umethibitisha malipo\n\nMteja: ${pr.business_name}\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nSiku: ${days}\nToken: ${code}`);
