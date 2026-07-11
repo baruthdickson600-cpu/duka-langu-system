@@ -61,7 +61,20 @@ export default function SMSCenterPage(){
     return{sentToday:history.filter(h=>h.created_at?.startsWith(today)&&h.status?.includes('sent')).length,failed,pending:history.filter(h=>h.status==='pending').length,deliveryRate:total>0?Math.round((sent/total)*100):100,totalSent:sent};
   },[history]);
 
-  const logSMS=async(to,msg,status)=>{try{await supabase.from('sms_logs').insert({recipient:to,message:msg.slice(0,500),status});}catch(e){}};
+  // logSMS: inaondoa columns zinazokosekana kiotomatiki (haiharibu SMS kama table ina muundo tofauti)
+  const logSMS=async(to,msg,status)=>{
+    const row={recipient:to,message:(msg||'').slice(0,500),status};
+    try{
+      let{error}=await supabase.from('sms_logs').insert(row);
+      let tries=0;
+      while(error&&error.message&&error.message.includes('column')&&tries<5){
+        const m=error.message.match(/column "?([a-z_]+)"?/i);
+        if(m&&m[1]&&row[m[1]]!==undefined){delete row[m[1]];tries++;({error}=await supabase.from('sms_logs').insert(row));}
+        else break;
+      }
+      if(error)console.warn('[sms_logs]',error.message);
+    }catch(e){console.warn('[sms_logs]',e?.message);}
+  };
 
   const sendOne=async(testMode=false)=>{
     if(!phone.trim()||!message.trim())return alert('Jaza namba na ujumbe!');

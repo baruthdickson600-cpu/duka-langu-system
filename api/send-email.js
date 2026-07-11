@@ -16,18 +16,23 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  const SMTP_HOST = process.env.SMTP_HOST;
-  const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
-  const SMTP_USER = process.env.SMTP_USER;
-  const SMTP_PASS = process.env.SMTP_PASS;
-  const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@dukalangu.com';
+  // Support MAIL_*, SMTP_*, na GMAIL_* (utangamano wa nyuma)
+  const SMTP_HOST = process.env.MAIL_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
+  const SMTP_PORT = parseInt(process.env.MAIL_PORT || process.env.SMTP_PORT || '587');
+  const SMTP_USER = process.env.MAIL_USER || process.env.SMTP_USER || process.env.GMAIL_USER;
+  const SMTP_PASS = process.env.MAIL_APP_PASSWORD || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+  const FROM_EMAIL = process.env.MAIL_FROM || process.env.FROM_EMAIL || SMTP_USER;
   const FROM_NAME  = process.env.FROM_NAME  || 'Duka Langu';
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.error('❌ [Email] SMTP env variables hazipo');
+  if (!SMTP_USER || !SMTP_PASS) {
+    const missing = [];
+    if (!SMTP_USER) missing.push('MAIL_USER');
+    if (!SMTP_PASS) missing.push('MAIL_APP_PASSWORD');
+    console.error('[Email] Env variables hazipo:', missing.join(', '));
     return res.status(500).json({
       success: false,
-      error: 'Email service haijawekwa vizuri.',
+      error: 'Huduma ya barua pepe haijawekwa. Wasiliana na msimamizi.',
+      missing_env: missing,
     });
   }
 
@@ -43,7 +48,7 @@ export default async function handler(req, res) {
   console.log('📧 [Email] Inatuma kwa:', to);
 
   try {
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host:   SMTP_HOST,
       port:   SMTP_PORT,
       secure: SMTP_PORT === 465,
