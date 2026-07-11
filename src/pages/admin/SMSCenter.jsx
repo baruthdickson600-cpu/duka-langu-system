@@ -55,7 +55,12 @@ export default function SMSCenterPage(){
   const[histDate,setHistDate]=useState('');
   const[page,setPage]=useState(1);
   const[showPreview,setShowPreview]=useState(false);
-  const[autoSMS,setAutoSMS]=useState(true);
+  const[balance,setBalance]=useState(null);
+  const[balLoading,setBalLoading]=useState(false);
+  const[balError,setBalError]=useState(null);
+  // Settings (zinahifadhiwa kwenye settings table)
+  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true'});
+  const[savingCfg,setSavingCfg]=useState(false);
   const PER_PAGE=15;
 
   const withPhone=(businesses||[]).filter(b=>b.phone&&b.phone.trim());
@@ -80,7 +85,43 @@ export default function SMSCenterPage(){
     try{const{data:tpls}=await supabase.from('sms_templates').select('*').order('created_at',{ascending:false});if(tpls&&tpls.length)setTemplates([...tpls,...DEFAULT_TEMPLATES.filter(d=>!tpls.find(t=>t.name===d.name))]);}catch(e){}
     setLoading(false);
   };
-  useEffect(()=>{loadHistory()},[]);
+
+  // Pata salio la SMS kutoka Beem
+  const loadBalance=async()=>{
+    setBalLoading(true);setBalError(null);
+    try{
+      const r=await fetch(API_BASE+'/api/sms-balance');
+      const d=await r.json();
+      if(d.success&&d.balance!==null)setBalance(d.balance);
+      else setBalError(d.error||'Imeshindwa kupata salio');
+    }catch(e){setBalError('Tatizo la mtandao');}
+    setBalLoading(false);
+  };
+
+  // Soma settings kutoka database
+  const loadSettings=async()=>{
+    try{
+      const{data}=await supabase.from('settings').select('key,value');
+      if(data){
+        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_'))s[r.key]=r.value;});
+        setCfg(p=>({...p,...s}));
+      }
+    }catch(e){}
+  };
+
+  // Hifadhi settings
+  const saveSettings=async()=>{
+    setSavingCfg(true);
+    try{
+      for(const[k,v]of Object.entries(cfg)){
+        await supabase.from('settings').upsert({key:k,value:String(v)},{onConflict:'key'});
+      }
+      setResult({ok:true,text:'✅ Mipangilio imehifadhiwa!'});
+    }catch(e){setResult({ok:false,text:'❌ Imeshindwa kuhifadhi: '+e.message});}
+    setSavingCfg(false);
+  };
+
+  useEffect(()=>{loadHistory();loadBalance();loadSettings();},[]);
 
   // ===== Dashboard stats =====
   const stats=useMemo(()=>{
@@ -217,6 +258,28 @@ export default function SMSCenterPage(){
 
     {/* ===== DASHBOARD ===== */}
     {tab==='dashboard'&&<div>
+      {/* SALIO LA SMS */}
+      <div style={{background:'linear-gradient(135deg,#0B7A3B,#15803D)',borderRadius:18,padding:20,marginBottom:14,color:'#fff',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:-20,right:-20,width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
+        <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:12,opacity:0.85,fontWeight:600,marginBottom:4}}>💰 SALIO LA SMS (BEEM)</div>
+            {balLoading?<div style={{fontSize:20,fontWeight:700,opacity:0.7}}>Inapakia...</div>:
+             balError?<div style={{fontSize:13,opacity:0.9}}>⚠️ {balError}</div>:
+             balance!==null?<>
+               <div style={{fontSize:32,fontWeight:900,lineHeight:1.1}}>TZS {balance.toLocaleString()}</div>
+               <div style={{fontSize:11.5,opacity:0.8,marginTop:2}}>≈ SMS {Math.floor(balance/SMS_COST).toLocaleString()} zinabaki</div>
+             </>:<div style={{fontSize:16,opacity:0.8}}>—</div>}
+          </div>
+          <button onClick={loadBalance} disabled={balLoading} style={{padding:'9px 16px',background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:10,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>
+            {balLoading?'...':'🔄 Sasisha'}
+          </button>
+        </div>
+        {balance!==null&&balance<5000&&<div style={{marginTop:10,padding:'8px 12px',background:'rgba(255,255,255,0.15)',borderRadius:8,fontSize:12,fontWeight:600}}>
+          ⚠️ Salio ni ndogo! Ongeza salio kwenye akaunti yako ya Beem.
+        </div>}
+      </div>
+
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12,marginBottom:16}}>
         {[
           {l:'SMS Leo',v:stats.today,i:'📅',c:'#0B7A3B'},
@@ -386,22 +449,75 @@ export default function SMSCenterPage(){
     </div>}
 
     {/* ===== SETTINGS ===== */}
-    {tab==='settings'&&<div className="card">
-      <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 14px'}}>⚙️ Mipangilio ya SMS</h3>
-      <div style={{display:'flex',flexDirection:'column',gap:12}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>Beem Africa</span></div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Sender ID</span><span style={{fontSize:13,fontWeight:700,color:'#1E293B'}}>Imewekwa (server-side)</span></div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Hali ya API</span><Badge color="#22C55E">● Imeunganishwa</Badge></div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#F0FDF4',borderRadius:10,border:'1px solid #BBF7D0'}}>
-          <div><div style={{fontSize:13,color:'#15803D',fontWeight:700}}>SMS za Otomatiki</div><div style={{fontSize:11,color:'#64748B'}}>Karibu, malipo, ukumbusho (7/3/1), usajili umeisha</div></div>
-          <Badge color="#22C55E">● Zinafanya kazi</Badge>
+    {tab==='settings'&&<div>
+      {/* Hali ya Muunganisho */}
+      <div className="card" style={{marginBottom:12}}>
+        <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>🔌 Hali ya Muunganisho</h3>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>Beem Africa</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Sender ID</span><span style={{fontSize:13,fontWeight:700,color:'#1E293B'}}>Imewekwa (Vercel)</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Hali ya API</span><Badge color={balError?'#EF4444':'#22C55E'}>{balError?'● Tatizo':'● Imeunganishwa'}</Badge></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Salio</span><span style={{fontSize:13,fontWeight:800,color:balance!==null&&balance<5000?'#EF4444':'#0B7A3B'}}>{balance!==null?`TZS ${balance.toLocaleString()}`:'—'}</span></div>
+          <div style={{padding:'11px 14px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A3412'}}>🔒 API Key na Secret zimefichwa kwa usalama. Ili kubadilisha Sender ID, nenda Vercel → Environment Variables → BEEM_SENDER_ID.</div>
         </div>
-        <div style={{padding:'12px 14px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A3412'}}>🔒 API Key na Secret zimefichwa (Vercel Environment Variables).</div>
+      </div>
 
-        <div style={{marginTop:8,borderTop:'1px solid #F1F5F9',paddingTop:14}}>
-          <Input label="Namba ya Kupima" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0712345678"/>
-          <Btn onClick={()=>{if(!phone.trim())return alert('Weka namba!');setMessage('Hii ni SMS ya majaribio kutoka DukaLangu Smart POS. Beem inafanya kazi!');setTimeout(sendOne,100)}} disabled={sending} style={{width:'100%',justifyContent:'center'}}>{sending?'Inatuma...':'🧪 Tuma SMS ya Majaribio'}</Btn>
+      {/* SMS Signature & Footer */}
+      <div className="card" style={{marginBottom:12}}>
+        <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>✍️ Sahihi na Kifuatisho</h3>
+        <Input label="Sahihi ya SMS (mwanzo)" value={cfg.sms_signature} onChange={e=>setCfg({...cfg,sms_signature:e.target.value})} placeholder="Mfano: DukaLangu"/>
+        <Area label="Kifuatisho (mwisho wa kila SMS)" value={cfg.sms_footer} onChange={e=>setCfg({...cfg,sms_footer:e.target.value})} placeholder="Mfano: DukaLangu Smart POS - Simamia Biashara Yako Kidijitali." rows={2}/>
+        <div style={{fontSize:11,color:'#94A3B8',marginBottom:10}}>💡 Hivi vitaongezwa kwenye SMS za otomatiki. Kumbuka: maandishi marefu = SMS nyingi = gharama zaidi.</div>
+      </div>
+
+      {/* Automatic SMS Controls */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <h3 style={{fontSize:15,fontWeight:800,margin:0}}>🤖 SMS za Otomatiki</h3>
+          <button onClick={()=>setCfg({...cfg,auto_sms_enabled:cfg.auto_sms_enabled==='true'?'false':'true'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.auto_sms_enabled==='true'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+            {cfg.auto_sms_enabled==='true'?'● IMEWASHWA':'○ IMEZIMWA'}
+          </button>
         </div>
+
+        {cfg.auto_sms_enabled==='true'?<div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {[
+            ['auto_welcome','👋 Karibu Mteja Mpya','Mteja anapojisajili'],
+            ['auto_payment','💰 Malipo Yamepokelewa','Malipo yanapothibitishwa'],
+            ['auto_reminder_7','📅 Ukumbusho — Siku 7','Siku 7 kabla ya kuisha'],
+            ['auto_reminder_3','📅 Ukumbusho — Siku 3','Siku 3 kabla ya kuisha'],
+            ['auto_reminder_1','⚠️ Ukumbusho — Siku 1','Siku 1 kabla ya kuisha'],
+            ['auto_expired','🔴 Usajili Umeisha','Siku ya kuisha'],
+          ].map(([key,label,desc])=>(
+            <div key={key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:cfg[key]==='true'?'#F0FDF4':'#FAFBFC',borderRadius:10,border:`1px solid ${cfg[key]==='true'?'#BBF7D0':'#F1F5F9'}`}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:'#334155'}}>{label}</div>
+                <div style={{fontSize:11,color:'#94A3B8'}}>{desc}</div>
+              </div>
+              <button onClick={()=>setCfg({...cfg,[key]:cfg[key]==='true'?'false':'true'})} style={{width:44,height:24,borderRadius:12,border:'none',background:cfg[key]==='true'?'#22C55E':'#CBD5E1',cursor:'pointer',position:'relative',flexShrink:0}}>
+                <span style={{position:'absolute',top:2,left:cfg[key]==='true'?22:2,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left 0.2s'}}/>
+              </button>
+            </div>
+          ))}
+          <div style={{padding:'10px 12px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:11.5,color:'#9A3412'}}>
+            💡 Makadirio: wateja {withPhone.length} × ukumbusho 3 ≈ TZS {(withPhone.length*3*SMS_COST).toLocaleString()}/mwezi
+          </div>
+        </div>:
+        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+          ⚠️ SMS zote za otomatiki zimezimwa. Wateja hawatapokea ukumbusho wala karibu.
+        </div>}
+
+        <Btn onClick={saveSettings} disabled={savingCfg} style={{width:'100%',justifyContent:'center',marginTop:12}}>
+          {savingCfg?'Inahifadhi...':'💾 Hifadhi Mipangilio'}
+        </Btn>
+      </div>
+
+      {/* Test SMS */}
+      <div className="card">
+        <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>🧪 Jaribio</h3>
+        <Input label="Namba ya Kupima" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="0712345678"/>
+        <Btn onClick={()=>{if(!phone.trim())return alert('Weka namba!');setMessage('Hii ni SMS ya majaribio kutoka DukaLangu Smart POS. Beem inafanya kazi!');setTimeout(sendOne,100)}} disabled={sending} style={{width:'100%',justifyContent:'center'}}>
+          {sending?'Inatuma...':'🧪 Tuma SMS ya Majaribio'}
+        </Btn>
       </div>
     </div>}
 

@@ -44,9 +44,31 @@ export default async function handler(req, res) {
   const baseUrl = `https://${req.headers.host}`;
   const today = new Date().toISOString().slice(0, 10);
 
-  const results = { sent: 0, skipped: 0, failed: 0, details: [] };
+  const results = { sent: 0, skipped: 0, failed: 0, disabled: 0, details: [] };
 
   try {
+    // Soma settings - heshimu ON/OFF toggles kutoka SMS Center
+    const cfg = {};
+    try {
+      const { data: settingsRows } = await supabase.from('settings').select('key,value');
+      (settingsRows || []).forEach(r => { cfg[r.key] = r.value; });
+    } catch (e) { /* tumia defaults */ }
+
+    // Kama SMS za otomatiki zimezimwa kabisa
+    if (cfg.auto_sms_enabled === 'false') {
+      console.log('[CRON reminders] SMS za otomatiki zimezimwa na msimamizi.');
+      return res.status(200).json({ success: true, disabled: true, message: 'SMS za otomatiki zimezimwa.' });
+    }
+
+    const isEnabled = (type) => {
+      if (type === 'reminder_7') return cfg.auto_reminder_7 !== 'false';
+      if (type === 'reminder_3') return cfg.auto_reminder_3 !== 'false';
+      if (type === 'reminder_1') return cfg.auto_reminder_1 !== 'false';
+      if (type === 'expired') return cfg.auto_expired !== 'false';
+      return true;
+    };
+
+    const footer = cfg.sms_footer || '';
     // Chukua biashara zote zenye simu
     const { data: businesses, error } = await supabase
       .from('businesses')
@@ -71,6 +93,9 @@ export default async function handler(req, res) {
 
       if (!type) continue;
 
+      // Heshimu ON/OFF toggle ya aina hii
+      if (!isEnabled(type)) { results.disabled++; continue; }
+
       // KINGA YA KUTORUDIA: angalia kama SMS hii tayari imetumwa
       const { data: existing } = await supabase
         .from('sms_sent_log')
@@ -86,7 +111,8 @@ export default async function handler(req, res) {
       }
 
       // Tuma SMS
-      const msg = buildMessage(type === 'expired' ? 'expired' : 'reminder', biz.name || 'Mteja', daysLeft);
+      let msg = buildMessage(type === 'expired' ? 'expired' : 'reminder', biz.name || 'Mteja', daysLeft);
+      if (footer) msg = msg.replace(/\n\nDukaLangu Smart POS[\s\S]*$/, `\n\n${footer}`);
       const r = await sendSMS(baseUrl, biz.phone, msg);
 
       // Hifadhi kwenye kinga ya kutorudia

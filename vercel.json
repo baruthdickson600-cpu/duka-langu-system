@@ -27,6 +27,9 @@
     },
     "api/cron/subscription-reminders.js": {
       "maxDuration": 60
+    },
+    "api/sms-balance.js": {
+      "maxDuration": 15
     }
   },
   "crons": [
