@@ -30,6 +30,9 @@
     },
     "api/sms-balance.js": {
       "maxDuration": 15
+    },
+    "api/cron/daily-email-report.js": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -44,6 +47,10 @@
     {
       "path": "/api/cron/subscription-reminders",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/daily-email-report",
+      "schedule": "0 5 * * *"
     }
   ]
 }

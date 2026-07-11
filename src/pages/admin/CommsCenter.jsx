@@ -63,7 +63,7 @@ export default function CommsCenterPage(){
   const[balLoading,setBalLoading]=useState(false);
   const[balError,setBalError]=useState(null);
   // Settings (zinahifadhiwa kwenye settings table)
-  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true'});
+  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true',email_reports_enabled:'true'});
   const[savingCfg,setSavingCfg]=useState(false);
   const PER_PAGE=15;
 
@@ -107,7 +107,7 @@ export default function CommsCenterPage(){
     try{
       const{data}=await supabase.from('settings').select('key,value');
       if(data){
-        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_'))s[r.key]=r.value;});
+        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_')||r.key?.startsWith('email_reports'))s[r.key]=r.value;});
         setCfg(p=>({...p,...s}));
       }
     }catch(e){}
@@ -689,6 +689,33 @@ export default function CommsCenterPage(){
         <Btn onClick={saveSettings} disabled={savingCfg} style={{width:'100%',justifyContent:'center',marginTop:12}}>
           {savingCfg?'Inahifadhi...':'💾 Hifadhi Mipangilio'}
         </Btn>
+      </div>
+
+      {/* Ripoti za Email */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <div>
+            <h3 style={{fontSize:15,fontWeight:800,margin:0}}>📧 Ripoti za Email</h3>
+            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>Kila siku saa 8:00 asubuhi</div>
+          </div>
+          <button onClick={()=>setCfg({...cfg,email_reports_enabled:cfg.email_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.email_reports_enabled!=='false'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+            {cfg.email_reports_enabled!=='false'?'● IMEWASHWA':'○ IMEZIMWA'}
+          </button>
+        </div>
+        {cfg.email_reports_enabled!=='false'?<div style={{display:'flex',flexDirection:'column',gap:7}}>
+          {['📊 Mauzo ya jana (kila siku)','📅 Muhtasari wa wiki (Jumatatu)','📆 Muhtasari wa mwezi (tarehe 1)','📦 Bidhaa zinazoisha','💰 Madeni na waliochelewa','🔑 Hali ya usajili'].map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{width:15,height:15,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#ECFDF3',color:'#16A34A',fontSize:9,fontWeight:900}}>✓</span>
+              <span style={{fontSize:12.5,color:'#344054',fontWeight:600}}>{l}</span>
+            </div>
+          ))}
+          <div style={{padding:'10px 12px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:11.5,color:'#15803D',marginTop:4}}>
+            💡 Email moja kamili kwa kila mteja. <b>Bure</b> — hakuna gharama.
+          </div>
+        </div>:
+        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+          ⚠️ Ripoti za email zimezimwa. Wateja hawatapokea ripoti za kila siku.
+        </div>}
       </div>
 
       {/* Test SMS */}
