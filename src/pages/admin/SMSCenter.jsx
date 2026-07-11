@@ -258,63 +258,154 @@ export default function SMSCenterPage(){
 
     {/* ===== DASHBOARD ===== */}
     {tab==='dashboard'&&<div>
-      {/* SALIO LA SMS */}
-      <div style={{background:'linear-gradient(135deg,#0B7A3B,#15803D)',borderRadius:18,padding:20,marginBottom:14,color:'#fff',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',top:-20,right:-20,width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
-        <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+      {/* ===== HERO: SALIO ===== */}
+      <div style={{
+        background:'linear-gradient(135deg,#064E2B 0%,#0B7A3B 55%,#16A34A 100%)',
+        borderRadius:20,padding:'22px 24px',marginBottom:14,color:'#fff',
+        position:'relative',overflow:'hidden',
+        boxShadow:'0 8px 24px -8px rgba(11,122,59,0.45)',
+      }}>
+        <div style={{position:'absolute',top:-40,right:-30,width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,0.07)'}}/>
+        <div style={{position:'absolute',bottom:-50,right:60,width:110,height:110,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
+
+        <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:14}}>
           <div>
-            <div style={{fontSize:12,opacity:0.85,fontWeight:600,marginBottom:4}}>💰 SALIO LA SMS (BEEM)</div>
-            {balLoading?<div style={{fontSize:20,fontWeight:700,opacity:0.7}}>Inapakia...</div>:
-             balError?<div style={{fontSize:13,opacity:0.9}}>⚠️ {balError}</div>:
-             balance!==null?<>
-               <div style={{fontSize:32,fontWeight:900,lineHeight:1.1}}>TZS {balance.toLocaleString()}</div>
-               <div style={{fontSize:11.5,opacity:0.8,marginTop:2}}>≈ SMS {Math.floor(balance/SMS_COST).toLocaleString()} zinabaki</div>
-             </>:<div style={{fontSize:16,opacity:0.8}}>—</div>}
+            <div style={{fontSize:11,opacity:0.75,fontWeight:700,letterSpacing:1.2,marginBottom:6}}>SALIO LA SMS</div>
+            {balLoading?
+              <div style={{height:38,width:170,background:'rgba(255,255,255,0.15)',borderRadius:8,animation:'pulse 1.5s infinite'}}/>
+            :balError?
+              <div style={{fontSize:13,opacity:0.9,maxWidth:280}}>⚠️ {balError}</div>
+            :balance!==null?<>
+              <div style={{display:'flex',alignItems:'baseline',gap:6}}>
+                <span style={{fontSize:14,opacity:0.7,fontWeight:600}}>TZS</span>
+                <span style={{fontSize:36,fontWeight:900,letterSpacing:-1,lineHeight:1}}>{balance.toLocaleString()}</span>
+              </div>
+              <div style={{fontSize:12,opacity:0.75,marginTop:6,display:'flex',alignItems:'center',gap:5}}>
+                <span style={{width:5,height:5,borderRadius:'50%',background:balance<5000?'#FCA5A5':'#86EFAC'}}/>
+                ≈ SMS {Math.floor(balance/SMS_COST).toLocaleString()} zinabaki
+              </div>
+            </>:<div style={{fontSize:24,fontWeight:800,opacity:0.5}}>—</div>}
           </div>
-          <button onClick={loadBalance} disabled={balLoading} style={{padding:'9px 16px',background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:10,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>
-            {balLoading?'...':'🔄 Sasisha'}
+
+          <button onClick={loadBalance} disabled={balLoading} style={{
+            padding:'8px 15px',background:'rgba(255,255,255,0.16)',color:'#fff',
+            border:'1px solid rgba(255,255,255,0.25)',borderRadius:10,
+            fontWeight:700,fontSize:12,cursor:'pointer',backdropFilter:'blur(8px)',
+            display:'flex',alignItems:'center',gap:5,
+          }}>
+            <span style={{display:'inline-block',transform:balLoading?'rotate(180deg)':'none',transition:'transform 0.4s'}}>🔄</span>
+            {balLoading?'Inapakia':'Sasisha'}
           </button>
         </div>
-        {balance!==null&&balance<5000&&<div style={{marginTop:10,padding:'8px 12px',background:'rgba(255,255,255,0.15)',borderRadius:8,fontSize:12,fontWeight:600}}>
-          ⚠️ Salio ni ndogo! Ongeza salio kwenye akaunti yako ya Beem.
+
+        {balance!==null&&balance<5000&&<div style={{
+          marginTop:14,padding:'9px 13px',background:'rgba(239,68,68,0.25)',
+          border:'1px solid rgba(255,255,255,0.2)',borderRadius:10,fontSize:12,fontWeight:600,
+          display:'flex',alignItems:'center',gap:7,
+        }}>
+          <span>⚠️</span> Salio ni ndogo — ongeza salio Beem ili SMS zisisimame.
         </div>}
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:12,marginBottom:16}}>
+      {/* ===== STATS: mstari mmoja mwembamba ===== */}
+      <div style={{
+        display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(105px,1fr))',
+        gap:0,marginBottom:14,background:'#fff',borderRadius:16,
+        border:'1px solid #EEF2F6',overflow:'hidden',
+        boxShadow:'0 1px 3px rgba(16,24,40,0.04)',
+      }}>
         {[
-          {l:'SMS Leo',v:stats.today,i:'📅',c:'#0B7A3B'},
-          {l:'SMS Mwezi Huu',v:stats.month,i:'📆',c:'#3B82F6'},
-          {l:'Zimefanikiwa',v:stats.sent,i:'✅',c:'#22C55E'},
-          {l:'Zimeshindwa',v:stats.failed,i:'❌',c:'#EF4444'},
-          {l:'Zinasubiri',v:stats.pending,i:'⏳',c:'#F59E0B'},
-          {l:'Kiwango cha Ufikishaji',v:`${stats.rate}%`,i:'📊',c:'#8B5CF6'},
-        ].map((c,i)=>(
-          <div key={i} style={{background:'#fff',borderRadius:16,padding:14,border:`1px solid ${c.c}18`,boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}><span style={{fontSize:18}}>{c.i}</span><span style={{fontSize:10.5,color:'#64748B',fontWeight:600}}>{c.l}</span></div>
-            <div style={{fontSize:24,fontWeight:900,color:c.c}}>{c.v}</div>
+          {l:'Leo',v:stats.today,c:'#0B7A3B'},
+          {l:'Mwezi',v:stats.month,c:'#3B82F6'},
+          {l:'Zimefika',v:stats.sent,c:'#16A34A'},
+          {l:'Zimeshindwa',v:stats.failed,c:'#EF4444'},
+          {l:'Ufikishaji',v:`${stats.rate}%`,c:'#8B5CF6'},
+        ].map((s,i,arr)=>(
+          <div key={i} style={{
+            padding:'14px 12px',textAlign:'center',
+            borderRight:i<arr.length-1?'1px solid #F3F4F6':'none',
+          }}>
+            <div style={{fontSize:20,fontWeight:900,color:s.c,lineHeight:1.1,letterSpacing:-0.5}}>{s.v}</div>
+            <div style={{fontSize:10,color:'#98A2B3',fontWeight:600,marginTop:3,textTransform:'uppercase',letterSpacing:0.4}}>{s.l}</div>
           </div>
         ))}
       </div>
 
-      {/* Last SMS + Recent */}
-      <div className="card" style={{marginBottom:12}}>
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#1E293B'}}>🕐 Shughuli za Hivi Karibuni</h3>
-        {!history.length?<Empty icon="📭" text="Hakuna SMS bado"/>:
-         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {history.slice(0,5).map(h=>(
-            <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:'#FAFBFC',borderRadius:8}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:12.5,fontWeight:600}}>{h.recipient}</div>
-                <div style={{fontSize:11,color:'#94A3B8',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.message}</div>
-              </div>
-              <Badge color={h.status?.includes('sent')?'#22C55E':'#EF4444'}>{h.status?.includes('sent')?'✓':'✗'}</Badge>
-            </div>
-          ))}
-         </div>}
-      </div>
+      {/* ===== SHUGHULI + OTOMATIKI (safu mbili) ===== */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12}}>
 
-      <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:14,padding:14,fontSize:12.5,color:'#15803D'}}>
-        🤖 <b>SMS za Otomatiki zinafanya kazi:</b> Karibu mteja mpya • Malipo yamepokelewa • Mfumo umefunguliwa • Ukumbusho (siku 7/3/1) • Usajili umeisha
+        {/* Shughuli */}
+        <div style={{background:'#fff',borderRadius:16,border:'1px solid #EEF2F6',padding:16,boxShadow:'0 1px 3px rgba(16,24,40,0.04)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <span style={{fontSize:13,fontWeight:800,color:'#101828'}}>Shughuli za Hivi Karibuni</span>
+            {history.length>0&&<button onClick={()=>setTab('history')} style={{background:'none',border:'none',color:'#0B7A3B',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>Zote →</button>}
+          </div>
+          {!history.length?
+            <div style={{textAlign:'center',padding:'22px 0',color:'#98A2B3'}}>
+              <div style={{fontSize:26,marginBottom:6,opacity:0.5}}>📭</div>
+              <div style={{fontSize:12.5}}>Hakuna SMS bado</div>
+            </div>
+          :<div style={{display:'flex',flexDirection:'column',gap:2}}>
+            {history.slice(0,5).map((h,i)=>(
+              <div key={h.id} style={{
+                display:'flex',alignItems:'center',gap:10,padding:'9px 0',
+                borderBottom:i<4&&i<history.length-1?'1px solid #F9FAFB':'none',
+              }}>
+                <span style={{
+                  width:7,height:7,borderRadius:'50%',flexShrink:0,
+                  background:h.status?.includes('sent')?'#16A34A':'#EF4444',
+                }}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:'#344054'}}>{h.recipient}</div>
+                  <div style={{fontSize:11,color:'#98A2B3',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.message}</div>
+                </div>
+                <span style={{fontSize:10.5,color:'#D0D5DD',flexShrink:0}}>
+                  {new Date(h.created_at).toLocaleDateString('sw',{day:'numeric',month:'short'})}
+                </span>
+              </div>
+            ))}
+          </div>}
+        </div>
+
+        {/* SMS za Otomatiki */}
+        <div style={{background:'#fff',borderRadius:16,border:'1px solid #EEF2F6',padding:16,boxShadow:'0 1px 3px rgba(16,24,40,0.04)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <span style={{fontSize:13,fontWeight:800,color:'#101828'}}>SMS za Otomatiki</span>
+            <span style={{
+              fontSize:10,fontWeight:800,padding:'3px 9px',borderRadius:20,
+              background:cfg.auto_sms_enabled==='false'?'#FEF3F2':'#ECFDF3',
+              color:cfg.auto_sms_enabled==='false'?'#B42318':'#027A48',
+            }}>
+              {cfg.auto_sms_enabled==='false'?'ZIMEZIMWA':'ZINAFANYA KAZI'}
+            </span>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:7}}>
+            {[
+              ['Karibu mteja mpya','auto_welcome'],
+              ['Malipo yamepokelewa','auto_payment'],
+              ['Ukumbusho (7/3/1)','auto_reminder_7'],
+              ['Usajili umeisha','auto_expired'],
+            ].map(([label,key])=>{
+              const on=cfg.auto_sms_enabled!=='false'&&cfg[key]!=='false';
+              return <div key={key} style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{
+                  width:15,height:15,borderRadius:'50%',flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  background:on?'#ECFDF3':'#F2F4F7',
+                  color:on?'#16A34A':'#D0D5DD',fontSize:9,fontWeight:900,
+                }}>{on?'✓':'○'}</span>
+                <span style={{fontSize:12.5,color:on?'#344054':'#98A2B3',fontWeight:on?600:500}}>{label}</span>
+              </div>;
+            })}
+          </div>
+          <button onClick={()=>setTab('settings')} style={{
+            marginTop:13,width:'100%',padding:'8px',background:'#F9FAFB',
+            border:'1px solid #EAECF0',borderRadius:9,color:'#475467',
+            fontSize:11.5,fontWeight:700,cursor:'pointer',
+          }}>
+            ⚙️ Badilisha Mipangilio
+          </button>
+        </div>
       </div>
     </div>}
 
