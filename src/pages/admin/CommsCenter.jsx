@@ -73,7 +73,7 @@ export default function CommsCenterPage(){
   const[balLoading,setBalLoading]=useState(false);
   const[balError,setBalError]=useState(null);
   // Settings (zinahifadhiwa kwenye settings table)
-  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true',email_reports_enabled:'true'});
+  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true',email_reports_enabled:'true',staff_reports_enabled:'true'});
   const[savingCfg,setSavingCfg]=useState(false);
   const PER_PAGE=15;
 
@@ -139,7 +139,7 @@ export default function CommsCenterPage(){
     try{
       const{data}=await supabase.from('settings').select('key,value');
       if(data){
-        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_')||r.key?.startsWith('email_reports'))s[r.key]=r.value;});
+        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_')||r.key?.startsWith('email_reports')||r.key?.startsWith('staff_reports'))s[r.key]=r.value;});
         setCfg(p=>({...p,...s}));
       }
     }catch(e){}
@@ -768,6 +768,37 @@ export default function CommsCenterPage(){
         </div>:
         <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
           ⚠️ Ripoti za email zimezimwa. Wateja hawatapokea ripoti za kila siku.
+        </div>}
+      </div>
+
+      {/* Ripoti za Wafanyakazi */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <div>
+            <h3 style={{fontSize:15,fontWeight:800,margin:0}}>👔 Ripoti za Wafanyakazi</h3>
+            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>Kila mmoja anapata inayomhusu — saa 8:00</div>
+          </div>
+          <button onClick={()=>setCfg({...cfg,staff_reports_enabled:cfg.staff_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.staff_reports_enabled!=='false'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+            {cfg.staff_reports_enabled!=='false'?'● IMEWASHWA':'○ IMEZIMWA'}
+          </button>
+        </div>
+        {cfg.staff_reports_enabled!=='false'?<div style={{display:'flex',flexDirection:'column',gap:9}}>
+          {[
+            {r:'💼 Mhasibu',d:'Malipo yanayosubiri • Aliyothibitisha • Mapato'},
+            {r:'🤝 Wakala/Msimamizi',d:'Wateja wake • Wanaokaribia kuisha • Waliomaliza'},
+            {r:'📣 Masoko',d:'Wateja wapya • Kiwango cha ubadilishaji'},
+          ].map((x,i)=>(
+            <div key={i} style={{padding:'10px 12px',background:'#F9FAFB',borderRadius:10,border:'1px solid #F2F4F7'}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:'#344054',marginBottom:2}}>{x.r}</div>
+              <div style={{fontSize:11,color:'#98A2B3'}}>{x.d}</div>
+            </div>
+          ))}
+          <div style={{padding:'10px 12px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:11.5,color:'#15803D'}}>
+            💡 Wafanyakazi {staff.filter(s=>s.email).length} watapokea ripoti. <b>Bure</b>.
+          </div>
+        </div>:
+        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+          ⚠️ Ripoti za wafanyakazi zimezimwa.
         </div>}
       </div>
 

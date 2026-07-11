@@ -258,8 +258,20 @@ export default async function handler(req, res) {
       await new Promise(res => setTimeout(res, 250));
     }
 
-    console.log('[CRON email-report]', JSON.stringify(results));
-    return res.status(200).json({ success: true, ...results });
+    // ===== RIPOTI ZA WAFANYAKAZI (baada ya wateja) =====
+    let staffResults = { sent: 0, skipped: 0, failed: 0 };
+    if (cfg.staff_reports_enabled !== 'false') {
+      try {
+        const sr = await fetch(`${baseUrl}/api/cron/staff-email-report`, { method: 'GET' });
+        const sd = await sr.json().catch(() => ({}));
+        if (sd.success) staffResults = { sent: sd.sent || 0, skipped: sd.skipped || 0, failed: sd.failed || 0 };
+      } catch (e) {
+        console.warn('[CRON] Staff report failed:', e.message);
+      }
+    }
+
+    console.log('[CRON email-report]', JSON.stringify({ customers: results, staff: staffResults }));
+    return res.status(200).json({ success: true, customers: results, staff: staffResults });
 
   } catch (err) {
     console.error('[CRON email-report] Error:', err.message);
