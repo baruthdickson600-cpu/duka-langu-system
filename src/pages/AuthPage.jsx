@@ -271,7 +271,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
 
           <div style={{textAlign:'center',marginTop:18}}>
             <div style={{fontSize:12,color:'rgba(255,255,255,.85)',fontWeight:600,textShadow:'0 2px 6px rgba(0,0,0,0.4)'}}>Lipa: HALOPESA → 25187616 • DUKALANGU</div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:5}}>© 2026 PesaFly / Duka Langu • Tanzania 🇹🇿</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:5}}>© 2026 Duka Langu • Tanzania 🇹🇿</div>
           </div>
 
         </div>

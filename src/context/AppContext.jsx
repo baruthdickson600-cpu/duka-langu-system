@@ -242,7 +242,7 @@ export function AppProvider({children}){
           const{error:authErr}=await supabase.auth.signInWithPassword({email,password});
           // Hata kama Supabase password ni tofauti, admin bado anaingia (hardcoded)
         }catch(_){}
-        const u={id:'00000000-0000-0000-0000-000000000001',email,name:'PesaFly Admin',role:'admin'};
+        const u={id:'00000000-0000-0000-0000-000000000001',email,name:'Duka Langu Admin',role:'admin'};
         setUser(u);
         await loadData(u.id,'admin',null);
         setLoading(false);

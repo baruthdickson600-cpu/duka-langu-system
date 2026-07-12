@@ -318,7 +318,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
           </div>
         </div>
         <div style={{borderTop:'1px solid #334155',paddingTop:20,textAlign:'center',fontSize:11}}>
-          © 2026 PesaFly Technologies — Tanzania 🇹🇿 — Made with ❤️ for Tanzanian Entrepreneurs
+          © 2026 Duka Langu — Tanzania 🇹🇿 — Made with ❤️ for Tanzanian Entrepreneurs
         </div>
       </div>
     </div>

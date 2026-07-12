@@ -52,7 +52,7 @@ function wrapWithBranding(bodyHTML, subject) {
         <tr>
           <td style="padding:18px 24px;background:#F9FAFB;border-top:1px solid #F2F4F7;text-align:center;">
             <div style="font-size:12.5px;color:#667085;font-weight:600;margin-bottom:4px;">
-              PesaFly / Duka Langu — Together for the better
+              Duka Langu — Together for the better
             </div>
             <div style="font-size:11.5px;color:#98A2B3;">
               📞 +255 617 288 752 &nbsp;•&nbsp; 🌐 dukalangu.com

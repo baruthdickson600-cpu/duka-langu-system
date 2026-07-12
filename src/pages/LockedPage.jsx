@@ -262,7 +262,7 @@ export default function LockedPage(){
             <div>
               <button onClick={logout} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',color:'#fff',padding:'8px 18px',borderRadius:10,fontSize:12,fontWeight:600,cursor:'pointer'}}>← Toka</button>
             </div>
-            <div style={{fontSize:10,opacity:0.6,marginTop:10}}>© 2026 PesaFly / Duka Langu • 🇹🇿</div>
+            <div style={{fontSize:10,opacity:0.6,marginTop:10}}>© 2026 Duka Langu • 🇹🇿</div>
           </div>
         </div>
       </div>

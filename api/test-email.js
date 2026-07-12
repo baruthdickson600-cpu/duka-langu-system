@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       html: `
         <div style="max-width:500px;margin:20px auto;font-family:Arial;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1)">
           <div style="background:linear-gradient(135deg,#0B7A3B,#065F2E);padding:24px;text-align:center;color:#fff">
-            <h1 style="margin:0;font-size:20px">PesaFly / Duka Langu</h1>
+            <h1 style="margin:0;font-size:20px">Duka Langu</h1>
             <p style="margin:4px 0 0;opacity:0.8;font-size:12px">Email System Test</p>
           </div>
           <div style="padding:24px;text-align:center">
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             </div>
           </div>
           <div style="background:#F8FAFC;padding:14px;text-align:center;font-size:11px;color:#94A3B8">
-            © 2026 PesaFly / Duka Langu
+            © 2026 Duka Langu
           </div>
         </div>`,
     });

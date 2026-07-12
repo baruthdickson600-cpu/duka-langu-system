@@ -364,7 +364,7 @@ export function DemoPage(){
       <p style={{color:'#64748B',fontSize:14,lineHeight:1.6,marginBottom:20}}>Tumia akaunti hii kuonyesha wateja jinsi mfumo unavyofanya kazi. Data ni ya mfano — haigusi mfumo halisi.</p>
       <div style={{background:'#F8FAFC',borderRadius:12,padding:16,marginBottom:20,textAlign:'left'}}>
         <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #E2E8F0'}}><span style={{color:'#64748B'}}>Link:</span><code style={{fontWeight:700}}>duka-langu-system.vercel.app</code></div>
-        <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #E2E8F0'}}><span style={{color:'#64748B'}}>Email:</span><code style={{fontWeight:700}}>demo@pesafly.com</code></div>
+        <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #E2E8F0'}}><span style={{color:'#64748B'}}>Email:</span><code style={{fontWeight:700}}>demo@dukalangu.com</code></div>
         <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0'}}><span style={{color:'#64748B'}}>Password:</span><code style={{fontWeight:700}}>demo1234</code></div>
       </div>
       <div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',marginBottom:16}}>

@@ -1913,7 +1913,7 @@ export function EmailTemplatesPage(){
     {key:'email_lowstock_body',label:'Stock Inaisha — Ujumbe',default:'Bidhaa zifuatazo ziko chini ya kiwango. Agiza haraka!'},
     {key:'email_promo_subject',label:'Promotion — Kichwa',default:'🎉 Offer Maalum!'},
     {key:'email_promo_body',label:'Promotion — Ujumbe',default:''},
-    {key:'email_footer',label:'Footer ya Email Zote',default:'PesaFly / Duka Langu — Together for the better'},
+    {key:'email_footer',label:'Footer ya Email Zote',default:'Duka Langu — Together for the better'},
   ];
   const[saved,setSaved]=useState(false);
 
@@ -1971,7 +1971,7 @@ export function AdminReportsPage(){
     </style></head><body>
     <div style="display:flex;align-items:center;gap:14;margin-bottom:20px">
       <div><h1 style="margin:0;font-size:24px">DUKA LANGU — RIPOTI KAMILI</h1>
-      <div style="color:#64748B;font-size:12px">Tarehe: ${new Date().toLocaleDateString('sw-TZ')} | PesaFly / Duka Langu</div></div>
+      <div style="color:#64748B;font-size:12px">Tarehe: ${new Date().toLocaleDateString('sw-TZ')} | Duka Langu</div></div>
     </div>
     <div style="margin:16px 0">
       <div class="stat"><div class="num">${businesses.length}</div><div class="lbl">Maduka Jumla</div></div>
