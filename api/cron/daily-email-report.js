@@ -249,13 +249,13 @@ export default async function handler(req, res) {
         });
         const d = await r.json().catch(() => ({}));
         if (r.ok && d.success) results.sent++;
-        else { results.failed++; results.details.push({ biz: biz.name, error: d.error }); }
+        else { results.failed++; if(results.details.length<3) results.details.push({ biz: biz.name, error: d.error, reason: d.details || d.missing_env }); }
       } catch (e) {
         results.failed++;
         results.details.push({ biz: biz.name, error: e.message });
       }
 
-      await new Promise(res => setTimeout(res, 250));
+      await new Promise(res => setTimeout(res, 1200)); // Gmail rate limit
     }
 
     // ===== RIPOTI ZA WAFANYAKAZI (baada ya wateja) =====
