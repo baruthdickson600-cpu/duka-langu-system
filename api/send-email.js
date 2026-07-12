@@ -109,7 +109,12 @@ export default async function handler(req, res) {
   console.log('📧 [Email] Inatuma kwa:', to);
 
   try {
-    const transporter = nodemailer.createTransport({
+    // Tumia service:'gmail' - njia ile ile inayofanya kazi kwenye test-email
+    const isGmail = !SMTP_HOST || SMTP_HOST.includes('gmail');
+    const transporter = nodemailer.createTransport(isGmail ? {
+      service: 'gmail',
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    } : {
       host:   SMTP_HOST,
       port:   SMTP_PORT,
       secure: SMTP_PORT === 465,
