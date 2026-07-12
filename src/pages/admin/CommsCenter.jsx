@@ -202,8 +202,10 @@ export default function CommsCenterPage(){
     let sent=0,failed=0;
     for(const c2 of withEmail){
       const body=message.replace(/\{\{jina\}\}/g,c2.name||'Mteja');
+      // HTML nzuri - branding inaongezwa server-side
+      const htmlBody=`<p style="margin:0 0 14px;">${body.replace(/\n\n/g,'</p><p style="margin:0 0 14px;">').replace(/\n/g,'<br>')}</p>`;
       try{
-        const r=await fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:c2.email,subject:subject.trim(),html:body.replace(/\n/g,'<br>'),text:body})});
+        const r=await fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:c2.email,subject:subject.trim(),html:htmlBody,text:body})});
         const d=await r.json();
         if(d.success)sent++;else failed++;
       }catch(e){failed++;}
@@ -253,8 +255,10 @@ export default function CommsCenterPage(){
     if(!window.confirm(`Tuma SMS kwa wateja ${targets.length}?\nGharama: ~TZS ${estCost.toLocaleString()}`))return;
     setSending(true);setResult(null);setProgress({sent:0,failed:0,total:targets.length});
     let sent=0,failed=0;
+    const footer=cfg.sms_footer?`\n\n${cfg.sms_footer}`:'';
     for(const c of targets){
-      const msg=message.replace(/\{\{jina\}\}/g,c.name||'Mteja');
+      let msg=message.replace(/\{\{jina\}\}/g,c.name||'Mteja');
+      if(footer&&!msg.includes(cfg.sms_footer))msg+=footer;
       try{
         const r=await fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:c.phone,message:msg})});
         const d=await r.json();

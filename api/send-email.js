@@ -6,6 +6,67 @@
 
 import nodemailer from 'nodemailer';
 
+// ============================================================
+// TEMPLATE YA BRANDING — DukaLangu
+// Email zote zinapitia hapa ili ziwe na muonekano mmoja
+// ============================================================
+function wrapWithBranding(bodyHTML, subject) {
+  const green = '#0B7A3B';
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F4F6F8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6F8;padding:24px 12px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(16,24,40,0.08);">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#064E2B 0%,${green} 100%);padding:26px 24px;text-align:center;">
+            <div style="font-size:24px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">
+              🏪 Duka Langu
+            </div>
+            <div style="font-size:12.5px;color:rgba(255,255,255,0.85);margin-top:5px;font-weight:500;">
+              Smart POS — Simamia Biashara Yako Kidijitali
+            </div>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="padding:26px 24px;color:#344054;font-size:14.5px;line-height:1.65;">
+            ${bodyHTML}
+          </td>
+        </tr>
+
+        <!-- CTA -->
+        <tr>
+          <td style="padding:0 24px 24px;text-align:center;">
+            <a href="https://dukalangu.com" style="display:inline-block;padding:13px 32px;background:${green};color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">
+              Fungua Mfumo
+            </a>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="padding:18px 24px;background:#F9FAFB;border-top:1px solid #F2F4F7;text-align:center;">
+            <div style="font-size:12.5px;color:#667085;font-weight:600;margin-bottom:4px;">
+              PesaFly / Duka Langu — Together for the better
+            </div>
+            <div style="font-size:11.5px;color:#98A2B3;">
+              📞 +255 617 288 752 &nbsp;•&nbsp; 🌐 dukalangu.com
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -55,11 +116,15 @@ export default async function handler(req, res) {
       auth:   { user: SMTP_USER, pass: SMTP_PASS },
     });
 
+    // Kama html haina muundo kamili (<html>), iwekee branding ya DukaLangu
+    const needsBranding = html && !html.includes('<!DOCTYPE') && !html.includes('<html');
+    const finalHTML = needsBranding ? wrapWithBranding(html, subject) : html;
+
     const info = await transporter.sendMail({
       from:    `"${FROM_NAME}" <${FROM_EMAIL}>`,
       to,
       subject,
-      html:    html || undefined,
+      html:    finalHTML || (text ? wrapWithBranding(text.replace(/\n/g, '<br>'), subject) : undefined),
       text:    text || undefined,
     });
 
