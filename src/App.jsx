@@ -13,7 +13,6 @@ import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
 import CommsCenterPage from './pages/admin/CommsCenter';
-import AccountCleanupPage from './pages/admin/AccountCleanup';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -48,7 +47,6 @@ const MENUS={
       {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
       {id:'security',icon:IC.shield,label:'Security'},
       {id:'backup',icon:IC.dl,label:'💾 Backup'},
-      {id:'cleanup',icon:IC.del,label:'🧹 Usafishaji wa Akaunti'},
       {id:'settings',icon:IC.gear,label:'Mipangilio'},
     ]},
   ],
@@ -248,7 +246,6 @@ export default function App(){
         case'faq':return <FaqManagePage/>;
         case'sms_center':return <SMSCenterPage/>;
         case'comms_center':return <CommsCenterPage/>;
-        case'cleanup':return <AccountCleanupPage/>;
         default:return <AdminDashboard/>;
       }
     }
