@@ -19,8 +19,9 @@ async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq
 
 
 // Email helper (calls API directly - no imports needed)
-const sendMail=(to,subject,type,data)=>{
-  fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,type,data})})
+const sendMail=(to,subject,type,data,html)=>{
+  const payload=html?{to,subject,html}:{to,subject,type,data};
+  fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[EMAIL FAIL]',to,d.error||r.status)}else{console.log('[EMAIL OK]',to,d.id)}})
   .catch(e=>console.error('[EMAIL NET ERROR]',to,e.message));
 };
@@ -321,6 +322,29 @@ export function AppProvider({children}){
         supabase.from('marketing_partners').select('email').then(({data:pts})=>{
           (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone})});
         }).catch(()=>{});
+
+        // ===== ARIFA KWA MAWAKALA NA MASOKO (SMS + Email) =====
+        supabase.from('users').select('name,email,phone,role')
+          .in('role',['agent','supervisor','marketing'])
+          .then(({data:staffList})=>{
+            const staffSMS=`MTEJA MPYA - DukaLangu\n\nBiashara: ${businessName}\nJina: ${name||'—'}\nSimu: ${phone||'—'}\nEmail: ${email}\n\nAmejisajili sasa hivi. Mfuatilie.`;
+            const staffHTML=`
+              <p style="margin:0 0 14px;font-size:15px;"><b>Mteja mpya amejisajili!</b></p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Biashara</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${businessName}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Jina</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${name||'—'}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Simu</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#0B7A3B;font-size:13.5px;">${phone||'—'}</td></tr>
+                <tr><td style="padding:9px 0;color:#667085;font-size:13px;">Email</td><td style="padding:9px 0;text-align:right;font-weight:600;color:#344054;font-size:12.5px;">${email}</td></tr>
+              </table>
+              <p style="margin:16px 0 0;padding:11px 13px;background:#F0FDF4;border-radius:9px;font-size:13px;color:#15803D;">
+                💡 Wasiliana naye kumkaribisha na kumsaidia kuanza.
+              </p>`;
+
+            (staffList||[]).forEach(s=>{
+              if(s.phone)sendSMS(s.phone,staffSMS);
+              if(s.email)sendMail(s.email,'🆕 Mteja Mpya: '+businessName,null,null,staffHTML);
+            });
+          }).catch(e=>console.warn('[staff notify]',e?.message));
         
         // Record referral if user came from a referral link
         if(refCode){
