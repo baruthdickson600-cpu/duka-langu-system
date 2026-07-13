@@ -111,6 +111,7 @@ export default function AccountCleanupPage(){
     setBusy(true);
     let ok=0,fail=0;
     for(const id of selected){
+      if(!id||typeof id!=='string'||id.length<10){fail++;continue;}
       try{
         const{error}=await supabase.from('businesses').update({is_suspended:true}).eq('id',id);
         if(error)fail++;else ok++;
@@ -142,6 +143,11 @@ export default function AccountCleanupPage(){
     setBusy(true);
     let ok=0,fail=0;
     for(const id of selected){
+      // ULINZI: hakikisha id ni halali
+      if(!id||typeof id!=='string'||id.length<10){fail++;continue;}
+      // ULINZI: usifute biashara iliyolipa (mara mbili)
+      const biz=enriched.find(b=>b.id===id);
+      if(biz?._.hasPaid&&!window.confirm(`⚠️ "${biz.name}" AMELIPA! Una uhakika kufuta?`)){fail++;continue;}
       try{
         // Futa data zote za biashara
         await supabase.from('sales').delete().eq('business_id',id);
