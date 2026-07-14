@@ -85,13 +85,18 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
               </div>)}
             </div>
           </div>
-          {/* LOGO ANIMATED */}
-          <div style={{flex:'0 0 280px',display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
-            <div style={{position:'relative',animation:'float 3s ease-in-out infinite'}}>
-              <div style={{position:'absolute',inset:-20,borderRadius:'50%',background:'rgba(255,255,255,0.15)',filter:'blur(30px)',animation:'pulse 2s ease-in-out infinite'}}/>
-              <div style={{position:'relative',background:'rgba(255,255,255,0.95)',borderRadius:24,padding:24,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
-                <img src="/logo.png" alt="Duka Langu" style={{width:240,height:'auto',display:'block'}}/>
-              </div>
+          {/* PICHA YA MFUMO (Laptop + Simu) */}
+          <div style={{flex:'1 1 480px',minWidth:300,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
+            <div style={{position:'relative',width:'100%',maxWidth:620,animation:'float 4s ease-in-out infinite'}}>
+              <div style={{position:'absolute',inset:'-8%',borderRadius:'50%',background:'rgba(255,255,255,0.12)',filter:'blur(50px)',animation:'pulse 3s ease-in-out infinite'}}/>
+              <img
+                src="/dukalangu-preview.png"
+                alt="DukaLangu — Dashboard kwenye Laptop na Simu"
+                style={{
+                  position:'relative',width:'100%',height:'auto',display:'block',
+                  filter:'drop-shadow(0 25px 50px rgba(0,0,0,0.35))',
+                }}
+              />
             </div>
           </div>
         </div>
@@ -254,11 +259,10 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
         <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Bei Bila Kuficha</h2>
         <p style={{fontSize:16,color:'#64748B'}}>Lipa unayoona — hakuna ada za ziada</p>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:20,maxWidth:900,margin:'0 auto'}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:22,maxWidth:720,margin:'0 auto'}}>
         {[
           {n:'BASIC',p:'15,000',sub:'Kifurushi cha Kuanza',f:['✅ Mauzo ya POS','✅ Usimamizi wa Stock','✅ Wateja & Madeni','✅ Matumizi','✅ Wafanyakazi 3','✅ Tawi 1','✅ Ripoti za Msingi','✅ Supervisors','✅ Arifa & Notification'],c:'#3B82F6',pop:false},
-          {n:'PREMIUM',p:'20,000',sub:'Biashara Inayokua',f:['🔵 Yote ya Basic','⭐ Matawi Mengi (hadi 10)','⭐ Wafanyakazi Wasio na Kikomo','⭐ Ripoti za Kina','⭐ AI Uchambuzi wa Biashara','⭐ SMS Center (Auto)','⭐ Export CSV & PDF','⭐ Priority Support'],c:'#8B5CF6',pop:true},
-          {n:'ENTERPRISE',p:'150,000',sub:'Biashara Kubwa',f:['🟣 Yote ya Premium','🏆 Matawi Yasio na Kikomo','🏆 API Integration','🏆 EFD/TRA Integration','🏆 Custom Reports','🏆 Dedicated Support','🏆 Mafunzo ya Bure','🏆 Multi-Admin'],c:'#F59E0B',pop:false},
+          {n:'PREMIUM',p:'25,000',sub:'Biashara Inayokua',f:['🔵 Yote ya Basic','⭐ Matawi Mengi (hadi 10)','⭐ Wafanyakazi Wasio na Kikomo','⭐ Ripoti za Kina','⭐ AI Uchambuzi wa Biashara','⭐ SMS Center (Auto)','⭐ Export CSV & PDF','⭐ Priority Support'],c:'#8B5CF6',pop:true},
         ].map((p,i)=><div key={i} style={{position:'relative',padding:28,borderRadius:18,background:'#fff',border:p.pop?`2px solid ${p.c}`:'1px solid #E2E8F0',boxShadow:p.pop?'0 12px 40px rgba(11,122,59,0.15)':'none',transform:p.pop?'scale(1.03)':'none'}}>
           {p.pop&&<div style={{position:'absolute',top:-12,left:'50%',transform:'translateX(-50%)',padding:'4px 16px',background:p.c,color:'#fff',borderRadius:20,fontSize:11,fontWeight:800,letterSpacing:1}}>POPULAR</div>}
           <div style={{fontSize:13,fontWeight:800,color:p.c,letterSpacing:2}}>{p.n}</div>
@@ -277,14 +281,123 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
       </div>
     </Section>
 
+    {/* ===== MAONI YA WATEJA ===== */}
+    <Section bg="#F8FAFC" py={60}>
+      <div style={{textAlign:'center',marginBottom:40}}>
+        <div style={{display:'inline-block',padding:'6px 16px',borderRadius:20,background:'#F0FDF4',color:'#0B7A3B',fontSize:12,fontWeight:800,letterSpacing:1,marginBottom:14}}>MAONI YA WATEJA</div>
+        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Wanachosema Wafanyabiashara</h2>
+        <p style={{fontSize:15,color:'#64748B',maxWidth:520,margin:'0 auto'}}>Wajasiriamali halisi wa Tanzania wanaotumia Duka Langu kila siku</p>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:20,maxWidth:1000,margin:'0 auto'}}>
+        {[
+          {n:'Mwajuma S.',b:'Duka la Vyakula, Urambo',t:'Zamani nilikuwa naandika mauzo kwenye daftari. Sasa kila kitu kiko kwenye simu. Naona faida yangu ya kila siku bila kuhesabu.',r:5,i:'👩🏾'},
+          {n:'Emmanuel K.',b:'Agrovet, Urambo',t:'Ripoti za kila siku zinanifikia kwa email saa mbili asubuhi. Najua stock inayoisha kabla haijaisha kabisa. Hii imeniokoa hasara kubwa.',r:5,i:'👨🏿'},
+          {n:'Halima J.',b:'Duka la Jumla, Tabora Mjini',t:'Nina matawi mawili — Tabora na Urambo. Naona mauzo ya yote kutoka nyumbani. Sihitaji kwenda kila duka kila siku.',r:5,i:'👩🏾'},
+          {n:'Ramadhani M.',b:'Duka la Pembejeo, Urambo',t:'Wakulima wananunua kwa mkopo. Mfumo unanikumbusha nani anadaiwa na nani amechelewa. Madeni yamepungua sana.',r:5,i:'👨🏾'},
+          {n:'Zainabu H.',b:'Baa na Mgahawa, Tabora',t:'Wafanyakazi wangu wanatumia mfumo kwa urahisi. Naona nani ameuza nini. Wizi umepungua kabisa tangu nianze.',r:5,i:'👩🏿'},
+          {n:'Salum A.',b:'Duka la Vipuri, Tabora',t:'Mfumo unafanya kazi hata mtandao ukiwa mbovu. Hapa Tabora mtandao si mzuri kila wakati, lakini biashara inaendelea.',r:5,i:'👨🏾'},
+          {n:'Neema P.',b:'Duka la Nguo, Urambo',t:'Bei ni nafuu — elfu kumi na tano tu kwa mwezi. Mifumo mingine walitaka laki. Hii inatosha kabisa kwa duka langu.',r:5,i:'👩🏾'},
+          {n:'Juma B.',b:'Duka la Vinywaji, Tabora',t:'Ripoti zinaonyesha bidhaa gani inauzwa zaidi. Sasa naagiza kwa akili — sinunui bidhaa zisizouzwa.',r:5,i:'👨🏿'},
+          {n:'Asha M.',b:'Duka la Dawa, Urambo',t:'Kila kitu kiko Kiswahili. Sikuwa na uzoefu wa kompyuta, lakini nilijifunza kwa siku moja tu.',r:5,i:'👩🏾'},
+          {n:'John M.',b:'Wholesale, Mbeya',t:'SMS za ukumbusho zinawafikia wateja wangu moja kwa moja. Sihitaji kupiga simu kila mmoja. Muda umeokolewa.',r:5,i:'👨🏾'},
+          {n:'Grace N.',b:'Duka la Vifaa, Mwanza',t:'Msaada wao ni mzuri. Nilipopata tatizo, walinipigia simu na kunisaidia ndani ya dakika kumi. Wanajali wateja.',r:5,i:'👩🏿'},
+        ].map((t,i)=>(
+          <div key={i} style={{padding:24,borderRadius:18,background:'#fff',border:'1px solid #EEF2F6',boxShadow:'0 2px 8px rgba(16,24,40,0.04)'}}>
+            <div style={{display:'flex',gap:3,marginBottom:12}}>
+              {[...Array(t.r)].map((_,j)=><span key={j} style={{color:'#F59E0B',fontSize:15}}>★</span>)}
+            </div>
+            <p style={{fontSize:14,color:'#475569',lineHeight:1.7,margin:'0 0 18px',fontStyle:'italic'}}>"{t.t}"</p>
+            <div style={{display:'flex',alignItems:'center',gap:11,paddingTop:14,borderTop:'1px solid #F2F4F7'}}>
+              <div style={{width:42,height:42,borderRadius:'50%',background:'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{t.i}</div>
+              <div>
+                <div style={{fontSize:13.5,fontWeight:800,color:'#101828'}}>{t.n}</div>
+                <div style={{fontSize:12,color:'#98A2B3'}}>{t.b}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+
+    {/* ===== FAQ ===== */}
+    <Section bg="#fff" py={60}>
+      <div style={{textAlign:'center',marginBottom:40}}>
+        <div style={{display:'inline-block',padding:'6px 16px',borderRadius:20,background:'#EFF6FF',color:'#3B82F6',fontSize:12,fontWeight:800,letterSpacing:1,marginBottom:14}}>MASWALI YANAYOULIZWA</div>
+        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Una Swali? Tuna Jibu</h2>
+        <p style={{fontSize:15,color:'#64748B',maxWidth:520,margin:'0 auto'}}>Kila unachohitaji kujua kuhusu Duka Langu</p>
+      </div>
+
+      <div style={{maxWidth:760,margin:'0 auto',display:'flex',flexDirection:'column',gap:10}}>
+        {[
+          {q:'Duka Langu ni nini hasa?',a:'Duka Langu ni mfumo wa kusimamia biashara (POS) uliotengenezwa mahsusi kwa wafanyabiashara wa Tanzania. Unakusaidia kurekodi mauzo, kufuatilia bidhaa, kusimamia madeni, kudhibiti matumizi, na kupata ripoti za biashara yako — yote kutoka kwenye simu au kompyuta yako.'},
+          {q:'Je ninahitaji internet kutumia mfumo?',a:'Mfumo unafanya kazi hata bila internet. Unaweza kuuza, kuongeza bidhaa, na kurekodi madeni ukiwa offline. Data inahifadhiwa kwenye kifaa chako, na inapanda kwenye mtandao mara internet inaporudi. Hii inafaa sana kwa maeneo yenye mtandao dhaifu.'},
+          {q:'Naanza vipi? Ni ngumu?',a:'Ni rahisi sana. Jisajili kwa dakika 2 (jina la biashara, simu, email). Utapata majaribio ya bure. Kisha ongeza bidhaa zako — unaweza kuandika moja moja au kupakia Excel. Ukiwa tayari, anza kuuza. Tuna video za mafunzo pia.'},
+          {q:'Bei ni ngapi na nalipaje?',a:'BASIC ni TZS 15,000 kwa mwezi (duka moja) na PREMIUM ni TZS 25,000 (matawi mengi + vipengele vya ziada). Hakuna gharama ya kujiunga wala gharama za siri. Unalipa kupitia HALOPESA — Lipa Namba 25187616 (jina: DUKALANGU). Baada ya kulipa, bonyeza "Nimelipa" mfumoni, mhasibu atathibitisha na mfumo utafunguka kiotomatiki.'},
+          {q:'Je nikitaka kuacha? Data yangu itakuwaje?',a:'Data yako ni yako. Unaweza kupakua ripoti zako (Excel/PDF) wakati wowote. Hakuna mkataba wa kukufunga — ukiacha kulipa, mfumo unafunga lakini data yako inabaki. Ukirudi, unaendelea ulipoishia.'},
+          {q:'Wafanyakazi na matawi mengi?',a:'Ndio. Unaweza kuongeza wafanyakazi na kuwapa ruhusa tofauti — mfanyakazi anauza lakini haoni faida yako. Unaona nani ameuza nini na lini, hii inadhibiti wizi. Kwa PREMIUM, unaweza pia kusimamia matawi mengi na kuona mauzo ya kila tawi kwa pekee.'},
+          {q:'Naweza kufuatilia madeni?',a:'Ndio. Unarekodi mteja anayedaiwa, kiasi, na tarehe ya kulipa. Mfumo unakukumbusha nani anadaiwa na nani amechelewa. Unaweza pia kutuma SMS ya ukumbusho kwa mteja moja kwa moja.'},
+          {q:'Ripoti zinapatikanaje?',a:'Unapata ripoti za mauzo, faida, bidhaa zinazouzwa zaidi, matumizi, na madeni. Unaweza kuziona mfumoni, kupakua Excel/PDF, au kupokea kwa email kila siku saa mbili asubuhi. Ripoti za wiki na mwezi pia zinapatikana.'},
+          {q:'Ni salama? Data yangu inalindwa?',a:'Ndio. Data yako inahifadhiwa kwenye seva salama (Supabase) yenye ulinzi wa kimataifa. Kila biashara ina data yake pekee — hakuna mtu mwingine anayeweza kuona mauzo yako. Tunahifadhi nakala (backup) kila siku.'},
+          {q:'Nikipata tatizo, nitasaidiwaje?',a:'Tuna msaada kwa simu na WhatsApp: +255 617 288 752. Pia kuna sehemu ya Tickets ndani ya mfumo — andika tatizo lako, tutakujibu. Wateja wa PREMIUM wanapata msaada wa haraka zaidi.'},
+        ].map((f,i)=><FAQItem key={i} q={f.q} a={f.a}/>)}
+      </div>
+
+      <div style={{textAlign:'center',marginTop:36,padding:'20px 24px',background:'#F8FAFC',borderRadius:16,maxWidth:560,margin:'36px auto 0'}}>
+        <div style={{fontSize:14.5,fontWeight:700,color:'#101828',marginBottom:6}}>Bado una swali?</div>
+        <div style={{fontSize:13.5,color:'#64748B',marginBottom:14}}>Tupigie simu au tuandikie WhatsApp — tuko tayari kukusaidia</div>
+        <a href="tel:+255617288752" style={{display:'inline-block',padding:'11px 24px',background:'#0B7A3B',color:'#fff',textDecoration:'none',borderRadius:10,fontWeight:700,fontSize:13.5}}>📞 +255 617 288 752</a>
+      </div>
+    </Section>
+
     {/* CTA */}
     <Section bg="linear-gradient(135deg,#0B7A3B,#065F2E)" py={60}>
-      <div style={{textAlign:'center',color:'#fff'}}>
-        <h2 style={{fontSize:36,fontWeight:900,margin:'0 0 12px'}}>Tayari Kuanza?</h2>
-        <p style={{fontSize:16,opacity:0.9,marginBottom:24,maxWidth:500,margin:'0 auto 24px'}}>Jiunge na wajasiriamali 500+ Tanzania wanaotumia Duka Langu kuongeza faida</p>
-        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-          <button onClick={onSignup} style={{padding:'15px 32px',borderRadius:12,border:'none',background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.2)'}}>🚀 Anza Trial Bure</button>
-          <button onClick={onDemo} style={{padding:'15px 32px',borderRadius:12,border:'2px solid rgba(255,255,255,0.5)',background:'transparent',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer'}}>👁️ Tazama Demo</button>
+      <div style={{textAlign:'center',color:'#fff',position:'relative'}}>
+        <div style={{
+          display:'inline-block',padding:'6px 16px',borderRadius:20,
+          background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.25)',
+          fontSize:12,fontWeight:800,letterSpacing:1,marginBottom:18,
+          backdropFilter:'blur(8px)',
+        }}>
+          🎁 MAJARIBIO YA BURE — HAKUNA KADI YA BENKI
+        </div>
+
+        <h2 style={{fontSize:40,fontWeight:900,margin:'0 0 14px',letterSpacing:-1,lineHeight:1.15}}>
+          Anza Kusimamia Biashara<br/>Yako Kidijitali Leo
+        </h2>
+
+        <p style={{fontSize:16.5,opacity:0.9,maxWidth:520,margin:'0 auto 28px',lineHeight:1.65}}>
+          Jiunge na wafanyabiashara wa Tanzania wanaotumia Duka Langu kuongeza faida, kupunguza wizi, na kukuza biashara zao.
+        </p>
+
+        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginBottom:26}}>
+          <button onClick={onSignup} style={{
+            padding:'16px 36px',borderRadius:13,border:'none',background:'#fff',
+            color:'#0B7A3B',fontWeight:800,fontSize:15.5,cursor:'pointer',
+            boxShadow:'0 10px 30px rgba(0,0,0,0.25)',transition:'transform 0.2s',
+          }}
+          onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
+          onMouseLeave={e=>e.currentTarget.style.transform='none'}>
+            🚀 Jisajili Bure Sasa
+          </button>
+          <button onClick={onDemo} style={{
+            padding:'16px 32px',borderRadius:13,
+            border:'2px solid rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.1)',
+            color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',
+            backdropFilter:'blur(8px)',
+          }}>
+            👁️ Tazama Demo
+          </button>
+        </div>
+
+        {/* Uhakikisho */}
+        <div style={{
+          display:'flex',gap:22,justifyContent:'center',flexWrap:'wrap',
+          fontSize:13,opacity:0.85,fontWeight:600,
+        }}>
+          {['✓ Hakuna gharama ya kujiunga','✓ Ghairi wakati wowote','✓ Msaada wa Kiswahili'].map((x,i)=>(
+            <span key={i}>{x}</span>
+          ))}
         </div>
       </div>
     </Section>
@@ -322,5 +435,35 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
         </div>
       </div>
     </div>
+  </div>;
+}
+
+// ===== FAQ Item (inayofunguka/kufunga) =====
+function FAQItem({q,a}){
+  const[open,setOpen]=React.useState(false);
+  return <div style={{
+    border:'1px solid #EEF2F6',borderRadius:14,overflow:'hidden',
+    background:open?'#F8FAFC':'#fff',transition:'all 0.2s',
+  }}>
+    <button onClick={()=>setOpen(!open)} style={{
+      width:'100%',padding:'17px 20px',background:'none',border:'none',
+      display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,
+      cursor:'pointer',textAlign:'left',
+    }}>
+      <span style={{fontSize:14.5,fontWeight:700,color:'#101828',flex:1}}>{q}</span>
+      <span style={{
+        width:24,height:24,borderRadius:'50%',flexShrink:0,
+        background:open?'#0B7A3B':'#F1F5F9',color:open?'#fff':'#98A2B3',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:14,fontWeight:800,transition:'all 0.2s',
+        transform:open?'rotate(45deg)':'none',
+      }}>+</span>
+    </button>
+    {open&&<div style={{
+      padding:'0 20px 18px',fontSize:14,color:'#475569',lineHeight:1.75,
+      animation:'fadeInUp 0.25s ease',
+    }}>
+      {a}
+    </div>}
   </div>;
 }
