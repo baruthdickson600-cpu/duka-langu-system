@@ -102,14 +102,19 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
           </div>
           {/* PICHA YA MFUMO (Laptop + Simu) */}
           <div className="hero-img" style={{flex:'1 1 500px',minWidth:280,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
-            <div style={{position:'relative',width:'100%',maxWidth:660,animation:'float 5s ease-in-out infinite'}}>
-              <div style={{position:'absolute',inset:'-8%',borderRadius:'50%',background:'rgba(255,255,255,0.12)',filter:'blur(50px)',animation:'pulse 3s ease-in-out infinite'}}/>
+            <div style={{position:'relative',width:'100%',maxWidth:740,animation:'float 6s ease-in-out infinite'}}>
+              {/* Mwanga wa nyuma */}
+              <div style={{
+                position:'absolute',inset:'-10% -6%',
+                background:'radial-gradient(ellipse at center, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 45%, transparent 70%)',
+                filter:'blur(40px)',animation:'pulse 4s ease-in-out infinite',
+              }}/>
               <img
                 src="/dukalangu-preview.png"
                 alt="DukaLangu — Dashboard kwenye Laptop na Simu"
                 style={{
                   position:'relative',width:'100%',height:'auto',display:'block',
-                  filter:'drop-shadow(0 25px 50px rgba(0,0,0,0.35))',
+                  filter:'drop-shadow(0 30px 60px rgba(0,0,0,0.45)) drop-shadow(0 8px 20px rgba(0,0,0,0.25))',
                 }}
               />
             </div>
