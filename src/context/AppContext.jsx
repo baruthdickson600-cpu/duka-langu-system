@@ -914,8 +914,42 @@ export function AppProvider({children}){
     await safeUpdate('businesses',bizUpdate,'id',bizId);
     setTokens(prev=>prev.map(t=>t.id===tk.id?{...t,used:true}:t));
     setBiz(prev=>prev.map(b=>b.id===bizId?{...b,...bizUpdate}:b));
+
+    // ===== SMS + EMAIL YA UTHIBITISHO =====
+    const myBiz=businesses.find(x=>x.id===bizId)||biz;
+    const bizName=myBiz?.name||'Mteja';
+    const endDate=new Date(exp).toLocaleDateString('sw-TZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const daysLeft=Math.max(0,Math.ceil((new Date(exp)-new Date())/86400000));
+    const planName=(tk.plan||'basic').toUpperCase();
+
+    const smsMsg=`Habari ${bizName},\n\nToken yako imethibitishwa kikamilifu!\n\nMfumo wako umefunguliwa.\nSiku ${tk.days} zimeongezwa.\nMfumo utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS`;
+
+    const emailBody=`
+      <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+      <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+        <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Token imethibitishwa kikamilifu!</div>
+        <div style="font-size:13.5px;color:#166534;">Mfumo wako umefunguliwa na uko tayari kutumika.</div>
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kifurushi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${planName}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${tk.days}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+        <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+      </table>
+      <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
+
+    if(myBiz?.phone)sendSMS(myBiz.phone,smsMsg);
+    if(myBiz?.email)sendMail(myBiz.email,`✅ Mfumo Umefunguliwa — Siku ${tk.days}`,null,null,emailBody);
+
+    // Arifa ya ndani
+    await safeInsert('notifications',{
+      target_type:'business',target_id:bizId,type:'success',
+      title:`✅ Mfumo Umefunguliwa — Siku ${tk.days}`,
+      message:`Token yako imethibitishwa. Siku ${tk.days} zimeongezwa. Mfumo utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`,
+    });
+
     return null;
-  },[tokens,bizId]);
+  },[tokens,bizId,businesses,biz]);
 
   // ===== PROMO =====
   const addPromo=useCallback(async(supervisor,phone,commission=10,email='')=>{
@@ -1665,8 +1699,78 @@ export function AppProvider({children}){
       if(error){await supabase.from('payment_requests').insert(rec).then(()=>{},()=>{});}
     }
 
+    // ===== SMS + EMAIL KWA MTEJA (kulingana na aina) =====
+    const endDate=new Date(newEnd).toLocaleDateString('sw-TZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const daysLeft=Math.max(0,Math.ceil((new Date(newEnd)-new Date())/86400000));
+    const bizName=b.name||'Mteja';
+
+    let smsMsg='',emailSubject='',emailBody='';
+
+    if(type==='gift'){
+      smsMsg=`Habari ${bizName},\n\nUmepewa ZAWADI ya siku ${days} kutoka DukaLangu!\n\nHii ni bure kabisa - hakuna malipo yanayohitajika.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuwa mteja wetu mwaminifu.\n\nDukaLangu Smart POS`;
+      emailSubject=`🎁 Umepewa Zawadi ya Siku ${days}!`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#F5F3FF;border-left:4px solid #8B5CF6;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:16px;font-weight:800;color:#7C3AED;margin-bottom:6px;">🎁 Umepewa ZAWADI ya siku ${days}!</div>
+          <div style="font-size:13.5px;color:#5B21B6;">Hii ni bure kabisa — hakuna malipo yanayohitajika.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#7C3AED;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuwa mteja wetu mwaminifu.</p>`;
+    }
+    else if(type==='compensation'){
+      smsMsg=`Habari ${bizName},\n\nTunaomba radhi kwa usumbufu uliopata.\n\nTumekuongezea siku ${days} bure kama fidia.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nTunathamini uvumilivu wako.\n\nDukaLangu Smart POS`;
+      emailSubject=`🔧 Tumekuongezea Siku ${days} kama Fidia`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#FFF7ED;border-left:4px solid #EA580C;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:15px;font-weight:800;color:#9A3412;margin-bottom:6px;">🔧 Tunaomba radhi kwa usumbufu</div>
+          <div style="font-size:13.5px;color:#B45309;">Tumekuongezea siku ${days} bure kama fidia.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku za fidia</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#EA580C;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Tunathamini uvumilivu wako.</p>`;
+    }
+    else{
+      // MAUZO (sale)
+      smsMsg=`Habari ${bizName},\n\nMalipo yako ya TZS ${(+amount||0).toLocaleString()} yamepokelewa kikamilifu.\n\nSiku ${days} zimeongezwa kwenye akaunti yako.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS`;
+      emailSubject=`✅ Malipo Yamepokelewa — Siku ${days} Zimeongezwa`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Malipo yamepokelewa kikamilifu</div>
+          <div style="font-size:13.5px;color:#166534;">Siku ${days} zimeongezwa kwenye akaunti yako.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kiasi ulicholipa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">TZS ${(+amount||0).toLocaleString()}</td></tr>
+          ${method?`<tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Njia ya malipo</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#344054;font-size:13.5px;">${method}</td></tr>`:''}
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
+    }
+
+    // Tuma SMS
+    if(b.phone&&smsMsg)sendSMS(b.phone,smsMsg);
+    // Tuma Email
+    if(b.email&&emailBody)sendMail(b.email,emailSubject,null,null,emailBody);
+
     await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_extend',details:{text:`${b.name}: +${days} siku${amount>0?` (TZS ${(+amount).toLocaleString()})`:` [${type}]`}`,amount:+amount||0,type,method}});
-    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`🎉 Siku ${days} Zimeongezwa!`,message:`Admin amekuongezea siku ${days}. Mfumo wako utaendelea hadi ${new Date(newEnd).toLocaleDateString('sw-TZ')}.`});
+    const notifTitle=type==='gift'?`🎁 Umepewa Zawadi ya Siku ${days}!`:type==='compensation'?`🔧 Fidia: Siku ${days} Zimeongezwa`:`✅ Malipo Yamepokelewa — Siku ${days}`;
+    const notifMsg=type==='gift'
+      ?`Umepewa zawadi ya siku ${days} bure! Mfumo wako utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`
+      :type==='compensation'
+      ?`Tumekuongezea siku ${days} kama fidia. Mfumo wako utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`
+      :`Malipo yako ya TZS ${(+amount||0).toLocaleString()} yamepokelewa. Siku ${days} zimeongezwa. Mfumo utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`;
+    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:notifTitle,message:notifMsg});
   },[businesses,user]);
 
   // ===== QUICK UPGRADE (badilisha plan) =====
