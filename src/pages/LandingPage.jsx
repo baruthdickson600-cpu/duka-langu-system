@@ -54,40 +54,55 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
       </div>
     </nav>
 
+    <style>{`
+      /* ===== RESPONSIVE ===== */
+      @media (max-width: 1024px) {
+        .hero-img { flex: 1 1 100% !important; margin-top: 28px; }
+      }
+      @media (max-width: 768px) {
+        .hero-stats { grid-template-columns: repeat(2, auto) !important; gap: 16px 22px !important; }
+        .hero-btns { width: 100%; }
+        .hero-btns button { flex: 1; min-width: 140px; }
+      }
+      @media (max-width: 480px) {
+        .hero-stats { grid-template-columns: repeat(2, auto) !important; }
+      }
+    `}</style>
+
     {/* HERO */}
     <div style={{position:'relative',minHeight:'85vh',display:'flex',alignItems:'center',overflow:'hidden'}}>
       <div style={bgStyle(bgIdx,!showB)}/>
       {bgB&&<div style={bgStyle(bgB,showB)}/>}
       <div style={{position:'absolute',inset:0,zIndex:1,background:'linear-gradient(135deg,rgba(11,122,59,0.85),rgba(6,95,46,0.75))'}}/>
-      <div style={{position:'relative',zIndex:2,maxWidth:1100,margin:'0 auto',padding:'40px 16px',color:'#fff',width:'100%'}}>
-        <div style={{display:'flex',alignItems:'center',gap:40,flexWrap:'wrap'}}>
-          <div style={{flex:1,minWidth:300}}>
+      <div style={{position:'relative',zIndex:2,maxWidth:1240,margin:'0 auto',padding:'48px 24px',color:'#fff',width:'100%'}}>
+        <div style={{display:'flex',alignItems:'center',gap:48,flexWrap:'wrap'}}>
+          <div style={{flex:'1 1 440px',minWidth:300}}>
             <div style={{display:'inline-block',padding:'6px 14px',background:'rgba(255,255,255,0.2)',borderRadius:20,fontSize:12,fontWeight:600,marginBottom:16,backdropFilter:'blur(10px)',animation:'fadeInUp 0.6s ease both'}}>🇹🇿 Biashara yako mkononi mwako</div>
-            <h1 style={{fontSize:54,fontWeight:900,lineHeight:1.1,margin:'0 0 16px',textShadow:'0 4px 20px rgba(0,0,0,0.3)',animation:'fadeInUp 0.7s ease 0.1s both'}}>
+            <h1 style={{fontSize:'clamp(32px,4.2vw,52px)',fontWeight:900,lineHeight:1.12,margin:'0 0 18px',letterSpacing:-1,textShadow:'0 4px 20px rgba(0,0,0,0.3)',animation:'fadeInUp 0.7s ease 0.1s both'}}>
               Endesha Biashara<br/>Yako Kidijitali
             </h1>
-            <p style={{fontSize:18,opacity:0.95,lineHeight:1.6,marginBottom:28,maxWidth:550,textShadow:'0 2px 8px rgba(0,0,0,0.3)',animation:'fadeInUp 0.8s ease 0.2s both'}}>
+            <p style={{fontSize:'clamp(15px,1.15vw,17.5px)',opacity:0.94,lineHeight:1.65,marginBottom:28,maxWidth:490,textShadow:'0 2px 8px rgba(0,0,0,0.25)',animation:'fadeInUp 0.8s ease 0.2s both'}}>
               Mfumo wa kisasa wa POS unaokusaidia kuuza, kufuatilia stock, kupata ripoti za faida, na kusimamia wafanyakazi — kwenye simu yako tu.
             </p>
-            <div style={{display:'flex',gap:12,flexWrap:'wrap',animation:'fadeInUp 0.9s ease 0.3s both'}}>
-              <button onClick={onSignup} style={{padding:'14px 28px',borderRadius:12,border:'none',background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.2)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-3px) scale(1.02)';e.currentTarget.style.boxShadow='0 14px 35px rgba(0,0,0,0.3)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 8px 25px rgba(0,0,0,0.2)'}}>🚀 Anza Trial Bure (Siku 7)</button>
-              <button onClick={onDemo} style={{padding:'14px 28px',borderRadius:12,border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',backdropFilter:'blur(10px)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,0.2)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,0.1)';e.currentTarget.style.transform='translateY(0)'}}>👁️ Tazama Demo</button>
+            <div className="hero-btns" style={{display:'flex',gap:11,flexWrap:'wrap',animation:'fadeInUp 0.9s ease 0.3s both'}}>
+              <button onClick={onSignup} style={{padding:'14px 24px',whiteSpace:'nowrap',borderRadius:12,border:'none',background:'#fff',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 25px rgba(0,0,0,0.2)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-3px) scale(1.02)';e.currentTarget.style.boxShadow='0 14px 35px rgba(0,0,0,0.3)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0) scale(1)';e.currentTarget.style.boxShadow='0 8px 25px rgba(0,0,0,0.2)'}}>🚀 Anza Trial Bure (Siku 7)</button>
+              <button onClick={onDemo} style={{padding:'14px 24px',whiteSpace:'nowrap',borderRadius:12,border:'2px solid rgba(255,255,255,0.45)',background:'rgba(255,255,255,0.1)',color:'#fff',fontWeight:700,fontSize:15,cursor:'pointer',backdropFilter:'blur(10px)',transition:'all 0.3s'}} onMouseOver={e=>{e.currentTarget.style.background='rgba(255,255,255,0.2)';e.currentTarget.style.transform='translateY(-3px)'}} onMouseOut={e=>{e.currentTarget.style.background='rgba(255,255,255,0.1)';e.currentTarget.style.transform='translateY(0)'}}>👁️ Tazama Demo</button>
             </div>
-            <div style={{display:'flex',gap:24,marginTop:32,flexWrap:'wrap',animation:'fadeInUp 1s ease 0.4s both'}}>
+            <div className="hero-stats" style={{display:'grid',gridTemplateColumns:'repeat(4,auto)',gap:'20px 26px',marginTop:34,justifyContent:'start',animation:'fadeInUp 1s ease 0.4s both'}}>
               {[
                 {n:'500+',l:'Wateja Tanzania'},
                 {n:'TZS 15K',l:'Bei kwa Mwezi'},
                 {n:'24/7',l:'Msaada'},
                 {n:'4.9★',l:'Maoni ya Wateja'},
               ].map((s,i)=><div key={i} style={{animation:`fadeInUp 1.1s ease ${0.5+i*0.1}s both`}}>
-                <div style={{fontSize:24,fontWeight:900}}>{s.n}</div>
-                <div style={{fontSize:12,opacity:0.85}}>{s.l}</div>
+                <div style={{fontSize:'clamp(19px,1.6vw,24px)',fontWeight:900,lineHeight:1.15,whiteSpace:'nowrap'}}>{s.n}</div>
+                <div style={{fontSize:11.5,opacity:0.8,fontWeight:600,whiteSpace:'nowrap'}}>{s.l}</div>
               </div>)}
             </div>
           </div>
           {/* PICHA YA MFUMO (Laptop + Simu) */}
-          <div style={{flex:'1 1 480px',minWidth:300,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
-            <div style={{position:'relative',width:'100%',maxWidth:620,animation:'float 4s ease-in-out infinite'}}>
+          <div className="hero-img" style={{flex:'1 1 500px',minWidth:280,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
+            <div style={{position:'relative',width:'100%',maxWidth:660,animation:'float 5s ease-in-out infinite'}}>
               <div style={{position:'absolute',inset:'-8%',borderRadius:'50%',background:'rgba(255,255,255,0.12)',filter:'blur(50px)',animation:'pulse 3s ease-in-out infinite'}}/>
               <img
                 src="/dukalangu-preview.png"
@@ -256,7 +271,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     <Section bg="#F8FAFC" py={70}>
       <div style={{textAlign:'center',marginBottom:48}}>
         <div style={{fontSize:11,fontWeight:700,color:'#0B7A3B',letterSpacing:2,marginBottom:8}}>BEI YA WAZI</div>
-        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Bei Bila Kuficha</h2>
+        <h2 style={{fontSize:'clamp(26px,3.2vw,38px)',fontWeight:900,color:'#1E293B',margin:'0 0 12px',letterSpacing:-0.5}}>Bei Bila Kuficha</h2>
         <p style={{fontSize:16,color:'#64748B'}}>Lipa unayoona — hakuna ada za ziada</p>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:22,maxWidth:720,margin:'0 auto'}}>
@@ -285,7 +300,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     <Section bg="#F8FAFC" py={60}>
       <div style={{textAlign:'center',marginBottom:40}}>
         <div style={{display:'inline-block',padding:'6px 16px',borderRadius:20,background:'#F0FDF4',color:'#0B7A3B',fontSize:12,fontWeight:800,letterSpacing:1,marginBottom:14}}>MAONI YA WATEJA</div>
-        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Wanachosema Wafanyabiashara</h2>
+        <h2 style={{fontSize:'clamp(26px,3.2vw,38px)',fontWeight:900,color:'#1E293B',margin:'0 0 12px',letterSpacing:-0.5}}>Wanachosema Wafanyabiashara</h2>
         <p style={{fontSize:15,color:'#64748B',maxWidth:520,margin:'0 auto'}}>Wajasiriamali halisi wa Tanzania wanaotumia Duka Langu kila siku</p>
       </div>
 
@@ -324,7 +339,7 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     <Section bg="#fff" py={60}>
       <div style={{textAlign:'center',marginBottom:40}}>
         <div style={{display:'inline-block',padding:'6px 16px',borderRadius:20,background:'#EFF6FF',color:'#3B82F6',fontSize:12,fontWeight:800,letterSpacing:1,marginBottom:14}}>MASWALI YANAYOULIZWA</div>
-        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Una Swali? Tuna Jibu</h2>
+        <h2 style={{fontSize:'clamp(26px,3.2vw,38px)',fontWeight:900,color:'#1E293B',margin:'0 0 12px',letterSpacing:-0.5}}>Una Swali? Tuna Jibu</h2>
         <p style={{fontSize:15,color:'#64748B',maxWidth:520,margin:'0 auto'}}>Kila unachohitaji kujua kuhusu Duka Langu</p>
       </div>
 
@@ -362,11 +377,11 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
           🎁 MAJARIBIO YA BURE — HAKUNA KADI YA BENKI
         </div>
 
-        <h2 style={{fontSize:40,fontWeight:900,margin:'0 0 14px',letterSpacing:-1,lineHeight:1.15}}>
+        <h2 style={{fontSize:'clamp(27px,3.4vw,40px)',fontWeight:900,margin:'0 0 14px',letterSpacing:-1,lineHeight:1.18}}>
           Anza Kusimamia Biashara<br/>Yako Kidijitali Leo
         </h2>
 
-        <p style={{fontSize:16.5,opacity:0.9,maxWidth:520,margin:'0 auto 28px',lineHeight:1.65}}>
+        <p style={{fontSize:'clamp(14.5px,1.2vw,16.5px)',opacity:0.9,maxWidth:520,margin:'0 auto 28px',lineHeight:1.65}}>
           Jiunge na wafanyabiashara wa Tanzania wanaotumia Duka Langu kuongeza faida, kupunguza wizi, na kukuza biashara zao.
         </p>
 
