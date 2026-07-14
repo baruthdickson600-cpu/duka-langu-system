@@ -12,16 +12,42 @@ import {API_BASE} from '../../config/api';
 const SMS_COST=25; // TZS kwa SMS (makadirio)
 
 const DEFAULT_TEMPLATES=[
-  {id:'welcome',name:'Karibu Mteja',body:'Karibu DukaLangu Smart POS!\n\nHabari {{jina}},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu. Simamia mauzo, bidhaa, madeni na matumizi popote ulipo.\n\nIngia: dukalangu.com\n\nDukaLangu Smart POS'},
-  {id:'payment',name:'Malipo ya Usajili',body:'Habari {{jina}},\n\nTumepokea malipo yako ya usajili wa DukaLangu Smart POS.\n\nAkaunti yako imeendelea kuwa hai na utaendelea kutumia huduma zote bila usumbufu.\n\nAsante kwa kuendelea kutuamini.\n\nDukaLangu Smart POS'},
-  {id:'reminder',name:'Ukumbusho wa Usajili',body:'Habari {{jina}},\n\nUsajili wako wa DukaLangu Smart POS unaisha baada ya siku {{siku}}.\n\nTafadhali fanya malipo mapema ili huduma zisikatike.\n\nLipa: HALOPESA 25187616 (DUKALANGU)\n\nAsante.'},
-  {id:'reactivation',name:'Mfumo Umefunguliwa',body:'Habari {{jina}},\n\nMalipo yako yamepokelewa kikamilifu.\n\nAkaunti yako imefunguliwa na huduma zote zimeanza kufanya kazi tena.\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS'},
-  {id:'debt',name:'Ukumbusho wa Deni',body:'Habari {{jina}},\n\nHuu ni ukumbusho wa deni lako la TZS {{kiasi}}.\n\nTafadhali lipa kwa wakati.\n\nAsante.'},
-  {id:'confirm',name:'Uthibitisho wa Malipo',body:'Habari {{jina}},\n\nTumepokea malipo yako ya TZS {{kiasi}}.\n\nAsante kwa kulipa kwa wakati.\n\nDukaLangu Smart POS'},
-  {id:'promo',name:'Matangazo',body:'Habari {{jina}},\n\nTuna ofa maalum kwako! Tembelea duka letu upate bei nzuri.\n\nAsante kwa kuwa mteja wetu.'},
-  {id:'arrival',name:'Bidhaa Mpya',body:'Habari {{jina}},\n\nBidhaa mpya zimefika dukani! Karibu uone.\n\nAsante.'},
-  {id:'holiday',name:'Salamu za Sikukuu',body:'Habari {{jina}},\n\nTunakutakia sikukuu njema! Asante kwa kuwa mteja wetu mwaminifu.\n\nDukaLangu Smart POS'},
-  {id:'custom',name:'Ujumbe Binafsi',body:'Habari {{jina}},\n\n[Andika ujumbe wako hapa]\n\nAsante.'},
+  // ===== MALIPO NA USAJILI (backup ya automatic) =====
+  {id:'pay_received',cat:'Malipo',name:'Malipo Yamepokelewa',body:'Habari {{jina}},\n\nMalipo yako ya TZS {{kiasi}} yamepokelewa kikamilifu.\n\nSiku {{siku}} zimeongezwa kwenye akaunti yako.\nMfumo wako utaendelea hadi {{tarehe}}.\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS'},
+  {id:'system_open',cat:'Malipo',name:'Mfumo Umefunguliwa',body:'Habari {{jina}},\n\nMfumo wako umefunguliwa kikamilifu!\n\nSiku {{siku}} zimeongezwa.\nUnaweza kuendelea kutumia huduma zote.\n\nAsante kwa kutuamini.\n\nDukaLangu Smart POS'},
+  {id:'gift_days',cat:'Malipo',name:'Zawadi ya Siku',body:'Habari {{jina}},\n\nUmepewa ZAWADI ya siku {{siku}} kutoka DukaLangu!\n\nHii ni bure kabisa - hakuna malipo yanayohitajika.\nMfumo wako utaendelea hadi {{tarehe}}.\n\nAsante kwa kuwa mteja wetu mwaminifu.\n\nDukaLangu Smart POS'},
+  {id:'compensation',cat:'Malipo',name:'Fidia ya Usumbufu',body:'Habari {{jina}},\n\nTunaomba radhi kwa usumbufu uliopata.\n\nTumekuongezea siku {{siku}} bure kama fidia.\nMfumo wako utaendelea hadi {{tarehe}}.\n\nTunathamini uvumilivu wako.\n\nDukaLangu Smart POS'},
+  {id:'pay_pending',cat:'Malipo',name:'Malipo Yanasubiri',body:'Habari {{jina}},\n\nTumepokea ombi lako la malipo.\n\nMhasibu wetu analithibitisha sasa. Mfumo utafunguka ndani ya muda mfupi.\n\nAsante kwa subira.\n\nDukaLangu Smart POS'},
+  {id:'pay_failed',cat:'Malipo',name:'Malipo Hayakukamilika',body:'Habari {{jina}},\n\nMalipo yako hayakukamilika.\n\nTafadhali hakikisha umelipa kiasi sahihi kwenda:\nHALOPESA 25187616 (DUKALANGU)\n\nKwa msaada: 0617288752\n\nDukaLangu Smart POS'},
+  {id:'pay_instructions',cat:'Malipo',name:'Maelekezo ya Malipo',body:'Habari {{jina}},\n\nLipa kwa urahisi:\n\nHALOPESA: 25187616\nJina: DUKALANGU\n\nBASIC: TZS 15,000/mwezi\nPREMIUM: TZS 25,000/mwezi\n\nBaada ya kulipa, bonyeza "Nimelipa" mfumoni.\n\nDukaLangu Smart POS'},
+
+  // ===== UKUMBUSHO WA USAJILI =====
+  {id:'expire_7',cat:'Ukumbusho',name:'Usajili Unaisha (Siku 7)',body:'Habari {{jina}},\n\nUsajili wako wa DukaLangu unaisha baada ya siku 7.\n\nTafadhali fanya malipo mapema ili huduma zisikatike.\n\nLipa: HALOPESA 25187616 (DUKALANGU)\n\nAsante.'},
+  {id:'expire_3',cat:'Ukumbusho',name:'Usajili Unaisha (Siku 3)',body:'Habari {{jina}},\n\nKUMBUKO: Usajili wako unaisha baada ya siku 3 tu!\n\nLipa sasa ili mfumo usifungwe:\nHALOPESA 25187616 (DUKALANGU)\n\nDukaLangu Smart POS'},
+  {id:'expire_1',cat:'Ukumbusho',name:'Usajili Unaisha KESHO',body:'Habari {{jina}},\n\nONYO: Usajili wako unaisha KESHO!\n\nLipa leo ili biashara yako isisimame:\nHALOPESA 25187616 (DUKALANGU)\n\nKwa msaada: 0617288752\n\nDukaLangu Smart POS'},
+  {id:'expired',cat:'Ukumbusho',name:'Usajili Umeisha',body:'Habari {{jina}},\n\nUsajili wako wa DukaLangu umeisha.\n\nTafadhali fanya malipo ili mfumo ufunguliwe:\nHALOPESA 25187616 (DUKALANGU)\n\nData zako zote ziko salama.\n\nDukaLangu Smart POS'},
+
+  // ===== KARIBU NA MAFUNZO =====
+  {id:'welcome',cat:'Karibu',name:'Karibu Mteja Mpya',body:'Karibu DukaLangu Smart POS!\n\nHabari {{jina}},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu.\n\nSimamia mauzo, bidhaa, madeni na matumizi popote ulipo.\n\nIngia: dukalangu.com\nMsaada: 0617288752\n\nDukaLangu Smart POS'},
+  {id:'training',cat:'Karibu',name:'Mafunzo ya Bure',body:'Habari {{jina}},\n\nUnahitaji msaada kuanza?\n\nTuna video za mafunzo bure mfumoni. Pia unaweza kutupigia simu tukusaidie hatua kwa hatua.\n\nSimu: 0617288752\n\nDukaLangu Smart POS'},
+  {id:'tips',cat:'Karibu',name:'Vidokezo vya Kutumia',body:'Habari {{jina}},\n\nVidokezo vya leo:\n\n- Weka stock alert ili ujue bidhaa zinazoisha\n- Angalia ripoti kila jioni kuona faida\n- Rekodi madeni yote ili usisahau\n\nDukaLangu Smart POS'},
+
+  // ===== BIASHARA (kwa wateja wa duka) =====
+  {id:'debt_reminder',cat:'Biashara',name:'Ukumbusho wa Deni',body:'Habari {{jina}},\n\nHuu ni ukumbusho wa deni lako la TZS {{kiasi}}.\n\nTafadhali lipa kwa wakati.\n\nAsante kwa biashara nzuri.'},
+  {id:'debt_overdue',cat:'Biashara',name:'Deni Limechelewa',body:'Habari {{jina}},\n\nDeni lako la TZS {{kiasi}} limechelewa.\n\nTafadhali lipa haraka iwezekanavyo ili tuendelee kufanya biashara.\n\nAsante.'},
+  {id:'debt_paid',cat:'Biashara',name:'Deni Limelipwa',body:'Habari {{jina}},\n\nAsante! Deni lako limelipwa kikamilifu.\n\nTunathamini uaminifu wako.\n\nKaribu tena.'},
+  {id:'new_stock',cat:'Biashara',name:'Bidhaa Mpya Zimefika',body:'Habari {{jina}},\n\nBidhaa mpya zimefika dukani!\n\nKaribu uone na uchague unachohitaji.\n\nAsante.'},
+  {id:'promo',cat:'Biashara',name:'Ofa Maalum',body:'Habari {{jina}},\n\nOFA MAALUM kwako!\n\nTuna bei nzuri kwa wateja wetu waaminifu. Tembelea duka letu leo.\n\nAsante.'},
+  {id:'thanks',cat:'Biashara',name:'Asante kwa Biashara',body:'Habari {{jina}},\n\nAsante kwa kununua kwetu!\n\nTunathamini biashara yako. Karibu tena.\n\nDukaLangu'},
+
+  // ===== SIKUKUU =====
+  {id:'holiday',cat:'Sikukuu',name:'Salamu za Sikukuu',body:'Habari {{jina}},\n\nTunakutakia sikukuu njema!\n\nAsante kwa kuwa mteja wetu mwaminifu mwaka huu.\n\nDukaLangu Smart POS'},
+  {id:'newyear',cat:'Sikukuu',name:'Mwaka Mpya',body:'Habari {{jina}},\n\nHeri ya Mwaka Mpya!\n\nTunakutakia biashara yenye mafanikio makubwa mwaka huu.\n\nDukaLangu Smart POS'},
+
+  // ===== MFUMO =====
+  {id:'maintenance',cat:'Mfumo',name:'Matengenezo ya Mfumo',body:'Habari {{jina}},\n\nTaarifa: Mfumo utafanyiwa matengenezo {{tarehe}}.\n\nHuduma zinaweza kusimama kwa muda mfupi. Data zako ziko salama.\n\nTunaomba radhi kwa usumbufu.\n\nDukaLangu Smart POS'},
+  {id:'new_feature',cat:'Mfumo',name:'Kipengele Kipya',body:'Habari {{jina}},\n\nHabari njema! Tumeongeza kipengele kipya kwenye mfumo.\n\nIngia dukalangu.com uone.\n\nDukaLangu Smart POS'},
+  {id:'custom',cat:'Mfumo',name:'Ujumbe Binafsi',body:'Habari {{jina}},\n\n[Andika ujumbe wako hapa]\n\nAsante.\n\nDukaLangu Smart POS'},
 ];
 
 // Vikundi vya wateja
@@ -64,6 +90,7 @@ export default function CommsCenterPage(){
   const[tplModal,setTplModal]=useState(null);
   const[tplForm,setTplForm]=useState({name:'',body:''});
   const[tplSearch,setTplSearch]=useState('');
+  const[tplCat,setTplCat]=useState('all');
   const[histSearch,setHistSearch]=useState('');
   const[histFilter,setHistFilter]=useState('all');
   const[histDate,setHistDate]=useState('');
@@ -312,7 +339,12 @@ export default function CommsCenterPage(){
   },[history,histFilter,histSearch,histDate]);
   const pagedHist=filteredHist.slice((page-1)*PER_PAGE,page*PER_PAGE);
   const totalPages=Math.ceil(filteredHist.length/PER_PAGE);
-  const filteredTpls=templates.filter(t=>!tplSearch||t.name.toLowerCase().includes(tplSearch.toLowerCase()));
+  const TPL_CATS=['all','Malipo','Ukumbusho','Karibu','Biashara','Sikukuu','Mfumo'];
+  const filteredTpls=templates.filter(t=>{
+    const matchCat=tplCat==='all'||t.cat===tplCat;
+    const matchSearch=!tplSearch||t.name.toLowerCase().includes(tplSearch.toLowerCase())||t.body.toLowerCase().includes(tplSearch.toLowerCase());
+    return matchCat&&matchSearch;
+  });
 
   // Export CSV
   const exportCSV=()=>{
@@ -620,16 +652,40 @@ export default function CommsCenterPage(){
 
     {/* ===== TEMPLATES ===== */}
     {tab==='templates'&&<div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,gap:8,flexWrap:'wrap'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,gap:8,flexWrap:'wrap'}}>
         <Input placeholder="🔍 Tafuta template..." value={tplSearch} onChange={e=>setTplSearch(e.target.value)} style={{marginBottom:0,flex:1,minWidth:180}}/>
         <Btn onClick={()=>{setTplForm({name:'',body:''});setTplModal('new')}}>{IC.plus} Mpya</Btn>
+      </div>
+
+      {/* Maelezo ya placeholders */}
+      <div style={{padding:'10px 13px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,marginBottom:12,fontSize:11.5,color:'#15803D'}}>
+        💡 <b>Tumia:</b> <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11}}>{'{{jina}}'}</code> (jina la mteja) •
+        <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11,marginLeft:4}}>{'{{kiasi}}'}</code> •
+        <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11,marginLeft:4}}>{'{{siku}}'}</code> •
+        <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11,marginLeft:4}}>{'{{tarehe}}'}</code>
+      </div>
+
+      {/* Vikundi */}
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        {TPL_CATS.map(cat=>{
+          const n=cat==='all'?templates.length:templates.filter(t=>t.cat===cat).length;
+          const icons={all:'📋',Malipo:'💰',Ukumbusho:'⏰',Karibu:'👋',Biashara:'🏪',Sikukuu:'🎉',Mfumo:'⚙️'};
+          return <button key={cat} onClick={()=>setTplCat(cat)} style={{
+            padding:'7px 13px',borderRadius:9,cursor:'pointer',fontWeight:600,fontSize:12,
+            border:tplCat===cat?'2px solid #0B7A3B':'1.5px solid #E2E8F0',
+            background:tplCat===cat?'#F0FDF4':'#fff',
+            color:tplCat===cat?'#0B7A3B':'#64748B',
+          }}>
+            {icons[cat]} {cat==='all'?'Zote':cat} ({n})
+          </button>;
+        })}
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:12}}>
         {filteredTpls.map(t=>(
           <div key={t.id} className="card" style={{padding:14}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-              <b style={{fontSize:13.5,color:'#0B7A3B'}}>{t.name}</b>
-              {DEFAULT_TEMPLATES.find(d=>d.id===t.id)&&<Badge color="#94A3B8">Msingi</Badge>}
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6,gap:6}}>
+              <b style={{fontSize:13.5,color:'#0B7A3B',flex:1}}>{t.name}</b>
+              {t.cat&&<span style={{fontSize:9.5,padding:'2px 7px',borderRadius:6,background:'#F1F5F9',color:'#64748B',fontWeight:700,flexShrink:0}}>{t.cat}</span>}
             </div>
             <div style={{fontSize:11.5,color:'#64748B',lineHeight:1.5,marginBottom:10,minHeight:60,whiteSpace:'pre-wrap',overflow:'hidden',maxHeight:80}}>{t.body}</div>
             <div style={{display:'flex',gap:6}}>
