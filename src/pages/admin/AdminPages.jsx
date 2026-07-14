@@ -263,6 +263,11 @@ export function StoresPage(){
   const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');
   const[detail,setDetail]=useState(null);
   const[extendDays,setExtendDays]=useState('30');
+  const[extendAmount,setExtendAmount]=useState('15000');
+  const[extendMethod,setExtendMethod]=useState('HALOPESA');
+  const[extendType,setExtendType]=useState('sale');
+  const[extendNote,setExtendNote]=useState('');
+  const[extending,setExtending]=useState(false);
   const[upgradePlan,setUpgradePlan]=useState('');
   const[transferCode,setTransferCode]=useState('');
   const[actionModal,setActionModal]=useState({type:null,biz:null});
@@ -448,12 +453,76 @@ export function StoresPage(){
       <div style={{background:'#F0FDF4',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
         <div style={{fontSize:12,color:'#15803D'}}>Siku zilizobaki sasa</div>
         <div style={{fontSize:28,fontWeight:900,color:'#0B7A3B'}}>{actionModal.biz?getDaysLeft(actionModal.biz):0}</div>
+        <div style={{fontSize:11,color:'#64748B',marginTop:2}}>Baada ya kuongeza: <b style={{color:'#0B7A3B'}}>{(actionModal.biz?getDaysLeft(actionModal.biz):0)+(+extendDays||0)} siku</b></div>
       </div>
+
       <Input label="Ongeza siku ngapi?" type="number" value={extendDays} onChange={e=>setExtendDays(e.target.value)}/>
-      <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
-        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:extendDays===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#0B7A3B':'#64748B'}}>{d} siku</button>)}
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        {[7,14,30,60,90,365].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:extendDays===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#0B7A3B':'#64748B'}}>{d}</button>)}
       </div>
-      <Btn onClick={async()=>{await quickExtend(actionModal.biz.id,+extendDays);alert(`Siku ${extendDays} zimeongezwa kwa ${actionModal.biz.name}!`);setActionModal({type:null,biz:null})}} style={{width:'100%',justifyContent:'center'}}>✅ Ongeza Siku {extendDays}</Btn>
+
+      {/* AINA YA MUAMALA */}
+      <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Aina ya Muamala</label>
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        {[
+          {v:'sale',l:'💰 Mauzo',c:'#0B7A3B',d:'Mteja amelipa'},
+          {v:'gift',l:'🎁 Zawadi',c:'#8B5CF6',d:'Bure'},
+          {v:'compensation',l:'🔧 Fidia',c:'#EA580C',d:'Tatizo la mfumo'},
+        ].map(t=>(
+          <button key={t.v} onClick={()=>{setExtendType(t.v);if(t.v!=='sale')setExtendAmount('0');else setExtendAmount('15000')}} style={{
+            flex:1,minWidth:95,padding:'9px 8px',borderRadius:9,cursor:'pointer',
+            border:extendType===t.v?`2px solid ${t.c}`:'1.5px solid #E2E8F0',
+            background:extendType===t.v?`${t.c}0A`:'#fff',
+          }}>
+            <div style={{fontSize:12,fontWeight:700,color:extendType===t.v?t.c:'#64748B'}}>{t.l}</div>
+            <div style={{fontSize:9.5,color:'#94A3B8',marginTop:1}}>{t.d}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* KIASI (kwa mauzo pekee) */}
+      {extendType==='sale'&&<>
+        <Input label="Kiasi alicholipa (TZS)" type="number" value={extendAmount} onChange={e=>setExtendAmount(e.target.value)}/>
+        <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+          {[15000,25000,30000,50000,75000].map(a=><button key={a} onClick={()=>setExtendAmount(String(a))} style={{padding:'6px 12px',borderRadius:8,border:extendAmount===String(a)?'2px solid #0B7A3B':'1px solid #E2E8F0',background:extendAmount===String(a)?'#F0FDF4':'#fff',fontWeight:600,fontSize:11.5,cursor:'pointer',color:extendAmount===String(a)?'#0B7A3B':'#64748B'}}>{a.toLocaleString()}</button>)}
+        </div>
+
+        <Sel label="Njia ya Malipo" value={extendMethod} onChange={e=>setExtendMethod(e.target.value)} options={[
+          {value:'HALOPESA',label:'HALOPESA'},
+          {value:'M-PESA',label:'M-Pesa'},
+          {value:'TIGO PESA',label:'Tigo Pesa'},
+          {value:'AIRTEL MONEY',label:'Airtel Money'},
+          {value:'CASH',label:'Cash (Mkononi)'},
+          {value:'BANK',label:'Benki'},
+        ]}/>
+      </>}
+
+      <Input label="Maelezo (si lazima)" value={extendNote} onChange={e=>setExtendNote(e.target.value)} placeholder="Mfano: Namba ya risiti..."/>
+
+      {/* Muhtasari */}
+      <div style={{padding:'11px 13px',background:extendType==='sale'?'#F0FDF4':'#F8FAFC',border:`1px solid ${extendType==='sale'?'#BBF7D0':'#E2E8F0'}`,borderRadius:10,marginBottom:12,fontSize:12.5}}>
+        {extendType==='sale'
+          ? <span style={{color:'#15803D'}}>💰 Mapato: <b>TZS {(+extendAmount||0).toLocaleString()}</b> • Siku {extendDays} • {extendMethod}</span>
+          : extendType==='gift'
+          ? <span style={{color:'#7C3AED'}}>🎁 Zawadi — haitahesabiwa kwenye mapato</span>
+          : <span style={{color:'#9A3412'}}>🔧 Fidia — haitahesabiwa kwenye mapato</span>}
+      </div>
+
+      <Btn onClick={async()=>{
+        if(extendType==='sale'&&(!extendAmount||+extendAmount<=0))return alert('Weka kiasi alicholipa!');
+        setExtending(true);
+        await quickExtend(actionModal.biz.id,+extendDays,{
+          amount:extendType==='sale'?+extendAmount:0,
+          method:extendType==='sale'?extendMethod:null,
+          type:extendType,
+          note:extendNote,
+        });
+        setExtending(false);
+        alert(`✅ Siku ${extendDays} zimeongezwa kwa ${actionModal.biz.name}!${extendType==='sale'?`\n💰 Mapato: TZS ${(+extendAmount).toLocaleString()}`:''}`);
+        setActionModal({type:null,biz:null});setExtendNote('');
+      }} disabled={extending} style={{width:'100%',justifyContent:'center'}}>
+        {extending?'Inaongeza...':`✅ Ongeza Siku ${extendDays}`}
+      </Btn>
     </Modal>
 
     {/* ===== UPGRADE MODAL ===== */}

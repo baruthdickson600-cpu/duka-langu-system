@@ -14,6 +14,7 @@ import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
 import CommsCenterPage from './pages/admin/CommsCenter';
 import AccountCleanupPage from './pages/admin/AccountCleanup';
+import RevenuePage from './pages/admin/RevenuePage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
@@ -41,6 +42,7 @@ const MENUS={
     ]},
     {group:'ripoti',label:'📊 Ripoti & Uchambuzi',icon:IC.chart,items:[
       {id:'reports',icon:IC.file,label:'Ripoti'},
+      {id:'revenue',icon:IC.dollar,label:'💰 Mapato'},
       {id:'usage',icon:IC.chart,label:'Usage'},
       {id:'activity',icon:IC.clock,label:'Activity'},
     ]},
@@ -55,6 +57,7 @@ const MENUS={
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'payments',icon:IC.dollar,label:'Malipo'},
+    {id:'revenue',icon:IC.chart,label:'💰 Mapato'},
     {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
     {id:'budget',icon:IC.chart,label:'Bajeti'},
     {id:'expenses',icon:IC.file,label:'Matumizi'},
@@ -249,6 +252,7 @@ export default function App(){
         case'sms_center':return <SMSCenterPage/>;
         case'comms_center':return <CommsCenterPage/>;
         case'cleanup':return <AccountCleanupPage/>;
+        case'revenue':return <RevenuePage/>;
         default:return <AdminDashboard/>;
       }
     }
@@ -271,7 +275,7 @@ export default function App(){
         case'expenses':return <AccExpensesPage/>;
         case'payroll':return <AccPayrollPage/>;
         case'debts':return <AccDebtsPage/>;
-        case'revenue':return <AccRevenuePage/>;
+        case'revenue':return <RevenuePage/>;
         case'customers':return <AccCustomersPage/>;
         case'reports':return <AccReportsPage/>;
         case'audit':return <AccAuditPage/>;

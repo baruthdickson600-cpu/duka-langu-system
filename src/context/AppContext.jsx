@@ -1634,14 +1634,38 @@ export function AppProvider({children}){
   },[businesses,products,sales,expenses,customers,employees,tokens,promoCodes,branches,tickets,returns]);
 
   // ===== QUICK EXTEND (ongeza siku bila token) =====
-  const quickExtend=useCallback(async(bid,days)=>{
+  const quickExtend=useCallback(async(bid,days,payment={})=>{
     const b=businesses.find(x=>x.id===bid);if(!b)return;
     const currentEnd=b.token_active&&b.token_expiry?new Date(b.token_expiry):b.trial_end?new Date(b.trial_end):new Date();
     const base=currentEnd>new Date()?currentEnd:new Date();
     const newEnd=new Date(base.getTime()+parseInt(days)*86400000).toISOString();
     await safeUpdate('businesses',{token_active:true,token_expiry:newEnd,is_suspended:false},'id',bid);
     setBiz(prev=>prev.map(x=>x.id===bid?{...x,token_active:true,token_expiry:newEnd,is_suspended:false}:x));
-    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_extend',details:{text:`${b.name}: +${days} siku`}});
+
+    // ===== HIFADHI MAPATO (payment_requests) =====
+    const{amount=0,method=null,type='sale',note=''}=payment;
+    if(amount>0||type!=='sale'){
+      const rec={
+        business_id:bid,
+        amount:+amount||0,
+        status:'approved',
+        transaction_id:`ADMIN-${Date.now()}`,
+        approved_at:nowISO(),
+        approved_by:user?.id||null,
+      };
+      // Ongeza columns za hiari (zikikosekana, zitaondolewa kiotomatiki)
+      const full={...rec,payer_name:b.name,payer_phone:b.phone,payment_method:method,days_given:+days,revenue_type:type,notes:note||`Admin: +${days} siku`,source:'admin_extend'};
+      let{error}=await supabase.from('payment_requests').insert(full);
+      let t=0;
+      while(error&&error.message?.includes('column')&&t<8){
+        const m=error.message.match(/column "?([a-z_]+)"?/i);
+        if(m&&m[1]&&full[m[1]]!==undefined){delete full[m[1]];t++;({error}=await supabase.from('payment_requests').insert(full));}
+        else break;
+      }
+      if(error){await supabase.from('payment_requests').insert(rec).then(()=>{},()=>{});}
+    }
+
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_extend',details:{text:`${b.name}: +${days} siku${amount>0?` (TZS ${(+amount).toLocaleString()})`:` [${type}]`}`,amount:+amount||0,type,method}});
     await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`🎉 Siku ${days} Zimeongezwa!`,message:`Admin amekuongezea siku ${days}. Mfumo wako utaendelea hadi ${new Date(newEnd).toLocaleDateString('sw-TZ')}.`});
   },[businesses,user]);
 
