@@ -1733,11 +1733,13 @@ export function EmployeesPage(){
       {/* Branch selector */}
       {canUseBranches&&myBranches.length>0&&<>
         <Sel label="Tawi la Mfanyakazi" value={f.branch_id} onChange={e=>setF({...f,branch_id:e.target.value})} options={[
-          {value:'',label:'-- Hakuna Tawi (anaona yote) --'},
-          ...myBranches.map(b=>({value:b.id,label:b.name}))
+          {value:'',label:'-- Anaona matawi YOTE (Meneja) --'},
+          {value:'MAIN',label:'🏛️ Tawi Kuu'},
+          ...myBranches.map(b=>({value:b.id,label:'🏪 '+b.name}))
         ]}/>
         <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px 10px',marginBottom:10,fontSize:11,color:'#15803D',lineHeight:1.5}}>
-          {f.branch_id?`Mfanyakazi huyu ataona data ya "${myBranches.find(b=>b.id===f.branch_id)?.name}" TU. Hawezi kubadilisha tawi lake.`
+          {f.branch_id==='MAIN'?'Mfanyakazi huyu ataona data ya Tawi Kuu TU.'
+            :f.branch_id?`Mfanyakazi huyu ataona data ya "${myBranches.find(b=>b.id===f.branch_id)?.name}" TU. Hawezi kubadilisha tawi lake.`
             :'Mfanyakazi huyu ataona data za matawi yote. Chagua tawi kama unataka kumzuia.'}
         </div>
       </>}
@@ -1754,11 +1756,12 @@ export function EmployeesPage(){
       {editBranchModal.emp&&<>
         <div style={{background:'#F8FAFC',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
           <div style={{fontSize:13,color:'#64748B'}}>Tawi la sasa:</div>
-          <div style={{fontSize:18,fontWeight:700,color:'#0B7A3B'}}>{myBranches.find(b=>b.id===editBranchModal.emp.branch_id)?.name||'Hajapangiwa'}</div>
+          <div style={{fontSize:18,fontWeight:700,color:'#0B7A3B'}}>{editBranchModal.emp.branch_id==='MAIN'?'🏛️ Tawi Kuu':myBranches.find(b=>b.id===editBranchModal.emp.branch_id)?.name||'Meneja (anaona yote)'}</div>
         </div>
         <Sel label="Tawi Jipya" value={editBranchModal.emp.branch_id||''} onChange={e=>setEditBranchModal({...editBranchModal,emp:{...editBranchModal.emp,branch_id:e.target.value||null}})} options={[
-          {value:'',label:'-- Ondoa tawi (anaona yote) --'},
-          ...myBranches.map(b=>({value:b.id,label:b.name}))
+          {value:'',label:'-- Anaona matawi YOTE (Meneja) --'},
+          {value:'MAIN',label:'🏛️ Tawi Kuu'},
+          ...myBranches.map(b=>({value:b.id,label:'🏪 '+b.name}))
         ]}/>
         <Btn onClick={async()=>{
           await updateEmployee(editBranchModal.emp.id,{branch_id:editBranchModal.emp.branch_id||null});
@@ -2227,10 +2230,30 @@ export function BranchesPage(){
     <div style={{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
       <span style={{fontSize:13,fontWeight:700,marginRight:4}}>Tawi:</span>
       <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>Yote</button>
+      <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>🏛️ Tawi Kuu</button>
       {myBranches.map(b=><button key={b.id} onClick={()=>setActiveBranch(b.id)} style={{padding:'6px 14px',borderRadius:8,border:activeBranch===b.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:activeBranch===b.id?'#F0FDF4':'#fff',fontWeight:activeBranch===b.id?700:500,fontSize:12,color:activeBranch===b.id?'#0B7A3B':'#64748B',cursor:'pointer'}}>{b.name}</button>)}
       <Btn style={{padding:'6px 12px',fontSize:11,marginLeft:'auto'}} onClick={()=>{if(!canAddMore)return alert(`Umefikia kikomo cha matawi ${maxBranches} kwa plan yako! Upgrade kwa Premium/Enterprise kupata matawi zaidi.`);setModal(true)}}>{IC.plus} Tawi</Btn>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}}>
+      {/* TAWI KUU (biashara yenyewe) */}
+      {(()=>{const st=branchStats(null);return <div key="main" className="card" style={{border:!activeBranch?'2px solid #0B7A3B':'1px solid #E2E8F0',background:'#Fafffe'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <b style={{fontSize:15,color:'#0B7A3B'}}>🏛️ Tawi Kuu</b>
+              <span style={{fontSize:9.5,padding:'2px 8px',borderRadius:6,background:'#0B7A3B',color:'#fff',fontWeight:700}}>KUU</span>
+            </div>
+            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>{biz?.region||biz?.location||'Makao Makuu'} • Biashara kuu</div>
+          </div>
+          <Badge color="#16A34A">Hai</Badge>
+        </div>
+        <div style={{display:'flex',gap:16,fontSize:12,color:'#475569',flexWrap:'wrap'}}>
+          <span>📦 Bidhaa: <b>{st.products}</b></span>
+          <span>🛒 Mauzo: <b>{st.sales}</b></span>
+          <span>💰 <b>{fm(st.totalSales)}</b></span>
+        </div>
+      </div>;})()}
+
       {myBranches.map(b=>{const st=branchStats(b.id);return <div key={b.id} className="card" style={{border:activeBranch===b.id?'2px solid #0B7A3B':'1px solid #E2E8F0'}}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
           <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:38,height:38,borderRadius:10,background:b.is_active!==false?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{b.is_active!==false?'🏪':'⏸'}</div><div><div style={{fontWeight:700,fontSize:14}}>{b.name}</div><div style={{fontSize:11,color:'#64748B'}}>{b.location||'-'}</div>{b.phone&&<div style={{fontSize:10,color:'#94A3B8'}}>📞 {b.phone}</div>}</div></div>

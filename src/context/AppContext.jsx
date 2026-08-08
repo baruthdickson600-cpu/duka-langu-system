@@ -270,7 +270,7 @@ export function AppProvider({children}){
         await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
         try{supabase.from('login_logs').insert({user_id:uData.id,email,action:'login',device_info:(navigator.userAgent||'').replace(/[^a-zA-Z0-9 _.,-]/g,'').substring(0,200)}).then(()=>{}).catch(()=>{})}catch(_){}
         await loadData(uData.id,role,role==='admin'?null:uData.business_id);
-        if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id);}
+        if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id==='MAIN'?null:uData.branch_id);}
         if(uData.role==='supervisor'||uData.role==='agent'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}));}
@@ -691,6 +691,13 @@ export function AppProvider({children}){
   const updateBranch=useCallback(async(bid,u)=>{await safeUpdate('branches',u,'id',bid);setBranches(prev=>prev.map(b=>b.id===bid?{...b,...u}:b))},[]);
   const deleteBranch=useCallback(async(bid)=>{await safeDelete('branches','id',bid);setBranches(prev=>prev.filter(b=>b.id!==bid));if(activeBranch===bid)setActiveBranch(null)},[activeBranch]);
   const getBranches=useCallback(()=>bizId?branches.filter(b=>b.business_id===bizId):[],[bizId,branches]);
+  // Matawi YOTE pamoja na Tawi Kuu (biashara yenyewe). Tawi Kuu id = null.
+  const getAllBranchesWithMain=useCallback(()=>{
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    const mainBranch={id:null,name:'Tawi Kuu',location:myBiz?.region||myBiz?.location||'',branch_code:'KUU',is_main:true,business_id:bizId,is_active:true};
+    const others=bizId?branches.filter(b=>b.business_id===bizId):[];
+    return [mainBranch,...others];
+  },[bizId,branches,biz]);
   // Branch filtering: ukichagua branch, onyesha bidhaa za branch HIYO + za jumla (branch_id=null)
   // Bidhaa za zamani (kabla ya branches) zina branch_id=null - zinaonekana kwenye branches zote
   const branchProducts=useMemo(()=>activeBranch?products.filter(p=>p.branch_id===activeBranch):products,[products,activeBranch]);
@@ -767,13 +774,15 @@ export function AppProvider({children}){
   },[settings,bizId,user,biz]);
   // Max branches for this plan
   const maxBranches=useMemo(()=>{
+    // Kikomo = matawi ya KUONGEZA (Tawi Kuu = biashara yenyewe, haihesabiwi hapa)
+    // Jumla halisi = Tawi Kuu + maxBranches. Mfano: 3 = Tawi Kuu + matawi 3 = 4 jumla
     const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
     // max_branches column (kutoka token ya branch) inashinda
     if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
     // branch plans: branch2=2, branch3=3...
     if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
     if(myBiz?.plan==='enterprise')return 999;
-    if(myBiz?.plan==='premium')return 10;
+    if(myBiz?.plan==='premium')return 3;
     return 1;
   },[biz,bizId]);
 
@@ -2099,7 +2108,7 @@ export function AppProvider({children}){
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
-    addBranch,updateBranch,deleteBranch,getBranches,
+    addBranch,updateBranch,deleteBranch,getBranches,getAllBranchesWithMain,
     // Tickets
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
