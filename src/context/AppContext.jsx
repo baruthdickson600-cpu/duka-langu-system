@@ -925,7 +925,7 @@ export function AppProvider({children}){
         }
       )
       .subscribe();
-    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel)};
+    return()=>{supabase.removeChannel(channel)};
   },[user?.id,user?.role,bizId]);
   
   // Get unread chat count
@@ -1264,7 +1264,7 @@ export function AppProvider({children}){
           setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
         }
       }).subscribe();
-    return()=>{supabase.removeChannel(channel)};
+    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel)};
   },[bizId,user,loadData]);
 
   // Admin: real-time new payment requests
@@ -2148,7 +2148,7 @@ export function AppProvider({children}){
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
-    addBranch,updateBranch,deleteBranch,getBranches,getAllBranchesWithMain,
+    addBranch,updateBranch,deleteBranch,getBranches,getAllBranchesWithMain,employeeBranchLock,branchFilter,
     // Tickets
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
