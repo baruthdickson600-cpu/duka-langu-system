@@ -363,7 +363,7 @@ export function OfficeDash({onReceipt}){
 
 // ===== POS / SALES =====
 export function SalesPage({onDone}){
-  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches}=useApp();
+  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches,branchFilter}=useApp();
   const empNoBranch=user?.role==='employee'&&canUseBranches&&!user?.branch_id;
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
@@ -427,7 +427,7 @@ export function SalesPage({onDone}){
     }catch(e){console.error('Sale error:',e);playError();}
     finally{setProcessing(false)}
   };
-  const avail=products.filter(p=>p.quantity>0&&p.name?.toLowerCase().includes(search.toLowerCase())&&(!activeBranch||p.branch_id===activeBranch));
+  const avail=products.filter(p=>p.quantity>0&&p.name?.toLowerCase().includes(search.toLowerCase())&&branchFilter(p,activeBranch));
   const selCust=customers.find(c=>c.id===custId);
 
   if(empNoBranch)return <div style={{padding:40,textAlign:'center',background:'#FFF7ED',borderRadius:14,border:'1.5px solid #FED7AA',maxWidth:500,margin:'40px auto'}}>
@@ -553,13 +553,13 @@ export function SalesPage({onDone}){
 
 // ===== PRODUCTS =====
 export function ProductsPage(){
-  const{products,addProduct,updateProduct,deleteProduct,bizId,activeBranch,hasWholesale,canUseBranches,getBranches,copyProductsToBranch}=useApp();
+  const{products,addProduct,updateProduct,deleteProduct,bizId,activeBranch,hasWholesale,canUseBranches,getBranches,copyProductsToBranch,branchFilter}=useApp();
   const[copyModal,setCopyModal]=useState(false);
   const[copyTo,setCopyTo]=useState('');
   const[copying,setCopying]=useState(false);
   const myBranches=canUseBranches?getBranches():[];
   const currentBranch=myBranches.find(b=>b.id===activeBranch);
-  const myProds=products.filter(p=>p.business_id===bizId&&(!activeBranch||p.branch_id===activeBranch));
+  const myProds=products.filter(p=>p.business_id===bizId&&branchFilter(p,activeBranch));
   const[search,setSearch]=useState('');const[modal,setModal]=useState({open:false,data:null});
   const[dupErr,setDupErr]=useState('');
   const filtered=myProds.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()));
@@ -2229,7 +2229,6 @@ export function BranchesPage(){
 
     <div style={{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
       <span style={{fontSize:13,fontWeight:700,marginRight:4}}>Tawi:</span>
-      <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>Yote</button>
       <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>🏛️ Tawi Kuu</button>
       {myBranches.map(b=><button key={b.id} onClick={()=>setActiveBranch(b.id)} style={{padding:'6px 14px',borderRadius:8,border:activeBranch===b.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:activeBranch===b.id?'#F0FDF4':'#fff',fontWeight:activeBranch===b.id?700:500,fontSize:12,color:activeBranch===b.id?'#0B7A3B':'#64748B',cursor:'pointer'}}>{b.name}</button>)}
       <Btn style={{padding:'6px 12px',fontSize:11,marginLeft:'auto'}} onClick={()=>{if(!canAddMore)return alert(`Umefikia kikomo cha matawi ${maxBranches} kwa plan yako! Upgrade kwa Premium/Enterprise kupata matawi zaidi.`);setModal(true)}}>{IC.plus} Tawi</Btn>

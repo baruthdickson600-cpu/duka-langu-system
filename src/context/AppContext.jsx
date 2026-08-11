@@ -700,9 +700,35 @@ export function AppProvider({children}){
   },[bizId,branches,biz]);
   // Branch filtering: ukichagua branch, onyesha bidhaa za branch HIYO + za jumla (branch_id=null)
   // Bidhaa za zamani (kabla ya branches) zina branch_id=null - zinaonekana kwenye branches zote
-  const branchProducts=useMemo(()=>activeBranch?products.filter(p=>p.branch_id===activeBranch):products,[products,activeBranch]);
-  const branchSales=useMemo(()=>activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales,[sales,activeBranch]);
-  const branchExpenses=useMemo(()=>activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses,[expenses,activeBranch]);
+  // Je mfanyakazi amefungwa kwa tawi moja? (aone tawi lake pekee)
+  // Meneja/mmiliki (asiye employee, au employee asiye na branch_id) = anaona yote
+  const employeeBranchLock=useMemo(()=>{
+    if(user?.role!=='employee')return undefined; // si employee - hana lock
+    if(!user?.branch_id)return undefined; // employee bila tawi = meneja (anaona yote)
+    // branch_id='MAIN' => Tawi Kuu (data bila branch_id) => tumia null
+    return user.branch_id==='MAIN'?null:user.branch_id;
+  },[user]);
+
+  const branchProducts=useMemo(()=>{
+    if(employeeBranchLock!==undefined){
+      return products.filter(p=>(p.branch_id||null)===(employeeBranchLock||null));
+    }
+    return activeBranch?products.filter(p=>p.branch_id===activeBranch):products;
+  },[products,activeBranch,employeeBranchLock]);
+  const branchSales=useMemo(()=>{
+    // Employee aliyefungwa tawi: aone mauzo ya tawi lake TU
+    if(employeeBranchLock!==undefined){
+      return sales.filter(s=>(s.branch_id||null)===(employeeBranchLock||null));
+    }
+    // Mmiliki: chuja kama activeBranch imewekwa
+    return activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales;
+  },[sales,activeBranch,employeeBranchLock]);
+  const branchExpenses=useMemo(()=>{
+    if(employeeBranchLock!==undefined){
+      return expenses.filter(e=>(e.branch_id||null)===(employeeBranchLock||null));
+    }
+    return activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses;
+  },[expenses,activeBranch,employeeBranchLock]);
 
   // BRANCH LOCK: Determines if current business can use multi-branch
   const canUseBranches=useMemo(()=>{
@@ -721,6 +747,17 @@ export function AppProvider({children}){
     if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
     return false;
   },[user,settings,biz,bizId,businesses,branches]);
+
+  // Chuja bidhaa/mauzo/n.k. kwa tawi la mfanyakazi (au activeBranch kwa mmiliki)
+  const branchFilter=useCallback((item,active)=>{
+    // Employee aliyefungwa: aone tawi lake TU (hata activeBranch ikibadilika)
+    if(employeeBranchLock!==undefined){
+      return (item.branch_id||null)===(employeeBranchLock||null);
+    }
+    // Mmiliki/meneja: kama activeBranch imewekwa, chuja; la sivyo onyesha yote
+    if(active)return item.branch_id===active;
+    return true;
+  },[employeeBranchLock]);
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
@@ -1888,7 +1925,10 @@ export function AppProvider({children}){
   const daysLeft=useCallback(()=>{if(!biz)return 0;const end=biz.token_active?biz.token_expiry:biz.trial_end;if(!end)return 999;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))},[biz]);
 
   // ===== STOCK ALERTS + AUTO-REORDER LIST + PROFIT MARGIN ALERTS =====
-  const lowStockProducts=useMemo(()=>products.filter(p=>p.quantity<=p.min_stock&&p.business_id===bizId),[products,bizId]);
+  const lowStockProducts=useMemo(()=>{
+    const base=employeeBranchLock!==undefined?products.filter(p=>(p.branch_id||null)===(employeeBranchLock||null)):products;
+    return base.filter(p=>p.quantity<=p.min_stock&&p.business_id===bizId);
+  },[products,bizId,employeeBranchLock]);
   const autoReorderList=useMemo(()=>lowStockProducts.map(p=>({...p,suggestedQty:Math.max(p.min_stock*3,10)-p.quantity})),[lowStockProducts]);
   const lowMarginProducts=useMemo(()=>products.filter(p=>{if(!p.buy_price||!p.sell_price)return false;const margin=((p.sell_price-p.buy_price)/p.sell_price)*100;return margin<15&&p.business_id===bizId}).map(p=>({...p,margin:((p.sell_price-p.buy_price)/p.sell_price*100).toFixed(1)})),[products,bizId]);
 
@@ -2092,10 +2132,10 @@ export function AppProvider({children}){
     user,loading,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
     branches,activeBranch,setActiveBranch,
     // Branch-aware: pages zinapata data ya branch iliyochaguliwa (au zote kama hakuna)
-    products:canUseBranches&&activeBranch?branchProducts:products,
+    products:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchProducts:products,
     copyProductsToBranch,
-    sales:canUseBranches&&activeBranch?branchSales:sales,
-    expenses:canUseBranches&&activeBranch?branchExpenses:expenses,
+    sales:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchSales:sales,
+    expenses:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchExpenses:expenses,
     // Raw data (zote) - kwa admin, combined reports, na backup
     allProducts:products,allSales:sales,allExpenses:expenses,
     branchProducts,branchSales,branchExpenses,
