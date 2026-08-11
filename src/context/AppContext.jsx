@@ -270,7 +270,7 @@ export function AppProvider({children}){
         await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
         try{supabase.from('login_logs').insert({user_id:uData.id,email,action:'login',device_info:(navigator.userAgent||'').replace(/[^a-zA-Z0-9 _.,-]/g,'').substring(0,200)}).then(()=>{}).catch(()=>{})}catch(_){}
         await loadData(uData.id,role,role==='admin'?null:uData.business_id);
-        if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id==='MAIN'?null:uData.branch_id);}
+        if(uData.role==='employee'){if(uData.assigned_to_main)setActiveBranch(null);else if(uData.branch_id)setActiveBranch(uData.branch_id);}
         if(uData.role==='supervisor'||uData.role==='agent'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}));}
@@ -674,8 +674,8 @@ export function AppProvider({children}){
     try{
       const{data:auth}=await supabase.auth.signUp({email:emp.email,password:emp.password||'1234'});
       const uid=auth?.user?.id||genId();
-      const d=await safeInsert('users',{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null});
-      setEmps(prev=>[...prev,d||{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
+      const d=await safeInsert('users',{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,assigned_to_main:emp.assigned_to_main||false});
+      setEmps(prev=>[...prev,d||{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,assigned_to_main:emp.assigned_to_main||false,created_at:nowISO()}]);
     }catch(e){
       setEmps(prev=>[...prev,{...emp,id:genId(),role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
     }
@@ -704,9 +704,10 @@ export function AppProvider({children}){
   // Meneja/mmiliki (asiye employee, au employee asiye na branch_id) = anaona yote
   const employeeBranchLock=useMemo(()=>{
     if(user?.role!=='employee')return undefined; // si employee - hana lock
-    if(!user?.branch_id)return undefined; // employee bila tawi = meneja (anaona yote)
-    // branch_id='MAIN' => Tawi Kuu (data bila branch_id) => tumia null
-    return user.branch_id==='MAIN'?null:user.branch_id;
+    // Tawi Kuu: assigned_to_main=true => aone bidhaa za branch_id=null
+    if(user?.assigned_to_main)return null;
+    if(!user?.branch_id)return undefined; // employee bila tawi wala main = meneja (anaona yote)
+    return user.branch_id;
   },[user]);
 
   const branchProducts=useMemo(()=>{

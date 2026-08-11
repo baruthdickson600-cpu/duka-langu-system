@@ -1705,7 +1705,7 @@ export function EmployeesPage(){
             <div>
               <div style={{fontSize:10,fontWeight:600,color:'#475569'}}>Tawi:</div>
               <div style={{fontWeight:700,fontSize:13,color:empBranch?'#0B7A3B':'#92400E'}}>
-                {empBranch?`🏪 ${empBranch.name}`:'⚠️ Hajapangiwa tawi'}
+                {e.assigned_to_main?'🏛️ Tawi Kuu':empBranch?`🏪 ${empBranch.name}`:'👔 Meneja (anaona yote)'}
               </div>
             </div>
             <button onClick={()=>setEditBranchModal({open:true,emp:e})} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',color:'#3B82F6'}}>Badilisha</button>
@@ -1745,7 +1745,8 @@ export function EmployeesPage(){
 
       <Btn onClick={async()=>{
         if(!f.name||!f.email)return alert('Jaza jina na email!');
-        await addEmployee({...f,branch_id:f.branch_id||null});
+        const isMain=f.branch_id==='MAIN';
+        await addEmployee({...f,branch_id:isMain?null:(f.branch_id||null),assigned_to_main:isMain});
         setModal(false);setF({name:'',email:'',phone:'',password:'1234',branch_id:''});
       }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Mfanyakazi</Btn>
     </Modal>
@@ -1755,15 +1756,17 @@ export function EmployeesPage(){
       {editBranchModal.emp&&<>
         <div style={{background:'#F8FAFC',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
           <div style={{fontSize:13,color:'#64748B'}}>Tawi la sasa:</div>
-          <div style={{fontSize:18,fontWeight:700,color:'#0B7A3B'}}>{editBranchModal.emp.branch_id==='MAIN'?'🏛️ Tawi Kuu':myBranches.find(b=>b.id===editBranchModal.emp.branch_id)?.name||'Meneja (anaona yote)'}</div>
+          <div style={{fontSize:18,fontWeight:700,color:'#0B7A3B'}}>{editBranchModal.emp.assigned_to_main?'🏛️ Tawi Kuu':myBranches.find(b=>b.id===editBranchModal.emp.branch_id)?.name||'Meneja (anaona yote)'}</div>
         </div>
-        <Sel label="Tawi Jipya" value={editBranchModal.emp.branch_id||''} onChange={e=>setEditBranchModal({...editBranchModal,emp:{...editBranchModal.emp,branch_id:e.target.value||null}})} options={[
+        <Sel label="Tawi Jipya" value={editBranchModal.emp.assigned_to_main?'MAIN':(editBranchModal.emp.branch_id||'')} onChange={e=>setEditBranchModal({...editBranchModal,emp:{...editBranchModal.emp,_newBranch:e.target.value}})} options={[
           {value:'',label:'-- Anaona matawi YOTE (Meneja) --'},
           {value:'MAIN',label:'🏛️ Tawi Kuu'},
           ...myBranches.map(b=>({value:b.id,label:'🏪 '+b.name}))
         ]}/>
         <Btn onClick={async()=>{
-          await updateEmployee(editBranchModal.emp.id,{branch_id:editBranchModal.emp.branch_id||null});
+          const nb=editBranchModal.emp._newBranch!==undefined?editBranchModal.emp._newBranch:(editBranchModal.emp.assigned_to_main?'MAIN':editBranchModal.emp.branch_id||'');
+          const isMain=nb==='MAIN';
+          await updateEmployee(editBranchModal.emp.id,{branch_id:isMain?null:(nb||null),assigned_to_main:isMain});
           setEditBranchModal({open:false,emp:null});
         }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi</Btn>
       </>}
