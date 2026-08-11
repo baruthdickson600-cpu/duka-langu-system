@@ -2218,67 +2218,112 @@ export function BranchesPage(){
   const myBranches=getBranches();const fm=n=>fmtMoney(n,currency||'TZS');const[modal,setModal]=useState(false);const[editModal,setEditModal]=useState({open:false,branch:null});const[f,setF]=useState({name:'',region:'',district:'',address:'',phone:'',is_active:true});
   const branchStats=bid=>{const bp=products.filter(p=>p.branch_id===bid);const bs=sales.filter(s=>s.branch_id===bid);const totalSales=bs.reduce((a,s)=>a+s.total,0);return{products:bp.length,sales:bs.length,totalSales}};
   const canAddMore=myBranches.length<maxBranches;
-  return <div>
-    {/* Plan info */}
-    <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
-      <div style={{fontSize:13,color:'#15803D'}}>
-        <b>Plan: {biz?.plan==='premium'?'Premium':biz?.plan==='enterprise'?'Enterprise':'Basic'}</b> — Matawi: {myBranches.length}/{maxBranches===999?'∞':maxBranches}
-      </div>
-      {!canAddMore&&<div style={{fontSize:12,color:'#B91C1C',fontWeight:600}}>Umefikia kikomo! Upgrade kwa matawi zaidi.</div>}
-    </div>
+  const totalUsed=myBranches.length+1; // +1 kwa Tawi Kuu
+  const maxTotal=maxBranches===999?'\u221e':maxBranches+1;
+  const mainStats=branchStats(null);
+  const grandTotal=mainStats.totalSales+myBranches.reduce((a,b)=>a+branchStats(b.id).totalSales,0);
+  const grandSales=mainStats.sales+myBranches.reduce((a,b)=>a+branchStats(b.id).sales,0);
 
-    <div style={{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-      <span style={{fontSize:13,fontWeight:700,marginRight:4}}>Tawi:</span>
-      <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>🏛️ Tawi Kuu</button>
-      {myBranches.map(b=><button key={b.id} onClick={()=>setActiveBranch(b.id)} style={{padding:'6px 14px',borderRadius:8,border:activeBranch===b.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:activeBranch===b.id?'#F0FDF4':'#fff',fontWeight:activeBranch===b.id?700:500,fontSize:12,color:activeBranch===b.id?'#0B7A3B':'#64748B',cursor:'pointer'}}>{b.name}</button>)}
-      <Btn style={{padding:'6px 12px',fontSize:11,marginLeft:'auto'}} onClick={()=>{if(!canAddMore)return alert(`Umefikia kikomo cha matawi ${maxBranches} kwa plan yako! Upgrade kwa Premium/Enterprise kupata matawi zaidi.`);setModal(true)}}>{IC.plus} Tawi</Btn>
-    </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}}>
-      {/* TAWI KUU (biashara yenyewe) */}
-      {(()=>{const st=branchStats(null);return <div key="main" className="card" style={{border:!activeBranch?'2px solid #0B7A3B':'1px solid #E2E8F0',background:'#Fafffe'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:7}}>
-              <b style={{fontSize:15,color:'#0B7A3B'}}>🏛️ Tawi Kuu</b>
-              <span style={{fontSize:9.5,padding:'2px 8px',borderRadius:6,background:'#0B7A3B',color:'#fff',fontWeight:700}}>KUU</span>
+  const BranchCard=({name,location,phone,code,isActive,isMain,st,selected,onSelect,onEdit,onDelete})=>(
+    <div className="card" style={{padding:0,overflow:'hidden',border:selected?'2px solid #0B7A3B':'1px solid #EEF2F6',borderRadius:16,transition:'all 0.15s',boxShadow:selected?'0 4px 16px -4px rgba(11,122,59,0.25)':'0 1px 3px rgba(16,24,40,0.04)'}}>
+      {/* Header */}
+      <div style={{padding:'14px 16px',background:isMain?'linear-gradient(135deg,#064E2B,#0B7A3B)':(isActive?'#fff':'#F8FAFC'),borderBottom:isMain?'none':'1px solid #F2F4F7'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+          <div style={{display:'flex',alignItems:'center',gap:11,minWidth:0}}>
+            <div style={{width:44,height:44,borderRadius:12,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:21,background:isMain?'rgba(255,255,255,0.18)':(isActive?'#F0FDF4':'#F1F5F9')}}>{isMain?'\ud83c\udfdb\ufe0f':(isActive?'\ud83c\udfea':'\u23f8')}</div>
+            <div style={{minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                <b style={{fontSize:15,color:isMain?'#fff':'#101828'}}>{name}</b>
+                {isMain&&<span style={{fontSize:9,padding:'2px 8px',borderRadius:6,background:'rgba(255,255,255,0.25)',color:'#fff',fontWeight:800,letterSpacing:0.5}}>KUU</span>}
+              </div>
+              <div style={{fontSize:11.5,color:isMain?'rgba(255,255,255,0.8)':'#94A3B8',marginTop:2}}>{location||'Makao Makuu'}</div>
+              {phone&&<div style={{fontSize:10.5,color:isMain?'rgba(255,255,255,0.7)':'#B0B7C3',marginTop:1}}>\ud83d\udcde {phone}</div>}
             </div>
-            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>{biz?.region||biz?.location||'Makao Makuu'} • Biashara kuu</div>
           </div>
-          <Badge color="#16A34A">Hai</Badge>
+          {!isMain&&<div style={{display:'flex',gap:5,flexShrink:0}}>
+            <button onClick={onEdit} style={{background:'#F1F5F9',border:'none',borderRadius:8,padding:'6px 8px',cursor:'pointer',fontSize:13}}>{IC.gear}</button>
+            <button onClick={onDelete} style={{background:'#FEF2F2',border:'none',borderRadius:8,padding:'6px 8px',color:'#EF4444',cursor:'pointer',fontSize:13}}>{IC.del}</button>
+          </div>}
         </div>
-        <div style={{display:'flex',gap:16,fontSize:12,color:'#475569',flexWrap:'wrap'}}>
-          <span>📦 Bidhaa: <b>{st.products}</b></span>
-          <span>🛒 Mauzo: <b>{st.sales}</b></span>
-          <span>💰 <b>{fm(st.totalSales)}</b></span>
-        </div>
-      </div>;})()}
+      </div>
 
-      {myBranches.map(b=>{const st=branchStats(b.id);return <div key={b.id} className="card" style={{border:activeBranch===b.id?'2px solid #0B7A3B':'1px solid #E2E8F0'}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
-          <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{width:38,height:38,borderRadius:10,background:b.is_active!==false?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>{b.is_active!==false?'🏪':'⏸'}</div><div><div style={{fontWeight:700,fontSize:14}}>{b.name}</div><div style={{fontSize:11,color:'#64748B'}}>{b.location||'-'}</div>{b.phone&&<div style={{fontSize:10,color:'#94A3B8'}}>📞 {b.phone}</div>}</div></div>
-          <div style={{display:'flex',gap:4}}><button onClick={()=>setEditModal({open:true,branch:{...b}})} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:4,cursor:'pointer'}}>{IC.gear}</button><button onClick={()=>window.confirm('Futa?')&&deleteBranch(b.id)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:4,color:'#EF4444',cursor:'pointer'}}>{IC.del}</button></div>
+      {/* Stats */}
+      <div style={{padding:'14px 16px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:19,fontWeight:900,color:'#101828'}}>{st.products}</div>
+            <div style={{fontSize:10,color:'#98A2B3',fontWeight:600,marginTop:1}}>Bidhaa</div>
+          </div>
+          <div style={{textAlign:'center',borderLeft:'1px solid #F2F4F7',borderRight:'1px solid #F2F4F7'}}>
+            <div style={{fontSize:19,fontWeight:900,color:'#101828'}}>{st.sales}</div>
+            <div style={{fontSize:10,color:'#98A2B3',fontWeight:600,marginTop:1}}>Mauzo</div>
+          </div>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:14,fontWeight:900,color:'#0B7A3B'}}>{fm(st.totalSales)}</div>
+            <div style={{fontSize:10,color:'#98A2B3',fontWeight:600,marginTop:1}}>Mapato</div>
+          </div>
         </div>
-        {b.branch_code&&<div style={{fontSize:10,color:'#94A3B8',marginBottom:8}}>Nambari: <b style={{color:'#64748B'}}>{b.branch_code}</b> • {b.is_active!==false?<span style={{color:'#22C55E'}}>● Inafanya kazi</span>:<span style={{color:'#94A3B8'}}>⏸ Imesimamishwa</span>}</div>}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
-          <div style={{background:'#F8FAFC',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Bidhaa</div><div style={{fontWeight:800,fontSize:16}}>{st.products}</div></div>
-          <div style={{background:'#F8FAFC',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Mauzo</div><div style={{fontWeight:800,fontSize:16}}>{st.sales}</div></div>
-          <div style={{background:'#F0FDF4',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Mapato</div><div style={{fontWeight:800,fontSize:14,color:'#0B7A3B'}}>{fm(st.totalSales)}</div></div>
-        </div>
-        <button onClick={()=>setActiveBranch(activeBranch===b.id?null:b.id)} style={{width:'100%',marginTop:8,padding:'7px 0',borderRadius:8,border:'none',background:activeBranch===b.id?'#0B7A3B':'#F1F5F9',color:activeBranch===b.id?'#fff':'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>{activeBranch===b.id?'Limechaguliwa ✓':'Chagua'}</button>
-      </div>})}
+        <button onClick={onSelect} style={{width:'100%',padding:'9px 0',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:12.5,background:selected?'#0B7A3B':'#F1F5F9',color:selected?'#fff':'#475569',transition:'all 0.15s'}}>{selected?'\u2713 Umechagua':'Chagua Tawi'}</button>
+      </div>
     </div>
-    {!myBranches.length&&<div className="card" style={{marginTop:12}}><Empty icon="🏪" text="Ongeza tawi la kwanza!"/></div>}
-    <Modal open={modal} onClose={()=>setModal(false)} title="🏪 Tawi Jipya">
+  );
+
+  return <div>
+    {/* HERO — Muhtasari */}
+    <div style={{background:'linear-gradient(135deg,#064E2B 0%,#0B7A3B 60%,#16A34A 100%)',borderRadius:20,padding:'20px 22px',marginBottom:16,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 8px 24px -8px rgba(11,122,59,0.4)'}}>
+      <div style={{position:'absolute',top:-30,right:-20,width:140,height:140,borderRadius:'50%',background:'rgba(255,255,255,0.07)'}}/>
+      <div style={{position:'relative'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:11,opacity:0.75,fontWeight:700,letterSpacing:1,marginBottom:4}}>USIMAMIZI WA MATAWI</div>
+            <div style={{fontSize:26,fontWeight:900,letterSpacing:-0.5}}>{totalUsed} <span style={{fontSize:15,opacity:0.7,fontWeight:600}}>/ {maxTotal} matawi</span></div>
+            <div style={{fontSize:12,opacity:0.8,marginTop:2}}>Tawi Kuu + matawi {myBranches.length}</div>
+          </div>
+          <div style={{display:'flex',gap:20,flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:10,opacity:0.7,fontWeight:600}}>MAUZO YOTE</div>
+              <div style={{fontSize:20,fontWeight:900}}>{grandSales}</div>
+            </div>
+            <div>
+              <div style={{fontSize:10,opacity:0.7,fontWeight:600}}>MAPATO YOTE</div>
+              <div style={{fontSize:20,fontWeight:900}}>{fm(grandTotal)}</div>
+            </div>
+          </div>
+        </div>
+        <button onClick={()=>{if(!canAddMore)return alert(`Umefikia kikomo cha matawi! Plan yako inaruhusu Tawi Kuu + matawi ${maxBranches}.`);setModal(true)}} style={{marginTop:16,padding:'10px 18px',borderRadius:11,border:'none',background:canAddMore?'#fff':'rgba(255,255,255,0.25)',color:canAddMore?'#0B7A3B':'#fff',fontWeight:800,fontSize:13,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,opacity:canAddMore?1:0.7}}>{IC.plus} Ongeza Tawi Jipya</button>
+        {!canAddMore&&<span style={{marginLeft:10,fontSize:11.5,opacity:0.85}}>Umefikia kikomo cha plan yako</span>}
+      </div>
+    </div>
+
+    {/* Cards */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(290px,1fr))',gap:14}}>
+      <BranchCard
+        name="Tawi Kuu" location={biz?.region||biz?.location||'Makao Makuu'} isMain isActive
+        st={mainStats} selected={!activeBranch}
+        onSelect={()=>setActiveBranch(null)}
+      />
+      {myBranches.map(b=>(
+        <BranchCard key={b.id}
+          name={b.name} location={b.location} phone={b.phone} code={b.branch_code}
+          isActive={b.is_active!==false} st={branchStats(b.id)} selected={activeBranch===b.id}
+          onSelect={()=>setActiveBranch(activeBranch===b.id?null:b.id)}
+          onEdit={()=>setEditModal({open:true,branch:{...b}})}
+          onDelete={()=>window.confirm(`Futa tawi "${b.name}"?`)&&deleteBranch(b.id)}
+        />
+      ))}
+    </div>
+
+    <Modal open={modal} onClose={()=>setModal(false)} title="\ud83c\udfea Tawi Jipya">
       <Input label="Jina la Tawi *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Mfano: Tawi la Kariakoo"/>
       <Input label="Mkoa" value={f.region||''} onChange={e=>setF({...f,region:e.target.value})} placeholder="Mfano: Dar es Salaam"/>
       <Input label="Wilaya" value={f.district||''} onChange={e=>setF({...f,district:e.target.value})} placeholder="Mfano: Ilala"/>
-      <Input label="Anwani" value={f.address||''} onChange={e=>setF({...f,address:e.target.value})} placeholder="Mfano: Kariakoo, Barabara ya Msimbazi"/>
+      <Input label="Anwani" value={f.address||''} onChange={e=>setF({...f,address:e.target.value})} placeholder="Mfano: Kariakoo, Msimbazi"/>
       <Input label="Simu" value={f.phone||''} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <div style={{marginBottom:14}}>
         <label style={{fontSize:12,fontWeight:600,color:'#64748B',display:'block',marginBottom:4}}>Hali</label>
         <select value={f.is_active!==false?'active':'inactive'} onChange={e=>setF({...f,is_active:e.target.value==='active'})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none'}}>
-          <option value="active">✅ Inafanya Kazi</option>
-          <option value="inactive">⏸ Imesimamishwa</option>
+          <option value="active">\u2705 Inafanya Kazi</option>
+          <option value="inactive">\u23f8 Imesimamishwa</option>
         </select>
       </div>
       <Btn onClick={async()=>{
@@ -2289,7 +2334,7 @@ export function BranchesPage(){
         setF({name:'',region:'',district:'',address:'',phone:'',is_active:true});
       }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi Tawi</Btn>
     </Modal>
-    <Modal open={editModal.open} onClose={()=>setEditModal({open:false,branch:null})} title="✏️ Hariri Tawi">
+    <Modal open={editModal.open} onClose={()=>setEditModal({open:false,branch:null})} title="\u270f\ufe0f Hariri Tawi">
       {editModal.branch&&<>
         <Input label="Jina la Tawi *" value={editModal.branch.name} onChange={e=>setEditModal({...editModal,branch:{...editModal.branch,name:e.target.value}})}/>
         <Input label="Mkoa" value={editModal.branch.region||''} onChange={e=>setEditModal({...editModal,branch:{...editModal.branch,region:e.target.value}})}/>
@@ -2299,18 +2344,15 @@ export function BranchesPage(){
         <div style={{marginBottom:14}}>
           <label style={{fontSize:12,fontWeight:600,color:'#64748B',display:'block',marginBottom:4}}>Hali</label>
           <select value={editModal.branch.is_active!==false?'active':'inactive'} onChange={e=>setEditModal({...editModal,branch:{...editModal.branch,is_active:e.target.value==='active'}})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none'}}>
-            <option value="active">✅ Inafanya Kazi</option>
-            <option value="inactive">⏸ Imesimamishwa</option>
+            <option value="active">\u2705 Inafanya Kazi</option>
+            <option value="inactive">\u23f8 Imesimamishwa</option>
           </select>
         </div>
         <Btn onClick={async()=>{
           const location=[editModal.branch.region,editModal.branch.district].filter(Boolean).join(', ');
           await updateBranch(editModal.branch.id,{
-            name:editModal.branch.name,
-            location,
-            address:editModal.branch.address,
-            phone:editModal.branch.phone,
-            is_active:editModal.branch.is_active!==false,
+            name:editModal.branch.name,location,address:editModal.branch.address,
+            phone:editModal.branch.phone,is_active:editModal.branch.is_active!==false,
           });
           setEditModal({open:false,branch:null});
         }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi Mabadiliko</Btn>
