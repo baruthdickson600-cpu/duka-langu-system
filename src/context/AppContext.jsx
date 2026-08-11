@@ -814,13 +814,14 @@ export function AppProvider({children}){
     // Kikomo = matawi ya KUONGEZA (Tawi Kuu = biashara yenyewe, haihesabiwi hapa)
     // Jumla halisi = Tawi Kuu + maxBranches. Mfano: 3 = Tawi Kuu + matawi 3 = 4 jumla
     const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
-    // max_branches column (kutoka token ya branch) inashinda
-    if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
-    // branch plans: branch2=2, branch3=3...
-    if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
-    if(myBiz?.plan==='enterprise')return 999;
-    if(myBiz?.plan==='premium')return 3;
-    return 1;
+    // Kikomo cha msingi kwa plan
+    let planLimit=1;
+    if(myBiz?.plan==='enterprise')planLimit=999;
+    else if(myBiz?.plan==='premium')planLimit=3;
+    else if(myBiz?.plan&&myBiz.plan.startsWith('branch'))planLimit=parseInt(myBiz.plan.replace('branch',''))||2;
+    // max_branches column (kutoka token) - chukua KUBWA zaidi (isipunguze haki ya plan)
+    const colLimit=myBiz?.max_branches?parseInt(myBiz.max_branches):0;
+    return Math.max(planLimit,colLimit);
   },[biz,bizId]);
 
   // ===== SUPPORT TICKETS =====
