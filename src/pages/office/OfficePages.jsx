@@ -427,7 +427,7 @@ export function SalesPage({onDone}){
     }catch(e){console.error('Sale error:',e);playError();}
     finally{setProcessing(false)}
   };
-  const avail=products.filter(p=>p.quantity>0&&p.name?.toLowerCase().includes(search.toLowerCase())&&branchFilter(p,activeBranch));
+  const avail=products.filter(p=>p.quantity>0&&p.name?.toLowerCase().includes(search.toLowerCase()));
   const selCust=customers.find(c=>c.id===custId);
 
   if(empNoBranch)return <div style={{padding:40,textAlign:'center',background:'#FFF7ED',borderRadius:14,border:'1.5px solid #FED7AA',maxWidth:500,margin:'40px auto'}}>
@@ -559,7 +559,7 @@ export function ProductsPage(){
   const[copying,setCopying]=useState(false);
   const myBranches=canUseBranches?getBranches():[];
   const currentBranch=myBranches.find(b=>b.id===activeBranch);
-  const myProds=products.filter(p=>p.business_id===bizId&&branchFilter(p,activeBranch));
+  const myProds=products.filter(p=>p.business_id===bizId);
   const[search,setSearch]=useState('');const[modal,setModal]=useState({open:false,data:null});
   const[dupErr,setDupErr]=useState('');
   const filtered=myProds.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()));
