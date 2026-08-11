@@ -364,7 +364,7 @@ export function OfficeDash({onReceipt}){
 // ===== POS / SALES =====
 export function SalesPage({onDone}){
   const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches,branchFilter}=useApp();
-  const empNoBranch=user?.role==='employee'&&canUseBranches&&!user?.branch_id;
+  const empNoBranch=user?.role==='employee'&&canUseBranches&&!user?.branch_id&&!user?.assigned_to_main;
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
   const[custId,setCustId]=useState('');const[newCustModal,setNewCustModal]=useState(false);const[newCustName,setNewCustName]=useState('');const[newCustPhone,setNewCustPhone]=useState('');
