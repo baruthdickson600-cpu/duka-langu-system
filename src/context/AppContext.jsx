@@ -378,14 +378,18 @@ export function AppProvider({children}){
   // 1. Tuma OTP ya tarakimu 6 kwa email
   const sendResetOtp=useCallback(async(email)=>{
     try{
-      // resetPasswordForEmail inatuma OTP ya recovery (haigongani na "Confirm email")
-      const{error}=await supabase.auth.resetPasswordForEmail(email);
+      // signInWithOtp inatuma OTP kupitia template ya MAGIC LINK ({{ .Token }})
+      // shouldCreateUser:false => haitengenezi akaunti mpya (mtumiaji lazima awepo)
+      const{error}=await supabase.auth.signInWithOtp({
+        email,
+        options:{shouldCreateUser:false},
+      });
       if(error){
         const m=(error.message||'').toLowerCase();
         const status=error.status||error.code;
-        if(status===429||m.includes('rate')||m.includes('limit')||m.includes('seconds')||m.includes('too many'))
+        if(status===429||m.includes('rate')||m.includes('limit')||m.includes('seconds')||m.includes('too many')||m.includes('after'))
           return{ok:false,error:'Umeomba code mara nyingi. Tafadhali subiri dakika chache kisha jaribu tena.'};
-        if(m.includes('not')&&(m.includes('found')||m.includes('exist')))
+        if(m.includes('signups')||(m.includes('not')&&(m.includes('found')||m.includes('exist')||m.includes('allowed'))))
           return{ok:false,error:'Email hii haijasajiliwa kwenye mfumo.'};
         return{ok:false,error:error.message||'Imeshindwa kutuma code.'};
       }
@@ -396,13 +400,12 @@ export function AppProvider({children}){
   // 2. Thibitisha OTP (backend inathibitisha KABLA ya animation)
   const verifyResetOtp=useCallback(async(email,token)=>{
     try{
-      // resetPasswordForEmail hutumia type 'recovery'. Jaribu recovery kwanza, kisha email.
-      let{data,error}=await supabase.auth.verifyOtp({email,token,type:'recovery'});
+      // signInWithOtp hutumia type 'email'. Jaribu email kwanza, kisha recovery (usalama).
+      let{data,error}=await supabase.auth.verifyOtp({email,token,type:'email'});
       if(error){
         const m1=(error.message||'').toLowerCase();
-        // Kama recovery imeshindwa kwa sababu ya aina, jaribu 'email'
         if(!m1.includes('expired')){
-          const r2=await supabase.auth.verifyOtp({email,token,type:'email'});
+          const r2=await supabase.auth.verifyOtp({email,token,type:'recovery'});
           if(!r2.error&&r2.data?.session){data=r2.data;error=null;}
           else if(r2.error)error=r2.error;
         }
