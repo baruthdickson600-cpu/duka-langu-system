@@ -558,7 +558,7 @@ export function StoresPage(){
       </div>
       
       <div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 14px',marginTop:8,fontSize:11,color:'#92400E',borderLeft:'4px solid #F59E0B'}}>
-        ⚠️ <b>Onyo:</b> Mteja atapata email kwenye anuani mpya kuthibitisha mabadiliko haya. Hakikisha taarifa ni sahihi kabla ya kuhifadhi.
+        ⚠️ <b>Onyo:</b> Ukibadilisha email, mteja ataweza kuingia kwa email mpya mara moja. Hakikisha email ni sahihi kabla ya kuhifadhi.
       </div>
       
       <button onClick={async()=>{
@@ -566,15 +566,36 @@ export function StoresPage(){
           setEditMsg({ok:false,msg:'Jaza angalau sehemu moja!'});return;
         }
         setEditBusy(true);setEditMsg(null);
+
+        // ===== EMAIL: badilisha kwenye Supabase Auth kwanza (ili aweze kuingia) =====
+        const newEmailClean=editForm.email?editForm.email.trim().toLowerCase():'';
+        const oldEmail=(actionModal.biz?.email||'').trim().toLowerCase();
+        if(newEmailClean&&newEmailClean!==oldEmail){
+          try{
+            const r=await fetch(API_BASE+'/api/admin/change-email',{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({old_email:oldEmail,new_email:newEmailClean,business_id:actionModal.biz.id}),
+            });
+            const d=await r.json().catch(()=>({}));
+            if(!d.success){
+              setEditMsg({ok:false,msg:'❌ Email haikubadilishwa: '+(d.error||'Tatizo')});
+              setEditBusy(false);return;
+            }
+          }catch(e){
+            setEditMsg({ok:false,msg:'❌ Tatizo la mtandao wakati wa kubadilisha email.'});
+            setEditBusy(false);return;
+          }
+        }
+
         const updates={};
         if(editForm.name)updates.name=editForm.name.trim();
-        if(editForm.email)updates.email=editForm.email.trim().toLowerCase();
+        if(newEmailClean)updates.email=newEmailClean;
         if(editForm.phone)updates.phone=editForm.phone.trim();
         if(editForm.owner_name)updates.owner_name=editForm.owner_name.trim();
         const result=await updateBiz(actionModal.biz.id,updates);
         if(result.success){
-          setEditMsg({ok:true,msg:'✅ Taarifa zimebadilishwa! Mteja amepata email ya kuthibitisha.'});
-          setTimeout(()=>{setActionModal({type:null,biz:null});setEditMsg(null);setEditForm({name:'',email:'',phone:'',owner_name:''})},2000);
+          setEditMsg({ok:true,msg:'✅ Taarifa zimebadilishwa!'+(newEmailClean&&newEmailClean!==oldEmail?' Mteja anaweza kuingia kwa email mpya.':'')});
+          setTimeout(()=>{setActionModal({type:null,biz:null});setEditMsg(null);setEditForm({name:'',email:'',phone:'',owner_name:''})},2500);
         }else{
           setEditMsg({ok:false,msg:'❌ Tatizo: '+result.error});
         }
