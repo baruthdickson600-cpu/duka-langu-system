@@ -1,13 +1,14 @@
 import React,{useState,useEffect,useRef} from 'react';
 import {useApp} from '../context/AppContext';
 import {Input} from '../components/UI';
+import SnapPay from './SnapPay';
 
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 export default function LockedPage(){
   const{biz,user,settings,submitPayment,activateToken,paymentRequests,logout}=useApp();
-  const[tab,setTab]=useState('pay');
+  const[tab,setTab]=useState('snap');
   const[txId,setTxId]=useState('');
   const[phone,setPhone]=useState(user?.phone||'');
   const[payProvider,setPayProvider]=useState('HALOPESA');
@@ -134,6 +135,7 @@ export default function LockedPage(){
 
             {/* Tabs */}
             <div style={{display:'flex',background:'#F8FAFC',padding:6,margin:'14px 14px 0',borderRadius:12}}>
+              <button onClick={()=>{setTab('snap');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='snap'?'#fff':'transparent',color:tab==='snap'?'#0B7A3B':'#94A3B8',boxShadow:tab==='snap'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>⚡ Lipa Papo Hapo</button>
               <button onClick={()=>{setTab('pay');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='pay'?'#fff':'transparent',color:tab==='pay'?'#0B7A3B':'#94A3B8',boxShadow:tab==='pay'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>💰 Lipa Sasa</button>
               <button onClick={()=>{setTab('token');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='token'?'#fff':'transparent',color:tab==='token'?'#0B7A3B':'#94A3B8',boxShadow:tab==='token'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>🔑 Nina Token</button>
             </div>
@@ -141,6 +143,15 @@ export default function LockedPage(){
             {/* Content */}
             <div style={{padding:'18px 22px 22px'}}>
               
+              {tab==='snap'&&<div style={{padding:'4px 0'}}>
+                <SnapPay
+                  amount={parseInt(settings?.price_basic)||15000}
+                  days={30}
+                  plan={biz?.plan||'basic'}
+                  onSuccess={()=>window.location.reload()}
+                />
+              </div>}
+
               {tab==='pay'&&<>
                 {/* Step Progress */}
                 <div style={{display:'flex',gap:6,marginBottom:14}}>

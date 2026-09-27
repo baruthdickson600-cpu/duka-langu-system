@@ -2138,19 +2138,45 @@ export function InfoRequestsPage(){
   const approveRequest=async(req)=>{
     if(!confirm(`Thibitisha mabadiliko ya ${req.business_name}?\n\nMabadiliko yatafanyika sasa.`))return;
     setProcessing(req.id);
+
+    // ===== EMAIL: badilisha kwenye Supabase Auth kwanza (ili aweze kuingia) =====
+    if(req.new_email){
+      try{
+        const r=await fetch(API_BASE+'/api/admin/change-email',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({old_email:req.old_email||req.current_email,new_email:req.new_email,business_id:req.business_id}),
+        });
+        const d=await r.json().catch(()=>({}));
+        if(!d.success){
+          alert('❌ Email haikubadilishwa: '+(d.error||'Tatizo')+'\n\nMabadiliko mengine hayajafanyika. Rekebisha kisha jaribu tena.');
+          setProcessing(null);return;
+        }
+      }catch(e){
+        alert('❌ Tatizo la mtandao wakati wa kubadilisha email. Jaribu tena.');
+        setProcessing(null);return;
+      }
+    }
+
+    // ===== Mabadiliko mengine (phone, name) kwenye businesses =====
     const updates={};
-    if(req.new_email)updates.email=req.new_email;
     if(req.new_phone)updates.phone=req.new_phone;
     if(req.new_name)updates.name=req.new_name;
     if(req.new_owner_name)updates.owner_name=req.new_owner_name;
-    
-    const result=await updateBiz(req.business_id,updates);
-    if(result.success){
+    // Email tayari imebadilishwa na API (businesses + users + Auth), lakini weka pia hapa kwa uhakika
+    if(req.new_email)updates.email=req.new_email;
+
+    let ok=true,errMsg='';
+    if(Object.keys(updates).length>0){
+      const result=await updateBiz(req.business_id,updates);
+      ok=result.success;errMsg=result.error;
+    }
+
+    if(ok){
       try{await supabase.from('info_update_requests').update({status:'approved',processed_at:new Date().toISOString()}).eq('id',req.id)}catch(e){}
       setRequests(p=>p.map(r=>r.id===req.id?{...r,status:'approved'}:r));
-      alert('✅ Mabadiliko yamefanyika!');
+      alert('✅ Mabadiliko yamefanyika!'+(req.new_email?' Mteja anaweza kuingia kwa email mpya.':''));
     }else{
-      alert('❌ Tatizo: '+result.error);
+      alert('❌ Tatizo: '+errMsg);
     }
     setProcessing(null);
   };

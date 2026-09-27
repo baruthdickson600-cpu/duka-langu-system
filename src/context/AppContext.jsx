@@ -1135,6 +1135,34 @@ export function AppProvider({children}){
 
   // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
   // Office: submit payment with transaction ID
+  // ===== SNIPPE PAYMENT (malipo ya moja kwa moja) =====
+  const snippeCreatePayment=useCallback(async({amount,phone,provider,days=30,plan='basic'})=>{
+    try{
+      const r=await fetch(API_BASE+'/api/snippe/create-payment',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          business_id:bizId,
+          business_name:biz?.name,
+          amount,phone,provider,days,plan,
+          customer_name:biz?.name,
+          customer_email:user?.email,
+        }),
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||d.status==='error')return{ok:false,error:d.message||'Imeshindwa kuanzisha malipo.'};
+      return{ok:true,reference:d.reference,message:d.message};
+    }catch(e){return{ok:false,error:'Hakuna mtandao. Angalia intaneti yako.'}}
+  },[bizId,biz,user]);
+
+  const snippeCheckStatus=useCallback(async(reference)=>{
+    try{
+      const r=await fetch(API_BASE+'/api/snippe/status?reference='+encodeURIComponent(reference));
+      const d=await r.json().catch(()=>({}));
+      if(d.status==='success')return{ok:true,paymentStatus:d.payment_status,failureReason:d.failure_reason};
+      return{ok:false};
+    }catch(e){return{ok:false}}
+  },[]);
+
   const submitPayment=useCallback(async(transactionId,amount,payMethod='HALOPESA',phone='')=>{
     const myBizId=bizId||user?.business_id;
     const myBizName=biz?.name||user?.name||'Biashara';
@@ -2159,7 +2187,7 @@ export function AppProvider({children}){
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,systemExpenses,
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,systemExpenses,snippeCreatePayment,snippeCheckStatus,
     // Notifications
     addNotif,broadcastNotif,markRead,markAllRead,
     // Settings & Admin
