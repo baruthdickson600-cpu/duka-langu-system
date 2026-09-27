@@ -378,17 +378,16 @@ export function AppProvider({children}){
   // 1. Tuma OTP ya tarakimu 6 kwa email
   const sendResetOtp=useCallback(async(email)=>{
     try{
-      const{error}=await supabase.auth.signInWithOtp({
-        email,
-        options:{shouldCreateUser:false},
-      });
+      // resetPasswordForEmail inatuma OTP ya recovery (haigongani na "Confirm email")
+      const{error}=await supabase.auth.resetPasswordForEmail(email);
       if(error){
         const m=(error.message||'').toLowerCase();
-        if(m.includes('not')&&(m.includes('found')||m.includes('exist')||m.includes('signups')))
+        const status=error.status||error.code;
+        if(status===429||m.includes('rate')||m.includes('limit')||m.includes('seconds')||m.includes('too many'))
+          return{ok:false,error:'Umeomba code mara nyingi. Tafadhali subiri dakika chache kisha jaribu tena.'};
+        if(m.includes('not')&&(m.includes('found')||m.includes('exist')))
           return{ok:false,error:'Email hii haijasajiliwa kwenye mfumo.'};
-        if(m.includes('rate')||m.includes('limit')||m.includes('seconds'))
-          return{ok:false,error:'Umeomba mara nyingi. Subiri kidogo kisha jaribu tena.'};
-        return{ok:false,error:error.message};
+        return{ok:false,error:error.message||'Imeshindwa kutuma code.'};
       }
       return{ok:true};
     }catch(e){return{ok:false,error:'Hakuna mtandao. Angalia intaneti yako.'}}
@@ -397,12 +396,21 @@ export function AppProvider({children}){
   // 2. Thibitisha OTP (backend inathibitisha KABLA ya animation)
   const verifyResetOtp=useCallback(async(email,token)=>{
     try{
-      const{data,error}=await supabase.auth.verifyOtp({email,token,type:'email'});
+      // resetPasswordForEmail hutumia type 'recovery'. Jaribu recovery kwanza, kisha email.
+      let{data,error}=await supabase.auth.verifyOtp({email,token,type:'recovery'});
+      if(error){
+        const m1=(error.message||'').toLowerCase();
+        // Kama recovery imeshindwa kwa sababu ya aina, jaribu 'email'
+        if(!m1.includes('expired')){
+          const r2=await supabase.auth.verifyOtp({email,token,type:'email'});
+          if(!r2.error&&r2.data?.session){data=r2.data;error=null;}
+          else if(r2.error)error=r2.error;
+        }
+      }
       if(error){
         const m=(error.message||'').toLowerCase();
         if(m.includes('expired'))return{ok:false,error:'expired'};
-        if(m.includes('invalid')||m.includes('token'))return{ok:false,error:'invalid'};
-        return{ok:false,error:error.message};
+        return{ok:false,error:'invalid'};
       }
       if(!data?.session)return{ok:false,error:'invalid'};
       return{ok:true};
