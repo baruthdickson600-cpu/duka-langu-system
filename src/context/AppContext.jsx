@@ -270,7 +270,7 @@ export function AppProvider({children}){
         await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
         try{supabase.from('login_logs').insert({user_id:uData.id,email,action:'login',device_info:(navigator.userAgent||'').replace(/[^a-zA-Z0-9 _.,-]/g,'').substring(0,200)}).then(()=>{}).catch(()=>{})}catch(_){}
         await loadData(uData.id,role,role==='admin'?null:uData.business_id);
-        if(uData.role==='employee'){if(uData.assigned_to_main)setActiveBranch(null);else if(uData.branch_id)setActiveBranch(uData.branch_id);}
+        if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id);}
         if(uData.role==='supervisor'||uData.role==='agent'){
           const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
           if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}));}
@@ -367,11 +367,55 @@ export function AppProvider({children}){
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
   },[settings.trial_days,loadData,businesses]);
 
-  // FORGOT PASSWORD
+  // FORGOT PASSWORD (link ya zamani - inabaki kwa backward compatibility)
   const forgotPassword=useCallback(async(email)=>{
     try{const{error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
       if(error)return error.message;return null;
     }catch(e){return'Hakuna mtandao.'}
+  },[]);
+
+  // ===== OTP PASSWORD RESET (Njia A - Supabase email OTP) =====
+  // 1. Tuma OTP ya tarakimu 6 kwa email
+  const sendResetOtp=useCallback(async(email)=>{
+    try{
+      const{error}=await supabase.auth.signInWithOtp({
+        email,
+        options:{shouldCreateUser:false},
+      });
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        if(m.includes('not')&&(m.includes('found')||m.includes('exist')||m.includes('signups')))
+          return{ok:false,error:'Email hii haijasajiliwa kwenye mfumo.'};
+        if(m.includes('rate')||m.includes('limit')||m.includes('seconds'))
+          return{ok:false,error:'Umeomba mara nyingi. Subiri kidogo kisha jaribu tena.'};
+        return{ok:false,error:error.message};
+      }
+      return{ok:true};
+    }catch(e){return{ok:false,error:'Hakuna mtandao. Angalia intaneti yako.'}}
+  },[]);
+
+  // 2. Thibitisha OTP (backend inathibitisha KABLA ya animation)
+  const verifyResetOtp=useCallback(async(email,token)=>{
+    try{
+      const{data,error}=await supabase.auth.verifyOtp({email,token,type:'email'});
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        if(m.includes('expired'))return{ok:false,error:'expired'};
+        if(m.includes('invalid')||m.includes('token'))return{ok:false,error:'invalid'};
+        return{ok:false,error:error.message};
+      }
+      if(!data?.session)return{ok:false,error:'invalid'};
+      return{ok:true};
+    }catch(e){return{ok:false,error:'network'}}
+  },[]);
+
+  // 3. Weka password mpya (baada ya OTP kuthibitishwa - kuna session)
+  const setNewPassword=useCallback(async(newPassword)=>{
+    try{
+      const{error}=await supabase.auth.updateUser({password:newPassword});
+      if(error)return{ok:false,error:error.message};
+      return{ok:true};
+    }catch(e){return{ok:false,error:'Hakuna mtandao.'}}
   },[]);
 
   const logout=useCallback(async()=>{
@@ -674,8 +718,8 @@ export function AppProvider({children}){
     try{
       const{data:auth}=await supabase.auth.signUp({email:emp.email,password:emp.password||'1234'});
       const uid=auth?.user?.id||genId();
-      const d=await safeInsert('users',{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,assigned_to_main:emp.assigned_to_main||false});
-      setEmps(prev=>[...prev,d||{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,assigned_to_main:emp.assigned_to_main||false,created_at:nowISO()}]);
+      const d=await safeInsert('users',{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null});
+      setEmps(prev=>[...prev,d||{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
     }catch(e){
       setEmps(prev=>[...prev,{...emp,id:genId(),role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
     }
@@ -691,45 +735,11 @@ export function AppProvider({children}){
   const updateBranch=useCallback(async(bid,u)=>{await safeUpdate('branches',u,'id',bid);setBranches(prev=>prev.map(b=>b.id===bid?{...b,...u}:b))},[]);
   const deleteBranch=useCallback(async(bid)=>{await safeDelete('branches','id',bid);setBranches(prev=>prev.filter(b=>b.id!==bid));if(activeBranch===bid)setActiveBranch(null)},[activeBranch]);
   const getBranches=useCallback(()=>bizId?branches.filter(b=>b.business_id===bizId):[],[bizId,branches]);
-  // Matawi YOTE pamoja na Tawi Kuu (biashara yenyewe). Tawi Kuu id = null.
-  const getAllBranchesWithMain=useCallback(()=>{
-    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
-    const mainBranch={id:null,name:'Tawi Kuu',location:myBiz?.region||myBiz?.location||'',branch_code:'KUU',is_main:true,business_id:bizId,is_active:true};
-    const others=bizId?branches.filter(b=>b.business_id===bizId):[];
-    return [mainBranch,...others];
-  },[bizId,branches,biz]);
   // Branch filtering: ukichagua branch, onyesha bidhaa za branch HIYO + za jumla (branch_id=null)
   // Bidhaa za zamani (kabla ya branches) zina branch_id=null - zinaonekana kwenye branches zote
-  // Je mfanyakazi amefungwa kwa tawi moja? (aone tawi lake pekee)
-  // Meneja/mmiliki (asiye employee, au employee asiye na branch_id) = anaona yote
-  const employeeBranchLock=useMemo(()=>{
-    if(user?.role!=='employee')return undefined; // si employee - hana lock
-    // Tawi Kuu: assigned_to_main=true => aone bidhaa za branch_id=null
-    if(user?.assigned_to_main)return null;
-    if(!user?.branch_id)return undefined; // employee bila tawi wala main = meneja (anaona yote)
-    return user.branch_id;
-  },[user]);
-
-  const branchProducts=useMemo(()=>{
-    if(employeeBranchLock!==undefined){
-      return products.filter(p=>(p.branch_id||null)===(employeeBranchLock||null));
-    }
-    return activeBranch?products.filter(p=>p.branch_id===activeBranch):products;
-  },[products,activeBranch,employeeBranchLock]);
-  const branchSales=useMemo(()=>{
-    // Employee aliyefungwa tawi: aone mauzo ya tawi lake TU
-    if(employeeBranchLock!==undefined){
-      return sales.filter(s=>(s.branch_id||null)===(employeeBranchLock||null));
-    }
-    // Mmiliki: chuja kama activeBranch imewekwa
-    return activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales;
-  },[sales,activeBranch,employeeBranchLock]);
-  const branchExpenses=useMemo(()=>{
-    if(employeeBranchLock!==undefined){
-      return expenses.filter(e=>(e.branch_id||null)===(employeeBranchLock||null));
-    }
-    return activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses;
-  },[expenses,activeBranch,employeeBranchLock]);
+  const branchProducts=useMemo(()=>activeBranch?products.filter(p=>p.branch_id===activeBranch):products,[products,activeBranch]);
+  const branchSales=useMemo(()=>activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales,[sales,activeBranch]);
+  const branchExpenses=useMemo(()=>activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses,[expenses,activeBranch]);
 
   // BRANCH LOCK: Determines if current business can use multi-branch
   const canUseBranches=useMemo(()=>{
@@ -748,17 +758,6 @@ export function AppProvider({children}){
     if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
     return false;
   },[user,settings,biz,bizId,businesses,branches]);
-
-  // Chuja bidhaa/mauzo/n.k. kwa tawi la mfanyakazi (au activeBranch kwa mmiliki)
-  const branchFilter=useCallback((item,active)=>{
-    // Employee aliyefungwa: aone tawi lake TU (hata activeBranch ikibadilika)
-    if(employeeBranchLock!==undefined){
-      return (item.branch_id||null)===(employeeBranchLock||null);
-    }
-    // Mmiliki/meneja: kama activeBranch imewekwa, chuja; la sivyo onyesha yote
-    if(active)return item.branch_id===active;
-    return true;
-  },[employeeBranchLock]);
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
@@ -812,17 +811,14 @@ export function AppProvider({children}){
   },[settings,bizId,user,biz]);
   // Max branches for this plan
   const maxBranches=useMemo(()=>{
-    // Kikomo = matawi ya KUONGEZA (Tawi Kuu = biashara yenyewe, haihesabiwi hapa)
-    // Jumla halisi = Tawi Kuu + maxBranches. Mfano: 3 = Tawi Kuu + matawi 3 = 4 jumla
     const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
-    // Kikomo cha msingi kwa plan
-    let planLimit=1;
-    if(myBiz?.plan==='enterprise')planLimit=999;
-    else if(myBiz?.plan==='premium')planLimit=3;
-    else if(myBiz?.plan&&myBiz.plan.startsWith('branch'))planLimit=parseInt(myBiz.plan.replace('branch',''))||2;
-    // max_branches column (kutoka token) - chukua KUBWA zaidi (isipunguze haki ya plan)
-    const colLimit=myBiz?.max_branches?parseInt(myBiz.max_branches):0;
-    return Math.max(planLimit,colLimit);
+    // max_branches column (kutoka token ya branch) inashinda
+    if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
+    // branch plans: branch2=2, branch3=3...
+    if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
+    if(myBiz?.plan==='enterprise')return 999;
+    if(myBiz?.plan==='premium')return 10;
+    return 1;
   },[biz,bizId]);
 
   // ===== SUPPORT TICKETS =====
@@ -927,7 +923,7 @@ export function AppProvider({children}){
         }
       )
       .subscribe();
-    return()=>{supabase.removeChannel(channel)};
+    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel)};
   },[user?.id,user?.role,bizId]);
   
   // Get unread chat count
@@ -1266,7 +1262,7 @@ export function AppProvider({children}){
           setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
         }
       }).subscribe();
-    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel)};
+    return()=>{supabase.removeChannel(channel)};
   },[bizId,user,loadData]);
 
   // Admin: real-time new payment requests
@@ -1927,10 +1923,7 @@ export function AppProvider({children}){
   const daysLeft=useCallback(()=>{if(!biz)return 0;const end=biz.token_active?biz.token_expiry:biz.trial_end;if(!end)return 999;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))},[biz]);
 
   // ===== STOCK ALERTS + AUTO-REORDER LIST + PROFIT MARGIN ALERTS =====
-  const lowStockProducts=useMemo(()=>{
-    const base=employeeBranchLock!==undefined?products.filter(p=>(p.branch_id||null)===(employeeBranchLock||null)):products;
-    return base.filter(p=>p.quantity<=p.min_stock&&p.business_id===bizId);
-  },[products,bizId,employeeBranchLock]);
+  const lowStockProducts=useMemo(()=>products.filter(p=>p.quantity<=p.min_stock&&p.business_id===bizId),[products,bizId]);
   const autoReorderList=useMemo(()=>lowStockProducts.map(p=>({...p,suggestedQty:Math.max(p.min_stock*3,10)-p.quantity})),[lowStockProducts]);
   const lowMarginProducts=useMemo(()=>products.filter(p=>{if(!p.buy_price||!p.sell_price)return false;const margin=((p.sell_price-p.buy_price)/p.sell_price)*100;return margin<15&&p.business_id===bizId}).map(p=>({...p,margin:((p.sell_price-p.buy_price)/p.sell_price*100).toFixed(1)})),[products,bizId]);
 
@@ -2134,10 +2127,10 @@ export function AppProvider({children}){
     user,loading,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
     branches,activeBranch,setActiveBranch,
     // Branch-aware: pages zinapata data ya branch iliyochaguliwa (au zote kama hakuna)
-    products:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchProducts:products,
+    products:canUseBranches&&activeBranch?branchProducts:products,
     copyProductsToBranch,
-    sales:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchSales:sales,
-    expenses:(canUseBranches&&activeBranch)||employeeBranchLock!==undefined?branchExpenses:expenses,
+    sales:canUseBranches&&activeBranch?branchSales:sales,
+    expenses:canUseBranches&&activeBranch?branchExpenses:expenses,
     // Raw data (zote) - kwa admin, combined reports, na backup
     allProducts:products,allSales:sales,allExpenses:expenses,
     branchProducts,branchSales,branchExpenses,
@@ -2146,11 +2139,11 @@ export function AppProvider({children}){
     paymentRequests,pendingPayments,myLatestPayment,overdueCustomers,overdueTotal,debtAging,
     // Auth
     supabase,updateUserProfile,
-    login,signup,logout,forgotPassword,
+    login,signup,logout,forgotPassword,sendResetOtp,verifyResetOtp,setNewPassword,
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
-    addBranch,updateBranch,deleteBranch,getBranches,getAllBranchesWithMain,employeeBranchLock,branchFilter,
+    addBranch,updateBranch,deleteBranch,getBranches,
     // Tickets
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,

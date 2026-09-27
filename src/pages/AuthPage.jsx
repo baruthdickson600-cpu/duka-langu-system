@@ -2,6 +2,8 @@ import React,{useState,useEffect} from 'react';
 import {Input,PasswordInput} from '../components/UI';
 import {TermsPage,PrivacyPage} from './LegalPages';
 import InfoUpdateRequest from './InfoUpdateRequest';
+import OtpReset from './OtpReset';
+import {useApp} from '../context/AppContext';
 
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
@@ -35,6 +37,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[agreed,setAgreed]=useState(false);
   const[legalPage,setLegalPage]=useState(null);
   const[showForgot,setShowForgot]=useState(false);
+  const[showOtp,setShowOtp]=useState(false);
   const[showInfoRequest,setShowInfoRequest]=useState(false);
   const[forgotEmail,setForgotEmail]=useState('');
   const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
@@ -42,6 +45,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[showB,setShowB]=useState(false);
 
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  const{sendResetOtp}=useApp();
 
   // Crossfade backgrounds
   useEffect(()=>{
@@ -90,10 +94,15 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
 
   const handleForgot=async()=>{
     if(!forgotEmail){setErr('Weka email yako!');return;}
-    setBusy(true);setErr('');
-    const result=await onForgotPassword(forgotEmail);
-    if(result)setErr(result);else setMsg('Link imetumwa kwenye email yako!');
+    setBusy(true);setErr('');setMsg('');
+    const res=await sendResetOtp(forgotEmail);
     setBusy(false);
+    if(res.ok){
+      setShowForgot(false);
+      setShowOtp(true);
+    }else{
+      setErr(res.error||'Imeshindwa kutuma code.');
+    }
   };
 
   const bgStyle=(img,visible)=>({
@@ -134,15 +143,27 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
           {/* Glass Card */}
           <div style={{background:'rgba(255,255,255,0.92)',borderRadius:24,padding:'28px 24px',boxShadow:'0 25px 80px rgba(0,0,0,0.4)',backdropFilter:'blur(24px)',border:'1px solid rgba(255,255,255,0.2)'}}>
 
-            {/* ===== FORGOT PASSWORD ===== */}
-            {showForgot?(
+            {/* ===== OTP RESET (DNA Animation) ===== */}
+            {showOtp?(
+              <OtpReset
+                email={forgotEmail}
+                onBack={()=>{setShowOtp(false);setShowForgot(false);setErr('');setMsg('');}}
+                onDone={()=>{
+                  setShowOtp(false);setShowForgot(false);
+                  setTab('login');setStep(1);
+                  setErr('');setMsg('Password imebadilishwa! Ingia kwa password yako mpya.');
+                }}
+              />
+            ):
+            /* ===== FORGOT PASSWORD ===== */
+            showForgot?(
               <>
                 <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 8px'}}>Umesahau Password?</h3>
-                <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Weka email yako na tutakutumia link.</p>
+                <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Weka email yako na tutakutumia code ya tarakimu 6.</p>
                 {err&&<ErrBox msg={err}/>}
                 {msg&&<div style={{background:'#F0FDF4',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #22C55E'}}>{msg}</div>}
                 <Input label="Email" type="email" placeholder="email@mfano.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleForgot()}/>
-                <Btn label={busy?'Subiri...':'Tuma Link'} onClick={handleForgot} disabled={busy}/>
+                <Btn label={busy?'Inatuma...':'Tuma Code'} onClick={handleForgot} disabled={busy}/>
                 <p onClick={()=>{setShowForgot(false);setErr('');setMsg('');}} style={{textAlign:'center',marginTop:14,color:'#0B7A3B',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
               </>
             ):(
