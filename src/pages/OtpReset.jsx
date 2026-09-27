@@ -9,6 +9,7 @@ import {useApp} from '../context/AppContext';
 
 const GREEN='#0B7A3B';
 const GREEN_LIGHT='#16A34A';
+const OTP_LEN=8; // Supabase email OTP = tarakimu 8
 
 // Heshimu prefers-reduced-motion
 const prefersReduced=()=>{
@@ -24,7 +25,7 @@ const haptic=(pattern)=>{
 export default function OtpReset({email,onDone,onBack}){
   const{sendResetOtp,verifyResetOtp,setNewPassword}=useApp();
   const[phase,setPhase]=useState('otp'); // otp | verifying | success | password
-  const[digits,setDigits]=useState(['','','','','','']);
+  const[digits,setDigits]=useState(Array(OTP_LEN).fill(''));
   const[err,setErr]=useState('');
   const[expired,setExpired]=useState(false);
   const[shake,setShake]=useState(false);
@@ -43,7 +44,7 @@ export default function OtpReset({email,onDone,onBack}){
   // Focus ya kwanza
   useEffect(()=>{setTimeout(()=>inputs.current[0]?.focus(),300);},[]);
 
-  const focusIndex=(i)=>{if(i>=0&&i<6)inputs.current[i]?.focus();};
+  const focusIndex=(i)=>{if(i>=0&&i<OTP_LEN)inputs.current[i]?.focus();};
 
   const handleChange=(i,val)=>{
     setErr('');setExpired(false);
@@ -56,19 +57,19 @@ export default function OtpReset({email,onDone,onBack}){
     // Kama ame-paste tarakimu nyingi
     if(clean.length>1){
       const next=[...digits];
-      for(let k=0;k<6;k++){next[k]=clean[k]||'';}
+      for(let k=0;k<OTP_LEN;k++){next[k]=clean[k]||'';}
       setDigits(next);
-      const last=Math.min(clean.length,6)-1;
-      focusIndex(last<5?last+1:5);
-      if(clean.length>=6)autoVerify(next.join(''));
+      const last=Math.min(clean.length,OTP_LEN)-1;
+      focusIndex(last<OTP_LEN-1?last+1:OTP_LEN-1);
+      if(clean.length>=OTP_LEN)autoVerify(next.join(''));
       return;
     }
     const next=[...digits];next[i]=clean;setDigits(next);
-    if(i<5)focusIndex(i+1);
-    // Digit ya 6 ikiingia -> auto verify
-    if(i===5||next.every(d=>d!=='')){
+    if(i<OTP_LEN-1)focusIndex(i+1);
+    // Digit ya mwisho ikiingia -> auto verify
+    if(i===OTP_LEN-1||next.every(d=>d!=='')){
       const code=next.join('');
-      if(code.length===6)autoVerify(code);
+      if(code.length===OTP_LEN)autoVerify(code);
     }
   };
 
@@ -78,18 +79,18 @@ export default function OtpReset({email,onDone,onBack}){
       const next=[...digits];next[i-1]='';setDigits(next);
     }
     if(e.key==='ArrowLeft'&&i>0)focusIndex(i-1);
-    if(e.key==='ArrowRight'&&i<5)focusIndex(i+1);
+    if(e.key==='ArrowRight'&&i<OTP_LEN-1)focusIndex(i+1);
   };
 
   const handlePaste=(e)=>{
     e.preventDefault();
-    const text=(e.clipboardData?.getData('text')||'').replace(/\D/g,'').slice(0,6);
+    const text=(e.clipboardData?.getData('text')||'').replace(/\D/g,'').slice(0,OTP_LEN);
     if(!text)return;
-    const next=['','','','','',''];
+    const next=Array(OTP_LEN).fill('');
     for(let k=0;k<text.length;k++)next[k]=text[k];
     setDigits(next);
-    focusIndex(Math.min(text.length,6)-1);
-    if(text.length>=6)autoVerify(text);
+    focusIndex(Math.min(text.length,OTP_LEN)-1);
+    if(text.length>=OTP_LEN)autoVerify(text);
   };
 
   // ===== AUTO VERIFICATION (backend kwanza, kisha animation) =====
@@ -119,7 +120,7 @@ export default function OtpReset({email,onDone,onBack}){
       setShake(true);
       setTimeout(()=>setShake(false),reduced?0:500);
       setPhase('otp');
-      setDigits(['','','','','','']);
+      setDigits(Array(OTP_LEN).fill(''));
       setTimeout(()=>focusIndex(0),reduced?0:520);
     }
   },[email,phase,reduced,verifyResetOtp]);
@@ -129,7 +130,7 @@ export default function OtpReset({email,onDone,onBack}){
     setResending(true);setErr('');setExpired(false);
     const res=await sendResetOtp(email);
     setResending(false);
-    if(res.ok){setCooldown(45);setDigits(['','','','','','']);focusIndex(0);}
+    if(res.ok){setCooldown(45);setDigits(Array(OTP_LEN).fill(''));focusIndex(0);}
     else setErr(res.error||'Imeshindwa kutuma. Jaribu tena.');
   };
 
@@ -141,7 +142,7 @@ export default function OtpReset({email,onDone,onBack}){
     {phase!=='password'&&<>
       <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Thibitisha Code</h3>
       <p style={{fontSize:13,color:'#64748B',marginBottom:20,lineHeight:1.5}}>
-        Tumetuma code ya tarakimu 6 kwa<br/><b style={{color:GREEN}}>{email}</b>
+        Tumetuma code ya tarakimu 8 kwa<br/><b style={{color:GREEN}}>{email}</b>
       </p>
 
       {/* ===== OTP STAGE ===== */}
@@ -156,7 +157,7 @@ export default function OtpReset({email,onDone,onBack}){
               type="tel"
               inputMode="numeric"
               autoComplete={i===0?'one-time-code':'off'}
-              maxLength={6}
+              maxLength={OTP_LEN}
               value={d}
               disabled={phase==='verifying'||phase==='success'}
               onChange={e=>handleChange(i,e.target.value)}
@@ -334,14 +335,15 @@ function NewPasswordForm({setNewPassword,onDone}){
 // ============================================================
 const OTP_CSS=`
 .otp-stage{position:relative;min-height:76px;display:flex;align-items:center;justify-content:center;}
-.otp-boxes{display:flex;gap:9px;justify-content:center;transition:opacity .2s ease;}
-.otp-box{width:46px;height:56px;border:1.5px solid #E2E8F0;border-radius:13px;text-align:center;font-size:24px;font-weight:800;color:#0B7A3B;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
+.otp-boxes{display:flex;gap:6px;justify-content:center;transition:opacity .2s ease;}
+.otp-box{width:38px;height:50px;border:1.5px solid #E2E8F0;border-radius:11px;text-align:center;font-size:21px;font-weight:800;color:#0B7A3B;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
 .otp-box::-webkit-outer-spin-button,.otp-box::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .otp-box:focus{border-color:#0B7A3B;box-shadow:0 0 0 3px rgba(11,122,59,.14);transform:translateY(-2px);}
 .otp-box-filled{border-color:#0B7A3B;background:#F0FDF4;}
 .otp-box-err{border-color:#EF4444 !important;background:#FEF2F2 !important;}
 
-@media (max-width:360px){.otp-box{width:40px;height:50px;font-size:20px;gap:6px;}.otp-boxes{gap:6px;}}
+@media (max-width:400px){.otp-box{width:32px;height:44px;font-size:18px;border-radius:9px;}.otp-boxes{gap:4px;}}
+@media (max-width:320px){.otp-box{width:28px;height:40px;font-size:16px;}.otp-boxes{gap:3px;}}
 
 /* Boxes zinakunjika kuelekea center -> capsule */
 .otp-boxes.merge{opacity:0;transform:scaleX(.15);transition:opacity .25s ease,transform .25s cubic-bezier(.5,0,.3,1);pointer-events:none;position:absolute;}
