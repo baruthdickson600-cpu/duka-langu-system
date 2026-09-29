@@ -591,6 +591,14 @@ export function AppProvider({children}){
       ...(status==='completed'?{completed_at:nowISO()}:{}),
     };
     const d=await safeInsert('orders',rec);
+    if(d&&d.__error){
+      // Rudisha stock (kwa sababu order haikuhifadhiwa)
+      items.forEach(item=>{
+        const stockOut=item.qty*(item.fraction||1);
+        setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:(p.quantity||0)+stockOut}:p));
+      });
+      return{error:'Imeshindwa kuhifadhi oda: '+(d.message||'')+'. Hakikisha jedwali la orders lipo (run SQL).'};
+    }
     const order=d||{...rec,id:genId(),created_at:nowISO()};
     setOrders(prev=>[order,...prev]);
 
@@ -640,7 +648,7 @@ export function AppProvider({children}){
       is_synced:online,created_at:nowISO(),notes:`Order ${order.order_number}`,
     };
     const d=await safeInsert('sales',sd);
-    if(d)setSales(prev=>[d,...prev]);
+    if(d&&!d.__error)setSales(prev=>[d,...prev]);
     return d;
   },[bizId,user,online]);
 
@@ -668,6 +676,123 @@ export function AppProvider({children}){
     try{const{data}=await supabase.from('order_payments').select('*').eq('order_id',orderId).order('created_at');return data||[];}
     catch(e){return[];}
   },[]);
+
+  // ============================================================
+  // SUPPLIERS + PURCHASE ORDERS + AUTO REORDER (V1.2)
+  // ============================================================
+  const[suppliers,setSuppliers]=useState([]);
+  const[purchaseOrders,setPurchaseOrders]=useState([]);
+
+  const loadSuppliers=useCallback(async(bid)=>{
+    try{
+      const[s,po]=await Promise.all([
+        supabase.from('suppliers').select('*').eq('business_id',bid).order('created_at',{ascending:false}),
+        supabase.from('purchase_orders').select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(200),
+      ]);
+      setSuppliers(s.data||[]);setPurchaseOrders(po.data||[]);
+    }catch(e){}
+  },[]);
+  useEffect(()=>{ if(bizId)loadSuppliers(bizId); },[bizId,loadSuppliers]);
+
+  const addSupplier=useCallback(async(sup)=>{
+    if(!bizId)return{error:'Biashara haijapatikana'};
+    if(!sup.name?.trim())return{error:'Weka jina la msambazaji'};
+    const rec={business_id:bizId,name:sup.name.trim(),phone:sup.phone||null,email:sup.email||null,address:sup.address||null,notes:sup.notes||null,outstanding_balance:0,is_active:true};
+    const d=await safeInsert('suppliers',rec);
+    const s=d||{...rec,id:genId(),created_at:nowISO()};
+    setSuppliers(prev=>[s,...prev]);
+    return{supplier:s};
+  },[bizId]);
+
+  const updateSupplier=useCallback(async(id,updates)=>{
+    await safeUpdate('suppliers',updates,'id',id);
+    setSuppliers(prev=>prev.map(s=>s.id===id?{...s,...updates}:s));
+    return{ok:true};
+  },[]);
+
+  const deleteSupplier=useCallback(async(id)=>{
+    await safeUpdate('suppliers',{is_active:false},'id',id);
+    setSuppliers(prev=>prev.filter(s=>s.id!==id));
+    return{ok:true};
+  },[]);
+
+  // Unda Purchase Order (manunuzi)
+  const createPurchaseOrder=useCallback(async({supplierId,supplierName,supplierPhone,items,paidAmount=0,paymentMethod='cash',notes=''})=>{
+    if(!bizId)return{error:'Biashara haijapatikana'};
+    if(!items||!items.length)return{error:'Hakuna bidhaa'};
+    const total=items.reduce((s,i)=>s+(i.qty*i.cost),0);
+    const paid=Math.min(+paidAmount||0,total);
+    const poNumber='PO-'+Date.now().toString(36).toUpperCase().slice(-6);
+    const rec={
+      business_id:bizId,branch_id:activeBranch||null,po_number:poNumber,
+      supplier_id:supplierId||null,supplier_name:supplierName,supplier_phone:supplierPhone||null,
+      items,total,paid_amount:paid,remaining_amount:total-paid,
+      status:'sent',payment_method:paymentMethod,notes,created_by:user?.id,
+    };
+    const d=await safeInsert('purchase_orders',rec);
+    const po=d||{...rec,id:genId(),created_at:nowISO()};
+    setPurchaseOrders(prev=>[po,...prev]);
+    // Ongeza deni la msambazaji
+    if(supplierId&&(total-paid)>0){
+      const sup=suppliers.find(s=>s.id===supplierId);
+      const newBal=(sup?.outstanding_balance||0)+(total-paid);
+      await safeUpdate('suppliers',{outstanding_balance:newBal},'id',supplierId).catch(()=>{});
+      setSuppliers(prev=>prev.map(s=>s.id===supplierId?{...s,outstanding_balance:newBal}:s));
+    }
+    return{po};
+  },[bizId,activeBranch,user,suppliers]);
+
+  // Pokea bidhaa -> ongeza stock
+  const receivePurchaseOrder=useCallback(async(poId,receivedItems=null)=>{
+    const po=purchaseOrders.find(p=>p.id===poId);
+    if(!po)return{error:'PO haijapatikana'};
+    const items=receivedItems||po.items;
+    // Ongeza stock kwa kila bidhaa
+    for(const item of items){
+      const qty=item.receivedQty!=null?item.receivedQty:item.qty;
+      if(qty<=0)continue;
+      if(item.productId){
+        const prod=products.find(p=>p.id===item.productId);
+        if(prod){
+          const newQ=(prod.quantity||0)+qty;
+          setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:newQ}:p));
+          await safeUpdate('products',{quantity:newQ},'id',item.productId).catch(()=>{});
+        }
+      }
+    }
+    const allReceived=!receivedItems||items.every(i=>(i.receivedQty==null||i.receivedQty>=i.qty));
+    const newStatus=allReceived?'received':'partial_received';
+    await safeUpdate('purchase_orders',{status:newStatus,received_at:nowISO()},'id',poId);
+    setPurchaseOrders(prev=>prev.map(p=>p.id===poId?{...p,status:newStatus,received_at:nowISO()}:p));
+    return{ok:true,status:newStatus};
+  },[purchaseOrders,products]);
+
+  const cancelPurchaseOrder=useCallback(async(poId)=>{
+    const po=purchaseOrders.find(p=>p.id===poId);
+    if(!po)return{error:'PO haijapatikana'};
+    if(po.status==='received')return{error:'PO imeshapokelewa'};
+    await safeUpdate('purchase_orders',{status:'cancelled'},'id',poId);
+    setPurchaseOrders(prev=>prev.map(p=>p.id===poId?{...p,status:'cancelled'}:p));
+    // Punguza deni la msambazaji
+    if(po.supplier_id&&po.remaining_amount>0){
+      const sup=suppliers.find(s=>s.id===po.supplier_id);
+      const newBal=Math.max(0,(sup?.outstanding_balance||0)-po.remaining_amount);
+      await safeUpdate('suppliers',{outstanding_balance:newBal},'id',po.supplier_id).catch(()=>{});
+      setSuppliers(prev=>prev.map(s=>s.id===po.supplier_id?{...s,outstanding_balance:newBal}:s));
+    }
+    return{ok:true};
+  },[purchaseOrders,suppliers]);
+
+  // Lipa deni la msambazaji
+  const paySupplier=useCallback(async(supplierId,amount)=>{
+    const sup=suppliers.find(s=>s.id===supplierId);
+    if(!sup)return{error:'Msambazaji hajapatikana'};
+    const amt=Math.min(+amount||0,sup.outstanding_balance||0);
+    const newBal=Math.max(0,(sup.outstanding_balance||0)-amt);
+    await safeUpdate('suppliers',{outstanding_balance:newBal},'id',supplierId);
+    setSuppliers(prev=>prev.map(s=>s.id===supplierId?{...s,outstanding_balance:newBal}:s));
+    return{ok:true,newBalance:newBal};
+  },[suppliers]);
 
   // ===== RETURN/REFUND =====
   const processReturn=useCallback(async(saleId,items,reason)=>{
