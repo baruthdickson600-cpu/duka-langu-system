@@ -1,4 +1,3 @@
-
 {
   "framework": "vite",
   "buildCommand": "npm run build",
@@ -29,23 +28,11 @@
     "api/sms-balance.js": {
       "maxDuration": 15
     },
-    "api/snippe/create-payment.js": {
-      "maxDuration": 30
-    },
-    "api/snippe/webhook.js": {
-      "maxDuration": 30
-    },
-    "api/snippe/status.js": {
-      "maxDuration": 15
-    },
     "api/cron/daily-email-report.js": {
       "maxDuration": 300
     },
     "api/cron/staff-email-report.js": {
       "maxDuration": 300
-    },
-    "api/admin/change-email.js": {
-      "maxDuration": 30
     }
   },
   "crons": [

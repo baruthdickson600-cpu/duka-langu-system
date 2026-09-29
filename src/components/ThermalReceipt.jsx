@@ -54,12 +54,12 @@ export default function ThermalReceipt({sale,onClose}){
 
   const statusColor=data.status==='PAID'?'#16A34A':data.status==='PARTIAL'?'#3B82F6':'#EF4444';
 
-  return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'flex-start',justifyContent:'center',zIndex:2000,overflow:'auto',padding:'20px 12px'}} onClick={onClose}>
+  return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2147483000,padding:'12px'}} onClick={onClose}>
     <style>{PRINT_CSS}</style>
-    <div onClick={e=>e.stopPropagation()} style={{maxWidth:440,width:'100%'}}>
+    <div onClick={e=>e.stopPropagation()} style={{maxWidth:440,width:'100%',maxHeight:'calc(100vh - 24px)',display:'flex',flexDirection:'column',borderRadius:16,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.35)'}}>
 
       {/* Controls (hazichapishwi) */}
-      <div className="no-print" style={{background:'#fff',borderRadius:'16px 16px 0 0',padding:'14px 16px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #EEF2F6'}}>
+      <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #EEF2F6',flexShrink:0}}>
         <b style={{fontSize:14,color:'#101828',flex:1}}>🧾 Risiti</b>
         <div style={{display:'flex',gap:4,background:'#F1F5F9',borderRadius:8,padding:3}}>
           <button onClick={()=>setWidth('58')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='58'?'#0B7A3B':'transparent',color:width==='58'?'#fff':'#64748B'}}>58mm</button>
@@ -69,7 +69,7 @@ export default function ThermalReceipt({sale,onClose}){
       </div>
 
       {/* RECEIPT (inachapishwa) */}
-      <div className="receipt-scroll" style={{background:'#F8FAFC',padding:'18px 12px',maxHeight:'60vh',overflow:'auto'}}>
+      <div className="receipt-scroll" style={{background:'#F8FAFC',padding:'18px 12px',flex:1,minHeight:0,overflowY:'auto'}}>
         <div ref={printRef} id="thermal-receipt" className={`receipt receipt-${width}`}>
           {duplicate&&<div className="dup-watermark">NAKALA</div>}
 
@@ -168,7 +168,7 @@ export default function ThermalReceipt({sale,onClose}){
       </div>
 
       {/* ACTIONS (hazichapishwi) */}
-      <div className="no-print" style={{background:'#fff',borderRadius:'0 0 16px 16px',padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+      <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,borderTop:'1px solid #EEF2F6',flexShrink:0}}>
         <button onClick={doPrint} style={btnStyle('#0B7A3B','#fff')}>🖨️ Chapisha</button>
         <button onClick={doReprint} style={btnStyle('#F1F5F9','#475569')}>🔁 Chapisha Nakala</button>
         <button onClick={()=>exportReceiptPDF(sale,biz?.name,biz?.receipt_footer)} style={btnStyle('#EFF6FF','#2563EB')}>📄 Pakua PDF</button>
