@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
+import OrdersPage from './pages/office/OrdersPage';
 import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
@@ -88,6 +89,7 @@ const MENUS={
     {id:'products',icon:IC.box,label:'Bidhaa'},
     {id:'analytics',icon:IC.chart,label:'📊 Uchambuzi'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'orders',icon:IC.file,label:'📋 Oda'},
     {id:'returns',icon:IC.refresh,label:'Rudisha'},
     {id:'reports',icon:IC.chart,label:'Ripoti'},
     {id:'goals',icon:IC.chart,label:'Malengo'},
@@ -102,6 +104,7 @@ const MENUS={
   employee:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'orders',icon:IC.file,label:'📋 Oda'},
     {id:'emp_reports',icon:IC.chart,label:'📦 Bidhaa Zilizouzwa'},
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'customers',icon:IC.people,label:'Wateja'},
@@ -297,6 +300,7 @@ export default function App(){
       case'branches':return canUseBranches&&role==='office'?<BranchesPage/>:null;
       case'products':return role==='office'?<ProductsPage/>:null;
       case'sales':return <SalesPage onDone={setReceipt}/>;
+      case'orders':return <OrdersPage/>;
       case'returns':return role==='office'?<ReturnsPage/>:null;
       case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
       case'emp_reports':return role==='employee'?<EmployeeReportsPage/>:null;

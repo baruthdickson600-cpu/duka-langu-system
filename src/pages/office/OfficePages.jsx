@@ -363,7 +363,7 @@ export function OfficeDash({onReceipt}){
 
 // ===== POS / SALES =====
 export function SalesPage({onDone}){
-  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches}=useApp();
+  const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches,createOrder}=useApp();
   const empNoBranch=user?.role==='employee'&&canUseBranches&&!user?.branch_id;
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
@@ -397,6 +397,20 @@ export function SalesPage({onDone}){
     const f=FRACTIONS.find(x=>x.v===fraction);
     setCart(cart.map((x,j)=>j===idx?{...x,fraction,fractionLabel:f?.l||'Nzima'}:x));
   };
+  const doOrder=async()=>{
+    if(!cart.length)return alert('Weka bidhaa kwanza!');
+    setProcessing(true);
+    try{
+      const items=cart.map(c=>({productId:c.productId,name:c.name,qty:c.qty,price:c.price,cost:c.cost||c.buy_price||0,fraction:c.fraction||1}));
+      const res=await createOrder({items,discount,customerId:custId||null,customerName:custName||'Mteja',customerPhone:''});
+      if(res.error){alert(res.error);setProcessing(false);return;}
+      playSaleSuccess();
+      alert(`📋 ODA IMEWEKWA!\n\nNamba: ${res.order?.order_number||'—'}\nJumla: TZS ${total.toLocaleString()}\nStock imehifadhiwa.\n\nMteja akilipa, nenda "📋 Oda" kupokea malipo. Mauzo yatarekodiwa baada ya malipo kukamilika.`);
+      setCart([]);setDiscount(0);setCashAmt('');setMobileAmt('');setCustName('');setCustId('');
+    }catch(e){alert('Tatizo la kuweka oda.');}
+    finally{setProcessing(false);}
+  };
+
   const doSale=async()=>{
     if(!cart.length||processing)return;
     // Credit sale requires customer
@@ -542,6 +556,7 @@ export function SalesPage({onDone}){
           {processing?<><span style={{display:'inline-block',width:20,height:20,border:'3px solid rgba(255,255,255,0.3)',borderTop:'3px solid #fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></span> Inatuma...</>:payMethod==='credit'?<>{IC.ok} Uza kwa Deni</>:<>{IC.ok} Kamilisha Mauzo</>}
         </button>
         {processing&&<div style={{textAlign:'center',fontSize:12,color:'#64748B',marginTop:8}}>Subiri... mauzo yanashughulikiwa</div>}
+        {!processing&&payMethod!=='credit'&&cart.length>0&&<button onClick={doOrder} style={{width:'100%',padding:11,background:'#fff',color:'#F59E0B',border:'1.5px solid #FED7AA',borderRadius:12,fontWeight:700,fontSize:13.5,marginTop:8,cursor:'pointer'}}>📋 Weka Oda (Pending) badala ya kuuza</button>}
       </>}
     </div>
 
