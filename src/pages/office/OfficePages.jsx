@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
-import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportReceiptPDF,shareWhatsApp,todayStr} from '../../utils/helpers';
+import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportReceiptPDF,shareWhatsApp,todayStr,payLabel} from '../../utils/helpers';
 import {playSaleSuccess,playCreditSale,playError,unlockAudio} from '../../utils/sounds';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
@@ -503,9 +503,19 @@ export function SalesPage({onDone}){
         
         {/* Payment Methods - 4 options now */}
         <div style={{marginBottom:8}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Malipo</label>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-            {[{v:'cash',l:'💵 Taslimu',c:'#22C55E'},{v:'mobile',l:'📱 M-Pesa',c:'#3B82F6'},{v:'mix',l:'🔀 Mix',c:'#F59E0B'},{v:'credit',l:'📋 Deni',c:'#EF4444'}].map(m=>
-              <button key={m.v} onClick={()=>!processing&&setPayMethod(m.v)} style={{padding:'10px 4px',borderRadius:10,border:payMethod===m.v?`2px solid ${m.c}`:'1.5px solid #E2E8F0',background:payMethod===m.v?`${m.c}10`:'#fff',fontWeight:600,fontSize:12,color:payMethod===m.v?m.c:'#64748B',cursor:'pointer'}}>{m.l}</button>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+            {[
+              {v:'cash',l:'💵 Taslimu',c:'#22C55E'},
+              {v:'mpesa',l:'M-Pesa',c:'#E30613'},
+              {v:'airtel',l:'Airtel',c:'#ED1C24'},
+              {v:'tigo',l:'Tigo/Mixx',c:'#0033A0'},
+              {v:'halopesa',l:'HaloPesa',c:'#F7941E'},
+              {v:'nmb',l:'🏦 NMB',c:'#00539F'},
+              {v:'crdb',l:'🏦 CRDB',c:'#006A4E'},
+              {v:'mix',l:'🔀 Mix',c:'#F59E0B'},
+              {v:'credit',l:'📋 Deni',c:'#EF4444'},
+            ].map(m=>
+              <button key={m.v} onClick={()=>!processing&&setPayMethod(m.v)} style={{padding:'10px 4px',borderRadius:10,border:payMethod===m.v?`2px solid ${m.c}`:'1.5px solid #E2E8F0',background:payMethod===m.v?`${m.c}10`:'#fff',fontWeight:700,fontSize:11.5,color:payMethod===m.v?m.c:'#64748B',cursor:'pointer'}}>{m.l}</button>
             )}
           </div>
         </div>
@@ -2062,9 +2072,9 @@ export function CustomersPage(){
           <button onClick={()=>setPayAmt(String(payModal.cust.credit_balance||0))} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #22C55E',background:'#F0FDF4',fontSize:12,fontWeight:700,cursor:'pointer',color:'#0B7A3B'}}>Lipa Yote</button>
         </div>
         <div style={{marginBottom:10}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Njia ya Malipo</label>
-          <div style={{display:'flex',gap:6}}>
-            {[{v:'cash',l:'Taslimu'},{v:'mobile',l:'M-Pesa'},{v:'bank',l:'Benki'}].map(m=>
-              <button key={m.v} onClick={()=>setPayMethod(m.v)} style={{flex:1,padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:payMethod===m.v?'#0B7A3B':'#64748B'}}>{m.l}</button>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+            {[{v:'cash',l:'💵 Taslimu'},{v:'mpesa',l:'M-Pesa'},{v:'airtel',l:'Airtel'},{v:'tigo',l:'Tigo'},{v:'halopesa',l:'HaloPesa'},{v:'nmb',l:'🏦 NMB'},{v:'crdb',l:'🏦 CRDB'}].map(m=>
+              <button key={m.v} onClick={()=>setPayMethod(m.v)} style={{padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:11.5,fontWeight:700,cursor:'pointer',color:payMethod===m.v?'#0B7A3B':'#64748B'}}>{m.l}</button>
             )}
           </div>
         </div>
@@ -2134,7 +2144,7 @@ export function CustomersPage(){
           {getCustSales(histModal.cust.id).map(s=>(
             <div key={s.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div><div style={{fontWeight:600,fontSize:12}}>{s.items?.map(i=>i.name).join(', ').slice(0,40)}</div><div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)}</div></div>
-              <div style={{textAlign:'right'}}><div style={{fontWeight:700,fontSize:13}}>{fm(s.total)}</div><Badge color={s.payment_method==='credit'?'#EF4444':'#22C55E'}>{s.payment_method==='credit'?'Deni':s.payment_method}</Badge></div>
+              <div style={{textAlign:'right'}}><div style={{fontWeight:700,fontSize:13}}>{fm(s.total)}</div><Badge color={s.payment_method==='credit'?'#EF4444':'#22C55E'}>{payLabel(s.payment_method)}</Badge></div>
             </div>
           ))}
         </div>

@@ -1,3 +1,11 @@
+// Jina rafiki la njia ya malipo
+export const PAY_LABELS={
+  cash:'Taslimu',mpesa:'M-Pesa',mobile:'M-Pesa',airtel:'Airtel Money',
+  tigo:'Tigo/Mixx',halopesa:'HaloPesa',nmb:'NMB',crdb:'CRDB',
+  bank:'Benki',mix:'Mchanganyiko',credit:'Deni',wallet:'Wallet',
+};
+export const payLabel=(m)=>PAY_LABELS[m]||m||'Taslimu';
+
 // ===== HELPERS =====
 export const genId = () => crypto.randomUUID?.() || Math.random().toString(36).substr(2, 12);
 export const todayStr = () => new Date().toISOString().split('T')[0];
@@ -66,7 +74,7 @@ export const exportReceiptPDF = async (sale, bizName, footer) => {
   doc.setFontSize(11);
   doc.text(`JUMLA: TZS ${sale.total?.toLocaleString()}`, 4, y + 6);
   doc.setFontSize(7);
-  doc.text(`Malipo: ${sale.payment_method || 'cash'}`, 4, y + 12);
+  doc.text(`Malipo: ${payLabel(sale.payment_method)}`, 4, y + 12);
   doc.setFontSize(8);
   doc.text(footer || 'Asante kwa kununua! Karibu tena', 40, y + 20, { align: 'center' });
   doc.save(`risiti-${sale.id?.slice(0, 8)}.pdf`);
@@ -77,6 +85,7 @@ export const shareWhatsApp = (sale, bizName) => {
   let msg = `*${bizName || 'Duka Langu'}*\nRisiti #${sale.id?.slice(0, 8).toUpperCase()}\n\n`;
   (sale.items || []).forEach(i => { msg += `${i.name} x${i.qty} = ${(i.qty * i.price).toLocaleString()}\n`; });
   if (sale.discount > 0) msg += `\nPunguzo: -${sale.discount?.toLocaleString()}`;
-  msg += `\n*JUMLA: TZS ${sale.total?.toLocaleString()}*\nMalipo: ${sale.payment_method || 'cash'}\n\nAsante! 🙏`;
+  msg += `\n*JUMLA: TZS ${sale.total?.toLocaleString()}*\nMalipo: ${payLabel(sale.payment_method)}\n\nAsante! 🙏`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 };
+
