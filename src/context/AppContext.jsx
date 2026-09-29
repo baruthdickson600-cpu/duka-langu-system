@@ -511,6 +511,22 @@ export function AppProvider({children}){
       try{
         const{offline_id,...cleanData}=sd;
         const saved=await safeInsert('sales',{...cleanData,is_synced:true});
+        // Kama Supabase imekataa (mf. constraint ya payment_method kwa mpesa/airtel/tigo/nmb/crdb),
+        // safeInsert inarudisha {__error:true}. Tusiweke object ya kosa kama mauzo/risiti —
+        // hifadhi offline na data KAMILI ili risiti ionyeshe njia ya malipo iliyochaguliwa.
+        if(saved&&saved.__error){
+          console.warn('[Sale] Supabase insert rejected, saving offline. Reason:',saved.message);
+          const offlineRecord=await saveSaleOffline(sd);
+          const offFinal={...sd,id:offlineId,_offline:true};
+          setSales(prev=>[offFinal,...prev]);
+          const oc=await getPendingCount();setPendingSyncCount(oc);
+          // Bado punguza stock kwenye Supabase (bidhaa zimetoka kweli)
+          for(const item of cart){
+            const prod=products.find(p=>p.id===item.productId);
+            if(prod){const stockOut=item.qty*(item.fraction||1);const nq=Math.max(0,prod.quantity-stockOut);await safeUpdate('products',{quantity:nq},'id',item.productId);}
+          }
+          return offFinal;
+        }
         const final=saved||{...sd,id:offlineId};
         setSales(prev=>[final,...prev]);
         // Hifadhi stock changes kwenye Supabase
