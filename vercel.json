@@ -3,14 +3,12 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-
   "rewrites": [
     {
       "source": "/((?!api/|assets/|.*\\.).*)",
       "destination": "/index.html"
     }
   ],
-
   "functions": {
     "api/send-sms.js": {
       "maxDuration": 30
@@ -18,10 +16,7 @@
     "api/send-email.js": {
       "maxDuration": 30
     },
-    "api/sms-balance.js": {
-      "maxDuration": 15
-    },
-    "api/admin/change-email.js": {
+    "api/test-email.js": {
       "maxDuration": 30
     },
     "api/cron/daily-backup.js": {
@@ -33,14 +28,28 @@
     "api/cron/subscription-reminders.js": {
       "maxDuration": 60
     },
+    "api/sms-balance.js": {
+      "maxDuration": 15
+    },
+    "api/snippe/create-payment.js": {
+      "maxDuration": 30
+    },
+    "api/snippe/webhook.js": {
+      "maxDuration": 30
+    },
+    "api/snippe/status.js": {
+      "maxDuration": 15
+    },
     "api/cron/daily-email-report.js": {
       "maxDuration": 300
     },
     "api/cron/staff-email-report.js": {
       "maxDuration": 300
+    },
+    "api/admin/change-email.js": {
+      "maxDuration": 30
     }
   },
-
   "crons": [
     {
       "path": "/api/cron/daily-backup",
