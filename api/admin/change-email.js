@@ -34,12 +34,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { old_email, new_email, business_id } = req.body || {};
+    const { old_email, new_email, business_id, action, target_email, new_password } = req.body || {};
+
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+
+    // ============================================================
+    // ACTION: set_password — Admin anaweka password mpya kwa mteja
+    // (mteja aliyesahau password). Inahitaji target_email + new_password.
+    // ============================================================
+    if (action === 'set_password') {
+      if (!target_email || !target_email.includes('@')) {
+        return res.status(400).json({ success: false, error: 'Email ya mteja si sahihi.' });
+      }
+      if (!new_password || new_password.length < 6) {
+        return res.status(400).json({ success: false, error: 'Password lazima iwe na herufi 6 au zaidi.' });
+      }
+      let au = await findAuthUserByEmail(admin, target_email);
+      if (!au && business_id) {
+        const { data: u } = await admin.from('users').select('id,email').eq('business_id', business_id).eq('role', 'office').maybeSingle();
+        if (u?.email) au = await findAuthUserByEmail(admin, u.email);
+        if (!au && u?.id) { const { data: byId } = await admin.auth.admin.getUserById(u.id).catch(() => ({ data: null })); if (byId?.user) au = byId.user; }
+      }
+      if (!au) {
+        return res.status(404).json({ success: false, error: 'Mtumiaji hajapatikana kwenye Supabase Auth kwa email hii.' });
+      }
+      const { error: pErr } = await admin.auth.admin.updateUserById(au.id, { password: new_password, email_confirm: true });
+      if (pErr) {
+        return res.status(400).json({ success: false, error: 'Auth: ' + pErr.message });
+      }
+      return res.status(200).json({ success: true, message: 'Password imebadilishwa. Mpe mteja password hii aingie nayo.' });
+    }
+
+    // ===== Default action: change email =====
     if (!new_email || !new_email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Email mpya si sahihi.' });
     }
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
     // ===== 1. Tafuta auth user =====
     let authUser = null;

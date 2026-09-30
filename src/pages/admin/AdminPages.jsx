@@ -260,8 +260,10 @@ export function AdminDashboard(){
 // ===== STORES (with Customer Detail Card) =====
 export function StoresPage(){
   const{businesses,suspendBiz,deleteBiz,updateBiz,updateSetting,settings,quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,promoCodes,loginLogs,sales,products,employees,branches,supabase}=useApp();
-  const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');
+  const[search,setSearch]=useState('');const[filter,setFilter]=useState('all');const[sortBy,setSortBy]=useState('recent');
   const[detail,setDetail]=useState(null);
+  // Reset password state
+  const[resetPass,setResetPass]=useState('');const[resetBusy,setResetBusy]=useState(false);const[resetMsg,setResetMsg]=useState(null);
   const[extendDays,setExtendDays]=useState('30');
   const[extendAmount,setExtendAmount]=useState('15000');
   const[extendMethod,setExtendMethod]=useState('HALOPESA');
@@ -275,7 +277,47 @@ export function StoresPage(){
   const[editBusy,setEditBusy]=useState(false);
   const[editMsg,setEditMsg]=useState(null);
 
-  const filtered=businesses.filter(b=>{if(search&&!b.name?.toLowerCase().includes(search.toLowerCase())&&!b.email?.toLowerCase().includes(search.toLowerCase()))return false;if(filter==='active')return b.token_active;if(filter==='suspended')return b.is_suspended;if(filter==='trial')return!b.token_active&&!b.is_suspended;return true});
+  const getDaysLeftEarly=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
+  const revenueOf=(bid)=>sales.filter(x=>x.business_id===bid).reduce((a,x)=>a+(x.total||0),0);
+  let filtered=businesses.filter(b=>{
+    if(search&&!b.name?.toLowerCase().includes(search.toLowerCase())&&!b.email?.toLowerCase().includes(search.toLowerCase())&&!(b.phone||'').includes(search))return false;
+    if(filter==='active')return b.token_active&&!b.is_suspended;
+    if(filter==='suspended')return b.is_suspended;
+    if(filter==='trial')return!b.token_active&&!b.is_suspended;
+    if(filter==='expiring')return!b.is_suspended&&getDaysLeftEarly(b)<=5;
+    return true;
+  });
+  filtered=[...filtered].sort((a,b)=>{
+    if(sortBy==='recent')return new Date(b.created_at||0)-new Date(a.created_at||0);
+    if(sortBy==='name')return (a.name||'').localeCompare(b.name||'');
+    if(sortBy==='expiring')return getDaysLeftEarly(a)-getDaysLeftEarly(b);
+    if(sortBy==='revenue')return revenueOf(b.id)-revenueOf(a.id);
+    return 0;
+  });
+
+  // ===== MUHTASARI WA AKAUNTI =====
+  const summary=React.useMemo(()=>{
+    const total=businesses.length;
+    const active=businesses.filter(b=>b.token_active&&!b.is_suspended).length;
+    const trial=businesses.filter(b=>!b.token_active&&!b.is_suspended).length;
+    const suspended=businesses.filter(b=>b.is_suspended).length;
+    const expiring=businesses.filter(b=>!b.is_suspended&&getDaysLeftEarly(b)<=5).length;
+    const revenue=sales.reduce((a,s)=>a+(s.total||0),0);
+    return{total,active,trial,suspended,expiring,revenue};
+  },[businesses,sales]);
+
+  // ===== RESET PASSWORD YA MTEJA =====
+  const doResetPassword=async(biz)=>{
+    if(!resetPass||resetPass.length<6){setResetMsg({ok:false,msg:'Password lazima iwe herufi 6 au zaidi.'});return;}
+    setResetBusy(true);setResetMsg(null);
+    try{
+      const r=await fetch(API_BASE+'/api/admin/change-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_password',target_email:(biz.email||'').trim().toLowerCase(),new_password:resetPass,business_id:biz.id})});
+      const d=await r.json().catch(()=>({}));
+      if(d.success)setResetMsg({ok:true,msg:`✅ Password imewekwa: "${resetPass}". Mpe mteja aingie nayo, kisha aibadilishe.`});
+      else setResetMsg({ok:false,msg:'❌ '+(d.error||'Tatizo')});
+    }catch(e){setResetMsg({ok:false,msg:'❌ Tatizo la mtandao.'});}
+    setResetBusy(false);
+  };
 
   const isBranchOn=(bid)=>settings[`branch_biz_${bid}`]==='true';
   const toggleBranch=async(bid)=>{
@@ -308,14 +350,41 @@ export function StoresPage(){
   };
 
   return <div>
-    {/* Search & Filter */}
+    {/* HEADER */}
+    <div style={{marginBottom:14}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>👥 Usimamizi wa Akaunti za Wateja</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Tatua changamoto zote za akaunti — siku, plan, email, password, na zaidi — mahali pamoja.</p>
+    </div>
+
+    {/* MUHTASARI (KPIs) */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:14}}>
+      {[
+        {l:'👥 Wateja Wote',v:summary.total,c:'#0B7A3B',f:'all'},
+        {l:'✅ Active',v:summary.active,c:'#22C55E',f:'active'},
+        {l:'🕒 Trial',v:summary.trial,c:'#F59E0B',f:'trial'},
+        {l:'⛔ Suspended',v:summary.suspended,c:'#EF4444',f:'suspended'},
+        {l:'⏳ Zinaisha (≤5)',v:summary.expiring,c:'#EA580C',f:'expiring'},
+      ].map(k=>(
+        <button key={k.l} onClick={()=>setFilter(k.f)} className="card" style={{padding:13,textAlign:'left',cursor:'pointer',border:filter===k.f?`2px solid ${k.c}`:'1px solid #E2E8F0',background:filter===k.f?`${k.c}0A`:'#fff'}}>
+          <div style={{fontSize:10.5,color:'#94A3B8',fontWeight:700,marginBottom:4}}>{k.l}</div>
+          <div style={{fontSize:20,fontWeight:900,color:k.c}}>{k.v}</div>
+        </button>
+      ))}
+      <div className="card" style={{padding:13}}>
+        <div style={{fontSize:10.5,color:'#94A3B8',fontWeight:700,marginBottom:4}}>💰 Mapato ya Wateja</div>
+        <div style={{fontSize:15,fontWeight:900,color:'#3B82F6'}}>TZS {summary.revenue.toLocaleString()}</div>
+      </div>
+    </div>
+
+    {/* Search & Filter & Sort */}
     <div className="card" style={{marginBottom:16}}>
-      <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
-        <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Maduka ({filtered.length})</h3>
+      <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+        <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Orodha ({filtered.length})</h3>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <div style={{position:'relative'}}><span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#94A3B8'}}>{IC.find}</span>
-            <input placeholder="Tafuta..." value={search} onChange={e=>setSearch(e.target.value)} style={{padding:'8px 8px 8px 34px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,outline:'none',width:180}}/></div>
-          <Sel options={[{value:'all',label:'Zote'},{value:'active',label:'Active'},{value:'trial',label:'Trial'},{value:'suspended',label:'Suspended'}]} value={filter} onChange={e=>setFilter(e.target.value)}/>
+            <input placeholder="Tafuta jina, email, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{padding:'8px 8px 8px 34px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,outline:'none',width:200}}/></div>
+          <Sel options={[{value:'all',label:'Zote'},{value:'active',label:'Active'},{value:'trial',label:'Trial'},{value:'suspended',label:'Suspended'},{value:'expiring',label:'Zinaisha'}]} value={filter} onChange={e=>setFilter(e.target.value)}/>
+          <Sel options={[{value:'recent',label:'📅 Mpya'},{value:'expiring',label:'⏳ Zinaisha'},{value:'revenue',label:'💰 Mapato'},{value:'name',label:'🔤 Jina'}]} value={sortBy} onChange={e=>setSortBy(e.target.value)}/>
         </div>
       </div>
     </div>
@@ -438,6 +507,7 @@ export function StoresPage(){
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:16}}>
             <button onClick={()=>{setDetail(null);setActionModal({type:'extend',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⏳ Ongeza Siku</button>
             <button onClick={()=>{setEditForm({name:detail.name||'',email:detail.email||'',phone:detail.phone||'',owner_name:detail.owner_name||''});setDetail(null);setActionModal({type:'edit',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>✏️ Hariri Taarifa</button>
+            <button onClick={()=>{setResetPass('');setResetMsg(null);setDetail(null);setActionModal({type:'reset',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FBCFE8',background:'#FDF2F8',color:'#BE185D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔑 Reset Password</button>
             <button onClick={()=>{setUpgradePlan(detail.plan||'basic');setDetail(null);setActionModal({type:'upgrade',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⬆️ Upgrade Plan</button>
             <button onClick={()=>{setDetail(null);setActionModal({type:'transfer',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #93C5FD',background:'#EFF6FF',color:'#2563EB',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔄 Hamisha Supervisor</button>
             <button onClick={()=>suspendBiz(detail.id,!detail.is_suspended)} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#92400E',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>{detail.is_suspended?'✅ Fungua':'⛔ Suspend'}</button>
@@ -602,6 +672,26 @@ export function StoresPage(){
         setEditBusy(false);
       }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
         {editBusy?'⏳ Inahifadhi...':'✅ Hifadhi Mabadiliko'}
+      </button>
+    </Modal>
+
+    {/* ===== RESET PASSWORD MODAL ===== */}
+    <Modal open={actionModal.type==='reset'} onClose={()=>{setActionModal({type:null,biz:null});setResetMsg(null);setResetPass('')}} title={`🔑 Reset Password — ${actionModal.biz?.name||''}`}>
+      <div style={{background:'#FDF2F8',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12.5,color:'#9D174D'}}>
+        💡 Tumia hii mteja akisahau password. Weka password mpya ya muda, mpe mteja aingie nayo, kisha aibadilishe mwenyewe.
+      </div>
+      <div style={{fontSize:13,color:'#64748B',marginBottom:10}}>📧 Email ya mteja: <b>{actionModal.biz?.email}</b></div>
+
+      {resetMsg&&<div style={{background:resetMsg.ok?'#F0FDF4':'#FEF2F2',color:resetMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${resetMsg.ok?'#22C55E':'#EF4444'}`}}>{resetMsg.msg}</div>}
+
+      <Input label="Password Mpya (herufi 6+)" value={resetPass} onChange={e=>setResetPass(e.target.value)} placeholder="Mf: Duka2026"/>
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        {['Duka1234','Pesa2026','Mteja123'].map(p=><button key={p} onClick={()=>setResetPass(p)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:'#64748B'}}>{p}</button>)}
+        <button onClick={()=>setResetPass('DL'+Math.random().toString(36).slice(2,8))} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0B7A3B'}}>🎲 Tengeneza</button>
+      </div>
+
+      <button onClick={()=>doResetPassword(actionModal.biz)} disabled={resetBusy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:resetBusy?'#F9A8D4':'#BE185D',color:'#fff',fontWeight:800,fontSize:14,cursor:resetBusy?'wait':'pointer'}}>
+        {resetBusy?'⏳ Inaweka...':'🔑 Weka Password Mpya'}
       </button>
     </Modal>
   </div>;
