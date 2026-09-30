@@ -162,7 +162,7 @@ export function AppProvider({children}){
           safeSelect('returns',{eq:{business_id:bid},order:{col:'created_at'}}),
           safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
         ]);
-        setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps(em);setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps((em||[]).filter(e=>e.is_active!==false));setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
         // Load payment requests for this business
         const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
         setPayReqs(pyReqs);
@@ -1057,21 +1057,48 @@ export function AppProvider({children}){
 
   // ===== EMPLOYEES =====
   const addEmployee=useCallback(async(emp)=>{
-    if(!bizId)return;
+    if(!bizId)return{error:'Biashara haijapatikana.'};
+    if(!emp.email||!emp.email.includes('@'))return{error:'Weka email sahihi.'};
+    if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
     try{
-      const{data:auth}=await supabase.auth.signUp({email:emp.email,password:emp.password||'1234'});
-      const uid=auth?.user?.id||genId();
-      const d=await safeInsert('users',{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null});
-      setEmps(prev=>[...prev,d||{id:uid,email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
+      // Tumia service_role (admin API) ili mfanyakazi aundwe kwenye Auth vizuri
+      // na aweze kuingia MARA MOJA, bila kuvuruga session ya mmiliki.
+      const r=await fetch(API_BASE+'/api/admin/change-email',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'create_employee',emp_email:emp.email.trim().toLowerCase(),emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null}),
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!d.success)return{error:d.error||'Imeshindwa kuunda mfanyakazi.'};
+      const newEmp=d.user||{id:genId(),email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null};
+      setEmps(prev=>[...prev.filter(e=>e.email!==newEmp.email),{...newEmp,created_at:nowISO()}]);
+      return{ok:true};
     }catch(e){
-      setEmps(prev=>[...prev,{...emp,id:genId(),role:'employee',business_id:bizId,branch_id:emp.branch_id||null,created_at:nowISO()}]);
+      return{error:'Tatizo la mtandao. Jaribu tena.'};
     }
   },[bizId]);
   const updateEmployee=useCallback(async(eid,updates)=>{
     await safeUpdate('users',updates,'id',eid);
     setEmps(prev=>prev.map(e=>e.id===eid?{...e,...updates}:e));
   },[]);
-  const deleteEmployee=useCallback(async(eid)=>{await safeUpdate('users',{is_active:false},'id',eid);setEmps(prev=>prev.filter(e=>e.id!==eid))},[]);
+  const deleteEmployee=useCallback(async(eid)=>{
+    const emp=employees.find(e=>e.id===eid);
+    // Ondoa kwenye orodha mara moja (UI)
+    setEmps(prev=>prev.filter(e=>e.id!==eid));
+    try{
+      // Futa kabisa (Auth + users) kupitia service_role
+      const r=await fetch(API_BASE+'/api/admin/change-email',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'delete_employee',emp_id:eid,emp_email:emp?.email||null}),
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!d.success){
+        // Fallback: soft delete kama API imeshindwa
+        await safeUpdate('users',{is_active:false},'id',eid);
+      }
+    }catch(e){
+      await safeUpdate('users',{is_active:false},'id',eid).catch(()=>{});
+    }
+  },[employees]);
 
   // ===== BRANCHES =====
   const addBranch=useCallback(async(name,location,extra={})=>{if(!bizId)return null;const branchCode='BR-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('branches',{business_id:bizId,name,location,address:extra.address||null,phone:extra.phone||null,branch_code:branchCode,is_active:extra.is_active!==false});const f=d||{id:genId(),business_id:bizId,name,location,...extra,branch_code:branchCode,is_active:extra.is_active!==false,created_at:nowISO()};setBranches(prev=>[...prev,f]);return f},[bizId]);

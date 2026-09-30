@@ -65,6 +65,65 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Password imebadilishwa. Mpe mteja password hii aingie nayo.' });
     }
 
+    // ============================================================
+    // ACTION: create_employee — Mmiliki anaunda mfanyakazi
+    // Inaunda auth user (email_confirm:true = aingie mara moja) + users row.
+    // Haisumbui session ya mmiliki (service_role, si signUp).
+    // ============================================================
+    if (action === 'create_employee') {
+      const { emp_email, emp_password, emp_name, emp_phone, business_id: bid, branch_id } = req.body || {};
+      if (!emp_email || !emp_email.includes('@')) return res.status(400).json({ success: false, error: 'Email ya mfanyakazi si sahihi.' });
+      if (!emp_password || emp_password.length < 4) return res.status(400).json({ success: false, error: 'Password lazima iwe herufi 4 au zaidi.' });
+      if (!bid) return res.status(400).json({ success: false, error: 'business_id inahitajika.' });
+
+      // Je auth user tayari ipo?
+      let au = await findAuthUserByEmail(admin, emp_email);
+      if (au) {
+        // Sasisha password na thibitisha email (ili aingie)
+        await admin.auth.admin.updateUserById(au.id, { password: emp_password, email_confirm: true }).catch(() => {});
+      } else {
+        const { data: created, error: cErr } = await admin.auth.admin.createUser({
+          email: emp_email.trim().toLowerCase(), password: emp_password, email_confirm: true,
+        });
+        if (cErr) {
+          const m = (cErr.message || '').toLowerCase();
+          if (m.includes('already') || m.includes('registered') || m.includes('exists'))
+            return res.status(409).json({ success: false, error: 'Email hii tayari inatumika. Tumia nyingine.' });
+          return res.status(400).json({ success: false, error: 'Auth: ' + cErr.message });
+        }
+        au = created?.user;
+      }
+      if (!au) return res.status(500).json({ success: false, error: 'Imeshindwa kuunda mtumiaji.' });
+
+      // Weka/rekebisha users row
+      const row = { id: au.id, email: emp_email.trim().toLowerCase(), name: emp_name || '', phone: emp_phone || '', role: 'employee', business_id: bid, branch_id: branch_id || null, is_active: true };
+      const { error: upErr } = await admin.from('users').upsert(row, { onConflict: 'id' });
+      if (upErr) return res.status(400).json({ success: false, error: 'DB: ' + upErr.message });
+
+      return res.status(200).json({ success: true, message: 'Mfanyakazi ameundwa na anaweza kuingia sasa.', user: row });
+    }
+
+    // ============================================================
+    // ACTION: delete_employee — Futa mfanyakazi kabisa (Auth + users)
+    // ============================================================
+    if (action === 'delete_employee') {
+      const { emp_id, emp_email } = req.body || {};
+      if (!emp_id && !emp_email) return res.status(400).json({ success: false, error: 'emp_id au emp_email inahitajika.' });
+      let authId = emp_id;
+      // Futa users row
+      if (emp_id) await admin.from('users').delete().eq('id', emp_id).then(() => {}, () => {});
+      else if (emp_email) {
+        const { data: u } = await admin.from('users').select('id').eq('email', emp_email).maybeSingle();
+        authId = u?.id;
+        await admin.from('users').delete().eq('email', emp_email).then(() => {}, () => {});
+      }
+      // Futa auth user
+      if (!authId && emp_email) { const found = await findAuthUserByEmail(admin, emp_email); authId = found?.id; }
+      if (authId) await admin.auth.admin.deleteUser(authId).then(() => {}, () => {});
+
+      return res.status(200).json({ success: true, message: 'Mfanyakazi amefutwa kabisa.' });
+    }
+
     // ===== Default action: change email =====
     if (!new_email || !new_email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Email mpya si sahihi.' });
