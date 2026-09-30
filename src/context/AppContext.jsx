@@ -2450,6 +2450,8 @@ export function AppProvider({children}){
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
     addBranch,updateBranch,deleteBranch,getBranches,
+    // Orders (Pending + Partial Payments)
+    orders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,
     // Tickets
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
