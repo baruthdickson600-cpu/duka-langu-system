@@ -2350,20 +2350,18 @@ export function BranchesPage(){
       <div className="card" style={{padding:14}}><div style={{fontSize:11,color:'#94A3B8',fontWeight:700,marginBottom:5}}>🏆 Tawi Bora</div><div style={{fontSize:15,fontWeight:900,color:'#F59E0B'}}>{summary.best?.name||'-'}</div><div style={{fontSize:10,color:'#94A3B8'}}>{fm(summary.bestRev)}</div></div>
     </div>}
 
-    {/* Plan info */}
-    <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
-      <div style={{fontSize:13,color:'#15803D'}}>
-        <b>Plan: {biz?.plan==='premium'?'Premium':biz?.plan==='enterprise'?'Enterprise':'Basic'}</b> — Matawi: {myBranches.length}/{maxBranches===999?'∞':maxBranches}
-      </div>
-      {!canAddMore&&<div style={{fontSize:12,color:'#B91C1C',fontWeight:600}}>Umefikia kikomo! Upgrade kwa matawi zaidi.</div>}
-    </div>
+    {/* Ongeza tawi — kitufe kikubwa (matawi bila kikomo kwa sasa) */}
+    <button onClick={()=>setModal(true)} style={{width:'100%',padding:'15px',marginBottom:14,borderRadius:14,border:'2px dashed #86EFAC',background:'#F0FDF4',color:'#0B7A3B',fontWeight:800,fontSize:15,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+      {IC.plus} Ongeza Tawi Jipya
+    </button>
+    <div style={{fontSize:11.5,color:'#15803D',background:'#ECFDF5',border:'1px solid #BBF7D0',borderRadius:8,padding:'7px 12px',marginBottom:14,textAlign:'center'}}>✨ Kwa sasa unaweza kufungua matawi <b>bila kikomo</b> — bure!</div>
 
-    <div style={{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-      <span style={{fontSize:13,fontWeight:700,marginRight:4}}>Tawi:</span>
-      <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>Yote</button>
-      {myBranches.map(b=><button key={b.id} onClick={()=>setActiveBranch(b.id)} style={{padding:'6px 14px',borderRadius:8,border:activeBranch===b.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:activeBranch===b.id?'#F0FDF4':'#fff',fontWeight:activeBranch===b.id?700:500,fontSize:12,color:activeBranch===b.id?'#0B7A3B':'#64748B',cursor:'pointer'}}>{b.name}</button>)}
-      <Btn style={{padding:'6px 12px',fontSize:11,marginLeft:'auto'}} onClick={()=>{if(!canAddMore)return alert(`Umefikia kikomo cha matawi ${maxBranches} kwa plan yako! Upgrade kwa Premium/Enterprise kupata matawi zaidi.`);setModal(true)}}>{IC.plus} Tawi</Btn>
-    </div>
+    {/* Switcher ya tawi linalotumika */}
+    {myBranches.length>0&&<div style={{background:'#fff',borderRadius:14,padding:'12px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+      <span style={{fontSize:13,fontWeight:700,marginRight:4}}>Unaona:</span>
+      <button onClick={()=>setActiveBranch(null)} style={{padding:'6px 14px',borderRadius:8,border:!activeBranch?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:!activeBranch?'#F0FDF4':'#fff',fontWeight:!activeBranch?700:500,fontSize:12,color:!activeBranch?'#0B7A3B':'#64748B',cursor:'pointer'}}>📊 Yote</button>
+      {myBranches.map(b=><button key={b.id} onClick={()=>setActiveBranch(b.id)} style={{padding:'6px 14px',borderRadius:8,border:activeBranch===b.id?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:activeBranch===b.id?'#F0FDF4':'#fff',fontWeight:activeBranch===b.id?700:500,fontSize:12,color:activeBranch===b.id?'#0B7A3B':'#64748B',cursor:'pointer'}}>🏪 {b.name}</button>)}
+    </div>}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}}>
       {myBranches.map(b=>{const st=branchStats(b.id);return <div key={b.id} className="card" style={{border:activeBranch===b.id?'2px solid #0B7A3B':'1px solid #E2E8F0'}}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>

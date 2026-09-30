@@ -1087,6 +1087,9 @@ export function AppProvider({children}){
   // BRANCH LOCK: Determines if current business can use multi-branch
   const canUseBranches=useMemo(()=>{
     if(user?.role==='admin')return true;
+    // ===== KWA SASA: Matawi yamefunguliwa kwa WOTE (bila kikomo) =====
+    // Ukitaka kurudisha kikomo cha plan baadaye, futa laini hii moja.
+    if(user?.role==='office')return true;
     if(!bizId)return false;
     const myBiz=businesses.find(b=>b.id===bizId)||biz;
     // MUHIMU: Per-business branch_enabled INASHINDA global switch.
@@ -1154,10 +1157,12 @@ export function AppProvider({children}){
   },[settings,bizId,user,biz]);
   // Max branches for this plan
   const maxBranches=useMemo(()=>{
+    // ===== KWA SASA: Matawi bila kikomo kwa wote (999) =====
+    // Ukitaka kurudisha vikomo vya plan baadaye, futa laini hii moja.
+    return 999;
+    /* eslint-disable no-unreachable */
     const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
-    // max_branches column (kutoka token ya branch) inashinda
     if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
-    // branch plans: branch2=2, branch3=3...
     if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
     if(myBiz?.plan==='enterprise')return 999;
     if(myBiz?.plan==='premium')return 10;
@@ -2005,6 +2010,63 @@ export function AppProvider({children}){
   // ===== NOTIFICATIONS =====
   const addNotif=useCallback(async(tt,tid,type,title,msg)=>{const d=await safeInsert('notifications',{target_type:tt,target_id:tid,type,title,message:msg});const n=d||{id:genId(),target_type:tt,target_id:tid,type,title,message:msg,created_at:nowISO(),is_read:false};setNotifs(prev=>[n,...prev]);return n},[]);
   const broadcastNotif=useCallback(async(type,title,msg)=>{await safeInsert('notifications',{target_type:'broadcast',type,title,message:msg});setNotifs(prev=>[{id:genId(),target_type:'broadcast',type,title,message:msg,created_at:nowISO(),is_read:false},...prev])},[]);
+
+  // ===== TUMA EMAIL YA UPDATE KWA WATEJA WOTE (Admin) =====
+  // Inatuma email nzuri (HTML) kwa kila biashara yenye email.
+  // Inatuma kwa makundi (batches) ili isilemeze SMTP/function.
+  const buildUpdateEmailHTML=(title,body,bizName)=>{
+    const safe=(s)=>String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const paras=safe(body).split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:0 0 12px;font-size:15px;line-height:1.65;color:#334155;">${l}</p>`).join('');
+    return `<div style="max-width:600px;margin:0 auto;font-family:Segoe UI,Arial,sans-serif;background:#F8FAFC;padding:0 0 24px;">
+      <div style="background:linear-gradient(135deg,#0B7A3B,#065F2E);padding:28px 24px;text-align:center;border-radius:0 0 18px 18px;">
+        <div style="font-size:22px;font-weight:800;color:#fff;">🏪 DukaLangu Smart POS</div>
+        <div style="font-size:13px;color:#BBF7D0;margin-top:4px;">Simamia Biashara Yako Kidijitali</div>
+      </div>
+      <div style="background:#fff;margin:18px;border-radius:16px;padding:26px;box-shadow:0 2px 10px rgba(0,0,0,.05);">
+        <div style="display:inline-block;background:#F0FDF4;color:#15803D;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;">✨ TAARIFA MPYA / UPDATE</div>
+        <h1 style="font-size:20px;color:#0B7A3B;margin:0 0 14px;">${safe(title)}</h1>
+        ${bizName?`<p style="font-size:14px;color:#64748B;margin:0 0 16px;">Habari <b>${safe(bizName)}</b>,</p>`:''}
+        ${paras}
+        <div style="margin-top:22px;text-align:center;">
+          <a href="https://dukalangu.com" style="display:inline-block;background:#0B7A3B;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;">Fungua Mfumo →</a>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:#94A3B8;padding:0 24px;">
+        <p style="margin:4px 0;">Asante kwa kuendelea kutumia DukaLangu.</p>
+        <p style="margin:4px 0;">Msaada: +255 617 288 752 • dukalangu.com</p>
+      </div>
+    </div>`;
+  };
+
+  const broadcastUpdateEmail=useCallback(async(title,body,{onlyActive=false}={})=>{
+    if(!title?.trim()||!body?.trim())return{error:'Weka kichwa na maelezo ya update.'};
+    // Kusanya email za kipekee kutoka kwa biashara zote
+    const seen=new Set();
+    const targets=[];
+    (businesses||[]).forEach(b=>{
+      const em=(b.email||'').trim().toLowerCase();
+      if(!em||seen.has(em))return;
+      if(onlyActive&&b.is_suspended)return;
+      seen.add(em);
+      targets.push({email:b.email.trim(),name:b.name||''});
+    });
+    if(!targets.length)return{error:'Hakuna wateja wenye email.'};
+
+    let sent=0,failed=0;
+    const BATCH=10; // tuma 10 kwa wakati, subiri kidogo
+    for(let i=0;i<targets.length;i+=BATCH){
+      const chunk=targets.slice(i,i+BATCH);
+      const results=await Promise.allSettled(chunk.map(t=>
+        fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:t.email,subject:`✨ ${title}`,html:buildUpdateEmailHTML(title,body,t.name)})})
+        .then(r=>{if(!r.ok)throw new Error('fail');return true;})
+      ));
+      results.forEach(r=>r.status==='fulfilled'?sent++:failed++);
+      if(i+BATCH<targets.length)await new Promise(res=>setTimeout(res,1200)); // pumzika ili kuepuka rate limit
+    }
+    // Hifadhi kumbukumbu ya update (kama jedwali lipo)
+    try{await safeInsert('app_updates',{title,body,sent_count:sent,created_by:user?.id});}catch(_){}
+    return{ok:true,total:targets.length,sent,failed};
+  },[businesses,user]);
   const markRead=useCallback(async(nid)=>{await safeUpdate('notifications',{is_read:true},'id',nid);setNotifs(prev=>prev.map(n=>n.id===nid?{...n,is_read:true}:n))},[]);
   const markAllRead=useCallback(async()=>{for(const n of notifications.filter(n=>!n.is_read)){await safeUpdate('notifications',{is_read:true},'id',n.id)}setNotifs(prev=>prev.map(n=>({...n,is_read:true})))},[notifications]);
 
@@ -2523,7 +2585,7 @@ export function AppProvider({children}){
     // Tokens & Promo & Payments
     genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,systemExpenses,snippeCreatePayment,snippeCheckStatus,
     // Notifications
-    addNotif,broadcastNotif,markRead,markAllRead,
+    addNotif,broadcastNotif,broadcastUpdateEmail,markRead,markAllRead,
     // Settings & Admin
     updateSetting,suspendBiz,deleteBiz,updateBiz,exportAllData,
     quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,activityFeed,systemUsage,

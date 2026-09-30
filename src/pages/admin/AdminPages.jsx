@@ -1313,7 +1313,22 @@ function EmailTestSection(){
 }
 
 export function SettingsPage(){
-  const{settings,updateSetting}=useApp();
+  const{settings,updateSetting,broadcastUpdateEmail,businesses=[]}=useApp();
+  const[updTitle,setUpdTitle]=React.useState('');
+  const[updBody,setUpdBody]=React.useState('');
+  const[updSending,setUpdSending]=React.useState(false);
+  const[updResult,setUpdResult]=React.useState(null);
+  const emailCount=React.useMemo(()=>{const s=new Set();(businesses||[]).forEach(b=>{const e=(b.email||'').trim().toLowerCase();if(e)s.add(e);});return s.size;},[businesses]);
+  const sendUpdate=async()=>{
+    if(!updTitle.trim()||!updBody.trim())return alert('Weka kichwa na maelezo ya update.');
+    if(!window.confirm(`Tuma email hii kwa wateja ${emailCount}?`))return;
+    setUpdSending(true);setUpdResult(null);
+    const res=await broadcastUpdateEmail(updTitle.trim(),updBody.trim());
+    setUpdSending(false);
+    if(res.error){setUpdResult({error:res.error});return;}
+    setUpdResult(res);
+    setUpdTitle('');setUpdBody('');
+  };
   return <div style={{maxWidth:700}}>
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 16px'}}>Mipangilio ya Mfumo</h3>
@@ -1338,6 +1353,33 @@ export function SettingsPage(){
       <Input label="Ujumbe (weka tupu kuondoa)" value={settings.announcement||''} onChange={e=>updateSetting('announcement',e.target.value)} placeholder="Mf: Mfumo utafanyiwa matengenezo Jumamosi..."/>
       {settings.announcement&&<div style={{background:'#F0FDF4',borderRadius:8,padding:8,fontSize:12,color:'#15803D'}}>Preview: 📢 {settings.announcement}</div>}
     </div>
+
+    {/* ===== TUMA EMAIL YA UPDATE KWA WATEJA WOTE ===== */}
+    <div className="card" style={{marginBottom:16,border:'1.5px solid #BBF7D0'}}>
+      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 4px',color:'#0B7A3B'}}>✉️ Tuma Update kwa Wateja Wote</h3>
+      <p style={{fontSize:12,color:'#64748B',margin:'0 0 14px'}}>Andika taarifa ya feature mpya. Email nzuri itatumwa kwa wateja <b>{emailCount}</b> wenye email.</p>
+      <Input label="Kichwa cha Update *" value={updTitle} onChange={e=>setUpdTitle(e.target.value)} placeholder="Mf: Risiti Mpya ya Kitaalamu Imezinduliwa!"/>
+      <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Maelezo *</label>
+      <textarea value={updBody} onChange={e=>setUpdBody(e.target.value)} rows={6} placeholder={"Andika kilichoongezwa na jinsi kinavyofanya kazi.\n\nMf:\nSasa unaweza kuchapisha risiti ya kitaalamu ya 58mm/80mm.\nInaonyesha QR code, njia ya malipo, na hali ya deni.\nNenda Mauzo, uze, kisha bonyeza Chapisha."} style={{width:'100%',padding:'11px 13px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13.5,lineHeight:1.5,boxSizing:'border-box',outline:'none',fontFamily:'inherit',resize:'vertical',marginBottom:12}}/>
+
+      {(updTitle||updBody)&&<div style={{background:'#F8FAFC',border:'1px dashed #CBD5E1',borderRadius:10,padding:14,marginBottom:12}}>
+        <div style={{fontSize:10,color:'#94A3B8',fontWeight:700,marginBottom:8,letterSpacing:1}}>PREVIEW YA EMAIL</div>
+        <div style={{display:'inline-block',background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:16,marginBottom:8}}>✨ TAARIFA MPYA</div>
+        <div style={{fontSize:16,fontWeight:800,color:'#0B7A3B',marginBottom:6}}>{updTitle||'(Kichwa)'}</div>
+        <div style={{fontSize:13,color:'#475569',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{updBody||'(Maelezo)'}</div>
+      </div>}
+
+      {updResult&&(updResult.error
+        ?<div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:10,fontSize:12.5,color:'#B91C1C',marginBottom:12}}>⚠️ {updResult.error}</div>
+        :<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:10,fontSize:12.5,color:'#15803D',marginBottom:12}}>✅ Imetumwa kwa {updResult.sent}/{updResult.total} wateja.{updResult.failed>0?` (${updResult.failed} zimeshindwa)`:''}</div>
+      )}
+
+      <button onClick={sendUpdate} disabled={updSending||emailCount===0} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:updSending?'#86EFAC':'#0B7A3B',color:'#fff',fontWeight:800,fontSize:15,cursor:updSending?'not-allowed':'pointer',opacity:emailCount===0?0.6:1}}>
+        {updSending?'⏳ Inatuma email...':`✉️ Tuma kwa Wateja ${emailCount}`}
+      </button>
+      <div style={{fontSize:11,color:'#94A3B8',marginTop:8,textAlign:'center'}}>💡 Email zinatumwa kwa makundi ili zisilemewe. Subiri hadi ikamilike.</div>
+    </div>
+
     {/* WHITE LABEL */}
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🏷️ White Label</h3>
