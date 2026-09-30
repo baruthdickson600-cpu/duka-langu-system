@@ -1087,23 +1087,30 @@ export function AppProvider({children}){
   // BRANCH LOCK: Determines if current business can use multi-branch
   const canUseBranches=useMemo(()=>{
     if(user?.role==='admin')return true;
-    // ===== KWA SASA: Matawi yamefunguliwa kwa WOTE (bila kikomo) =====
-    // Ukitaka kurudisha kikomo cha plan baadaye, futa laini hii moja.
-    if(user?.role==='office')return true;
     if(!bizId)return false;
     const myBiz=businesses.find(b=>b.id===bizId)||biz;
-    // MUHIMU: Per-business branch_enabled INASHINDA global switch.
-    // Ukimwasha mteja mmoja, anabaki amewashwa hata kama global ni false.
-    // Njia 1: businesses table column branch_enabled (kipaumbele cha juu)
-    if(myBiz?.branch_enabled===true||myBiz?.branch_enabled==='true'||myBiz?.branch_enabled===1)return true;
-    // Njia 2: settings key branch_biz_<id> (admin toggle)
+
+    // ===== KIPAUMBELE CHA JUU: Admin akizima, INAZIMWA (mteja arudi kawaida) =====
+    // Admin toggle huweka 'false' waziwazi -> heshimu uamuzi huo.
+    if(settings[`branch_biz_${bizId}`]==='false')return false;
+    if(myBiz?.branch_enabled===false||myBiz?.branch_enabled==='false')return false;
+
+    // Admin akiwasha waziwazi -> washa
     if(settings[`branch_biz_${bizId}`]==='true')return true;
-    // Njia 3: kama biashara tayari ina matawi DB, ruhusu
+    if(myBiz?.branch_enabled===true||myBiz?.branch_enabled==='true'||myBiz?.branch_enabled===1)return true;
+
+    // ===== KWA SASA: matawi yamefunguliwa kwa wote kama default =====
+    // (Isipokuwa admin amezima waziwazi hapo juu.)
+    if(user?.role==='office')return true;
+
+    // Njia nyingine za zamani
     if(branches.some(b=>b.business_id===bizId))return true;
-    // Njia 4: Plan-based
     if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
     return false;
   },[user,settings,biz,bizId,businesses,branches]);
+
+  // Matawi yakizimwa, ondoa tawi lililokuwa limechaguliwa (mteja arudi kawaida)
+  useEffect(()=>{ if(!canUseBranches&&activeBranch)setActiveBranch(null); },[canUseBranches,activeBranch]);
 
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
