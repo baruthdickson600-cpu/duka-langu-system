@@ -1,7 +1,7 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
-import {supabase} from '../config/supabase';
+import {supabase,supabaseSignup} from '../config/supabase';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
@@ -1058,19 +1058,30 @@ export function AppProvider({children}){
   // ===== EMPLOYEES =====
   const addEmployee=useCallback(async(emp)=>{
     if(!bizId)return{error:'Biashara haijapatikana.'};
-    if(!emp.email||!emp.email.includes('@'))return{error:'Weka email sahihi.'};
+    const email=(emp.email||'').trim().toLowerCase();
+    if(!email||!email.includes('@'))return{error:'Weka email sahihi.'};
     if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
     try{
-      // Tumia service_role (admin API) ili mfanyakazi aundwe kwenye Auth vizuri
-      // na aweze kuingia MARA MOJA, bila kuvuruga session ya mmiliki.
-      const r=await fetch(API_BASE+'/api/admin/change-email',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'create_employee',emp_email:emp.email.trim().toLowerCase(),emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null}),
-      });
-      const d=await r.json().catch(()=>({}));
-      if(!d.success)return{error:d.error||'Imeshindwa kuunda mfanyakazi.'};
-      const newEmp=d.user||{id:genId(),email:emp.email,name:emp.name,phone:emp.phone,role:'employee',business_id:bizId,branch_id:emp.branch_id||null};
-      setEmps(prev=>[...prev.filter(e=>e.email!==newEmp.email),{...newEmp,created_at:nowISO()}]);
+      // Tumia client ya pili (isolated) ili session ya mmiliki ISIVURUGWE.
+      const{data:auth,error:authErr}=await supabaseSignup.auth.signUp({email,password:emp.password});
+      if(authErr){
+        const m=(authErr.message||'').toLowerCase();
+        if(m.includes('already')||m.includes('registered')||m.includes('exists'))
+          return{error:'Email hii tayari inatumika. Tumia email nyingine.'};
+        return{error:authErr.message||'Imeshindwa kuunda akaunti.'};
+      }
+      const uid=auth?.user?.id;
+      if(!uid)return{error:'Imeshindwa kuunda akaunti ya mfanyakazi.'};
+      // Weka users row (upsert ili kama ipo isasishwe)
+      const row={id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true};
+      const d=await safeInsert('users',row);
+      if(d&&d.__error){
+        // Jaribu update kama tayari ipo
+        await safeUpdate('users',row,'id',uid).catch(()=>{});
+      }
+      setEmps(prev=>[...prev.filter(e=>e.email!==email),{...row,created_at:nowISO()}]);
+      // Toa session ya muda ya client ya pili (usalama)
+      try{await supabaseSignup.auth.signOut()}catch(_){}
       return{ok:true};
     }catch(e){
       return{error:'Tatizo la mtandao. Jaribu tena.'};
@@ -1081,24 +1092,14 @@ export function AppProvider({children}){
     setEmps(prev=>prev.map(e=>e.id===eid?{...e,...updates}:e));
   },[]);
   const deleteEmployee=useCallback(async(eid)=>{
-    const emp=employees.find(e=>e.id===eid);
     // Ondoa kwenye orodha mara moja (UI)
     setEmps(prev=>prev.filter(e=>e.id!==eid));
-    try{
-      // Futa kabisa (Auth + users) kupitia service_role
-      const r=await fetch(API_BASE+'/api/admin/change-email',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'delete_employee',emp_id:eid,emp_email:emp?.email||null}),
-      });
-      const d=await r.json().catch(()=>({}));
-      if(!d.success){
-        // Fallback: soft delete kama API imeshindwa
-        await safeUpdate('users',{is_active:false},'id',eid);
-      }
-    }catch(e){
-      await safeUpdate('users',{is_active:false},'id',eid).catch(()=>{});
-    }
-  },[employees]);
+    // Soft delete: weka is_active=false. loadData inachuja hawa wasirudi.
+    const d=await safeUpdate('users',{is_active:false},'id',eid);
+    // Jaribu pia kufuta kabisa users row (kama RLS inaruhusu)
+    try{await supabase.from('users').delete().eq('id',eid).eq('role','employee')}catch(_){}
+    return d;
+  },[]);
 
   // ===== BRANCHES =====
   const addBranch=useCallback(async(name,location,extra={})=>{if(!bizId)return null;const branchCode='BR-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('branches',{business_id:bizId,name,location,address:extra.address||null,phone:extra.phone||null,branch_code:branchCode,is_active:extra.is_active!==false});const f=d||{id:genId(),business_id:bizId,name,location,...extra,branch_code:branchCode,is_active:extra.is_active!==false,created_at:nowISO()};setBranches(prev=>[...prev,f]);return f},[bizId]);

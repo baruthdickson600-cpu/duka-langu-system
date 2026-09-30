@@ -10,3 +10,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     detectSessionInUrl: false,
   },
 });
+
+// Client ya pili (isolated) — kwa kuunda akaunti za wafanyakazi kwa signUp
+// BILA kuvuruga session ya mmiliki (haihifadhi session).
+export const supabaseSignup = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+    storageKey: 'dl-signup-tmp',
+  },
+});
