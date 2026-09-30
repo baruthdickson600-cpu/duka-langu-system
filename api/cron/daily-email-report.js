@@ -13,9 +13,28 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_S
 const fmt = (n) => 'TZS ' + Math.round(n || 0).toLocaleString();
 
 // ===== HTML ya email =====
+const PAY_LABELS = { cash: 'Taslimu', mpesa: 'M-Pesa', airtel: 'Airtel', tigo: 'Tigo/Mixx', halopesa: 'HaloPesa', nmb: 'NMB', crdb: 'CRDB', mix: 'Mchanganyiko', credit: 'Deni' };
+const payLabel = (m) => PAY_LABELS[m] || m || 'Taslimu';
+
 function buildEmailHTML(biz, data) {
-  const { daily, weekly, monthly, lowStock, debts, subscription } = data;
+  const { daily, weekly, monthly, lowStock, debts, subscription, trendPct = 0, prevSales = 0, expenses = 0, netCash = 0, topItems = [], payMap = {} } = data;
   const green = '#0B7A3B';
+
+  // Salamu binafsi kulingana na utendaji
+  const hourGreeting = 'Habari za asubuhi';
+  let verdict, verdictColor, verdictEmoji;
+  if (daily.count === 0) { verdict = 'Jana hakukuwa na mauzo. Leo ni siku mpya — karibu tena!'; verdictColor = '#98A2B3'; verdictEmoji = '🌅'; }
+  else if (trendPct >= 10) { verdict = `Hongera! Mauzo yalipanda kwa ${trendPct}% ikilinganishwa na juzi.`; verdictColor = '#16A34A'; verdictEmoji = '📈'; }
+  else if (trendPct <= -10) { verdict = `Mauzo yalishuka kwa ${Math.abs(trendPct)}% ikilinganishwa na juzi. Leo tuboreshe!`; verdictColor = '#EA580C'; verdictEmoji = '📉'; }
+  else { verdict = 'Jana ilikuwa siku ya kawaida. Endelea vizuri!'; verdictColor = green; verdictEmoji = '📊'; }
+
+  // Ushauri wa siku (actionable)
+  const tips = [];
+  if (lowStock.length > 0) tips.push(`Agiza bidhaa ${lowStock.length} zinazoisha (mf. ${lowStock.slice(0,2).map(p=>p.name).join(', ')}).`);
+  if (debts.overdue > 0) tips.push(`Fuatilia wateja ${debts.overdue} waliochelewa kulipa deni.`);
+  if (subscription.days <= 7) tips.push(`Usajili wako unaisha baada ya siku ${subscription.days} — lipa mapema.`);
+  if (daily.count > 0 && daily.profit / (daily.sales || 1) < 0.1) tips.push('Faida ya jana ilikuwa ndogo — kagua bei za bidhaa.');
+  if (!tips.length) tips.push('Endelea na kazi nzuri! Kila kitu kinaenda sawa.');
 
   const card = (label, value, color = '#101828') => `
     <td style="padding:12px;background:#F9FAFB;border-radius:10px;text-align:center;">
@@ -59,6 +78,36 @@ function buildEmailHTML(biz, data) {
       ${subscription.days <= 7 ? `<div style="font-size:12.5px;color:#B42318;margin-top:6px;">⚠️ Usajili wako unaisha karibuni. Lipa: HALOPESA 25187616 (DUKALANGU)</div>` : ''}
     </div>`;
 
+  // Top sellers
+  const topBody = topItems.length
+    ? `<table width="100%" cellpadding="0" cellspacing="0">
+        ${topItems.map((it, i) => `
+          <tr>
+            <td style="padding:7px 0;border-bottom:1px solid #F9FAFB;font-size:13px;color:#344054;">${i + 1}. ${it.name}</td>
+            <td style="padding:7px 0;border-bottom:1px solid #F9FAFB;font-size:12px;color:#98A2B3;text-align:center;">${Math.round(it.qty)} pcs</td>
+            <td style="padding:7px 0;border-bottom:1px solid #F9FAFB;font-size:13px;color:${green};font-weight:700;text-align:right;">${fmt(it.revenue)}</td>
+          </tr>`).join('')}
+       </table>`
+    : `<div style="font-size:13px;color:#98A2B3;">Hakuna mauzo jana</div>`;
+
+  // Njia za malipo
+  const payEntries = Object.entries(payMap).sort((a, b) => b[1] - a[1]);
+  const payTotal = payEntries.reduce((a, [, v]) => a + v, 0) || 1;
+  const payBody = payEntries.length
+    ? `<table width="100%" cellpadding="0" cellspacing="0">
+        ${payEntries.map(([m, v]) => {
+          const pct = Math.round((v / payTotal) * 100);
+          return `<tr>
+            <td style="padding:5px 0;font-size:12.5px;color:#344054;width:90px;">${payLabel(m)}</td>
+            <td style="padding:5px 0;"><div style="background:#F2F4F7;border-radius:4px;height:8px;"><div style="background:${m==='credit'?'#EF4444':green};height:8px;border-radius:4px;width:${pct}%;"></div></div></td>
+            <td style="padding:5px 0;font-size:12px;color:#667085;text-align:right;width:80px;">${fmt(v)}</td>
+          </tr>`;
+        }).join('')}
+       </table>`
+    : `<div style="font-size:13px;color:#98A2B3;">—</div>`;
+
+  const tipBody = `<ul style="margin:0;padding-left:18px;">${tips.map(t => `<li style="font-size:13px;color:#344054;margin-bottom:5px;line-height:1.5;">${t}</li>`).join('')}</ul>`;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -79,6 +128,12 @@ function buildEmailHTML(biz, data) {
         <!-- Body -->
         <tr><td style="padding:22px;">
 
+          <!-- Salamu + Tathmini -->
+          <div style="background:${verdictColor}0F;border-left:4px solid ${verdictColor};border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+            <div style="font-size:15px;font-weight:800;color:#101828;margin-bottom:4px;">${verdictEmoji} ${hourGreeting}${biz.name ? ', ' + biz.name : ''}!</div>
+            <div style="font-size:13px;color:${verdictColor};font-weight:600;">${verdict}</div>
+          </div>
+
           ${section('📊 Mauzo ya Jana', `
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
@@ -86,7 +141,16 @@ function buildEmailHTML(biz, data) {
                 ${card('Faida', fmt(daily.profit), '#16A34A')}<td width="8"></td>
                 ${card('Miamala', daily.count, '#3B82F6')}
               </tr>
+              <tr><td colspan="5" height="8"></td></tr>
+              <tr>
+                ${card('Matumizi', fmt(expenses), '#EF4444')}<td width="8"></td>
+                ${card('Pesa Halisi', fmt(netCash), green)}<td width="8"></td>
+                ${card('Mwenendo', (trendPct >= 0 ? '▲ ' : '▼ ') + Math.abs(trendPct) + '%', trendPct >= 0 ? '#16A34A' : '#EF4444')}
+              </tr>
             </table>`)}
+
+          ${daily.count > 0 ? section('🏆 Bidhaa Zilizouzwa Zaidi', topBody) : ''}
+          ${daily.count > 0 ? section('💳 Njia za Malipo', payBody) : ''}
 
           ${weekly ? section('📅 Muhtasari wa Wiki', `
             <table width="100%" cellpadding="0" cellspacing="0">
@@ -107,6 +171,12 @@ function buildEmailHTML(biz, data) {
           ${section('📦 Bidhaa Zinazoisha', stockBody)}
           ${section('💰 Madeni', debtBody)}
           ${section('🔑 Hali ya Usajili', subBody)}
+
+          <!-- Ushauri wa Siku -->
+          <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+            <div style="font-size:14px;font-weight:800;color:#92400E;margin-bottom:8px;">💡 Ushauri wa Leo</div>
+            ${tipBody}
+          </div>
 
           <div style="text-align:center;margin-top:22px;">
             <a href="https://dukalangu.com" style="display:inline-block;padding:12px 28px;background:${green};color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">Fungua Mfumo</a>
@@ -168,9 +238,9 @@ export default async function handler(req, res) {
     for (const biz of businesses || []) {
       if (!biz.email || !biz.email.trim()) { results.skipped++; continue; }
 
-      // Mauzo ya jana
+      // Mauzo ya jana (na items + njia ya malipo kwa uchambuzi)
       const { data: dSales } = await supabase
-        .from('sales').select('total,profit')
+        .from('sales').select('total,profit,items,payment_method')
         .eq('business_id', biz.id)
         .gte('created_at', yStart.toISOString())
         .lte('created_at', yEnd.toISOString());
@@ -180,6 +250,44 @@ export default async function handler(req, res) {
         profit: (dSales || []).reduce((a, s) => a + (s.profit || 0), 0),
         count: (dSales || []).length,
       };
+
+      // Siku iliyotangulia jana (kwa ulinganisho wa mwenendo)
+      const dbStart = new Date(yStart); dbStart.setDate(dbStart.getDate() - 1);
+      const dbEnd = new Date(dbStart); dbEnd.setHours(23, 59, 59, 999);
+      const { data: dbSales } = await supabase
+        .from('sales').select('total')
+        .eq('business_id', biz.id)
+        .gte('created_at', dbStart.toISOString())
+        .lte('created_at', dbEnd.toISOString());
+      const prevSales = (dbSales || []).reduce((a, s) => a + (s.total || 0), 0);
+      const trendPct = prevSales > 0 ? Math.round(((daily.sales - prevSales) / prevSales) * 100) : (daily.sales > 0 ? 100 : 0);
+
+      // Matumizi ya jana
+      const { data: dExp } = await supabase
+        .from('expenses').select('amount')
+        .eq('business_id', biz.id)
+        .gte('created_at', yStart.toISOString())
+        .lte('created_at', yEnd.toISOString());
+      const expenses = (dExp || []).reduce((a, e) => a + (e.amount || 0), 0);
+      const netCash = Math.max(0, daily.sales - expenses);
+
+      // Bidhaa zilizouzwa zaidi jana (top sellers)
+      const itemMap = {};
+      (dSales || []).forEach(s => (s.items || []).forEach(it => {
+        const key = it.name || 'Bidhaa';
+        if (!itemMap[key]) itemMap[key] = { qty: 0, revenue: 0 };
+        const q = (it.qty || 0) * (it.fraction || 1);
+        itemMap[key].qty += q;
+        itemMap[key].revenue += (it.qty || 0) * (it.price || 0) * (it.fraction || 1);
+      }));
+      const topItems = Object.entries(itemMap).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+      // Njia za malipo (jana)
+      const payMap = {};
+      (dSales || []).forEach(s => {
+        const m = s.payment_method || 'cash';
+        payMap[m] = (payMap[m] || 0) + (s.total || 0);
+      });
 
       // Wiki (Jumatatu pekee)
       let weekly = null;
@@ -238,7 +346,7 @@ export default async function handler(req, res) {
       }
 
       // Tuma email
-      const html = buildEmailHTML(biz, { daily, weekly, monthly, lowStock, debts, subscription });
+      const html = buildEmailHTML(biz, { daily, weekly, monthly, lowStock, debts, subscription, trendPct, prevSales, expenses, netCash, topItems, payMap });
       const subject = `📊 Ripoti ya ${biz.name || 'Biashara'} — ${new Date().toLocaleDateString('sw', { day: 'numeric', month: 'short' })}`;
 
       try {
