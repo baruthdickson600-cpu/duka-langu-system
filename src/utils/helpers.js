@@ -57,6 +57,28 @@ export const exportToPDF = async (title, headers, rows, filename) => {
   doc.save(filename || 'report.pdf');
 };
 
+// Excel/CSV export (inafunguka kwenye Excel; ina BOM kwa herufi za Kiswahili)
+export const exportToCSV = (title, headers, rows, filename) => {
+  const esc = (v) => {
+    const s = (v == null ? '' : String(v));
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [];
+  if (title) lines.push(esc(title));
+  lines.push(headers.map(esc).join(','));
+  rows.forEach(r => lines.push(r.map(esc).join(',')));
+  const csv = '﻿' + lines.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'report.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
 // Receipt PDF
 export const exportReceiptPDF = async (sale, bizName, footer) => {
   const { default: jsPDF } = await import('jspdf');

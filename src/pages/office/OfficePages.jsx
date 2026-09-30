@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
-import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportReceiptPDF,shareWhatsApp,todayStr,payLabel} from '../../utils/helpers';
+import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel} from '../../utils/helpers';
 import {playSaleSuccess,playCreditSale,playError,unlockAudio} from '../../utils/sounds';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
@@ -113,7 +113,7 @@ function SubscriptionMiniBar(){
 }
 
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan}=useApp();
+  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan,orders=[],totalDebt=0,overdueTotal=0}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   
   // Filter sales by period
@@ -217,6 +217,17 @@ export function OfficeDash({onReceipt}){
   const bizTypeKey=biz?.business_type||'classic';
   const bizTypeCfg=BIZ_TYPE_CONFIG[bizTypeKey]||BIZ_TYPE_CONFIG.other;
 
+  // ===== KADI MPYA (KPIs za haraka) =====
+  // Oda zinazoendelea (pending + partial)
+  const activeOrders=(orders||[]).filter(o=>o.status==='pending'||o.status==='partial');
+  const activeOrdersValue=activeOrders.reduce((a,o)=>a+(o.remaining_amount||o.total||0),0);
+  // Wastani wa mauzo leo (cash tu)
+  const avgSaleToday=tCashSales.length?Math.round(tCashSales.reduce((a,s)=>a+(s.total||0),0)/tCashSales.length):0;
+  // Thamani ya stock iliyopo (bei ya kununua × idadi)
+  const stockValue=(products||[]).reduce((a,p)=>a+((p.buy_price||0)*(p.quantity||0)),0);
+  // Deni la wateja (jumla nje)
+  const outstandingDebt=totalDebt||0;
+
   return <div>
     {ann&&<div style={{background:settings.announcement_type==='warning'?'#FFF7ED':settings.announcement_type==='danger'?'#FEF2F2':'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,fontSize:13,fontWeight:600}}>📢 {ann}</div>}
     {!online&&<div style={{background:'#FEF3C7',borderRadius:10,padding:'8px 16px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚡ Offline Mode — mauzo yatahifadhiwa na kusawazishwa baadaye</div>}
@@ -247,7 +258,15 @@ export function OfficeDash({onReceipt}){
       {isOff&&<Stat icon={IC.dollar} label="Faida Mwezi" value={fm(mProfit-mExp)} color={mProfit-mExp>=0?'#F59E0B':'#EF4444'}/>}
       <Stat icon={IC.warn} label="Stock Alert" value={lowStockProducts.length} color="#EF4444" sub={lowMarginProducts.length>0?`${lowMarginProducts.length} margin ndogo`:''}/>
     </div>
-    
+
+    {/* ===== KADI MPYA: KPIs za haraka ===== */}
+    {isOff&&<div className="flex-wrap" style={{marginBottom:20}}>
+      <Stat icon={IC.file} label="📋 Oda Zinazoendelea" value={activeOrders.length} color="#F59E0B" sub={activeOrders.length>0?`Inabaki: ${fm(activeOrdersValue)}`:'Hakuna oda'}/>
+      <Stat icon={IC.warn} label="⏳ Deni Nje (Wateja)" value={fm(outstandingDebt)} color="#EF4444" sub={overdueTotal>0?`${fm(overdueTotal)} limechelewa`:'Hakuna lililochelewa'}/>
+      <Stat icon={IC.cart} label="💰 Wastani wa Mauzo (Leo)" value={fm(avgSaleToday)} color="#3B82F6" sub={`${tCashSales.length} mauzo leo`}/>
+      <Stat icon={IC.box||IC.chart} label="📦 Thamani ya Stock" value={fm(stockValue)} color="#8B5CF6" sub={`${products.length} bidhaa`}/>
+    </div>}
+
     {/* Credit Sales Info Banner */}
     {isOff&&tCreditSales.length>0&&<div style={{
       background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
@@ -1118,11 +1137,42 @@ export function ReportsPage({onReceipt}){
   // Period label
   const periodLabel=tab==='day'?'Leo':tab==='week'?'Wiki Hii':tab==='month'?'Mwezi Huu':tab==='custom'?`${customFrom} → ${customTo}`:tab==='history'?'Mahesabu ya Nyuma':'';
   
-  // Export
+  // Export PDF
   const doExport=()=>{
-    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);
+    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',payLabel(s.payment_method),s.total.toLocaleString()]);
     exportToPDF(`Ripoti — ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`ripoti-${tab}-${Date.now()}.pdf`);
   };
+
+  // Export Excel (CSV) — mauzo ya kipindi
+  const doExportExcel=()=>{
+    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>`${i.name} x${i.qty}`).join('; '),s.seller_name||'-',payLabel(s.payment_method),Math.round(s.total||0),Math.round(s.profit||0)]);
+    rows.push(['','','','JUMLA',Math.round(grossTotal),Math.round(grossProfit)]);
+    exportToCSV(`Ripoti ya Mauzo - ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla (TZS)','Faida (TZS)'],rows,`ripoti-${tab}-${Date.now()}.csv`);
+  };
+
+  // Export Excel (CSV) — bidhaa zilizouzwa
+  const exportProductsExcel=()=>{
+    const rows=productsSold.map((p,i)=>[i+1,p.name,p.category,p.netSold.toFixed(1),p.unit,Math.round(p.revenue),Math.round(p.profit),p.stockRemaining.toFixed(1),p.stockRemaining<=0?'Hakuna':p.stockRemaining<=p.minStock?'Ndogo':'Sawa']);
+    const totalQty=productsSold.reduce((s,p)=>s+p.netSold,0);
+    const totalRev=productsSold.reduce((s,p)=>s+p.revenue,0);
+    const totalProf=productsSold.reduce((s,p)=>s+p.profit,0);
+    rows.push(['','JUMLA','',totalQty.toFixed(1),'',Math.round(totalRev),Math.round(totalProf),'','']);
+    exportToCSV(`Bidhaa Zilizouzwa - ${periodLabel}`,['#','Bidhaa','Aina','Zilizouzwa','Kipimo','Mapato (TZS)','Faida (TZS)','Stock Iliyobaki','Hali'],rows,`bidhaa-${tab}-${Date.now()}.csv`);
+  };
+
+  // ===== Mchanganuo wa njia za malipo (kipindi) =====
+  const payBreakdown=React.useMemo(()=>{
+    const map={};
+    fSales.forEach(s=>{const m=s.payment_method||'cash';if(!map[m])map[m]={method:m,total:0,count:0};map[m].total+=s.total||0;map[m].count++;});
+    return Object.values(map).sort((a,b)=>b.total-a.total);
+  },[fSales]);
+
+  // ===== Mwenendo wa mauzo kwa siku (kipindi) =====
+  const trendData=React.useMemo(()=>{
+    const map={};
+    fSales.forEach(s=>{const d=s.created_at?.slice(0,10);if(!d)return;if(!map[d])map[d]=0;map[d]+=s.total||0;});
+    return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,total])=>({day:d.slice(5),total}));
+  },[fSales]);
   
   // Export monthly statement
   const exportMonthlyStatement=(month)=>{
@@ -1362,13 +1412,36 @@ export function ReportsPage({onReceipt}){
         </div>
       </div>
     </div>}
-    <div style={{marginBottom:12}}><Btn v="outline" onClick={doExport}>{IC.dl} PDF</Btn></div>
-    
+    {/* ===== MWENENDO WA MAUZO + NJIA ZA MALIPO ===== */}
+    {tab!=='history'&&fSales.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12,marginBottom:14}}>
+      {trendData.length>1&&<div className="card">
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#0B7A3B'}}>📈 Mwenendo wa Mauzo</h3>
+        <ResponsiveContainer width="100%" height={170}><BarChart data={trendData}><XAxis dataKey="day" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}} width={44}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="total" fill="#0B7A3B" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer>
+      </div>}
+      {payBreakdown.length>0&&<div className="card">
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#0B7A3B'}}>💳 Njia za Malipo</h3>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {payBreakdown.map(p=>{const pct=grossTotal>0?Math.round(p.total/grossTotal*100):0;return <div key={p.method}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12.5,marginBottom:3}}><span style={{fontWeight:600,color:'#475569'}}>{payLabel(p.method)} <span style={{color:'#94A3B8',fontSize:11}}>({p.count})</span></span><b style={{color:'#0B7A3B'}}>{fm(p.total)}</b></div>
+            <div style={{height:7,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',width:`${pct}%`,background:p.method==='credit'?'#EF4444':'linear-gradient(90deg,#0B7A3B,#22C55E)',borderRadius:4}}/></div>
+          </div>;})}
+        </div>
+      </div>}
+    </div>}
+
+    <div style={{marginBottom:12,display:'flex',gap:8,flexWrap:'wrap'}}>
+      <Btn v="outline" onClick={doExport}>{IC.dl} PDF</Btn>
+      <button onClick={doExportExcel} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer'}}>📊 Pakua Excel</button>
+    </div>
+
     {/* ===== BIDHAA ZILIZOUZWA — Complete List with Stock ===== */}
     {productsSold.length>0&&<div className="card" style={{marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>📦 Bidhaa Zilizouzwa ({productsSold.length})</h3>
-        <button onClick={exportProductsList} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 Pakua PDF</button>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          <button onClick={exportProductsList} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 PDF</button>
+          <button onClick={exportProductsExcel} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
+        </div>
       </div>
       
       {/* Quick stats */}
