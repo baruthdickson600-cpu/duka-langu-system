@@ -366,7 +366,7 @@ export function SalesPage({onDone}){
   const{products,completeSale,creditSale,customers,addCustomer,user,currency,activeBranch,hasWholesale,canUseBranches,createOrder}=useApp();
   const empNoBranch=user?.role==='employee'&&canUseBranches&&!user?.branch_id;
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
-  const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');
+  const[search,setSearch]=useState('');const[cart,setCart]=useState([]);const[discount,setDiscount]=useState(0);const[payMethod,setPayMethod]=useState('cash');const[cashAmt,setCashAmt]=useState('');const[mobileAmt,setMobileAmt]=useState('');const[custName,setCustName]=useState('');const[cashRecv,setCashRecv]=useState('');
   const[custId,setCustId]=useState('');const[newCustModal,setNewCustModal]=useState(false);const[newCustName,setNewCustName]=useState('');const[newCustPhone,setNewCustPhone]=useState('');
   const[processing,setProcessing]=useState(false);
   const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);const total=Math.max(0,subtotal-discount);
@@ -432,12 +432,14 @@ export function SalesPage({onDone}){
       }else{
         let pd=null;if(payMethod==='mix')pd={cash:+cashAmt||0,mobile:+mobileAmt||0};
         sale=await completeSale(cart,discount,payMethod,pd,custId||null,custName);
+        // Ambatanisha pesa iliyopokelewa (taslimu) ili risiti ionyeshe chenji
+        if(sale&&payMethod==='cash'&&+cashRecv>0){sale={...sale,cash_received:+cashRecv};}
       }
       if(sale){
         playSaleSuccess(); // 🔊 Sauti ya mafanikio
         onDone?.(sale);
       }
-      setCart([]);setDiscount(0);setCashAmt('');setMobileAmt('');setCustName('');setCustId('');
+      setCart([]);setDiscount(0);setCashAmt('');setMobileAmt('');setCustName('');setCustId('');setCashRecv('');
     }catch(e){console.error('Sale error:',e);playError();}
     finally{setProcessing(false)}
   };
@@ -453,7 +455,7 @@ export function SalesPage({onDone}){
   return <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
     <div className="card">
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 10px'}}>Chagua Bidhaa</h3>
-      <input placeholder="🔍 Tafuta..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:10,outline:'none',boxSizing:'border-box',background:'#F8FAFC'}}/>
+      <input placeholder="🔍 Tafuta au scan barcode... (bonyeza Enter kuongeza)" value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!processing){const first=avail[0];if(first){addToCart(first,false);setSearch('');}}}} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:10,outline:'none',boxSizing:'border-box',background:'#F8FAFC'}}/>
       <div style={{maxHeight:450,overflowY:'auto'}}>{avail.map(p=><div key={p.id} style={{padding:'10px 12px',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,borderRadius:8,opacity:processing?0.5:1}}>
         <span style={{fontSize:28,cursor:processing?'not-allowed':'pointer'}} onClick={()=>!processing&&addToCart(p,false)}>{p.image||'📦'}</span>
         <div style={{flex:1,cursor:processing?'not-allowed':'pointer'}} onClick={()=>!processing&&addToCart(p,false)}>
@@ -497,7 +499,7 @@ export function SalesPage({onDone}){
           <div style={{display:'flex',alignItems:'center',gap:8}}>
             <div style={{display:'flex',alignItems:'center',gap:4}}>
               <button disabled={processing} onClick={()=>{if(c.qty<=1)setCart(cart.filter((_,j)=>j!==i));else setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty-1}:x))}} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'4px 10px',fontWeight:700,fontSize:14,cursor:'pointer'}}>−</button>
-              <span style={{fontWeight:700,minWidth:24,textAlign:'center',fontSize:13}}>{c.qty}</span>
+              <input type="number" disabled={processing} value={c.qty} onChange={e=>{let v=parseInt(e.target.value)||0;const pr=products.find(p=>p.id===c.productId);if(pr&&v>pr.quantity){v=pr.quantity;alert('Stock haitoshi! Kiwango cha juu: '+pr.quantity);}if(v<0)v=0;setCart(cart.map((x,j)=>j===i?{...x,qty:v}:x))}} style={{fontWeight:700,width:44,textAlign:'center',fontSize:13,border:'1.5px solid #E2E8F0',borderRadius:6,padding:'3px 2px',outline:'none'}}/>
               <button disabled={processing} onClick={()=>{const pr=products.find(p=>p.id===c.productId);if(pr&&c.qty>=pr.quantity)return alert('Stock haitoshi!');setCart(cart.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}} style={{background:'#F0FDF4',border:'none',borderRadius:6,padding:'4px 10px',color:'#0B7A3B',fontWeight:700,fontSize:14,cursor:'pointer'}}>+</button>
             </div>
             <div style={{flex:1,fontSize:10,color:'#94A3B8',textAlign:'center'}}>
@@ -535,6 +537,21 @@ export function SalesPage({onDone}){
         </div>
 
         {payMethod==='mix'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}><Input label="Taslimu" type="number" value={cashAmt} onChange={e=>setCashAmt(e.target.value)}/><Input label="M-Pesa" type="number" value={mobileAmt} onChange={e=>setMobileAmt(e.target.value)}/></div>}
+
+        {/* Pesa iliyopokelewa + Chenji (taslimu tu) */}
+        {payMethod==='cash'&&<div style={{background:'#F0FDF4',borderRadius:10,padding:10,marginBottom:8,border:'1px solid #BBF7D0'}}>
+          <label style={{display:'block',fontSize:12,fontWeight:700,color:'#0B7A3B',marginBottom:6}}>💵 Pesa Aliyotoa Mteja</label>
+          <input type="number" value={cashRecv} onChange={e=>setCashRecv(e.target.value)} placeholder={`Mf: ${total}`} style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1.5px solid #86EFAC',fontSize:16,fontWeight:700,boxSizing:'border-box',outline:'none',marginBottom:6}}/>
+          <div style={{display:'flex',gap:5,marginBottom:cashRecv?6:0,flexWrap:'wrap'}}>
+            {[total,Math.ceil(total/1000)*1000,Math.ceil(total/5000)*5000,Math.ceil(total/10000)*10000].filter((v,i,a)=>v>0&&a.indexOf(v)===i).slice(0,4).map(v=>
+              <button key={v} onClick={()=>setCashRecv(String(v))} style={{flex:1,padding:'6px 0',borderRadius:8,border:'1px solid #BBF7D0',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:11.5,cursor:'pointer',whiteSpace:'nowrap'}}>{fm(v)}</button>
+            )}
+          </div>
+          {cashRecv!==''&&+cashRecv>0&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:14,fontWeight:800,paddingTop:6,borderTop:'1px dashed #86EFAC',color:+cashRecv>=total?'#0B7A3B':'#EF4444'}}>
+            <span>{+cashRecv>=total?'💰 Chenji':'⚠️ Pungufu'}</span>
+            <span>{fm(Math.abs(+cashRecv-total))}</span>
+          </div>}
+        </div>}
         
         {/* Credit/Deni - Customer Selection */}
         {payMethod==='credit'?<div style={{background:'#FEF2F2',borderRadius:10,padding:10,marginBottom:8,border:'1px solid #FECACA'}}>
