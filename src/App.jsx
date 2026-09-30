@@ -150,7 +150,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
+  const{user,restoring,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -208,6 +208,15 @@ export default function App(){
 
   // If user is logged in, skip landing
   if(user&&showLanding)setShowLanding(false);
+
+  // Wakati wa kurudisha session (refresh) — onyesha loader, usiruke kwenye login
+  if(restoring&&!user){
+    return <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#F8FAFC',gap:16}}>
+      <div style={{width:44,height:44,border:'4px solid #E2E8F0',borderTop:'4px solid #0B7A3B',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></div>
+      <div style={{fontSize:14,color:'#64748B',fontWeight:600}}>Inapakia DukaLangu...</div>
+      <style>{`@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}`}</style>
+    </div>;
+  }
 
   if(showLanding&&!user){
     return <LandingPage 

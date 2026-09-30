@@ -35,6 +35,7 @@ const sendSMS=(to,message)=>{
 export function AppProvider({children}){
   const[user,setUser]=useState(null);
   const[loading,setLoading]=useState(false);
+  const[restoring,setRestoring]=useState(true); // Wakati wa kurudisha session mwanzoni
   const[online,setOnline]=useState(navigator.onLine);
   const[pendingSyncCount,setPendingSyncCount]=useState(0);
   const[lang,setLang]=useState('sw');
@@ -79,6 +80,68 @@ export function AppProvider({children}){
     getPendingCount().then(c=>setPendingSyncCount(c)).catch(()=>{});
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)};
   },[]);
+
+  // ============================================================
+  // SESSION: Baki umeingia hata ukirefresh; jitoe tu baada ya
+  // saa 2 za kutokutumia (si kila unaporefresh).
+  // ============================================================
+  const ACTIVITY_KEY='dl_last_activity';
+  const INACTIVITY_MS=2*60*60*1000; // saa 2
+  const markActivity=useCallback(()=>{try{localStorage.setItem(ACTIVITY_KEY,String(Date.now()))}catch(_){}},[]);
+
+  // Rudisha session mwanzoni (page load / refresh / PWA relaunch)
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        // Angalia kama muda wa kutokutumia umezidi saa 2
+        let last=0;try{last=+localStorage.getItem(ACTIVITY_KEY)||0}catch(_){}
+        if(last&&(Date.now()-last)>INACTIVITY_MS){
+          try{await supabase.auth.signOut()}catch(_){}
+          try{localStorage.removeItem(ACTIVITY_KEY)}catch(_){}
+          if(!cancelled)setRestoring(false);
+          return;
+        }
+        // Kuna session ya Supabase iliyohifadhiwa?
+        const{data:{session}}=await supabase.auth.getSession();
+        if(session?.user?.email){
+          const email=session.user.email;
+          const{data:uData}=await supabase.from('users').select('*').eq('email',email).single();
+          if(uData&&uData.is_active!==false){
+            const role=email===ADMIN_EMAIL?'admin':(uData.role||'office');
+            if(!cancelled){
+              setUser({...uData,role});
+              if(uData.role==='employee'&&uData.branch_id)setActiveBranch(uData.branch_id);
+            }
+            await loadData(uData.id,role,role==='admin'?null:uData.business_id);
+            markActivity();
+          }
+        }
+      }catch(e){console.warn('[restore session]',e?.message||e);}
+      finally{if(!cancelled)setRestoring(false);}
+    })();
+    return()=>{cancelled=true;};
+  },[]); // eslint-disable-line
+
+  // Fuatilia shughuli za mtumiaji ili kuweka upya muda wa saa 2
+  useEffect(()=>{
+    if(!user)return;
+    markActivity();
+    const evs=['click','keydown','mousemove','touchstart','scroll'];
+    let t=0;
+    const handler=()=>{const now=Date.now();if(now-t>30000){t=now;markActivity();}}; // throttle 30s
+    evs.forEach(ev=>window.addEventListener(ev,handler,{passive:true}));
+    // Ukirudi kwenye tab, kagua kama saa 2 zimepita
+    const onVis=()=>{
+      if(document.visibilityState==='visible'){
+        let last=0;try{last=+localStorage.getItem(ACTIVITY_KEY)||0}catch(_){}
+        if(last&&(Date.now()-last)>INACTIVITY_MS){logout();}
+        else markActivity();
+      }
+    };
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{evs.forEach(ev=>window.removeEventListener(ev,handler));document.removeEventListener('visibilitychange',onVis);};
+  },[user]); // eslint-disable-line
 
   // ===== LOAD DATA =====
   const loadData=useCallback(async(uid,role,bid)=>{
@@ -282,13 +345,14 @@ export function AppProvider({children}){
         setUser({id:data.user.id,email,name:email.split('@')[0],role});
         await loadData(data.user.id,role,null);
       }
+      markActivity(); // Anzisha muda wa session (saa 2)
       setLoading(false);
       return null;
     }catch(e){
       setLoading(false);
       return'Hakuna mtandao.';
     }
-  },[loadData]);
+  },[loadData,markActivity]);
 
   const signup=useCallback(async(name,email,password,businessName,phone,promoCode,businessType='retail')=>{
     setLoading(true);
@@ -433,6 +497,7 @@ export function AppProvider({children}){
   const logout=useCallback(async()=>{
     if(user)try{await supabase.from('login_logs').insert({user_id:user.id,email:user.email,action:'logout'})}catch(_){}
     try{await supabase.auth.signOut()}catch(e){}
+    try{localStorage.removeItem(ACTIVITY_KEY)}catch(_){}
     setUser(null);setProds([]);setSales([]);setExp([]);setCust([]);setEmps([]);setPopups([]);setTickets([]);setReturns([]);setBranches([]);setActiveBranch(null);
   },[user]);
 
@@ -2430,7 +2495,7 @@ export function AppProvider({children}){
   const myNotifs=user?.role==='admin'||user?.role==='marketing'?notifications.filter(n=>n.target_type==='admin'||n.target_type==='broadcast'||n.target_type==='marketing'):notifications.filter(n=>(n.target_type==='business'&&n.target_id===bizId)||n.target_type==='broadcast');
 
   return <Ctx.Provider value={{
-    user,loading,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
+    user,loading,restoring,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
     branches,activeBranch,setActiveBranch,
     // Branch-aware: pages zinapata data ya branch iliyochaguliwa (au zote kama hakuna)
     products:canUseBranches&&activeBranch?branchProducts:products,

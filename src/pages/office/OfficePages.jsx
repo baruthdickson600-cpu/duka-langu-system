@@ -2328,9 +2328,28 @@ export function NotifsPage(){
 export function BranchesPage(){
   const{getBranches,addBranch,updateBranch,deleteBranch,activeBranch,setActiveBranch,products,sales,expenses,currency,maxBranches,biz}=useApp();
   const myBranches=getBranches();const fm=n=>fmtMoney(n,currency||'TZS');const[modal,setModal]=useState(false);const[editModal,setEditModal]=useState({open:false,branch:null});const[f,setF]=useState({name:'',region:'',district:'',address:'',phone:'',is_active:true});
-  const branchStats=bid=>{const bp=products.filter(p=>p.branch_id===bid);const bs=sales.filter(s=>s.branch_id===bid);const totalSales=bs.reduce((a,s)=>a+s.total,0);return{products:bp.length,sales:bs.length,totalSales}};
+  const branchStats=bid=>{const bp=products.filter(p=>p.branch_id===bid);const bs=sales.filter(s=>s.branch_id===bid);const totalSales=bs.reduce((a,s)=>a+s.total,0);const profit=bs.reduce((a,s)=>a+(s.profit||0),0);const stockValue=bp.reduce((a,p)=>a+((p.buy_price||0)*(p.quantity||0)),0);return{products:bp.length,sales:bs.length,totalSales,profit,stockValue}};
   const canAddMore=myBranches.length<maxBranches;
+  // Muhtasari wa matawi yote
+  const summary=React.useMemo(()=>{
+    let totalRev=0,activeCount=0,best=null,bestRev=-1;
+    myBranches.forEach(b=>{const st=branchStats(b.id);totalRev+=st.totalSales;if(b.is_active!==false)activeCount++;if(st.totalSales>bestRev){bestRev=st.totalSales;best=b;}});
+    return{totalRev,activeCount,best,bestRev:Math.max(0,bestRev)};
+  },[myBranches,sales,products]);
   return <div>
+    {/* HEADER */}
+    <div style={{marginBottom:14}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🏪 Usimamizi wa Matawi</h2>
+      <p style={{fontSize:12,color:'#64748B',margin:0}}>Ongeza, hariri, na linganisha utendaji wa kila tawi.</p>
+    </div>
+
+    {/* SUMMARY BAR */}
+    {myBranches.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:14}}>
+      <div className="card" style={{padding:14}}><div style={{fontSize:11,color:'#94A3B8',fontWeight:700,marginBottom:5}}>🏪 Jumla ya Matawi</div><div style={{fontSize:19,fontWeight:900,color:'#0B7A3B'}}>{myBranches.length}<span style={{fontSize:12,color:'#22C55E',fontWeight:600}}> ({summary.activeCount} hai)</span></div></div>
+      <div className="card" style={{padding:14}}><div style={{fontSize:11,color:'#94A3B8',fontWeight:700,marginBottom:5}}>💰 Mapato Yote</div><div style={{fontSize:19,fontWeight:900,color:'#3B82F6'}}>{fm(summary.totalRev)}</div></div>
+      <div className="card" style={{padding:14}}><div style={{fontSize:11,color:'#94A3B8',fontWeight:700,marginBottom:5}}>🏆 Tawi Bora</div><div style={{fontSize:15,fontWeight:900,color:'#F59E0B'}}>{summary.best?.name||'-'}</div><div style={{fontSize:10,color:'#94A3B8'}}>{fm(summary.bestRev)}</div></div>
+    </div>}
+
     {/* Plan info */}
     <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:'10px 16px',marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
       <div style={{fontSize:13,color:'#15803D'}}>
@@ -2352,11 +2371,13 @@ export function BranchesPage(){
           <div style={{display:'flex',gap:4}}><button onClick={()=>setEditModal({open:true,branch:{...b}})} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:4,cursor:'pointer'}}>{IC.gear}</button><button onClick={()=>window.confirm('Futa?')&&deleteBranch(b.id)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:4,color:'#EF4444',cursor:'pointer'}}>{IC.del}</button></div>
         </div>
         {b.branch_code&&<div style={{fontSize:10,color:'#94A3B8',marginBottom:8}}>Nambari: <b style={{color:'#64748B'}}>{b.branch_code}</b> • {b.is_active!==false?<span style={{color:'#22C55E'}}>● Inafanya kazi</span>:<span style={{color:'#94A3B8'}}>⏸ Imesimamishwa</span>}</div>}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
           <div style={{background:'#F8FAFC',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Bidhaa</div><div style={{fontWeight:800,fontSize:16}}>{st.products}</div></div>
           <div style={{background:'#F8FAFC',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Mauzo</div><div style={{fontWeight:800,fontSize:16}}>{st.sales}</div></div>
-          <div style={{background:'#F0FDF4',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Mapato</div><div style={{fontWeight:800,fontSize:14,color:'#0B7A3B'}}>{fm(st.totalSales)}</div></div>
+          <div style={{background:'#F0FDF4',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Mapato</div><div style={{fontWeight:800,fontSize:13,color:'#0B7A3B'}}>{fm(st.totalSales)}</div></div>
+          <div style={{background:'#EFF6FF',borderRadius:6,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Faida</div><div style={{fontWeight:800,fontSize:13,color:'#3B82F6'}}>{fm(st.profit)}</div></div>
         </div>
+        <div style={{fontSize:10,color:'#94A3B8',marginTop:6,textAlign:'center'}}>📦 Thamani ya stock: <b style={{color:'#64748B'}}>{fm(st.stockValue)}</b></div>
         <button onClick={()=>setActiveBranch(activeBranch===b.id?null:b.id)} style={{width:'100%',marginTop:8,padding:'7px 0',borderRadius:8,border:'none',background:activeBranch===b.id?'#0B7A3B':'#F1F5F9',color:activeBranch===b.id?'#fff':'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>{activeBranch===b.id?'Limechaguliwa ✓':'Chagua'}</button>
       </div>})}
     </div>
