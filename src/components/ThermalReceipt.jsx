@@ -54,7 +54,7 @@ export default function ThermalReceipt({sale,onClose}){
 
   const statusColor=data.status==='PAID'?'#16A34A':data.status==='PARTIAL'?'#3B82F6':'#EF4444';
 
-  return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2147483000,padding:'12px'}} onClick={onClose}>
+  return <div id="dl-receipt-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2147483000,padding:'12px'}} onClick={onClose}>
     <style>{PRINT_CSS}</style>
     <div onClick={e=>e.stopPropagation()} style={{maxWidth:440,width:'100%',maxHeight:'calc(100vh - 24px)',display:'flex',flexDirection:'column',borderRadius:16,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.35)'}}>
 
@@ -221,13 +221,33 @@ const PRINT_CSS=`
 #thermal-receipt{position:relative;}
 
 @media print{
+  /* Ficha kila kitu kwa visibility (ancestors zinabaki ili risiti ionekane) */
   body *{visibility:hidden !important;}
   #thermal-receipt,#thermal-receipt *{visibility:visible !important;}
-  #thermal-receipt{position:absolute;left:0;top:0;margin:0;padding:6px 4px;box-shadow:none;width:100% !important;max-width:80mm;}
+
+  /* Neutralize overlay: iwe static, isiwe na background wala centering */
+  #dl-receipt-overlay{position:static !important;inset:auto !important;background:#fff !important;display:block !important;padding:0 !important;margin:0 !important;overflow:visible !important;z-index:auto !important;}
+  #dl-receipt-overlay>div{position:static !important;max-width:none !important;width:auto !important;max-height:none !important;box-shadow:none !important;border-radius:0 !important;display:block !important;overflow:visible !important;}
+  .receipt-scroll{max-height:none !important;overflow:visible !important;background:#fff !important;padding:0 !important;flex:none !important;}
   .no-print{display:none !important;}
-  .receipt-58{max-width:58mm;font-size:10px;}
-  .receipt-80{max-width:80mm;font-size:11px;}
-  .r-item,.r-total-row,.r-credit-box{page-break-inside:avoid;}
-  @page{margin:0;}
+
+  /* Weka risiti juu-kushoto ya ukurasa */
+  #thermal-receipt{position:absolute !important;left:0 !important;top:0 !important;margin:0 !important;padding:4px !important;box-shadow:none !important;}
+
+  /* Rangi NYEUSI kabisa + mistari imara ionekane kwenye printer yoyote */
+  #thermal-receipt,#thermal-receipt *{
+    color:#000 !important;
+    -webkit-print-color-adjust:exact !important;
+    print-color-adjust:exact !important;
+  }
+  .receipt-80{width:74mm !important;font-size:12px !important;}
+  .receipt-58{width:54mm !important;font-size:11px !important;}
+  .r-sm,.c-qty,.r-row span:first-child,.r-powered{color:#000 !important;}
+  .r-divider{border-top:1px dashed #000 !important;}
+  .r-double{border-top:2px solid #000 !important;}
+  .r-dotted{border-top:1px dotted #000 !important;}
+  .r-item{border-bottom:1px dotted #000 !important;}
+  .r-item,.r-total-row,.r-credit-box,.r-status{page-break-inside:avoid !important;}
+  @page{margin:5mm;}
 }
 `;

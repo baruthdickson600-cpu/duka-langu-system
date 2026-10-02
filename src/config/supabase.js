@@ -7,7 +7,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true, // Kushika redirect ya Google OAuth
+    flowType: 'pkce',
   },
 });
 

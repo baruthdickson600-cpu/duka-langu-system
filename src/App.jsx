@@ -150,7 +150,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,restoring,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
+  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -218,8 +218,13 @@ export default function App(){
     </div>;
   }
 
+  // Google user mpya — kamilisha usajili wa biashara
+  if(needsOnboarding&&!user){
+    return <GoogleOnboarding info={needsOnboarding} onComplete={completeGoogleSignup} onCancel={cancelOnboarding}/>;
+  }
+
   if(showLanding&&!user){
-    return <LandingPage 
+    return <LandingPage
       onLogin={()=>setShowLanding(false)}
       onSignup={()=>{setShowLanding(false);window.history.pushState({},'','/?signup=1')}}
       onDemo={()=>{setShowLanding(false);window.history.pushState({},'','/?demo=1')}}
@@ -553,4 +558,44 @@ export function PlanGate({feature, children, fallback}){
       </button>
     </div>
   );
+}
+
+// ===== GOOGLE ONBOARDING — kamilisha biashara baada ya Google login =====
+function GoogleOnboarding({info,onComplete,onCancel}){
+  const[business,setBusiness]=React.useState('');
+  const[phone,setPhone]=React.useState('');
+  const[type,setType]=React.useState('retail');
+  const[busy,setBusy]=React.useState(false);
+  const[err,setErr]=React.useState('');
+  const TYPES=[
+    {v:'retail',l:'🏪 Rejareja'},{v:'wholesale',l:'📦 Jumla'},{v:'pharmacy',l:'💊 Famasi'},
+    {v:'hardware',l:'🔩 Vifaa'},{v:'electronics',l:'💻 Elektroniki'},{v:'fashion',l:'👗 Nguo'},
+    {v:'restaurant',l:'🍽️ Mgahawa'},{v:'agrovet',l:'🌱 Kilimo'},{v:'other',l:'📋 Nyingine'},
+  ];
+  const submit=async()=>{
+    if(!business.trim()){setErr('Weka jina la biashara!');return;}
+    setBusy(true);setErr('');
+    const res=await onComplete(business.trim(),phone.trim(),type);
+    if(res&&res.error){setErr(res.error);setBusy(false);}
+  };
+  return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#064E2B,#0B7A3B)',padding:16}}>
+    <div style={{background:'#fff',borderRadius:20,padding:28,maxWidth:440,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
+      <div style={{textAlign:'center',marginBottom:20}}>
+        <div style={{fontSize:32,marginBottom:6}}>🎉</div>
+        <h2 style={{fontSize:20,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>Karibu DukaLangu!</h2>
+        <p style={{fontSize:13,color:'#64748B',margin:0}}>Umeingia kama <b>{info?.email}</b>. Kamilisha taarifa za biashara yako.</p>
+      </div>
+      {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444'}}>⚠️ {err}</div>}
+      <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Jina la Biashara *</label>
+      <input value={business} onChange={e=>setBusiness(e.target.value)} placeholder="Mf: Duka la Rehema" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
+      <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Simu / WhatsApp</label>
+      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXX" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
+      <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Aina ya Biashara</label>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:18}}>
+        {TYPES.map(t=><button key={t.v} onClick={()=>setType(t.v)} style={{padding:'9px 4px',borderRadius:9,border:type===t.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:type===t.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:type===t.v?'#0B7A3B':'#64748B',cursor:'pointer'}}>{t.l}</button>)}
+      </div>
+      <button onClick={submit} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inaunda...':'✅ Anza Kutumia DukaLangu'}</button>
+      <button onClick={onCancel} style={{width:'100%',marginTop:10,padding:10,background:'none',border:'none',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}}>Ghairi / Toka</button>
+    </div>
+  </div>;
 }

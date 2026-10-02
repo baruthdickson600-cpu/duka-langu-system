@@ -36,6 +36,7 @@ export function AppProvider({children}){
   const[user,setUser]=useState(null);
   const[loading,setLoading]=useState(false);
   const[restoring,setRestoring]=useState(true); // Wakati wa kurudisha session mwanzoni
+  const[needsOnboarding,setNeedsOnboarding]=useState(null); // {email,name} kwa Google user mpya
   const[online,setOnline]=useState(navigator.onLine);
   const[pendingSyncCount,setPendingSyncCount]=useState(0);
   const[lang,setLang]=useState('sw');
@@ -106,7 +107,7 @@ export function AppProvider({children}){
         const{data:{session}}=await supabase.auth.getSession();
         if(session?.user?.email){
           const email=session.user.email;
-          const{data:uData}=await supabase.from('users').select('*').eq('email',email).single();
+          const{data:uData}=await supabase.from('users').select('*').eq('email',email).maybeSingle();
           if(uData&&uData.is_active!==false){
             const role=email===ADMIN_EMAIL?'admin':(uData.role||'office');
             if(!cancelled){
@@ -115,6 +116,11 @@ export function AppProvider({children}){
             }
             await loadData(uData.id,role,role==='admin'?null:uData.business_id);
             markActivity();
+          }else if(!uData){
+            // Google user mpya — ana session lakini hana biashara bado.
+            // Mwonyeshe fomu ya kukamilisha usajili.
+            const meta=session.user.user_metadata||{};
+            if(!cancelled)setNeedsOnboarding({email,name:meta.full_name||meta.name||email.split('@')[0]});
           }
         }
       }catch(e){console.warn('[restore session]',e?.message||e);}
@@ -431,6 +437,58 @@ export function AppProvider({children}){
       setLoading(false);return null;
     }catch(e){setLoading(false);return e.message||'Tatizo.'}
   },[settings.trial_days,loadData,businesses]);
+
+  // ===== GOOGLE SIGN-IN (wamiliki) =====
+  // Inampeleka mtumiaji Google; akirudi, restore effect inakagua
+  // kama ana biashara. Kama hana -> needsOnboarding (fomu ya biashara).
+  const signInWithGoogle=useCallback(async()=>{
+    try{
+      const{error}=await supabase.auth.signInWithOAuth({
+        provider:'google',
+        options:{redirectTo:window.location.origin},
+      });
+      if(error)return{error:error.message};
+      return{ok:true}; // browser itaelekezwa Google
+    }catch(e){return{error:'Imeshindwa kuanzisha Google. Jaribu tena.'};}
+  },[]);
+
+  // Kamilisha usajili wa Google user mpya (unda biashara)
+  const completeGoogleSignup=useCallback(async(businessName,phone,businessType='retail')=>{
+    if(!needsOnboarding?.email)return{error:'Hakuna taarifa za Google.'};
+    if(!businessName||!businessName.trim())return{error:'Weka jina la biashara.'};
+    setLoading(true);
+    try{
+      const{data:{session}}=await supabase.auth.getSession();
+      const uid=session?.user?.id||genId();
+      const email=needsOnboarding.email;
+      const name=needsOnboarding.name||'';
+      const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
+      // users row (id = auth id)
+      const uRow={id:uid,email,name,phone:phone||'',role:'office'};
+      const ud=await safeInsert('users',uRow);
+      if(ud&&ud.__error)await safeUpdate('users',uRow,'id',uid).catch(()=>{});
+      // business
+      const newBiz=await safeInsert('businesses',{name:businessName.trim(),email,phone:phone||'',owner_id:uid,trial_end:trialEnd,business_type:businessType||'retail'});
+      if(!newBiz||newBiz.__error){setLoading(false);return{error:'Imeshindwa kuhifadhi biashara. Jaribu tena.'};}
+      await safeUpdate('users',{business_id:newBiz.id},'id',uid);
+      await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya (Google): ${businessName}`,message:`${name} (${email}) amesajili kwa Google.`});
+      setBiz(prev=>[newBiz,...prev]);
+      setUser({id:uid,email,name,phone:phone||'',role:'office',business_id:newBiz.id});
+      setNeedsOnboarding(null);
+      await loadData(uid,'office',newBiz.id);
+      markActivity();
+      sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
+      sendMail(ADMIN_EMAIL,'🆕 Mteja Mpya (Google): '+businessName,'new_customer',{name:businessName,email,phone});
+      setLoading(false);
+      return{ok:true};
+    }catch(e){setLoading(false);return{error:e.message||'Tatizo.'};}
+  },[needsOnboarding,settings.trial_days,loadData,markActivity]);
+
+  // Ghairi onboarding (toka)
+  const cancelOnboarding=useCallback(async()=>{
+    try{await supabase.auth.signOut()}catch(_){}
+    setNeedsOnboarding(null);
+  },[]);
 
   // FORGOT PASSWORD (link ya zamani - inabaki kwa backward compatibility)
   const forgotPassword=useCallback(async(email)=>{
@@ -1061,8 +1119,32 @@ export function AppProvider({children}){
     const email=(emp.email||'').trim().toLowerCase();
     if(!email||!email.includes('@'))return{error:'Weka email sahihi.'};
     if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
+
+    const row=(uid)=>({id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true});
+    const finish=(r)=>{setEmps(prev=>[...prev.filter(e=>e.email!==email),{...r,created_at:nowISO()}]);};
+
+    // ===== NJIA YA 1 (BORA): service_role API — email_confirm:true =>
+    //        mfanyakazi anaingia MARA MOJA bila kuthibitisha email =====
     try{
-      // Tumia client ya pili (isolated) ili session ya mmiliki ISIVURUGWE.
+      const res=await fetch(API_BASE+'/api/admin/change-email',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'create_employee',emp_email:email,emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null}),
+      });
+      const d=await res.json().catch(()=>({}));
+      if(d&&d.success){
+        finish(d.user||row(genId()));
+        return{ok:true};
+      }
+      // Kama email tayari ipo — rudisha ujumbe wazi (usiende signUp)
+      const em=(d&&d.error||'').toLowerCase();
+      if(em.includes('tayari inatumika')||em.includes('already')||em.includes('exists')){
+        return{error:'Email hii tayari inatumika. Tumia email nyingine.'};
+      }
+      // vinginevyo: service_role haijawekwa/imegoma -> tutajaribu Njia ya 2
+    }catch(_){ /* endelea Njia ya 2 */ }
+
+    // ===== NJIA YA 2 (fallback): signUp kwa client iliyotengwa =====
+    try{
       const{data:auth,error:authErr}=await supabaseSignup.auth.signUp({email,password:emp.password});
       if(authErr){
         const m=(authErr.message||'').toLowerCase();
@@ -1072,17 +1154,14 @@ export function AppProvider({children}){
       }
       const uid=auth?.user?.id;
       if(!uid)return{error:'Imeshindwa kuunda akaunti ya mfanyakazi.'};
-      // Weka users row (upsert ili kama ipo isasishwe)
-      const row={id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true};
-      const d=await safeInsert('users',row);
-      if(d&&d.__error){
-        // Jaribu update kama tayari ipo
-        await safeUpdate('users',row,'id',uid).catch(()=>{});
-      }
-      setEmps(prev=>[...prev.filter(e=>e.email!==email),{...row,created_at:nowISO()}]);
-      // Toa session ya muda ya client ya pili (usalama)
+      const r=row(uid);
+      const d=await safeInsert('users',r);
+      if(d&&d.__error)await safeUpdate('users',r,'id',uid).catch(()=>{});
+      finish(r);
       try{await supabaseSignup.auth.signOut()}catch(_){}
-      return{ok:true};
+      // Onyo: kama "Confirm email" imewashwa Supabase, mfanyakazi hataingia
+      // hadi email ithibitishwe. Tunamjulisha mmiliki.
+      return{ok:true,warn:'Kama mfanyakazi atashindwa kuingia, zima "Confirm email" kwenye Supabase (Authentication → Providers → Email).'};
     }catch(e){
       return{error:'Tatizo la mtandao. Jaribu tena.'};
     }
@@ -2608,6 +2687,7 @@ export function AppProvider({children}){
     // Auth
     supabase,updateUserProfile,
     login,signup,logout,forgotPassword,sendResetOtp,verifyResetOtp,setNewPassword,
+    signInWithGoogle,needsOnboarding,completeGoogleSignup,cancelOnboarding,
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,

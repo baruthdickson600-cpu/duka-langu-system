@@ -1862,7 +1862,7 @@ export function EmployeesPage(){
         if(!f.password||f.password.length<4)return alert('Password lazima iwe herufi 4 au zaidi!');
         const res=await addEmployee({...f,branch_id:f.branch_id||null});
         if(res&&res.error)return alert('❌ '+res.error);
-        alert(`✅ Mfanyakazi "${f.name}" ameundwa!\n\nAtaingia na:\n📧 Email: ${f.email}\n🔑 Password: ${f.password}\n\nMpe taarifa hizi aingie nazo.`);
+        alert(`✅ Mfanyakazi "${f.name}" ameundwa!\n\nAtaingia na:\n📧 Email: ${f.email}\n🔑 Password: ${f.password}\n\nMpe taarifa hizi aingie nazo.${res&&res.warn?'\n\n⚠️ '+res.warn:''}`);
         setModal(false);setF({name:'',email:'',phone:'',password:'1234',branch_id:''});
       }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Mfanyakazi</Btn>
     </Modal>
