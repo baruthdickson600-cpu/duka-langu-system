@@ -4,6 +4,7 @@ import {TermsPage,PrivacyPage} from './LegalPages';
 import InfoUpdateRequest from './InfoUpdateRequest';
 import OtpReset from './OtpReset';
 import {useApp} from '../context/AppContext';
+import AnimatedLogo from '../components/AnimatedLogo';
 
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
@@ -133,22 +134,22 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   );
 
   return(
-    <div style={{minHeight:'100vh',position:'relative',overflow:'hidden'}}>
-      <div style={bgStyle(bgA,!showB)}/>
-      {bgB&&<div style={bgStyle(bgB,showB)}/>}
-      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.2) 40%,rgba(0,0,0,0.45) 100%)'}}/>
+    <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',background:'linear-gradient(135deg,#064E2B 0%,#0B7A3B 50%,#065F2E 100%)'}}>
+      {/* Mesh-glow ya kisasa (badala ya picha) */}
+      <div style={{position:'fixed',top:'-12%',left:'-8%',width:520,height:520,zIndex:0,background:'radial-gradient(circle,rgba(74,222,128,0.35),transparent 70%)',filter:'blur(70px)',pointerEvents:'none'}}/>
+      <div style={{position:'fixed',bottom:'-15%',right:'-8%',width:560,height:560,zIndex:0,background:'radial-gradient(circle,rgba(255,255,255,0.12),transparent 70%)',filter:'blur(80px)',pointerEvents:'none'}}/>
+      <div style={{position:'fixed',inset:0,zIndex:0,opacity:0.06,backgroundImage:'radial-gradient(#fff 1px,transparent 1px)',backgroundSize:'28px 28px',pointerEvents:'none'}}/>
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
         <div style={{width:'100%',maxWidth:tab==='signup'&&step===2?520:440}}>
 
-          {/* Logo */}
-          <div style={{textAlign:'center',marginBottom:24,color:'#fff'}}>
-            <img src="/logo-white.png" alt="Duka Langu" style={{width:90,height:90,objectFit:'contain',marginBottom:6,filter:'drop-shadow(0 6px 24px rgba(0,0,0,0.5))'}}/> 
-            <div style={{fontSize:26,fontWeight:900,letterSpacing:2,textShadow:'0 3px 15px rgba(0,0,0,0.5)'}}>DUKA LANGU</div>
-            <p style={{margin:'4px 0 0',opacity:.9,fontSize:13,fontWeight:500,textShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>Smart POS — Together for the better</p>
+          {/* Logo mpya ya animation */}
+          <div style={{textAlign:'center',marginBottom:22,color:'#fff'}}>
+            <div style={{display:'inline-flex',justifyContent:'center'}}><AnimatedLogo size={88} withWordmark={true} light={true}/></div>
+            <p style={{margin:'10px 0 0',opacity:.92,fontSize:13,fontWeight:500,textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>Smart POS — Simamia Biashara Yako</p>
           </div>
 
           {/* Glass Card */}
-          <div style={{background:'rgba(255,255,255,0.92)',borderRadius:24,padding:'28px 24px',boxShadow:'0 25px 80px rgba(0,0,0,0.4)',backdropFilter:'blur(24px)',border:'1px solid rgba(255,255,255,0.2)'}}>
+          <div style={{background:'rgba(255,255,255,0.97)',borderRadius:24,padding:'28px 24px',boxShadow:'0 25px 80px rgba(0,0,0,0.35)',border:'1px solid rgba(255,255,255,0.4)'}}>
 
             {/* ===== OTP RESET (DNA Animation) ===== */}
             {showOtp?(

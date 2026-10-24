@@ -6,7 +6,9 @@ import React from 'react';
 // na mng'ao wa kijani unazunguka. Tumia kwenye splash/loader.
 // size = upana wa SVG (px). withWordmark = onyesha "Duka Langu".
 // ============================================================
-export default function AnimatedLogo({size=120,withWordmark=true,loading=false}){
+export default function AnimatedLogo({size=120,withWordmark=true,loading=false,light=false}){
+  const c1=light?'#fff':'#1E7A3C';
+  const c2=light?'#BBF7D0':'#6CC04A';
   const uid=React.useId().replace(/:/g,'');
   return <div style={{display:'inline-flex',flexDirection:'column',alignItems:'center',gap:14}}>
     <style>{`
@@ -76,8 +78,8 @@ export default function AnimatedLogo({size=120,withWordmark=true,loading=false})
 
       {/* ===== WORDMARK ===== */}
       {withWordmark&&<div style={{position:'relative',zIndex:1,lineHeight:0.98,fontFamily:'Poppins,Inter,sans-serif',fontWeight:800}}>
-        <span className={`dl-w1-${uid}`} style={{fontSize:size*0.34,color:'#1E7A3C'}}>Duka</span>
-        <span className={`dl-w2-${uid}`} style={{fontSize:size*0.34,color:'#6CC04A'}}>Langu</span>
+        <span className={`dl-w1-${uid}`} style={{fontSize:size*0.34,color:c1}}>Duka</span>
+        <span className={`dl-w2-${uid}`} style={{fontSize:size*0.34,color:c2}}>Langu</span>
       </div>}
     </div>
 
