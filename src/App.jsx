@@ -12,6 +12,7 @@ import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPag
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import OrdersPage from './pages/office/OrdersPage';
 import PurchasesPage from './pages/office/PurchasesPage';
+import AnimatedLogo from './components/AnimatedLogo';
 import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
@@ -211,12 +212,10 @@ export default function App(){
   // If user is logged in, skip landing
   if(user&&showLanding)setShowLanding(false);
 
-  // Wakati wa kurudisha session (refresh) — onyesha loader, usiruke kwenye login
+  // Wakati wa kurudisha session (refresh) — onyesha splash ya logo ya DukaLangu
   if(restoring&&!user){
-    return <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#F8FAFC',gap:16}}>
-      <div style={{width:44,height:44,border:'4px solid #E2E8F0',borderTop:'4px solid #0B7A3B',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}></div>
-      <div style={{fontSize:14,color:'#64748B',fontWeight:600}}>Inapakia DukaLangu...</div>
-      <style>{`@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}`}</style>
+    return <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#F8FAFC,#F0FDF4)',gap:10}}>
+      <AnimatedLogo size={120} withWordmark={true} loading={true}/>
     </div>;
   }
 

@@ -113,22 +113,15 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
               </div>)}
             </div>
           </div>
-          {/* PICHA YA MFUMO (Laptop + Simu) */}
-          <div className="hero-img" style={{flex:'1 1 500px',minWidth:280,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
-            <div style={{position:'relative',width:'100%',maxWidth:740,animation:'float 6s ease-in-out infinite'}}>
+          {/* PICHA YA MFUMO (Laptop + Simu) — PNG transparent safi */}
+          <div className="hero-img" style={{flex:'1 1 520px',minWidth:280,display:'flex',justifyContent:'center',animation:'fadeInRight 1s ease 0.3s both'}}>
+            <div style={{position:'relative',width:'100%',maxWidth:760,animation:'float 6s ease-in-out infinite'}}>
               {/* Mwanga wa nyuma */}
-              <div style={{
-                position:'absolute',inset:'-10% -6%',
-                background:'radial-gradient(ellipse at center, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.05) 45%, transparent 70%)',
-                filter:'blur(40px)',animation:'pulse 4s ease-in-out infinite',
-              }}/>
+              <div style={{position:'absolute',inset:'-6% -4%',background:'radial-gradient(ellipse at center, rgba(255,255,255,0.20) 0%, rgba(74,222,128,0.10) 48%, transparent 72%)',filter:'blur(55px)',animation:'pulse 4s ease-in-out infinite'}}/>
               <img
                 src="/dukalangu-preview.png"
                 alt="DukaLangu — Dashboard kwenye Laptop na Simu"
-                style={{
-                  position:'relative',width:'100%',height:'auto',display:'block',
-                  filter:'drop-shadow(0 30px 60px rgba(0,0,0,0.45)) drop-shadow(0 8px 20px rgba(0,0,0,0.25))',
-                }}
+                style={{position:'relative',width:'100%',height:'auto',display:'block',filter:'drop-shadow(0 28px 55px rgba(0,0,0,0.40))'}}
               />
             </div>
           </div>
