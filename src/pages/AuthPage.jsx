@@ -134,11 +134,12 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   );
 
   return(
-    <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',background:'linear-gradient(135deg,#064E2B 0%,#0B7A3B 50%,#065F2E 100%)'}}>
-      {/* Mesh-glow ya kisasa (badala ya picha) */}
-      <div style={{position:'fixed',top:'-12%',left:'-8%',width:520,height:520,zIndex:0,background:'radial-gradient(circle,rgba(74,222,128,0.35),transparent 70%)',filter:'blur(70px)',pointerEvents:'none'}}/>
-      <div style={{position:'fixed',bottom:'-15%',right:'-8%',width:560,height:560,zIndex:0,background:'radial-gradient(circle,rgba(255,255,255,0.12),transparent 70%)',filter:'blur(80px)',pointerEvents:'none'}}/>
-      <div style={{position:'fixed',inset:0,zIndex:0,opacity:0.06,backgroundImage:'radial-gradient(#fff 1px,transparent 1px)',backgroundSize:'28px 28px',pointerEvents:'none'}}/>
+    <div style={{minHeight:'100vh',position:'relative',overflow:'hidden'}}>
+      {/* Picha za background zinazobadilika (crossfade) */}
+      <div style={bgStyle(bgA,!showB)}/>
+      {bgB&&<div style={bgStyle(bgB,showB)}/>}
+      {/* Overlay ya kijani ili maandishi yasomeke */}
+      <div style={{position:'fixed',inset:0,zIndex:1,background:'linear-gradient(180deg,rgba(6,78,43,0.55) 0%,rgba(11,122,59,0.45) 45%,rgba(6,95,46,0.65) 100%)'}}/>
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
         <div style={{width:'100%',maxWidth:tab==='signup'&&step===2?520:440}}>
 
