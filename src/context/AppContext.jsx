@@ -48,6 +48,7 @@ export function AppProvider({children}){
   const[orders,setOrders]=useState([]);
   const[sales,setSales]=useState([]);
   const[expenses,setExp]=useState([]);
+  const[purchases,setPurchases]=useState([]);
   const[customers,setCust]=useState([]);
   const[employees,setEmps]=useState([]);
   const[tokens,setTokens]=useState([]);
@@ -169,6 +170,8 @@ export function AppProvider({children}){
           safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
         ]);
         setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps((em||[]).filter(e=>e.is_active!==false));setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        // Manunuzi ya stock (purchases) — salama hata kama jedwali halipo
+        try{const pu=await safeSelect('purchases',{eq:{business_id:bid},order:{col:'created_at'}});setPurchases(Array.isArray(pu)?pu:[]);}catch(_){setPurchases([]);}
         // Load payment requests for this business
         const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
         setPayReqs(pyReqs);
@@ -588,6 +591,45 @@ export function AppProvider({children}){
     return{success:true,product:newProd};
   },[bizId,activeBranch,products]);
   const updateProduct=useCallback(async(pid,u)=>{await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);setProds(prev=>sortProducts(prev.map(p=>p.id===pid?{...p,...u}:p)))},[]);
+
+  // ===== MANUNUZI YA STOCK (Purchases) =====
+  // Mmiliki ananunua bidhaa za kuuza. HII SI expense — faida haibadiliki.
+  // source: 'shop' = pesa ya duka (inapunguza pesa mkononi) | 'external' = pesa ya nje
+  const addPurchase=useCallback(async({productId,quantity,buyPrice,source='shop',supplierName='',note=''})=>{
+    if(!bizId)return{error:'Biashara haijapatikana.'};
+    const qty=+quantity||0; const bp=+buyPrice||0;
+    if(qty<=0)return{error:'Weka idadi sahihi.'};
+    if(bp<=0)return{error:'Weka bei ya kununua.'};
+    const prod=products.find(p=>p.id===productId);
+    if(!prod)return{error:'Chagua bidhaa.'};
+    const total=qty*bp;
+    const before=prod.quantity||0;
+    const after=before+qty;
+    // 1) Ongeza stock + sasisha bei ya kununua (buy_price mpya)
+    await safeUpdate('products',{quantity:after,buy_price:bp,updated_at:nowISO()},'id',productId);
+    setProds(prev=>sortProducts(prev.map(p=>p.id===productId?{...p,quantity:after,buy_price:bp}:p)));
+    // 2) Rekodi manunuzi
+    const rec={business_id:bizId,branch_id:activeBranch||null,product_id:productId,product_name:prod.name,quantity:qty,buy_price:bp,total,source,supplier_name:supplierName||null,note:note||null,recorded_by:user?.id};
+    const d=await safeInsert('purchases',rec);
+    if(d&&d.__error)return{error:'Imeshindwa kuhifadhi: '+(d.message||'')+'. Hakikisha jedwali la purchases lipo (run SQL).'};
+    const saved=d||{...rec,id:genId(),created_at:nowISO()};
+    setPurchases(prev=>[saved,...prev]);
+    // 3) Historia ya stock
+    safeInsert('stock_history',{product_id:productId,business_id:bizId,change_type:'purchase',quantity_before:before,quantity_change:qty,quantity_after:after,user_id:user?.id,note:`Manunuzi (${source==='shop'?'pesa ya duka':'pesa ya nje'})`}).catch(()=>{});
+    return{ok:true,purchase:saved};
+  },[bizId,activeBranch,user,products]);
+
+  const deletePurchase=useCallback(async(id)=>{
+    const p=purchases.find(x=>x.id===id);
+    setPurchases(prev=>prev.filter(x=>x.id!==id));
+    try{await supabase.from('purchases').delete().eq('id',id);}catch(_){}
+    // Rudisha stock (toa idadi iliyoongezwa)
+    if(p&&p.product_id){
+      const prod=products.find(pr=>pr.id===p.product_id);
+      if(prod){const nq=Math.max(0,(prod.quantity||0)-(p.quantity||0));await safeUpdate('products',{quantity:nq},'id',p.product_id).catch(()=>{});setProds(prev=>sortProducts(prev.map(x=>x.id===p.product_id?{...x,quantity:nq}:x)));}
+    }
+    return{ok:true};
+  },[purchases,products]);
 
   // Nakili bidhaa za tawi moja kwenda tawi lingine (stock=0, utajaza)
   const copyProductsToBranch=useCallback(async(fromBranchId,toBranchId)=>{
@@ -2691,6 +2733,8 @@ export function AppProvider({children}){
     // CRUD
     addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
     addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
+    // Manunuzi ya stock
+    purchases,addPurchase,deletePurchase,
     addBranch,updateBranch,deleteBranch,getBranches,
     // Orders (Pending + Partial Payments)
     orders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,

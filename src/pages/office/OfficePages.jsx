@@ -113,7 +113,7 @@ function SubscriptionMiniBar(){
 }
 
 export function OfficeDash({onReceipt}){
-  const{user,biz,products,sales,returns,expenses,daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan,orders=[],totalDebt=0,overdueTotal=0}=useApp();
+  const{user,biz,products,sales,returns,expenses,purchases=[],daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan,orders=[],totalDebt=0,overdueTotal=0}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   
   // Filter sales by period
@@ -173,8 +173,10 @@ export function OfficeDash({onReceipt}){
   // ===== Matumizi ya LEO =====
   const _today=new Date().toISOString().slice(0,10);
   const tExp=expenses.filter(e=>e.business_id===biz?.id&&e.created_at?.startsWith(_today)).reduce((a,e)=>a+(e.amount||0),0);
-  // ===== PESA YA BENKI = Mauzo - Matumizi (hii ndiyo muhudumu anaenda kubank) =====
-  const tBankAmount=Math.max(0,tTotal-tExp);
+  // Manunuzi ya stock ya LEO yaliyotumia PESA YA DUKA (yanapunguza pesa mkononi, si faida)
+  const tStockBuy=purchases.filter(p=>p.source==='shop'&&p.created_at?.startsWith(_today)).reduce((a,p)=>a+(p.total||0),0);
+  // ===== PESA YA BENKI = Mauzo - Matumizi - Manunuzi ya stock (pesa ya duka) =====
+  const tBankAmount=Math.max(0,tTotal-tExp-tStockBuy);
   const isOff=user?.role==='office';
   
   // Bar chart — only cash-based income per day
@@ -942,7 +944,7 @@ export function ReturnsPage(){
 
 // ===== REPORTS =====
 export function ReportsPage({onReceipt}){
-  const{sales,returns,products,expenses,currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
+  const{sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[tab,setTab]=useState('day');
   const myBranches=canUseBranches?getBranches():[];
@@ -1045,7 +1047,9 @@ export function ReportsPage({onReceipt}){
   const fProfit=Math.max(0,cashSalesProfit-refundProfit);
   
   const fExp=expenses.filter(e=>filterByDate(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
-  const fBankAmount=Math.max(0,fTotal-fExp);
+  // Manunuzi ya stock (pesa ya duka) ya kipindi — yanapunguza pesa mkononi, si faida
+  const fStockBuy=purchases.filter(p=>p.source==='shop'&&filterByDate(p.created_at)).reduce((a,p)=>a+(p.total||0),0);
+  const fBankAmount=Math.max(0,fTotal-fExp-fStockBuy);
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   

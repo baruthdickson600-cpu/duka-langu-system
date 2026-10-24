@@ -11,6 +11,7 @@ import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
 import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import OrdersPage from './pages/office/OrdersPage';
+import PurchasesPage from './pages/office/PurchasesPage';
 import AskMe from './components/AskMe';
 import FaqManagePage from './pages/admin/FaqManagePage';
 import SMSCenterPage from './pages/admin/SMSCenter';
@@ -88,6 +89,7 @@ const MENUS={
   office:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'products',icon:IC.box,label:'Bidhaa'},
+    {id:'purchases',icon:IC.cart,label:'🛒 Manunuzi'},
     {id:'analytics',icon:IC.chart,label:'📊 Uchambuzi'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
     {id:'orders',icon:IC.file,label:'📋 Oda'},
@@ -316,6 +318,7 @@ export default function App(){
       case'products':return role==='office'?<ProductsPage/>:null;
       case'sales':return <SalesPage onDone={setReceipt}/>;
       case'orders':return <OrdersPage/>;
+      case'purchases':return <PurchasesPage/>;
       case'returns':return role==='office'?<ReturnsPage/>:null;
       case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
       case'emp_reports':return role==='employee'?<EmployeeReportsPage/>:null;
