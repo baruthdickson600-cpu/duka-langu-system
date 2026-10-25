@@ -206,64 +206,43 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     </Section>
 
 
-    {/* ===== VIDEO MAFUNZO ===== */}
+    {/* ===== VIDEO ZA DEMO ===== */}
     <Section bg="#fff" py={80}>
-      <div style={{textAlign:'center',marginBottom:48}}>
-        <div style={{display:'inline-block',background:'#FEF3C7',border:'1px solid #FCD34D',borderRadius:20,padding:'4px 16px',fontSize:11,fontWeight:700,color:'#92400E',letterSpacing:2,marginBottom:16}}>🎬 VIDEO ZA MAFUNZO</div>
-        <h2 style={{fontSize:38,fontWeight:900,color:'#1E293B',margin:'0 0 12px'}}>Jifunze Kutumia Duka Langu</h2>
-        <p style={{fontSize:16,color:'#64748B',margin:0}}>Video fupi za kueleza kila sehemu — tayari kutumia ndani ya dakika chache</p>
+      <div style={{textAlign:'center',marginBottom:40}}>
+        <div style={{display:'inline-block',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:20,padding:'5px 16px',fontSize:11,fontWeight:700,color:'#0B7A3B',letterSpacing:2,marginBottom:14}}>🎬 VIDEO ZA DEMO</div>
+        <h2 style={{fontSize:'clamp(28px,3.4vw,40px)',fontWeight:900,color:'#101828',margin:'0 0 12px',letterSpacing:-0.8}}>Jifunze Kutumia Duka Langu</h2>
+        <p style={{fontSize:16,color:'#667085',margin:0}}>Tazama jinsi ya kujisajili, kuingiza bidhaa, kuuza, na kuona ripoti</p>
       </div>
 
       {/* Tabs za kuchagua video */}
-      <div style={{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',marginBottom:32}}>
+      <div style={{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',marginBottom:28}}>
         {[
-          {i:0,icon:'🛒',label:'Mauzo'},
-          {i:1,icon:'📦',label:'Stock'},
-          {i:2,icon:'📊',label:'Ripoti'},
-          {i:3,icon:'👥',label:'Wateja'},
-          {i:4,icon:'🎯',label:'Supervisors'},
-          {i:5,icon:'⚙️',label:'Mipangilio'},
-        ].map(t=>(
-          <button key={t.i} onClick={()=>setActiveVideo(t.i)} style={{padding:'8px 18px',borderRadius:30,border:activeVideo===t.i?'2px solid #0B7A3B':'2px solid #E2E8F0',background:activeVideo===t.i?'#0B7A3B':'#fff',color:activeVideo===t.i?'#fff':'#64748B',fontWeight:700,fontSize:13,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',gap:6}}>
+          {icon:'📝',label:'Kujisajili'},
+          {icon:'📦',label:'Kuingiza Bidhaa'},
+          {icon:'🛒',label:'Kuuza'},
+          {icon:'📊',label:'Ripoti'},
+        ].map((t,i)=>(
+          <button key={i} onClick={()=>setActiveVideo(i)} style={{padding:'9px 20px',borderRadius:30,border:activeVideo===i?'2px solid #0B7A3B':'2px solid #E2E8F0',background:activeVideo===i?'#0B7A3B':'#fff',color:activeVideo===i?'#fff':'#64748B',fontWeight:700,fontSize:13.5,cursor:'pointer',transition:'all 0.2s',display:'flex',alignItems:'center',gap:7}}>
             {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {/* Video Player Area */}
-      <div style={{maxWidth:800,margin:'0 auto'}}>
+      {/* Video Player */}
+      <div style={{maxWidth:820,margin:'0 auto'}}>
         {[
-          {icon:'🛒',title:'Jinsi ya Kufanya Mauzo ya Haraka',desc:'Jifunze jinsi ya kuuza bidhaa, kupokea malipo ya cash/mobile, kutoa risiti na kufunga mauzo kwa sekunde chache.',duration:'~2 dakika',ytId:'PLACEHOLDER_MAUZO'},
-          {icon:'📦',title:'Usimamizi wa Stock na Bidhaa',desc:'Jinsi ya kuongeza bidhaa, kusimamia stock, kupata arifa za bidhaa zinazokwisha, na kufuatilia historia ya stock.',duration:'~2 dakika',ytId:'PLACEHOLDER_STOCK'},
-          {icon:'📊',title:'Ripoti na Uchambuzi wa Biashara',desc:'Angalia mauzo ya kila siku, wiki, mwezi — jua faida yako halisi, bidhaa zinazouza zaidi, na mwelekeo wa biashara.',duration:'~2 dakika',ytId:'PLACEHOLDER_RIPOTI'},
-          {icon:'👥',title:'Usimamizi wa Wateja na Madeni',desc:'Jinsi ya kuhifadhi wateja, kuweka madeni, kupokea malipo ya deni, na kutuma arifa za malipo.',duration:'~2 dakika',ytId:'PLACEHOLDER_WATEJA'},
-          {icon:'🎯',title:'Mfumo wa Supervisors na Targets',desc:'Jinsi supervisors wanavyosajili wateja, kujaza taarifa za ziara, kuona targets na bonasi zao.',duration:'~2 dakika',ytId:'PLACEHOLDER_SUPERVISORS'},
-          {icon:'⚙️',title:'Mipangilio na Usanidi wa Mfumo',desc:'Jinsi ya kuweka jina la biashara, logo, bei, wafanyakazi, na mipangilio mingine ya mfumo wako.',duration:'~2 dakika',ytId:'PLACEHOLDER_MIPANGILIO'},
+          {src:'/videos/demo1.mp4',icon:'📝',title:'1. Jinsi ya Kujisajili',desc:'Jaza taarifa za biashara, chagua aina, na anza — trial ya siku 7 bure.'},
+          {src:'/videos/demo2.mp4',icon:'📦',title:'2. Kuingiza Bidhaa',desc:'Ongeza bidhaa mpya — jina, bei ya kuuza, stock, na bei ya kununua.'},
+          {src:'/videos/demo3.mp4',icon:'🛒',title:'3. Kuuza Bidhaa',desc:'Chagua bidhaa, njia ya malipo, ona chenji, na toa risiti ya kitaalamu.'},
+          {src:'/videos/demo4.mp4',icon:'📊',title:'4. Ripoti & Dashboard',desc:'Ona mauzo, faida, na afya ya biashara kwa siku, wiki au mwezi.'},
         ].map((v,i)=>i===activeVideo&&(
-          <div key={i} style={{borderRadius:20,overflow:'hidden',boxShadow:'0 12px 48px rgba(0,0,0,.12)',border:'1px solid #E2E8F0'}}>
-            {/* Video Placeholder */}
-            <div style={{background:'linear-gradient(135deg,#0F172A,#1E3A5F)',aspectRatio:'16/9',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',position:'relative',cursor:'pointer'}}
-              onClick={()=>window.open('https://youtube.com','_blank')}>
-              {/* Fake thumbnail pattern */}
-              <div style={{position:'absolute',inset:0,opacity:.1,backgroundImage:'radial-gradient(circle,#fff 1px,transparent 1px)',backgroundSize:'30px 30px'}}/>
-              <div style={{fontSize:72,marginBottom:16}}>{v.icon}</div>
-              {/* Play button */}
-              <div style={{width:72,height:72,borderRadius:'50%',background:'rgba(255,255,255,.95)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 32px rgba(0,0,0,.3)',marginBottom:20}}>
-                <div style={{width:0,height:0,borderTop:'14px solid transparent',borderBottom:'14px solid transparent',borderLeft:'22px solid #0B7A3B',marginLeft:4}}/>
-              </div>
-              <div style={{color:'#fff',fontSize:16,fontWeight:800,textAlign:'center',padding:'0 20px'}}>{v.title}</div>
-              <div style={{position:'absolute',top:14,right:14,background:'rgba(0,0,0,.5)',color:'#fff',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:6}}>⏱ {v.duration}</div>
-              <div style={{position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',background:'#FF0000',color:'#fff',fontSize:10,fontWeight:800,padding:'3px 10px',borderRadius:4,letterSpacing:1}}>▶ YouTube</div>
-            </div>
-            {/* Info chini */}
-            <div style={{background:'#fff',padding:'20px 24px',display:'flex',alignItems:'flex-start',gap:16}}>
-              <div style={{width:44,height:44,borderRadius:12,background:'#F0FDF4',border:'1px solid #BBF7D0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{v.icon}</div>
+          <div key={i} style={{borderRadius:20,overflow:'hidden',boxShadow:'0 16px 50px rgba(0,0,0,.14)',border:'1px solid #EEF2F6',animation:'scaleIn 0.4s ease both'}}>
+            <video key={v.src} src={v.src} controls autoPlay muted loop playsInline style={{width:'100%',display:'block',background:'#0B7A3B',aspectRatio:'16/9'}}/>
+            <div style={{background:'#fff',padding:'18px 22px',display:'flex',alignItems:'flex-start',gap:14}}>
+              <div style={{width:46,height:46,borderRadius:12,background:'#F0FDF4',border:'1px solid #BBF7D0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{v.icon}</div>
               <div style={{flex:1}}>
-                <div style={{fontWeight:800,fontSize:16,color:'#1E293B',marginBottom:4}}>{v.title}</div>
-                <div style={{fontSize:13,color:'#64748B',lineHeight:1.6}}>{v.desc}</div>
-              </div>
-              <div style={{flexShrink:0}}>
-                <span style={{background:'#F0FDF4',color:'#15803D',border:'1px solid #BBF7D0',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:700}}>⏱ {v.duration}</span>
+                <div style={{fontWeight:800,fontSize:16,color:'#101828',marginBottom:3}}>{v.title}</div>
+                <div style={{fontSize:13,color:'#667085',lineHeight:1.6}}>{v.desc}</div>
               </div>
             </div>
           </div>
@@ -271,10 +250,9 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
       </div>
 
       {/* CTA chini ya video */}
-      <div style={{textAlign:'center',marginTop:40}}>
-        <p style={{fontSize:14,color:'#94A3B8',marginBottom:16}}>💡 Video hizi zitasasishwa mara kwa mara. Subscribe YouTube channel yetu usikose!</p>
-        <button onClick={()=>window.open('https://youtube.com/@dukalangu','_blank')} style={{padding:'12px 28px',background:'#FF0000',color:'#fff',border:'none',borderRadius:30,fontWeight:800,fontSize:14,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:8,boxShadow:'0 4px 20px rgba(255,0,0,.3)'}}>
-          ▶ Tembelea Channel Yetu YouTube
+      <div style={{textAlign:'center',marginTop:34}}>
+        <button onClick={onSignup} style={{padding:'14px 32px',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,.3)'}}>
+          🚀 Anza Bure Sasa — Siku 7
         </button>
       </div>
     </Section>
