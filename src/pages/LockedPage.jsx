@@ -6,7 +6,7 @@ const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 export default function LockedPage(){
-  const{biz,user,settings,submitPayment,activateToken,paymentRequests,logout}=useApp();
+  const{biz,user,settings,submitPayment,activateToken,initiatePayment,paymentRequests,logout}=useApp();
   const[tab,setTab]=useState('pay');
   const[txId,setTxId]=useState('');
   const[phone,setPhone]=useState(user?.phone||'');
@@ -57,6 +57,22 @@ export default function LockedPage(){
       setSubmitted(true);
     }catch(e){setErr('Tatizo: '+(e.message||'Jaribu tena'))}
     setSubmitting(false);
+  };
+
+  // Malipo ya auto (gateway + webhook -> jifungua yenyewe)
+  const[autoLoading,setAutoLoading]=useState(false);
+  const[autoMsg,setAutoMsg]=useState('');
+  const[autoRef,setAutoRef]=useState('');
+  const handleAutoPay=async()=>{
+    if(!phone.trim())return setErr('Weka namba yako ya simu kwanza!');
+    setAutoLoading(true);setErr('');setAutoMsg('');
+    try{
+      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:phone.trim()});
+      if(!res?.success){setErr(res?.error||'Imeshindwa kuanzisha malipo.');setAutoLoading(false);return}
+      setAutoRef(res.reference||'');
+      setAutoMsg(res.message||'Subiri uthibitisho... mfumo utajifungua wenyewe pindi malipo yatakapothibitika.');
+    }catch(e){setErr('Tatizo: '+(e.message||'Jaribu tena'))}
+    setAutoLoading(false);
   };
 
   const handleToken=async()=>{
@@ -148,6 +164,36 @@ export default function LockedPage(){
                 </div>
 
                 {step===1&&<>
+                  {/* ==== MALIPO YA HARAKA (AUTO) — jifungua wenyewe ==== */}
+                  <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:14,padding:'16px 18px',marginBottom:14,color:'#fff',boxShadow:'0 8px 24px rgba(11,122,59,0.25)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                      <span style={{fontSize:20}}>⚡</span>
+                      <span style={{fontWeight:800,fontSize:14}}>Malipo ya Haraka (Auto)</span>
+                      <span style={{marginLeft:'auto',fontSize:9,fontWeight:800,background:'rgba(255,255,255,0.2)',padding:'3px 8px',borderRadius:20}}>MFUMO HUJIFUNGUA</span>
+                    </div>
+                    <div style={{fontSize:12,opacity:0.9,lineHeight:1.5,marginBottom:12}}>
+                      Lipa moja kwa moja na mfumo utajifungua wenyewe bila kusubiri admin. Weka namba yako kisha bonyeza "Lipa Sasa".
+                    </div>
+                    <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="📱 Namba yako (07XXXXXXXX)"
+                      style={{width:'100%',padding:'11px 14px',borderRadius:10,border:'none',fontSize:14,fontWeight:600,marginBottom:10,boxSizing:'border-box'}}/>
+                    {autoMsg
+                      ?<div style={{background:'rgba(255,255,255,0.15)',borderRadius:10,padding:'12px 14px',fontSize:12,lineHeight:1.5}}>
+                        <div style={{fontWeight:800,marginBottom:4}}>⏳ Inasubiri uthibitisho...</div>
+                        {autoMsg}
+                        {autoRef&&<div style={{marginTop:6,fontFamily:'monospace',fontSize:11,opacity:0.85}}>Kumb: {autoRef}</div>}
+                      </div>
+                      :<button onClick={handleAutoPay} disabled={autoLoading}
+                        style={{width:'100%',padding:13,background:'#fff',color:'#0B7A3B',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
+                        {autoLoading?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
+                      </button>}
+                  </div>
+
+                  <div style={{display:'flex',alignItems:'center',gap:10,margin:'4px 0 14px'}}>
+                    <div style={{flex:1,height:1,background:'#E2E8F0'}}/>
+                    <span style={{fontSize:11,color:'#94A3B8',fontWeight:700}}>AU LIPA KWA MKONO</span>
+                    <div style={{flex:1,height:1,background:'#E2E8F0'}}/>
+                  </div>
+
                   <div style={{textAlign:'center',marginBottom:14}}>
                     <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Hatua 1 — Lipa HaloPesa</div>
                     <div style={{fontSize:12,color:'#64748B'}}>Fuata hatua hizi kwenye simu yako</div>

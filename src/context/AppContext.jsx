@@ -1763,6 +1763,38 @@ export function AppProvider({children}){
     }
   },[paymentRequests,user]);
 
+  // ==== MALIPO YA AUTO (gateway) — anzisha malipo kupitia /api/payments ====
+  // Mteja anabonyeza "Lipa Sasa" -> tunatuma ombi -> gateway/webhook inajifungua yenyewe.
+  const initiatePayment=useCallback(async({amount,days=30,plan='basic',phone='',channel=''})=>{
+    if(!bizId)return{success:false,error:'Biashara haijapatikana.'};
+    const b=biz.find(x=>x.id===bizId)||{};
+    try{
+      const r=await fetch('/api/payments?action=initiate',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          business_id:bizId,business_name:b.name||b.business_name||'',
+          user_email:user?.email||'',phone:phone||b.phone||'',
+          amount:parseFloat(amount)||0,plan,days:parseInt(days)||30,channel,
+        }),
+      });
+      const d=await r.json();
+      if(!d.success)return{success:false,error:d.error||'Imeshindwa kuanzisha malipo.'};
+      setPopups(prev=>[{id:genId(),type:'info',title:'⏳ Malipo Yameanzishwa',message:d.message||'Subiri uthibitisho wa malipo...'},...prev]);
+      return{success:true,reference:d.reference,mode:d.mode,message:d.message};
+    }catch(e){
+      return{success:false,error:'Tatizo la mtandao: '+(e.message||'')};
+    }
+  },[bizId,biz,user]);
+
+  // Angalia hali ya malipo kwa reference (polling kama hakuna realtime)
+  const checkPaymentStatus=useCallback(async(reference)=>{
+    try{
+      const r=await fetch('/api/payments?action=status&ref='+encodeURIComponent(reference));
+      const d=await r.json();
+      return d.success?d:{success:false};
+    }catch{return{success:false}}
+  },[]);
+
   // Check my latest payment status (for office/locked page)
   const myLatestPayment=useMemo(()=>{
     if(!bizId)return null;
@@ -1795,7 +1827,20 @@ export function AppProvider({children}){
           setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
         }
       }).subscribe();
-    return()=>{supabase.removeChannel(channel)};
+
+    // Malipo ya auto (payment_transactions) — webhook inageuza status->paid, biz-updates inajifungua
+    const txChannel=supabase.channel('paytx-updates-'+bizId)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'payment_transactions',filter:`business_id=eq.${bizId}`},(payload)=>{
+        const updated=payload.new;
+        if(updated?.status==='paid'){
+          setPopups(prev=>[{id:genId(),type:'success',title:'🎉 Malipo Yamethibitishwa!',message:'Mfumo unafunguka wenyewe...'},...prev]);
+          setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
+        }else if(updated?.status==='failed'){
+          setPopups(prev=>[{id:genId(),type:'danger',title:'❌ Malipo Hayakufaulu',message:'Tafadhali jaribu tena.'},...prev]);
+        }
+      }).subscribe();
+
+    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel);supabase.removeChannel(txChannel)};
   },[bizId,user,loadData]);
 
   // Admin: real-time new payment requests
@@ -2762,7 +2807,7 @@ export function AppProvider({children}){
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,systemExpenses,snippeCreatePayment,snippeCheckStatus,
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,initiatePayment,checkPaymentStatus,systemExpenses,snippeCreatePayment,snippeCheckStatus,
     // Notifications
     addNotif,broadcastNotif,broadcastUpdateEmail,markRead,markAllRead,
     // Settings & Admin
