@@ -1,0 +1,2786 @@
+import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
+import { API_BASE } from '../config/api';
+import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
+import {supabase,supabaseSignup} from '../config/supabase';
+import {computePeriodFinance} from '../utils/helpers';
+
+const Ctx=createContext(null);
+const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
+const sortProducts=(arr)=>[...arr].sort((a,b)=>(a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase(),'sw'));
+const nowISO=()=>new Date().toISOString();
+const todayStr=()=>new Date().toISOString().split('T')[0];
+const ADMIN_EMAIL='baruthdickson600@gmail.com';
+const ADMIN_PASS='baruth@500';
+
+async function safeInsert(t,d){try{const clean={};for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}const r=await supabase.from(t).insert(clean).select();if(r.error){console.warn('[safeInsert]',t,r.error.message);return{__error:true,message:r.error.message}}return r?.data?.[0]||null}catch(e){console.warn('[safeInsert]',t,e?.message||e);return{__error:true,message:e?.message||'error'}}}
+async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).eq(c,v);if(r.error)console.warn('Update:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
+async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
+async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
+async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});if(q.limit)s=s.limit(q.limit);const r=await s;if(r.error){console.warn('Select:',t,r.error.message);return[]}return r.data||[]}catch(e){console.warn('DB:',t,e);return[]}}
+
+
+// Email helper (calls API directly - no imports needed)
+const sendMail=(to,subject,type,data,html)=>{
+  const payload=html?{to,subject,html}:{to,subject,type,data};
+  fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[EMAIL FAIL]',to,d.error||r.status)}else{console.log('[EMAIL OK]',to,d.id)}})
+  .catch(e=>console.error('[EMAIL NET ERROR]',to,e.message));
+};
+const sendSMS=(to,message)=>{
+  if(!to)return;
+  fetch(API_BASE+'/api/send-sms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:to,message})})
+  .then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok){console.error('[SMS FAIL]',to,d.error||d.beem_response)}else{console.log('[SMS OK]',to)}})
+  .catch(e=>console.error('[SMS NET ERROR]',to,e.message));
+};
+
+export function AppProvider({children}){
+  const[user,setUser]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[restoring,setRestoring]=useState(true); // Wakati wa kurudisha session mwanzoni
+  const[needsOnboarding,setNeedsOnboarding]=useState(null); // {email,name} kwa Google user mpya
+  const[online,setOnline]=useState(navigator.onLine);
+  const[pendingSyncCount,setPendingSyncCount]=useState(0);
+  const[lang,setLang]=useState('sw');
+  const[currency,setCurrency]=useState('TZS');
+  const[businesses,setBiz]=useState([]);
+  const[branches,setBranches]=useState([]);
+  const[activeBranch,setActiveBranch]=useState(null);
+  const[products,setProds]=useState([]);
+  const[orders,setOrders]=useState([]);
+  const[sales,setSales]=useState([]);
+  const[expenses,setExp]=useState([]);
+  const[purchases,setPurchases]=useState([]);
+  const[customers,setCust]=useState([]);
+  const[employees,setEmps]=useState([]);
+  const[tokens,setTokens]=useState([]);
+  const[promoCodes,setPromos]=useState([]);
+  const[notifications,setNotifs]=useState([]);
+  const[stockHistory,setSH]=useState([]);
+  const[loginLogs,setLogs]=useState([]);
+
+  const[settings,setSettings]=useState({system_price:'15000',trial_days:'5',payment_number:'25187616',payment_name:'DUKALANGU',payment_provider:'HALOPESA',sms_enabled:'false',maintenance_mode:'false',branch_enabled:'true',announcement:'',announcement_type:'info'});
+  const[popups,setPopups]=useState([]);
+  const[systemLogs,setSysLogs]=useState([]);
+  const[tickets,setTickets]=useState([]);
+  const[returns,setReturns]=useState([]);
+  const[paymentRequests,setPayReqs]=useState([]);
+  const[partners,setPartners]=useState([]);
+  const[campaigns,setCampaigns]=useState([]);
+  const[internalMsgs,setMsgs]=useState([]);
+  const[followups,setFollowups]=useState([]);
+  const[testimonials,setTestimonials]=useState([]);
+  const[systemExpenses,setSystemExpenses]=useState([]);
+
+  const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
+
+  const bizId=biz?.id||user?.business_id;
+
+  useEffect(()=>{
+    const on=()=>{setOnline(true);setTimeout(()=>{getPendingCount().then(c=>{if(c>0)window.dispatchEvent(new Event('trigger-offline-sync'))}).catch(()=>{})},2000)};
+    const off=()=>setOnline(false);
+    window.addEventListener('online',on);
+    window.addEventListener('offline',off);
+    getPendingCount().then(c=>setPendingSyncCount(c)).catch(()=>{});
+    return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)};
+  },[]);
+
+  // ============================================================
+  // SESSION: Baki umeingia hata ukirefresh; jitoe tu baada ya
+  // saa 2 za kutokutumia (si kila unaporefresh).
+  // ============================================================
+  const ACTIVITY_KEY='dl_last_activity';
+  const INACTIVITY_MS=2*60*60*1000; // saa 2
+  const markActivity=useCallback(()=>{try{localStorage.setItem(ACTIVITY_KEY,String(Date.now()))}catch(_){}},[]);
+
+  // Rudisha session mwanzoni (page load / refresh / PWA relaunch)
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        // Angalia kama muda wa kutokutumia umezidi saa 2
+        let last=0;try{last=+localStorage.getItem(ACTIVITY_KEY)||0}catch(_){}
+        if(last&&(Date.now()-last)>INACTIVITY_MS){
+          try{await supabase.auth.signOut()}catch(_){}
+          try{localStorage.removeItem(ACTIVITY_KEY)}catch(_){}
+          if(!cancelled)setRestoring(false);
+          return;
+        }
+        // Kuna session ya Supabase iliyohifadhiwa?
+        const{data:{session}}=await supabase.auth.getSession();
+        if(session?.user?.email){
+          const email=session.user.email;
+          const{data:uData}=await supabase.from('users').select('*').eq('email',email).maybeSingle();
+          if(uData&&uData.is_active!==false){
+            const role=email===ADMIN_EMAIL?'admin':(uData.role||'office');
+            if(!cancelled){
+              setUser({...uData,role});
+              if(uData.role==='employee'&&uData.branch_id)setActiveBranch(uData.branch_id);
+            }
+            await loadData(uData.id,role,role==='admin'?null:uData.business_id);
+            markActivity();
+          }else if(!uData){
+            // Google user mpya — ana session lakini hana biashara bado.
+            // Mwonyeshe fomu ya kukamilisha usajili.
+            const meta=session.user.user_metadata||{};
+            if(!cancelled)setNeedsOnboarding({email,name:meta.full_name||meta.name||email.split('@')[0]});
+          }
+        }
+      }catch(e){console.warn('[restore session]',e?.message||e);}
+      finally{if(!cancelled)setRestoring(false);}
+    })();
+    return()=>{cancelled=true;};
+  },[]); // eslint-disable-line
+
+  // Fuatilia shughuli za mtumiaji ili kuweka upya muda wa saa 2
+  useEffect(()=>{
+    if(!user)return;
+    markActivity();
+    const evs=['click','keydown','mousemove','touchstart','scroll'];
+    let t=0;
+    const handler=()=>{const now=Date.now();if(now-t>30000){t=now;markActivity();}}; // throttle 30s
+    evs.forEach(ev=>window.addEventListener(ev,handler,{passive:true}));
+    // Ukirudi kwenye tab, kagua kama saa 2 zimepita
+    const onVis=()=>{
+      if(document.visibilityState==='visible'){
+        let last=0;try{last=+localStorage.getItem(ACTIVITY_KEY)||0}catch(_){}
+        if(last&&(Date.now()-last)>INACTIVITY_MS){logout();}
+        else markActivity();
+      }
+    };
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{evs.forEach(ev=>window.removeEventListener(ev,handler));document.removeEventListener('visibilitychange',onVis);};
+  },[user]); // eslint-disable-line
+
+  // ===== LOAD DATA =====
+  const loadData=useCallback(async(uid,role,bid)=>{
+    try{
+      const sData=await safeSelect('system_settings');
+      if(sData.length){const s={};sData.forEach(r=>{s[r.key]=r.value});setSettings(prev=>({...prev,...s}))}
+      const bData=await safeSelect('businesses',{order:{col:'created_at'}});if(bData.length)setBiz(bData);
+      const tData=await safeSelect('tokens',{order:{col:'created_at'}});if(tData.length)setTokens(tData);
+      const pData=await safeSelect('promo_codes');if(pData.length)setPromos(pData);
+      const nData=await safeSelect('notifications',{order:{col:'created_at'},limit:100});if(nData.length)setNotifs(nData);
+      const ll=await safeSelect('login_logs',{order:{col:'created_at'},limit:200});if(ll.length)setLogs(ll);
+      if(role!=='admin'&&bid){
+        const[pr,sl,ex,cu,em,sh,br,tk,rt,cr]=await Promise.all([
+          safeSelect('products',{eq:{business_id:bid}}),safeSelect('sales',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelect('expenses',{eq:{business_id:bid},order:{col:'created_at'}}),safeSelect('customers',{eq:{business_id:bid}}),
+          safeSelect('users',{eq:{business_id:bid,role:'employee'}}),safeSelect('stock_history',{eq:{business_id:bid},order:{col:'created_at'},limit:200}),
+          safeSelect('branches',{eq:{business_id:bid}}),safeSelect('support_tickets',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelect('returns',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
+        ]);
+        setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps((em||[]).filter(e=>e.is_active!==false));setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        // Manunuzi ya stock (purchases) — salama hata kama jedwali halipo
+        try{const pu=await safeSelect('purchases',{eq:{business_id:bid},order:{col:'created_at'}});setPurchases(Array.isArray(pu)?pu:[]);}catch(_){setPurchases([]);}
+        // Load payment requests for this business
+        const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
+        setPayReqs(pyReqs);
+      }
+      if(role==='admin'){
+        const sl=await safeSelect('system_logs',{order:{col:'created_at'},limit:200});setSysLogs(sl);
+        const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
+        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const pt=await safeSelect('marketing_partners');setPartners(pt);
+        const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
+        const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
+        const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
+        const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
+        const se=await safeSelect('system_expenses',{order:{col:'created_at'}});setSystemExpenses(se);
+      }
+      if(role==='marketing'){
+        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
+        const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
+        const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
+        const ts=await safeSelect('testimonials',{order:{col:'created_at'}});setTestimonials(ts);
+      }
+      if((role==='supervisor'||role==='agent')){
+        // Supervisor: load businesses WOTE (kwa form ya ziara)
+        const bAll=await safeSelect('businesses',{order:{col:'name'}});
+        if(bAll.length)setBiz(bAll);
+      }
+      if(role==='accountant'){
+        // Accountant loads SAME data as admin (read-only)
+        // Try loading payment_requests
+        let pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});
+        if(!pyAll.length){
+          // Fallback: direct query without ordering
+          const{data:pyDirect}=await supabase.from('payment_requests').select('*');
+          pyAll=pyDirect||[];
+        }
+        setPayReqs(pyAll);
+        
+        const pt=await safeSelect('marketing_partners');setPartners(pt);
+        
+        // Try system_expenses (table might not exist yet)
+        let se=[];
+        try{const{data:seData}=await supabase.from('system_expenses').select('*');se=seData||[]}catch(e){console.log('[ACCOUNTANT] system_expenses table not found - OK')}
+        setSystemExpenses(se);
+        
+      }
+    }catch(e){console.error('Load:',e)}
+  },[]);
+
+  // ===== PROMO CODE LOGIN (masupervaiza) =====
+  const[promoPending,setPromoPending]=useState(null);
+  const verifyPromoLogin=useCallback(async(inputCode)=>{
+    if(!promoPending)return{success:false,error:'Hakuna ombi la kuingia'};
+    const u=promoPending.userData;
+    const completeLogin=async(promoData)=>{
+      setUser({...u,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10});
+      setPromoPending(null);
+      await safeUpdate('users',{last_login:nowISO()},'id',u.id);
+      try{supabase.from('login_logs').insert({user_id:u.id,email:u.email,action:'login_promo',device_info:(navigator.userAgent||'').replace(/[^a-zA-Z0-9 _.,-]/g,'').substring(0,200)}).then(()=>{}).catch(()=>{})}catch(_){}
+      await loadData(u.id,u.role,u.business_id);
+    };
+    try{
+      const cleanInput=inputCode.trim().toUpperCase();
+      if(!cleanInput)return{success:false,error:'Ingiza promo code yako!'};
+      
+      // Njia 1: tafuta code moja kwa moja kwenye DB (case-insensitive)
+      const{data:byCode}=await supabase.from('promo_codes').select('*').ilike('code',cleanInput);
+      if(byCode&&byCode.length>0){
+        const matched=byCode.find(p=>(p.agent_email||'').toLowerCase().trim()===(u.email||'').toLowerCase().trim());
+        await completeLogin(matched||byCode[0]);
+        return{success:true};
+      }
+      
+      // Njia 2: tafuta kwa email ya supevaiza (fallback)
+      const{data:byEmail}=await supabase.from('promo_codes').select('*').ilike('agent_email',u.email.trim());
+      if(byEmail&&byEmail.length>0){
+        const promoData=byEmail[0];
+        if(promoData.code.trim().toUpperCase()!==cleanInput){
+          return{success:false,error:'Code si sahihi. Angalia vizuri na ujaribu tena.'};
+        }
+        await completeLogin(promoData);
+        return{success:true};
+      }
+      
+      return{success:false,error:'Promo code haijapatikana. Hakikisha unaingiza code uliyopewa na Admin.'};
+    }catch(e){console.error('PromoVerify:',e);return{success:false,error:'Tatizo la mtandao. Jaribu tena.'};}
+  },[promoPending,loadData]);
+  
+  const cancelPromoLogin=useCallback(()=>{setPromoPending(null)},[]);
+
+  // ===== UPDATE USER PROFILE =====
+  const updateUserProfile=useCallback(async(updates)=>{
+    if(!user?.id)return{success:false,error:'Hakuna mtumiaji'};
+    try{
+      // Upload avatar kama ipo
+      let avatarUrl=user.avatar_url||null;
+      if(updates.avatarFile){
+        const file=updates.avatarFile;
+        const ext=file.name.split('.').pop();
+        const path=`avatars/${user.id}.${ext}`;
+        const{error:upErr}=await supabase.storage.from('profiles').upload(path,file,{upsert:true});
+        if(!upErr){
+          const{data}=supabase.storage.from('profiles').getPublicUrl(path);
+          avatarUrl=data.publicUrl+'?t='+Date.now();
+        }
+      }
+      const patch={...(updates.name?{name:updates.name}:{}),
+        ...(updates.phone?{phone:updates.phone}:{}),
+        ...(avatarUrl?{avatar_url:avatarUrl}:{})};
+      if(Object.keys(patch).length===0)return{success:true};
+      await safeUpdate('users',patch,'id',user.id);
+      setUser(prev=>({...prev,...patch}));
+      return{success:true};
+    }catch(e){return{success:false,error:e.message};}
+  },[user]);
+
+  // ===== OFFLINE SYNC TRIGGER =====
+  const triggerSync=useCallback(async()=>{
+    try{
+      const SUPA_URL='https://snosfxagzglswaotrgzv.supabase.co';
+      const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNub3NmeGFnemdsc3dhb3RyZ3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDcwMDAsImV4cCI6MjA5MDY4MzAwMH0.qS6lEKGJ6IRganQTcpB1sFtw90XDyK0BMaQKSTVLXKE';
+      const result=await syncPendingSales(SUPA_URL,SUPA_KEY,(progress)=>{
+        setPendingSyncCount(progress.total-progress.synced-progress.failed);
+      });
+      if(result.synced>0){
+        if(bizId){const freshSales=await safeSelect('sales',{eq:{business_id:bizId},order:{col:'created_at'}});if(freshSales.length)setSales(freshSales);}
+        window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
+      }
+      const newCount=await getPendingCount();
+      setPendingSyncCount(newCount);
+    }catch(e){console.warn('[Sync]',e);}
+  },[bizId]);
+
+  // ===== AUTH — Email + Password PEKEE =====
+  const login=useCallback(async(email,password)=>{
+    setLoading(true);
+    try{
+      // Admin: jaribu Supabase Auth KWANZA (apate session ili RLS imruhusu ku-update)
+      if(email===ADMIN_EMAIL&&password===ADMIN_PASS){
+        // Jaribu kupata Supabase session ya admin
+        try{
+          const{error:authErr}=await supabase.auth.signInWithPassword({email,password});
+          // Hata kama Supabase password ni tofauti, admin bado anaingia (hardcoded)
+        }catch(_){}
+        const u={id:'00000000-0000-0000-0000-000000000001',email,name:'Duka Langu Admin',role:'admin'};
+        setUser(u);
+        await loadData(u.id,'admin',null);
+        setLoading(false);
+        return null;
+      }
+
+      // Login kwa Supabase Auth
+      const{data,error}=await supabase.auth.signInWithPassword({email,password});
+      if(error){
+        console.error('[LOGIN ERROR]',error.status, error.message, error);
+        setLoading(false);
+        return error.message;
+      }
+      // Pata role ya user kutoka DB
+      const{data:uData}=await supabase.from('users').select('*').eq('email',email).single();
+      if(uData){
+        if(!uData.is_active){setLoading(false);return'Akaunti yako imesimamishwa.';}
+        const ubRes=uData.business_id?(await supabase.from('businesses').select('*').eq('id',uData.business_id).single()):null;
+        if(ubRes?.data?.is_suspended){setLoading(false);return'Biashara yako imesimamishwa. Wasiliana na admin.';}
+        // Ikiwa ni admin email - weka role admin
+        const role=email===ADMIN_EMAIL?'admin':(uData.role||'office');
+        const userObj={...uData,role};
+        setUser(userObj);
+        await safeUpdate('users',{last_login:nowISO()},'id',uData.id);
+        try{supabase.from('login_logs').insert({user_id:uData.id,email,action:'login',device_info:(navigator.userAgent||'').replace(/[^a-zA-Z0-9 _.,-]/g,'').substring(0,200)}).then(()=>{}).catch(()=>{})}catch(_){}
+        await loadData(uData.id,role,role==='admin'?null:uData.business_id);
+        if(uData.role==='employee'&&uData.branch_id){setActiveBranch(uData.branch_id);}
+        if(uData.role==='supervisor'||uData.role==='agent'){
+          const{data:promoData}=await supabase.from('promo_codes').select('*').eq('agent_email',email).single();
+          if(promoData){setUser(prev=>({...prev,promo_code:promoData.code,promo_id:promoData.id,commission_rate:promoData.commission_rate||10}));}
+        }
+      }else{
+        // User haipo DB - weka kama office au admin
+        const role=email===ADMIN_EMAIL?'admin':'office';
+        setUser({id:data.user.id,email,name:email.split('@')[0],role});
+        await loadData(data.user.id,role,null);
+      }
+      markActivity(); // Anzisha muda wa session (saa 2)
+      setLoading(false);
+      return null;
+    }catch(e){
+      setLoading(false);
+      return'Hakuna mtandao.';
+    }
+  },[loadData,markActivity]);
+
+  const signup=useCallback(async(name,email,password,businessName,phone,promoCode,businessType='retail')=>{
+    setLoading(true);
+    try{
+      // Capture referral code from URL (?ref=REF-XXXXXXXX)
+      const url=new URL(window.location.href);
+      const refCode=url.searchParams.get('ref')||'';
+      
+      const{data:authData,error:authErr}=await supabase.auth.signUp({email,password});
+      if(authErr){setLoading(false);return authErr.message}
+      const uid=authData.user?.id||genId();
+      const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
+      await safeInsert('users',{id:uid,email,name,phone,role:'office'});
+      const newBiz=await safeInsert('businesses',{name:businessName,email,phone,owner_id:uid,trial_end:trialEnd,promo_code:promoCode||null,referred_by_code:refCode||null,business_type:businessType||'retail'});
+      if(newBiz){
+        await safeUpdate('users',{business_id:newBiz.id},'id',uid);
+        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya: ${businessName}`,message:`${name} (${email}) amesajili.${refCode?' Kupitia referral: '+refCode:''}`});
+        setBiz(prev=>[newBiz,...prev]);setUser({id:uid,email,name,phone,role:'office',business_id:newBiz.id});
+        await loadData(uid,'office',newBiz.id);
+        // Welcome email to new user
+        sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
+        
+        // Welcome SMS to new user's phone (immediately after signup)
+        if(phone){
+          const welcomeSMS=`Karibu DukaLangu Smart POS!\n\nHabari ${name||businessName},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu Smart POS.\n\nKupitia mfumo huu utaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako kwa wakati halisi ukiwa popote.\n\nIngia: dukalangu.com\nMsaada: +255 617 288 752\n\nTunakutakia mafanikio makubwa katika biashara yako.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`;
+          sendSMS(phone,welcomeSMS);
+        }
+        
+        // Notify admin via email
+        sendMail(ADMIN_EMAIL,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone});
+        // Notify ALL marketing partners
+        supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,'🆕 Mteja Mpya: '+businessName,'new_customer',{name:businessName,email,phone})});
+        }).catch(()=>{});
+
+        // ===== ARIFA KWA MAWAKALA NA MASOKO (SMS + Email) =====
+        supabase.from('users').select('name,email,phone,role')
+          .in('role',['agent','supervisor','marketing'])
+          .then(({data:staffList})=>{
+            const staffSMS=`MTEJA MPYA - DukaLangu\n\nBiashara: ${businessName}\nJina: ${name||'—'}\nSimu: ${phone||'—'}\nEmail: ${email}\n\nAmejisajili sasa hivi. Mfuatilie.`;
+            const staffHTML=`
+              <p style="margin:0 0 14px;font-size:15px;"><b>Mteja mpya amejisajili!</b></p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Biashara</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${businessName}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Jina</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${name||'—'}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Simu</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#0B7A3B;font-size:13.5px;">${phone||'—'}</td></tr>
+                <tr><td style="padding:9px 0;color:#667085;font-size:13px;">Email</td><td style="padding:9px 0;text-align:right;font-weight:600;color:#344054;font-size:12.5px;">${email}</td></tr>
+              </table>
+              <p style="margin:16px 0 0;padding:11px 13px;background:#F0FDF4;border-radius:9px;font-size:13px;color:#15803D;">
+                💡 Wasiliana naye kumkaribisha na kumsaidia kuanza.
+              </p>`;
+
+            (staffList||[]).forEach(s=>{
+              if(s.phone)sendSMS(s.phone,staffSMS);
+              if(s.email)sendMail(s.email,'🆕 Mteja Mpya: '+businessName,null,null,staffHTML);
+            });
+          }).catch(e=>console.warn('[staff notify]',e?.message));
+        
+        // Record referral if user came from a referral link
+        if(refCode){
+          // Find referrer by code (REF-XXXXXXXX format = first 8 chars of business ID)
+          const refIdPart=refCode.replace('REF-','').toLowerCase();
+          const referrer=businesses.find(b=>b.id?.toLowerCase().startsWith(refIdPart));
+          if(referrer){
+            await safeInsert('referrals',{
+              referrer_business_id:referrer.id,
+              referred_business_id:newBiz.id,
+              ref_code:refCode,
+              status:'pending',
+            });
+            // Notify admin
+            await safeInsert('notifications',{target_type:'admin',type:'success',title:'🎁 Referral Mpya!',message:`${referrer.name} amemkaribisha ${businessName}. Subiri malipo ya rafiki ili kuthibitisha bonus.`});
+          }
+        }
+      }
+      setLoading(false);return null;
+    }catch(e){setLoading(false);return e.message||'Tatizo.'}
+  },[settings.trial_days,loadData,businesses]);
+
+  // ===== GOOGLE SIGN-IN (wamiliki) =====
+  // Inampeleka mtumiaji Google; akirudi, restore effect inakagua
+  // kama ana biashara. Kama hana -> needsOnboarding (fomu ya biashara).
+  const signInWithGoogle=useCallback(async()=>{
+    try{
+      const{error}=await supabase.auth.signInWithOAuth({
+        provider:'google',
+        options:{redirectTo:window.location.origin},
+      });
+      if(error)return{error:error.message};
+      return{ok:true}; // browser itaelekezwa Google
+    }catch(e){return{error:'Imeshindwa kuanzisha Google. Jaribu tena.'};}
+  },[]);
+
+  // Kamilisha usajili wa Google user mpya (unda biashara)
+  const completeGoogleSignup=useCallback(async(businessName,phone,businessType='retail')=>{
+    if(!needsOnboarding?.email)return{error:'Hakuna taarifa za Google.'};
+    if(!businessName||!businessName.trim())return{error:'Weka jina la biashara.'};
+    setLoading(true);
+    try{
+      const{data:{session}}=await supabase.auth.getSession();
+      const uid=session?.user?.id||genId();
+      const email=needsOnboarding.email;
+      const name=needsOnboarding.name||'';
+      const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
+      // users row (id = auth id)
+      const uRow={id:uid,email,name,phone:phone||'',role:'office'};
+      const ud=await safeInsert('users',uRow);
+      if(ud&&ud.__error)await safeUpdate('users',uRow,'id',uid).catch(()=>{});
+      // business
+      const newBiz=await safeInsert('businesses',{name:businessName.trim(),email,phone:phone||'',owner_id:uid,trial_end:trialEnd,business_type:businessType||'retail'});
+      if(!newBiz||newBiz.__error){setLoading(false);return{error:'Imeshindwa kuhifadhi biashara. Jaribu tena.'};}
+      await safeUpdate('users',{business_id:newBiz.id},'id',uid);
+      await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya (Google): ${businessName}`,message:`${name} (${email}) amesajili kwa Google.`});
+      setBiz(prev=>[newBiz,...prev]);
+      setUser({id:uid,email,name,phone:phone||'',role:'office',business_id:newBiz.id});
+      setNeedsOnboarding(null);
+      await loadData(uid,'office',newBiz.id);
+      markActivity();
+      sendMail(email,'🎉 Karibu kwenye Duka Langu!','welcome',{name,businessName});
+      sendMail(ADMIN_EMAIL,'🆕 Mteja Mpya (Google): '+businessName,'new_customer',{name:businessName,email,phone});
+      setLoading(false);
+      return{ok:true};
+    }catch(e){setLoading(false);return{error:e.message||'Tatizo.'};}
+  },[needsOnboarding,settings.trial_days,loadData,markActivity]);
+
+  // Ghairi onboarding (toka)
+  const cancelOnboarding=useCallback(async()=>{
+    try{await supabase.auth.signOut()}catch(_){}
+    setNeedsOnboarding(null);
+  },[]);
+
+  // FORGOT PASSWORD (link ya zamani - inabaki kwa backward compatibility)
+  const forgotPassword=useCallback(async(email)=>{
+    try{const{error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});
+      if(error)return error.message;return null;
+    }catch(e){return'Hakuna mtandao.'}
+  },[]);
+
+  // ===== OTP PASSWORD RESET (Njia A - Supabase email OTP) =====
+  // 1. Tuma OTP ya tarakimu 6 kwa email
+  const sendResetOtp=useCallback(async(email)=>{
+    try{
+      // signInWithOtp inatuma OTP kupitia template ya MAGIC LINK ({{ .Token }})
+      // shouldCreateUser:false => haitengenezi akaunti mpya (mtumiaji lazima awepo)
+      const{error}=await supabase.auth.signInWithOtp({
+        email,
+        options:{shouldCreateUser:false},
+      });
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        const status=error.status||error.code;
+        if(status===429||m.includes('rate')||m.includes('limit')||m.includes('seconds')||m.includes('too many')||m.includes('after'))
+          return{ok:false,error:'Umeomba code mara nyingi. Tafadhali subiri dakika chache kisha jaribu tena.'};
+        if(m.includes('signups')||(m.includes('not')&&(m.includes('found')||m.includes('exist')||m.includes('allowed'))))
+          return{ok:false,error:'Email hii haijasajiliwa kwenye mfumo.'};
+        return{ok:false,error:error.message||'Imeshindwa kutuma code.'};
+      }
+      return{ok:true};
+    }catch(e){return{ok:false,error:'Hakuna mtandao. Angalia intaneti yako.'}}
+  },[]);
+
+  // 2. Thibitisha OTP (backend inathibitisha KABLA ya animation)
+  const verifyResetOtp=useCallback(async(email,token)=>{
+    try{
+      // signInWithOtp hutumia type 'email'. Jaribu email kwanza, kisha recovery (usalama).
+      let{data,error}=await supabase.auth.verifyOtp({email,token,type:'email'});
+      if(error){
+        const m1=(error.message||'').toLowerCase();
+        if(!m1.includes('expired')){
+          const r2=await supabase.auth.verifyOtp({email,token,type:'recovery'});
+          if(!r2.error&&r2.data?.session){data=r2.data;error=null;}
+          else if(r2.error)error=r2.error;
+        }
+      }
+      if(error){
+        const m=(error.message||'').toLowerCase();
+        if(m.includes('expired'))return{ok:false,error:'expired'};
+        return{ok:false,error:'invalid'};
+      }
+      if(!data?.session)return{ok:false,error:'invalid'};
+      return{ok:true};
+    }catch(e){return{ok:false,error:'network'}}
+  },[]);
+
+  // 3. Weka password mpya (baada ya OTP kuthibitishwa - kuna session)
+  const setNewPassword=useCallback(async(newPassword)=>{
+    try{
+      const{error}=await supabase.auth.updateUser({password:newPassword});
+      if(error)return{ok:false,error:error.message};
+      return{ok:true};
+    }catch(e){return{ok:false,error:'Hakuna mtandao.'}}
+  },[]);
+
+  const logout=useCallback(async()=>{
+    if(user)try{await supabase.from('login_logs').insert({user_id:user.id,email:user.email,action:'logout'})}catch(_){}
+    try{await supabase.auth.signOut()}catch(e){}
+    try{localStorage.removeItem(ACTIVITY_KEY)}catch(_){}
+    setUser(null);setProds([]);setSales([]);setExp([]);setCust([]);setEmps([]);setPopups([]);setTickets([]);setReturns([]);setBranches([]);setActiveBranch(null);
+  },[user]);
+
+  // ===== PRODUCTS =====
+  const addProduct=useCallback(async(p)=>{
+    if(!bizId)return{success:false,error:'Hakuna biashara'};
+    // Angalia jina linalorudiwa (100% match, case-insensitive)
+    const dupName=(p.name||'').trim().toLowerCase();
+    const existing=products.find(pr=>
+      pr.business_id===bizId&&
+      (pr.name||'').trim().toLowerCase()===dupName
+    );
+    if(existing){
+      return{success:false,duplicate:true,error:`Bidhaa "${existing.name}" ipo tayari kwenye mfumo! Badilisha jina au ongeza stock ya bidhaa hiyo.`};
+    }
+    // Strip wholesale fields — ziongezwe tu kama DB ina columns hizo
+    const{wholesale_price,wholesale_min_qty,...baseProduct}=p;
+    // Jaribu na wholesale fields kwanza
+    let d=await safeInsert('products',{...p,business_id:bizId,branch_id:activeBranch||null});
+    // Kama imeshindwa kwa sababu ya wholesale columns — jaribu bila yao
+    if(d?.__error){
+      console.warn('[addProduct] Trying without wholesale fields...');
+      d=await safeInsert('products',{...baseProduct,business_id:bizId,branch_id:activeBranch||null});
+    }
+    if(d?.__error){
+      return{success:false,error:`Tatizo la kuhifadhi: ${d.message}`};
+    }
+    const newProd=d||{...p,id:genId(),business_id:bizId,branch_id:activeBranch,created_at:nowISO()};
+    setProds(prev=>sortProducts([...prev,newProd]));
+    return{success:true,product:newProd};
+  },[bizId,activeBranch,products]);
+  const updateProduct=useCallback(async(pid,u)=>{await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);setProds(prev=>sortProducts(prev.map(p=>p.id===pid?{...p,...u}:p)))},[]);
+
+  // ===== MANUNUZI YA STOCK (Purchases) =====
+  // Mmiliki ananunua bidhaa za kuuza. HII SI expense — faida haibadiliki.
+  // source: 'shop' = pesa ya duka (inapunguza pesa mkononi) | 'external' = pesa ya nje
+  const addPurchase=useCallback(async({productId,quantity,buyPrice,source='shop',supplierName='',note=''})=>{
+    if(!bizId)return{error:'Biashara haijapatikana.'};
+    const qty=+quantity||0; const bp=+buyPrice||0;
+    if(qty<=0)return{error:'Weka idadi sahihi.'};
+    if(bp<=0)return{error:'Weka bei ya kununua.'};
+    const prod=products.find(p=>p.id===productId);
+    if(!prod)return{error:'Chagua bidhaa.'};
+    const total=qty*bp;
+    const before=prod.quantity||0;
+    const after=before+qty;
+    // 1) Ongeza stock + sasisha bei ya kununua (buy_price mpya)
+    await safeUpdate('products',{quantity:after,buy_price:bp,updated_at:nowISO()},'id',productId);
+    setProds(prev=>sortProducts(prev.map(p=>p.id===productId?{...p,quantity:after,buy_price:bp}:p)));
+    // 2) Rekodi manunuzi
+    const rec={business_id:bizId,branch_id:activeBranch||null,product_id:productId,product_name:prod.name,quantity:qty,buy_price:bp,total,source,supplier_name:supplierName||null,note:note||null,recorded_by:user?.id};
+    const d=await safeInsert('purchases',rec);
+    if(d&&d.__error)return{error:'Imeshindwa kuhifadhi: '+(d.message||'')+'. Hakikisha jedwali la purchases lipo (run SQL).'};
+    const saved=d||{...rec,id:genId(),created_at:nowISO()};
+    setPurchases(prev=>[saved,...prev]);
+    // 3) Historia ya stock
+    safeInsert('stock_history',{product_id:productId,business_id:bizId,change_type:'purchase',quantity_before:before,quantity_change:qty,quantity_after:after,user_id:user?.id,note:`Manunuzi (${source==='shop'?'pesa ya duka':'pesa ya nje'})`}).catch(()=>{});
+    return{ok:true,purchase:saved};
+  },[bizId,activeBranch,user,products]);
+
+  const deletePurchase=useCallback(async(id)=>{
+    const p=purchases.find(x=>x.id===id);
+    setPurchases(prev=>prev.filter(x=>x.id!==id));
+    try{await supabase.from('purchases').delete().eq('id',id);}catch(_){}
+    // Rudisha stock (toa idadi iliyoongezwa)
+    if(p&&p.product_id){
+      const prod=products.find(pr=>pr.id===p.product_id);
+      if(prod){const nq=Math.max(0,(prod.quantity||0)-(p.quantity||0));await safeUpdate('products',{quantity:nq},'id',p.product_id).catch(()=>{});setProds(prev=>sortProducts(prev.map(x=>x.id===p.product_id?{...x,quantity:nq}:x)));}
+    }
+    return{ok:true};
+  },[purchases,products]);
+
+  // Nakili bidhaa za tawi moja kwenda tawi lingine (stock=0, utajaza)
+  const copyProductsToBranch=useCallback(async(fromBranchId,toBranchId)=>{
+    if(!bizId||!toBranchId)return{success:false,error:'Chagua tawi'};
+    // Bidhaa za chanzo (au za jumla kama fromBranchId=null)
+    const source=products.filter(p=>p.business_id===bizId&&(fromBranchId?p.branch_id===fromBranchId:!p.branch_id));
+    if(!source.length)return{success:false,error:'Hakuna bidhaa za kunakili'};
+    // Bidhaa zilizopo tawi lengwa (kuepuka marudio)
+    const existing=products.filter(p=>p.business_id===bizId&&p.branch_id===toBranchId).map(p=>p.name?.toLowerCase());
+    let copied=0;
+    for(const p of source){
+      if(existing.includes(p.name?.toLowerCase()))continue; // ruka iliyopo
+      const{id,created_at,updated_at,...base}=p;
+      const d=await safeInsert('products',{...base,business_id:bizId,branch_id:toBranchId,quantity:0});
+      if(d){setProds(prev=>sortProducts([...prev,d]));copied++;}
+    }
+    return{success:true,copied};
+  },[bizId,products]);
+  const deleteProduct=useCallback(async(pid)=>{await safeDelete('products','id',pid);setProds(prev=>prev.filter(p=>p.id!==pid))},[]);
+
+  // ===== SALES =====
+  const completeSale=useCallback(async(cart,discount=0,payMethod='cash',payDetails=null,custId=null,custName='')=>{
+    if(!bizId||!cart.length)return null;
+    const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);
+    const total=Math.max(0,subtotal-discount);
+    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice)*(c.fraction||1),0)-discount;
+    const offlineId=genId();
+    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:payMethod,payment_details:payDetails,customer_id:custId,customer_name:custName,is_synced:false,offline_id:offlineId,created_at:nowISO()};
+
+    // Punguza stock kwenye React state SASA HIVI (kwa kasi, bila kusubiri DB)
+    for(const item of cart){
+      const prod=products.find(p=>p.id===item.productId);
+      if(prod){
+        const stockOut=item.qty*(item.fraction||1);
+        const nq=Math.max(0,prod.quantity-stockOut);
+        setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
+        // Punguza pia kwenye IndexedDB snapshot
+        deductStockOffline(item.productId,stockOut).catch(()=>{});
+      }
+    }
+
+    if(online){
+      // ===== ONLINE: Tuma Supabase moja kwa moja =====
+      try{
+        const{offline_id,...cleanData}=sd;
+        const saved=await safeInsert('sales',{...cleanData,is_synced:true});
+        // Kama Supabase imekataa (mf. constraint ya payment_method kwa mpesa/airtel/tigo/nmb/crdb),
+        // safeInsert inarudisha {__error:true}. Tusiweke object ya kosa kama mauzo/risiti —
+        // hifadhi offline na data KAMILI ili risiti ionyeshe njia ya malipo iliyochaguliwa.
+        if(saved&&saved.__error){
+          console.warn('[Sale] Supabase insert rejected, saving offline. Reason:',saved.message);
+          const offlineRecord=await saveSaleOffline(sd);
+          const offFinal={...sd,id:offlineId,_offline:true};
+          setSales(prev=>[offFinal,...prev]);
+          const oc=await getPendingCount();setPendingSyncCount(oc);
+          // Bado punguza stock kwenye Supabase (bidhaa zimetoka kweli)
+          for(const item of cart){
+            const prod=products.find(p=>p.id===item.productId);
+            if(prod){const stockOut=item.qty*(item.fraction||1);const nq=Math.max(0,prod.quantity-stockOut);await safeUpdate('products',{quantity:nq},'id',item.productId);}
+          }
+          return offFinal;
+        }
+        const final=saved||{...sd,id:offlineId};
+        setSales(prev=>[final,...prev]);
+        // Hifadhi stock changes kwenye Supabase
+        for(const item of cart){
+          const prod=products.find(p=>p.id===item.productId);
+          if(prod){
+            const stockOut=item.qty*(item.fraction||1);
+            const nq=Math.max(0,prod.quantity-stockOut);
+            await safeUpdate('products',{quantity:nq},'id',item.productId);
+            await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-stockOut,quantity_after:nq,user_id:user?.id});
+          }
+        }
+        return final;
+      }catch(netErr){
+        // Network ilikatika wakati wa kutuma — anguka kwenye offline path
+        console.warn('[Sale] Network failed, saving offline:',netErr);
+      }
+    }
+
+    // ===== OFFLINE: Hifadhi IndexedDB, queue kwa sync baadaye =====
+    const offlineRecord=await saveSaleOffline(sd);
+    const final={...sd,id:offlineId,_offline:true};
+    setSales(prev=>[final,...prev]);
+    const newCount=await getPendingCount();
+    setPendingSyncCount(newCount);
+    // Omba background sync kwa service worker
+    if('serviceWorker' in navigator&&'SyncManager' in window){
+      const reg=await navigator.serviceWorker.ready.catch(()=>null);
+      reg?.sync?.register('sync-sales').catch(()=>{});
+    }
+    return final;
+  },[bizId,activeBranch,user,online,products]);
+
+  // ============================================================
+  // ORDERS: Pending + Partial Payments (V1.2)
+  // Order haihesabiki kama mauzo hadi status='completed'.
+  // Stock inahifadhiwa (reserved) mara order inapoundwa.
+  // ============================================================
+
+  // Pakia orders wakati wa loadData (inatumia bizId)
+  const loadOrders=useCallback(async(bid)=>{
+    try{
+      const{data}=await supabase.from('orders').select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(300);
+      setOrders(data||[]);
+    }catch(e){}
+  },[]);
+
+  // Pakia orders bizId ikipatikana
+  useEffect(()=>{ if(bizId)loadOrders(bizId); },[bizId,loadOrders]);
+
+  // Unda order (Pending). Stock inapungua (reserved).
+  const createOrder=useCallback(async({items,discount=0,customerId=null,customerName='',customerPhone='',notes='',initialPayment=0,paymentMethod='cash'})=>{
+    if(!bizId)return{error:'Biashara haijapatikana'};
+    if(!items||!items.length)return{error:'Hakuna bidhaa'};
+
+    const subtotal=items.reduce((s,i)=>s+i.qty*i.price,0);
+    const total=subtotal-discount;
+    const profit=items.reduce((s,i)=>s+i.qty*(i.price-(i.cost||0)),0);
+    const paid=Math.min(+initialPayment||0,total);
+    const remaining=total-paid;
+    const status=remaining<=0?'completed':(paid>0?'partial':'pending');
+    const orderNumber='ORD-'+Date.now().toString(36).toUpperCase().slice(-6);
+
+    // Punguza stock (reserved)
+    items.forEach(item=>{
+      const stockOut=item.qty*(item.fraction||1);
+      setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:Math.max(0,p.quantity-stockOut)}:p));
+      const prod=products.find(p=>p.id===item.productId);
+      if(prod)safeUpdate('products',{quantity:Math.max(0,prod.quantity-stockOut)},'id',item.productId).catch(()=>{});
+    });
+
+    const rec={
+      business_id:bizId,branch_id:activeBranch||null,order_number:orderNumber,
+      customer_id:customerId,customer_name:customerName,customer_phone:customerPhone,
+      items,subtotal,discount,total,profit,
+      paid_amount:paid,remaining_amount:remaining,status,reserved_stock:true,
+      seller_id:user?.id,seller_name:user?.name,notes,
+      ...(status==='completed'?{completed_at:nowISO()}:{}),
+    };
+    const d=await safeInsert('orders',rec);
+    if(d&&d.__error){
+      // Rudisha stock (kwa sababu order haikuhifadhiwa)
+      items.forEach(item=>{
+        const stockOut=item.qty*(item.fraction||1);
+        setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:(p.quantity||0)+stockOut}:p));
+      });
+      return{error:'Imeshindwa kuhifadhi oda: '+(d.message||'')+'. Hakikisha jedwali la orders lipo (run SQL).'};
+    }
+    const order=d||{...rec,id:genId(),created_at:nowISO()};
+    setOrders(prev=>[order,...prev]);
+
+    // Rekodi malipo ya kwanza
+    if(paid>0){
+      await safeInsert('order_payments',{order_id:order.id,business_id:bizId,amount:paid,payment_method:paymentMethod,received_by:user?.id});
+    }
+
+    // Kama imekamilika mara moja -> iwe sale (mapato)
+    if(status==='completed'){
+      await recordOrderAsSale(order,paymentMethod);
+    }
+
+    return{order};
+  },[bizId,activeBranch,user,products]);
+
+  // Ongeza malipo kwa order (installment)
+  const addOrderPayment=useCallback(async(orderId,amount,paymentMethod='cash')=>{
+    const order=orders.find(o=>o.id===orderId);
+    if(!order)return{error:'Order haijapatikana'};
+    const amt=Math.min(+amount||0,order.remaining_amount);
+    if(amt<=0)return{error:'Kiasi si sahihi'};
+
+    const newPaid=(order.paid_amount||0)+amt;
+    const newRemaining=order.total-newPaid;
+    const newStatus=newRemaining<=0?'completed':'partial';
+
+    await safeInsert('order_payments',{order_id:orderId,business_id:bizId,amount:amt,payment_method:paymentMethod,received_by:user?.id});
+    const updates={paid_amount:newPaid,remaining_amount:Math.max(0,newRemaining),status:newStatus};
+    if(newStatus==='completed')updates.completed_at=nowISO();
+    await safeUpdate('orders',updates,'id',orderId);
+    setOrders(prev=>prev.map(o=>o.id===orderId?{...o,...updates}:o));
+
+    // Ikikamilika -> rekodi kama sale
+    if(newStatus==='completed'){
+      await recordOrderAsSale({...order,...updates},paymentMethod);
+    }
+    return{ok:true,status:newStatus,remaining:Math.max(0,newRemaining)};
+  },[orders,bizId,user]);
+
+  // Rekodi order iliyokamilika kama SALE (ndipo inakuwa mapato)
+  const recordOrderAsSale=useCallback(async(order,paymentMethod='cash')=>{
+    const sd={
+      business_id:bizId,branch_id:order.branch_id||null,seller_id:user?.id,seller_name:user?.name,
+      items:order.items,subtotal:order.subtotal,discount:order.discount,total:order.total,profit:order.profit,
+      payment_method:paymentMethod,customer_id:order.customer_id,customer_name:order.customer_name,
+      is_synced:online,created_at:nowISO(),notes:`Order ${order.order_number}`,
+    };
+    const d=await safeInsert('sales',sd);
+    if(d&&!d.__error)setSales(prev=>[d,...prev]);
+    return d;
+  },[bizId,user,online]);
+
+  // Ghairi order -> rudisha stock
+  const cancelOrder=useCallback(async(orderId)=>{
+    const order=orders.find(o=>o.id===orderId);
+    if(!order)return{error:'Order haijapatikana'};
+    if(order.status==='completed')return{error:'Order imeshakamilika, haiwezi kughairiwa'};
+
+    // Rudisha stock
+    if(order.reserved_stock){
+      (order.items||[]).forEach(item=>{
+        const stockBack=item.qty*(item.fraction||1);
+        setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:(p.quantity||0)+stockBack}:p));
+        const prod=products.find(p=>p.id===item.productId);
+        if(prod)safeUpdate('products',{quantity:(prod.quantity||0)+stockBack},'id',item.productId).catch(()=>{});
+      });
+    }
+    await safeUpdate('orders',{status:'cancelled',reserved_stock:false,cancelled_at:nowISO()},'id',orderId);
+    setOrders(prev=>prev.map(o=>o.id===orderId?{...o,status:'cancelled',reserved_stock:false}:o));
+    return{ok:true};
+  },[orders,products]);
+
+  const getOrderPayments=useCallback(async(orderId)=>{
+    try{const{data}=await supabase.from('order_payments').select('*').eq('order_id',orderId).order('created_at');return data||[];}
+    catch(e){return[];}
+  },[]);
+
+  // ============================================================
+  // SUPPLIERS + PURCHASE ORDERS + AUTO REORDER (V1.2)
+  // ============================================================
+  const[suppliers,setSuppliers]=useState([]);
+  const[purchaseOrders,setPurchaseOrders]=useState([]);
+
+  const loadSuppliers=useCallback(async(bid)=>{
+    try{
+      const[s,po]=await Promise.all([
+        supabase.from('suppliers').select('*').eq('business_id',bid).order('created_at',{ascending:false}),
+        supabase.from('purchase_orders').select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(200),
+      ]);
+      setSuppliers(s.data||[]);setPurchaseOrders(po.data||[]);
+    }catch(e){}
+  },[]);
+  useEffect(()=>{ if(bizId)loadSuppliers(bizId); },[bizId,loadSuppliers]);
+
+  const addSupplier=useCallback(async(sup)=>{
+    if(!bizId)return{error:'Biashara haijapatikana'};
+    if(!sup.name?.trim())return{error:'Weka jina la msambazaji'};
+    const rec={business_id:bizId,name:sup.name.trim(),phone:sup.phone||null,email:sup.email||null,address:sup.address||null,notes:sup.notes||null,outstanding_balance:0,is_active:true};
+    const d=await safeInsert('suppliers',rec);
+    const s=d||{...rec,id:genId(),created_at:nowISO()};
+    setSuppliers(prev=>[s,...prev]);
+    return{supplier:s};
+  },[bizId]);
+
+  const updateSupplier=useCallback(async(id,updates)=>{
+    await safeUpdate('suppliers',updates,'id',id);
+    setSuppliers(prev=>prev.map(s=>s.id===id?{...s,...updates}:s));
+    return{ok:true};
+  },[]);
+
+  const deleteSupplier=useCallback(async(id)=>{
+    await safeUpdate('suppliers',{is_active:false},'id',id);
+    setSuppliers(prev=>prev.filter(s=>s.id!==id));
+    return{ok:true};
+  },[]);
+
+  // Unda Purchase Order (manunuzi)
+  const createPurchaseOrder=useCallback(async({supplierId,supplierName,supplierPhone,items,paidAmount=0,paymentMethod='cash',notes=''})=>{
+    if(!bizId)return{error:'Biashara haijapatikana'};
+    if(!items||!items.length)return{error:'Hakuna bidhaa'};
+    const total=items.reduce((s,i)=>s+(i.qty*i.cost),0);
+    const paid=Math.min(+paidAmount||0,total);
+    const poNumber='PO-'+Date.now().toString(36).toUpperCase().slice(-6);
+    const rec={
+      business_id:bizId,branch_id:activeBranch||null,po_number:poNumber,
+      supplier_id:supplierId||null,supplier_name:supplierName,supplier_phone:supplierPhone||null,
+      items,total,paid_amount:paid,remaining_amount:total-paid,
+      status:'sent',payment_method:paymentMethod,notes,created_by:user?.id,
+    };
+    const d=await safeInsert('purchase_orders',rec);
+    const po=d||{...rec,id:genId(),created_at:nowISO()};
+    setPurchaseOrders(prev=>[po,...prev]);
+    // Ongeza deni la msambazaji
+    if(supplierId&&(total-paid)>0){
+      const sup=suppliers.find(s=>s.id===supplierId);
+      const newBal=(sup?.outstanding_balance||0)+(total-paid);
+      await safeUpdate('suppliers',{outstanding_balance:newBal},'id',supplierId).catch(()=>{});
+      setSuppliers(prev=>prev.map(s=>s.id===supplierId?{...s,outstanding_balance:newBal}:s));
+    }
+    return{po};
+  },[bizId,activeBranch,user,suppliers]);
+
+  // Pokea bidhaa -> ongeza stock
+  const receivePurchaseOrder=useCallback(async(poId,receivedItems=null)=>{
+    const po=purchaseOrders.find(p=>p.id===poId);
+    if(!po)return{error:'PO haijapatikana'};
+    const items=receivedItems||po.items;
+    // Ongeza stock kwa kila bidhaa
+    for(const item of items){
+      const qty=item.receivedQty!=null?item.receivedQty:item.qty;
+      if(qty<=0)continue;
+      if(item.productId){
+        const prod=products.find(p=>p.id===item.productId);
+        if(prod){
+          const newQ=(prod.quantity||0)+qty;
+          setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:newQ}:p));
+          await safeUpdate('products',{quantity:newQ},'id',item.productId).catch(()=>{});
+        }
+      }
+    }
+    const allReceived=!receivedItems||items.every(i=>(i.receivedQty==null||i.receivedQty>=i.qty));
+    const newStatus=allReceived?'received':'partial_received';
+    await safeUpdate('purchase_orders',{status:newStatus,received_at:nowISO()},'id',poId);
+    setPurchaseOrders(prev=>prev.map(p=>p.id===poId?{...p,status:newStatus,received_at:nowISO()}:p));
+    return{ok:true,status:newStatus};
+  },[purchaseOrders,products]);
+
+  const cancelPurchaseOrder=useCallback(async(poId)=>{
+    const po=purchaseOrders.find(p=>p.id===poId);
+    if(!po)return{error:'PO haijapatikana'};
+    if(po.status==='received')return{error:'PO imeshapokelewa'};
+    await safeUpdate('purchase_orders',{status:'cancelled'},'id',poId);
+    setPurchaseOrders(prev=>prev.map(p=>p.id===poId?{...p,status:'cancelled'}:p));
+    // Punguza deni la msambazaji
+    if(po.supplier_id&&po.remaining_amount>0){
+      const sup=suppliers.find(s=>s.id===po.supplier_id);
+      const newBal=Math.max(0,(sup?.outstanding_balance||0)-po.remaining_amount);
+      await safeUpdate('suppliers',{outstanding_balance:newBal},'id',po.supplier_id).catch(()=>{});
+      setSuppliers(prev=>prev.map(s=>s.id===po.supplier_id?{...s,outstanding_balance:newBal}:s));
+    }
+    return{ok:true};
+  },[purchaseOrders,suppliers]);
+
+  // Lipa deni la msambazaji
+  const paySupplier=useCallback(async(supplierId,amount)=>{
+    const sup=suppliers.find(s=>s.id===supplierId);
+    if(!sup)return{error:'Msambazaji hajapatikana'};
+    const amt=Math.min(+amount||0,sup.outstanding_balance||0);
+    const newBal=Math.max(0,(sup.outstanding_balance||0)-amt);
+    await safeUpdate('suppliers',{outstanding_balance:newBal},'id',supplierId);
+    setSuppliers(prev=>prev.map(s=>s.id===supplierId?{...s,outstanding_balance:newBal}:s));
+    return{ok:true,newBalance:newBal};
+  },[suppliers]);
+
+  // ===== RETURN/REFUND =====
+  const processReturn=useCallback(async(saleId,items,reason)=>{
+    if(!bizId)return null;
+    const sale=sales.find(s=>s.id===saleId);if(!sale)return null;
+    // Calculate refund considering fractions (½ kg of 10K = 5K refund)
+    const refundTotal=items.reduce((s,i)=>s+i.qty*i.price*(i.fraction||1),0);
+    const ret={business_id:bizId,sale_id:saleId,items,reason,refund_amount:refundTotal,processed_by:user?.id,status:'completed',customer_id:sale.customer_id||null,was_credit:sale.payment_method==='credit'};
+    const saved=await safeInsert('returns',ret);
+    const final=saved||{...ret,id:genId(),created_at:nowISO()};
+    setReturns(prev=>[final,...prev]);
+    
+    // Restore stock (accounting for fractions)
+    for(const item of items){
+      const prod=products.find(p=>p.id===item.productId);
+      if(prod){
+        // Stock to restore: qty * fraction (e.g., 1 × ½ = 0.5 kg back to stock)
+        const stockBack=item.qty*(item.fraction||1);
+        const nq=prod.quantity+stockBack;
+        await safeUpdate('products',{quantity:nq},'id',item.productId);
+        await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'return',quantity_before:prod.quantity,quantity_change:stockBack,quantity_after:nq,user_id:user?.id,note:`Rudisha kutoka mauzo #${saleId?.slice(0,8)} - ${reason}`});
+        setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
+      }
+    }
+    
+    // If sale was on credit, reduce customer's debt by refund amount
+    if(sale.payment_method==='credit'&&sale.customer_id){
+      const cust=customers.find(c=>c.id===sale.customer_id);
+      if(cust){
+        const newBalance=Math.max(0,(cust.credit_balance||0)-refundTotal);
+        const newTotalSpent=Math.max(0,(cust.total_spent||0)-refundTotal);
+        await safeUpdate('customers',{credit_balance:newBalance,total_spent:newTotalSpent},'id',sale.customer_id);
+        setCust(prev=>prev.map(c=>c.id===sale.customer_id?{...c,credit_balance:newBalance,total_spent:newTotalSpent}:c));
+        // Record in credit history
+        await safeInsert('credit_transactions',{business_id:bizId,customer_id:sale.customer_id,type:'refund',amount:refundTotal,balance_after:newBalance,note:`Rudisha bidhaa - ${reason}`,recorded_by:user?.id});
+      }
+    }else if(sale.customer_id){
+      // For cash sales, just reduce total_spent
+      const cust=customers.find(c=>c.id===sale.customer_id);
+      if(cust){
+        const newTotalSpent=Math.max(0,(cust.total_spent||0)-refundTotal);
+        await safeUpdate('customers',{total_spent:newTotalSpent},'id',sale.customer_id);
+        setCust(prev=>prev.map(c=>c.id===sale.customer_id?{...c,total_spent:newTotalSpent}:c));
+      }
+    }
+    
+    return final;
+  },[bizId,user,products,sales,customers]);
+
+  // ===== EXPENSES =====
+  const addExpense=useCallback(async(exp)=>{if(!bizId)return;const d=await safeInsert('expenses',{...exp,business_id:bizId,branch_id:activeBranch||null,recorded_by:user?.id});setExp(prev=>[d||{...exp,id:genId(),business_id:bizId,created_at:nowISO()},...prev])},[bizId,activeBranch,user]);
+  
+  const updateExpense=useCallback(async(id,updates)=>{
+    if(!id||!updates)return null;
+    await safeUpdate('expenses',updates,'id',id);
+    setExp(prev=>prev.map(e=>e.id===id?{...e,...updates,updated_at:nowISO()}:e));
+    return updates;
+  },[]);
+  
+  const deleteExpense=useCallback(async(id)=>{
+    if(!id)return;
+    await supabase.from('expenses').delete().eq('id',id);
+    setExp(prev=>prev.filter(e=>e.id!==id));
+  },[]);
+
+  // ===== CUSTOMERS =====
+  const addCustomer=useCallback(async(c)=>{if(!bizId)return null;const d=await safeInsert('customers',{...c,business_id:bizId,credit_balance:0,total_spent:0});const f=d||{...c,id:genId(),business_id:bizId,credit_balance:0,total_spent:0,created_at:nowISO()};setCust(prev=>[...prev,f]);return f},[bizId]);
+  const updateCustomer=useCallback(async(cid,u)=>{await safeUpdate('customers',u,'id',cid);setCust(prev=>prev.map(c=>c.id===cid?{...c,...u}:c))},[]);
+  const deleteCustomer=useCallback(async(cid)=>{await safeDelete('customers','id',cid);setCust(prev=>prev.filter(c=>c.id!==cid))},[]);
+
+  // ===== CREDIT / DEBT MANAGEMENT (ADVANCED) =====
+  const[creditHistory,setCreditHist]=useState([]);
+  
+  // Uza kwa deni (credit sale) - with due date
+  const creditSale=useCallback(async(cart,custId,discount=0,dueDate=null)=>{
+    if(!bizId||!cart.length||!custId)return null;
+    const subtotal=cart.reduce((s,c)=>s+c.qty*c.price,0);const total=Math.max(0,subtotal-discount);
+    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice),0)-discount;
+    const cust=customers.find(c=>c.id===custId);
+    // Check credit limit
+    if(cust?.credit_limit&&(cust.credit_balance||0)+total>cust.credit_limit){
+      return{error:`Deni litazidi kikomo cha TZS ${(cust.credit_limit||0).toLocaleString()}! Sasa: TZS ${(cust.credit_balance||0).toLocaleString()}, Mpya: TZS ${total.toLocaleString()}`};
+    }
+    const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:'credit',customer_id:custId,customer_name:cust?.name,is_synced:online};
+    const saved=await safeInsert('sales',sd);const final=saved||{...sd,id:genId(),created_at:nowISO()};
+    setSales(prev=>[final,...prev]);
+    for(const item of cart){
+      const prod=products.find(p=>p.id===item.productId);
+      if(prod){const nq=Math.max(0,prod.quantity-item.qty);await safeUpdate('products',{quantity:nq},'id',item.productId);setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p))}
+    }
+    const newBal=(cust?.credit_balance||0)+total;
+    const newSpent=(cust?.total_spent||0)+total;
+    await safeUpdate('customers',{credit_balance:newBal,total_spent:newSpent,last_credit_date:nowISO()},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal,total_spent:newSpent,last_credit_date:nowISO()}:c));
+    // Record credit transaction with due date
+    const defaultDue=new Date(Date.now()+30*86400000).toISOString().split('T')[0]; // 30 days default
+    const tx={customer_id:custId,business_id:bizId,sale_id:final.id,amount:total,type:'credit',due_date:dueDate||defaultDue,note:`Deni - ${cart.map(i=>i.name).join(', ')}`,status:'unpaid'};
+    const txSaved=await safeInsert('credit_transactions',tx);
+    setCreditHist(prev=>[txSaved||{...tx,id:genId(),created_at:nowISO()},...prev]);
+    return final;
+  },[bizId,activeBranch,user,online,products,customers]);
+
+  // Pokea malipo ya deni - with payment method tracking
+  const receivePayment=useCallback(async(custId,amount,note='',payMethod='cash')=>{
+    if(!bizId||!custId||!amount)return null;
+    const cust=customers.find(c=>c.id===custId);if(!cust)return null;
+    const newBal=Math.max(0,(cust.credit_balance||0)-amount);
+    await safeUpdate('customers',{credit_balance:newBal,last_payment_date:nowISO()},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_balance:newBal,last_payment_date:nowISO()}:c));
+    const tx={customer_id:custId,business_id:bizId,amount,type:'payment',payment_method:payMethod,note:note||`Malipo - ${payMethod} - TZS ${amount.toLocaleString()}`,status:'completed'};
+    const txSaved=await safeInsert('credit_transactions',tx);
+    setCreditHist(prev=>[txSaved||{...tx,id:genId(),created_at:nowISO()},...prev]);
+    // Mark oldest unpaid credits as paid
+    const unpaid=creditHistory.filter(t=>t.customer_id===custId&&t.type==='credit'&&t.status==='unpaid').sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    let remaining=amount;
+    for(const u of unpaid){
+      if(remaining<=0)break;
+      if(remaining>=u.amount){
+        await safeUpdate('credit_transactions',{status:'paid',paid_at:nowISO()},'id',u.id);
+        setCreditHist(prev=>prev.map(t=>t.id===u.id?{...t,status:'paid',paid_at:nowISO()}:t));
+        remaining-=u.amount;
+      }else{
+        // Partial payment - update remaining
+        await safeUpdate('credit_transactions',{status:'partial',paid_amount:u.amount-remaining},'id',u.id);
+        setCreditHist(prev=>prev.map(t=>t.id===u.id?{...t,status:'partial'}:t));
+        remaining=0;
+      }
+    }
+    return{newBalance:newBal};
+  },[bizId,customers,creditHistory]);
+
+  // Auto-notify on payment received
+  const receivePaymentWithAlert=useCallback(async(custId,amount,note='',payMethod='cash')=>{
+    const result=await receivePayment(custId,amount,note,payMethod);
+    if(result){
+      const cust=customers.find(c=>c.id===custId);
+      setPopups(prev=>[{id:genId(),type:'success',title:'💰 Malipo Yamepokewa!',message:`${cust?.name} amelipa TZS ${amount.toLocaleString()}. Deni baki: TZS ${result.newBalance.toLocaleString()}`},...prev]);
+      // Email to owner
+      if(biz?.email){
+        sendMail(biz.email,'💰 Malipo Yamepokewa','payment_received',{customerName:cust?.name,amount,remaining:result.newBalance,method:payMethod,note});
+      }
+    }
+    return result;
+  },[receivePayment,customers,biz]);
+
+  // Set credit limit for customer
+  const setCreditLimit=useCallback(async(custId,limit)=>{
+    await safeUpdate('customers',{credit_limit:+limit},'id',custId);
+    setCust(prev=>prev.map(c=>c.id===custId?{...c,credit_limit:+limit}:c));
+  },[]);
+
+  // Total debt + overdue calculations
+  const totalDebt=useMemo(()=>customers.reduce((a,c)=>a+(c.credit_balance||0),0),[customers]);
+  const overdueDebts=useMemo(()=>{
+    const today=new Date();
+    return creditHistory.filter(t=>{
+      if(t.type!=='credit'||t.status==='paid')return false;
+      if(!t.due_date)return false;
+      return new Date(t.due_date)<today;
+    });
+  },[creditHistory]);
+  const overdueCustomers=useMemo(()=>{
+    const custIds=new Set(overdueDebts.map(d=>d.customer_id));
+    return customers.filter(c=>custIds.has(c.id));
+  },[overdueDebts,customers]);
+  const overdueTotal=useMemo(()=>overdueDebts.reduce((a,d)=>a+(d.amount||0),0),[overdueDebts]);
+
+  // Debt aging analysis
+  const debtAging=useMemo(()=>{
+    const today=Date.now();
+    const aging={current:0,days30:0,days60:0,days90:0,over90:0};
+    creditHistory.filter(t=>t.type==='credit'&&t.status!=='paid').forEach(t=>{
+      const days=Math.floor((today-new Date(t.created_at).getTime())/86400000);
+      if(days<=30)aging.current+=t.amount||0;
+      else if(days<=60)aging.days30+=t.amount||0;
+      else if(days<=90)aging.days60+=t.amount||0;
+      else aging.over90+=t.amount||0;
+    });
+    return aging;
+  },[creditHistory]);
+
+  // ===== EMPLOYEES =====
+  const addEmployee=useCallback(async(emp)=>{
+    if(!bizId)return{error:'Biashara haijapatikana.'};
+    const email=(emp.email||'').trim().toLowerCase();
+    if(!email||!email.includes('@'))return{error:'Weka email sahihi.'};
+    if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
+
+    const row=(uid)=>({id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true});
+    const finish=(r)=>{setEmps(prev=>[...prev.filter(e=>e.email!==email),{...r,created_at:nowISO()}]);};
+
+    // ===== NJIA YA 1 (BORA): service_role API — email_confirm:true =>
+    //        mfanyakazi anaingia MARA MOJA bila kuthibitisha email =====
+    try{
+      const res=await fetch(API_BASE+'/api/admin/change-email',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'create_employee',emp_email:email,emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null}),
+      });
+      const d=await res.json().catch(()=>({}));
+      if(d&&d.success){
+        finish(d.user||row(genId()));
+        return{ok:true};
+      }
+      // Kama email tayari ipo — rudisha ujumbe wazi (usiende signUp)
+      const em=(d&&d.error||'').toLowerCase();
+      if(em.includes('tayari inatumika')||em.includes('already')||em.includes('exists')){
+        return{error:'Email hii tayari inatumika. Tumia email nyingine.'};
+      }
+      // vinginevyo: service_role haijawekwa/imegoma -> tutajaribu Njia ya 2
+    }catch(_){ /* endelea Njia ya 2 */ }
+
+    // ===== NJIA YA 2 (fallback): signUp kwa client iliyotengwa =====
+    try{
+      const{data:auth,error:authErr}=await supabaseSignup.auth.signUp({email,password:emp.password});
+      if(authErr){
+        const m=(authErr.message||'').toLowerCase();
+        if(m.includes('already')||m.includes('registered')||m.includes('exists'))
+          return{error:'Email hii tayari inatumika. Tumia email nyingine.'};
+        return{error:authErr.message||'Imeshindwa kuunda akaunti.'};
+      }
+      const uid=auth?.user?.id;
+      if(!uid)return{error:'Imeshindwa kuunda akaunti ya mfanyakazi.'};
+      const r=row(uid);
+      const d=await safeInsert('users',r);
+      if(d&&d.__error)await safeUpdate('users',r,'id',uid).catch(()=>{});
+      finish(r);
+      try{await supabaseSignup.auth.signOut()}catch(_){}
+      // Onyo: kama "Confirm email" imewashwa Supabase, mfanyakazi hataingia
+      // hadi email ithibitishwe. Tunamjulisha mmiliki.
+      return{ok:true,warn:'Kama mfanyakazi atashindwa kuingia, zima "Confirm email" kwenye Supabase (Authentication → Providers → Email).'};
+    }catch(e){
+      return{error:'Tatizo la mtandao. Jaribu tena.'};
+    }
+  },[bizId]);
+  const updateEmployee=useCallback(async(eid,updates)=>{
+    await safeUpdate('users',updates,'id',eid);
+    setEmps(prev=>prev.map(e=>e.id===eid?{...e,...updates}:e));
+  },[]);
+  const deleteEmployee=useCallback(async(eid)=>{
+    // Ondoa kwenye orodha mara moja (UI)
+    setEmps(prev=>prev.filter(e=>e.id!==eid));
+    // Soft delete: weka is_active=false. loadData inachuja hawa wasirudi.
+    const d=await safeUpdate('users',{is_active:false},'id',eid);
+    // Jaribu pia kufuta kabisa users row (kama RLS inaruhusu)
+    try{await supabase.from('users').delete().eq('id',eid).eq('role','employee')}catch(_){}
+    return d;
+  },[]);
+
+  // ===== BRANCHES =====
+  const addBranch=useCallback(async(name,location,extra={})=>{if(!bizId)return null;const branchCode='BR-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('branches',{business_id:bizId,name,location,address:extra.address||null,phone:extra.phone||null,branch_code:branchCode,is_active:extra.is_active!==false});const f=d||{id:genId(),business_id:bizId,name,location,...extra,branch_code:branchCode,is_active:extra.is_active!==false,created_at:nowISO()};setBranches(prev=>[...prev,f]);return f},[bizId]);
+  const updateBranch=useCallback(async(bid,u)=>{await safeUpdate('branches',u,'id',bid);setBranches(prev=>prev.map(b=>b.id===bid?{...b,...u}:b))},[]);
+  const deleteBranch=useCallback(async(bid)=>{await safeDelete('branches','id',bid);setBranches(prev=>prev.filter(b=>b.id!==bid));if(activeBranch===bid)setActiveBranch(null)},[activeBranch]);
+  const getBranches=useCallback(()=>bizId?branches.filter(b=>b.business_id===bizId):[],[bizId,branches]);
+  // Branch filtering: ukichagua branch, onyesha bidhaa za branch HIYO + za jumla (branch_id=null)
+  // Bidhaa za zamani (kabla ya branches) zina branch_id=null - zinaonekana kwenye branches zote
+  const branchProducts=useMemo(()=>activeBranch?products.filter(p=>p.branch_id===activeBranch):products,[products,activeBranch]);
+  const branchSales=useMemo(()=>activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales,[sales,activeBranch]);
+  const branchExpenses=useMemo(()=>activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses,[expenses,activeBranch]);
+
+  // BRANCH LOCK: Determines if current business can use multi-branch
+  const canUseBranches=useMemo(()=>{
+    if(user?.role==='admin')return true;
+    if(!bizId)return false;
+    const myBiz=businesses.find(b=>b.id===bizId)||biz;
+
+    // ===== KIPAUMBELE CHA JUU: Admin akizima, INAZIMWA (mteja arudi kawaida) =====
+    // Admin toggle huweka 'false' waziwazi -> heshimu uamuzi huo.
+    if(settings[`branch_biz_${bizId}`]==='false')return false;
+    if(myBiz?.branch_enabled===false||myBiz?.branch_enabled==='false')return false;
+
+    // Admin akiwasha waziwazi -> washa
+    if(settings[`branch_biz_${bizId}`]==='true')return true;
+    if(myBiz?.branch_enabled===true||myBiz?.branch_enabled==='true'||myBiz?.branch_enabled===1)return true;
+
+    // ===== KWA SASA: matawi yamefunguliwa kwa wote kama default =====
+    // (Isipokuwa admin amezima waziwazi hapo juu.)
+    if(user?.role==='office')return true;
+
+    // Njia nyingine za zamani
+    if(branches.some(b=>b.business_id===bizId))return true;
+    if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
+    return false;
+  },[user,settings,biz,bizId,businesses,branches]);
+
+  // Matawi yakizimwa, ondoa tawi lililokuwa limechaguliwa (mteja arudi kawaida)
+  useEffect(()=>{ if(!canUseBranches&&activeBranch)setActiveBranch(null); },[canUseBranches,activeBranch]);
+
+  // Is employee locked to a branch?
+  const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
+  // ===== PLAN DEFINITIONS =====
+  const PLANS={
+    basic:{
+      name:'Basic',price:15000,color:'#3B82F6',icon:'🟦',
+      features:['Mauzo ya POS','Usimamizi wa Stock','Wateja & Madeni','Matumizi','Wafanyakazi 3','Tawi 1','Ripoti za Msingi','Supervisors'],
+      limits:{employees:3,branches:1,products:200,customers:500},
+    },
+    premium:{
+      name:'Premium',price:20000,color:'#8B5CF6',icon:'🟣',
+      features:['Yote ya Basic','Matawi Mengi (hadi 10)','Wafanyakazi Wasio na Kikomo','Ripoti za Kina','AI Uchambuzi','SMS Center','Export CSV/PDF','Priority Support'],
+      limits:{employees:999,branches:10,products:2000,customers:9999},
+    },
+    enterprise:{
+      name:'Enterprise',price:150000,color:'#F59E0B',icon:'🟡',
+      features:['Yote ya Premium','Matawi Yasio na Kikomo','API Integration','Custom Reports','Dedicated Support','Training ya Bure','Multi-Admin','EFD/TRA Integration'],
+      limits:{employees:9999,branches:999,products:99999,customers:99999},
+    },
+  };
+  const currentPlan=PLANS[biz?.plan||'basic']||PLANS.basic;
+  const isPremium=(biz?.plan==='premium'||biz?.plan==='enterprise');
+  const isEnterprise=biz?.plan==='enterprise';
+  const isBasic=!isPremium;
+  // Check if feature is available on current plan
+  const canUseFeature=useCallback((feature)=>{
+    if(user?.role==='admin')return true;
+    const plan=biz?.plan||'basic';
+    const featureMap={
+      branches:['premium','enterprise'],
+      ai_insights:['premium','enterprise'],
+      sms_center:['premium','enterprise'],
+      unlimited_employees:['premium','enterprise'],
+      export:['premium','enterprise'],
+      api:['enterprise'],
+      efd:['enterprise'],
+      multi_admin:['enterprise'],
+    };
+    return featureMap[feature]?featureMap[feature].includes(plan):true;
+  },[user,biz]);
+
+  // ===== WHOLESALE FEATURE =====
+  const hasWholesale=useMemo(()=>{
+    if(user?.role==='admin')return false;
+    // Angalia settings (admin anaweza kusoma) AU businesses.wholesale_enabled
+    const fromSettings=settings[`wholesale_biz_${bizId}`]==='true';
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    const fromBiz=myBiz?.wholesale_enabled===true||myBiz?.wholesale_enabled==='true';
+    return fromSettings||fromBiz;
+  },[settings,bizId,user,biz]);
+  // Max branches for this plan
+  const maxBranches=useMemo(()=>{
+    // ===== KWA SASA: Matawi bila kikomo kwa wote (999) =====
+    // Ukitaka kurudisha vikomo vya plan baadaye, futa laini hii moja.
+    return 999;
+    /* eslint-disable no-unreachable */
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
+    if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
+    if(myBiz?.plan==='enterprise')return 999;
+    if(myBiz?.plan==='premium')return 10;
+    return 1;
+  },[biz,bizId]);
+
+  // ===== SUPPORT TICKETS =====
+  const createTicket=useCallback(async(subject,message,priority='normal')=>{
+    const tk={business_id:bizId,user_id:user?.id,user_email:user?.email,business_name:biz?.name,subject,message,priority,status:'open'};
+    const d=await safeInsert('support_tickets',tk);const f=d||{...tk,id:genId(),created_at:nowISO()};
+    setTickets(prev=>[f,...prev]);
+    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`🎫 Ticket: ${subject}`,message:`${biz?.name||user?.email}: ${message.slice(0,100)}`});
+    return f;
+  },[bizId,user,biz]);
+  const replyTicket=useCallback(async(tid,reply,status)=>{
+    await safeUpdate('support_tickets',{reply,status:status||'replied',replied_at:nowISO(),replied_by:user?.id},'id',tid);
+    setTickets(prev=>prev.map(t=>t.id===tid?{...t,reply,status:status||'replied',replied_at:nowISO()}:t));
+  },[user]);
+  const closeTicket=useCallback(async(tid)=>{await safeUpdate('support_tickets',{status:'closed'},'id',tid);setTickets(prev=>prev.map(t=>t.id===tid?{...t,status:'closed'}:t))},[]);
+
+  // ===== LIVE CHAT (Need help, ask me) =====
+  const[chatMessages,setChatMessages]=useState([]);
+  const[loadingChat,setLoadingChat]=useState(false);
+  
+  // Load chat messages for a business (or all if admin)
+  const loadChatMessages=useCallback(async(forBusinessId=null)=>{
+    setLoadingChat(true);
+    try{
+      let q=supabase.from('chat_messages').select('*').order('created_at',{ascending:true});
+      const targetBizId=forBusinessId||(user?.role==='admin'?null:bizId);
+      if(targetBizId)q=q.eq('business_id',targetBizId);
+      const{data,error}=await q.limit(500);
+      if(!error)setChatMessages(data||[]);
+    }catch(e){console.warn('Load chat:',e)}
+    setLoadingChat(false);
+  },[user?.role,bizId]);
+  
+  // Send a chat message
+  const sendChatMessage=useCallback(async(message,targetBusinessId=null)=>{
+    if(!message?.trim())return null;
+    const bid=targetBusinessId||bizId;
+    const isAdmin=user?.role==='admin';
+    const msg={
+      business_id:bid,
+      sender_id:user?.id,
+      sender_role:user?.role||'office',
+      sender_name:user?.name||user?.email,
+      message:message.trim(),
+      read_by_admin:isAdmin,
+      read_by_customer:!isAdmin,
+    };
+    const saved=await safeInsert('chat_messages',msg);
+    const final=saved||{...msg,id:genId(),created_at:nowISO(),is_read:false};
+    setChatMessages(prev=>[...prev,final]);
+    
+    // Notify the other party
+    if(isAdmin){
+      // Admin sent to customer
+      await safeInsert('notifications',{
+        target_type:'business',
+        target_id:bid,
+        type:'info',
+        title:'💬 Ujumbe Mpya kutoka Admin',
+        message:`${user?.name||'Admin'}: ${message.slice(0,80)}`,
+      });
+    }else{
+      // Customer sent to admin
+      await safeInsert('notifications',{
+        target_type:'admin',
+        type:'info',
+        title:`💬 Ujumbe kutoka ${biz?.name||user?.name}`,
+        message:message.slice(0,100),
+      });
+    }
+    return final;
+  },[bizId,user,businesses,biz]);
+  
+  // Mark messages as read
+  const markChatRead=useCallback(async(forBusinessId=null)=>{
+    const bid=forBusinessId||bizId;
+    if(!bid)return;
+    const isAdmin=user?.role==='admin';
+    const field=isAdmin?'read_by_admin':'read_by_customer';
+    try{
+      await supabase.from('chat_messages').update({[field]:true}).eq('business_id',bid).eq(field,false);
+      setChatMessages(prev=>prev.map(m=>m.business_id===bid?{...m,[field]:true}:m));
+    }catch(e){console.warn('Mark read:',e)}
+  },[user?.role,bizId]);
+  
+  // Realtime subscribe to chat
+  useEffect(()=>{
+    if(!user?.id)return;
+    const channel=supabase
+      .channel('chat-room')
+      .on('postgres_changes',
+        {event:'INSERT',schema:'public',table:'chat_messages'},
+        (payload)=>{
+          const newMsg=payload.new;
+          // Only add if relevant to this user
+          if(user?.role==='admin'||newMsg.business_id===bizId){
+            setChatMessages(prev=>{
+              if(prev.find(m=>m.id===newMsg.id))return prev;
+              return [...prev,newMsg];
+            });
+          }
+        }
+      )
+      .subscribe();
+    return()=>{supabase.removeChannel(channel);supabase.removeChannel(bizChannel)};
+  },[user?.id,user?.role,bizId]);
+  
+  // Get unread chat count
+  const unreadChatCount=useMemo(()=>{
+    const isAdmin=user?.role==='admin';
+    return chatMessages.filter(m=>
+      isAdmin?(!m.read_by_admin&&m.sender_role!=='admin'):(!m.read_by_customer&&m.sender_role==='admin')
+    ).length;
+  },[chatMessages,user?.role]);
+
+  // ===== TOKENS =====
+  const genToken=useCallback(async(days,plan='basic',assignTo='',assignName='')=>{
+    const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
+    const d=await safeInsert('tokens',{code,days:parseInt(days),plan,created_by:user?.id,assigned_to:assignTo||null,assigned_name:assignName||null,used:false});
+    const final=d||{id:genId(),code,days:parseInt(days),plan,created_by:user?.id,assigned_to:assignTo||null,assigned_name:assignName||null,used:false,created_at:nowISO()};
+    setTokens(prev=>[final,...prev]);return code;
+  },[user]);
+  const activateToken=useCallback(async(code)=>{
+    const tk=tokens.find(t=>t.code===code&&!t.used);
+    if(!tk)return'Token si sahihi au imetumika!';
+    if(!bizId)return'Biashara haijapatikana!';
+    const exp=new Date(Date.now()+tk.days*86400000).toISOString();
+    // Branch plans (branch2, branch3...) huwasha matawi otomatiki
+    const isBranchPlan=tk.plan&&tk.plan.startsWith('branch');
+    const branchesAllowed=isBranchPlan?parseInt(tk.plan.replace('branch',''))||2:null;
+    const bizUpdate={token_active:true,token_expiry:exp,plan:tk.plan||'basic',is_suspended:false};
+    if(isBranchPlan){
+      bizUpdate.branch_enabled=true;
+      bizUpdate.max_branches=branchesAllowed;
+    }
+    await safeUpdate('tokens',{used:true,used_by:bizId,used_at:nowISO()},'id',tk.id);
+    await safeUpdate('businesses',bizUpdate,'id',bizId);
+    setTokens(prev=>prev.map(t=>t.id===tk.id?{...t,used:true}:t));
+    setBiz(prev=>prev.map(b=>b.id===bizId?{...b,...bizUpdate}:b));
+
+    // ===== SMS + EMAIL YA UTHIBITISHO =====
+    const myBiz=businesses.find(x=>x.id===bizId)||biz;
+    const bizName=myBiz?.name||'Mteja';
+    const endDate=new Date(exp).toLocaleDateString('sw-TZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const daysLeft=Math.max(0,Math.ceil((new Date(exp)-new Date())/86400000));
+    const planName=(tk.plan||'basic').toUpperCase();
+
+    const smsMsg=`Habari ${bizName},\n\nToken yako imethibitishwa kikamilifu!\n\nMfumo wako umefunguliwa.\nSiku ${tk.days} zimeongezwa.\nMfumo utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS`;
+
+    const emailBody=`
+      <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+      <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+        <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Token imethibitishwa kikamilifu!</div>
+        <div style="font-size:13.5px;color:#166534;">Mfumo wako umefunguliwa na uko tayari kutumika.</div>
+      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kifurushi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${planName}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${tk.days}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+        <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+      </table>
+      <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
+
+    if(myBiz?.phone)sendSMS(myBiz.phone,smsMsg);
+    if(myBiz?.email)sendMail(myBiz.email,`✅ Mfumo Umefunguliwa — Siku ${tk.days}`,null,null,emailBody);
+
+    // Arifa ya ndani
+    await safeInsert('notifications',{
+      target_type:'business',target_id:bizId,type:'success',
+      title:`✅ Mfumo Umefunguliwa — Siku ${tk.days}`,
+      message:`Token yako imethibitishwa. Siku ${tk.days} zimeongezwa. Mfumo utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`,
+    });
+
+    return null;
+  },[tokens,bizId,businesses,biz]);
+
+  // ===== PROMO =====
+  const addPromo=useCallback(async(supervisor,phone,commission=10,email='')=>{
+    const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
+    const d=await safeInsert('promo_codes',{code,agent_name:supervisor,agent_phone:phone,agent_email:email,commission_rate:commission});
+    setPromos(prev=>[...prev,d||{id:genId(),code,agent_name:supervisor,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0,total_earned:0}]);
+    
+    // Send welcome SMS to supervisor
+    if(phone){
+      const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
+      const smsMsg=`DUKA LANGU\n\nKARIBU ${supervisor}!\n\nUmesajiliwa kama Supevaiza wa Mauzo.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili.\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+      try{
+        await fetch(API_BASE+'/api/send-sms',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({to:cleanPhone,message:smsMsg})
+        });
+      }catch(e){console.warn('Supervisor SMS failed:',e)}
+    }
+    
+    // Send welcome email to supervisor
+    if(email){
+      try{
+        await fetch(API_BASE+'/api/send-email',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            to:email,
+            subject:`🎉 Karibu Duka Langu — Supevaiza wa Mauzo`,
+            type:'generic',
+            data:{
+              customerName:supervisor,
+              title:`🎉 Hongera ${supervisor}!`,
+              message:`Umesajiliwa kama Supevaiza wa Mauzo wa Duka Langu.\n\nCode yako: ${code}\nCommission: ${commission}% kwa kila mteja\n\nShare code na wateja ili wajisajili: duka-langu-system.vercel.app`,
+            }
+          })
+        });
+      }catch(e){console.warn('Supervisor email failed:',e)}
+    }
+    
+    return code;
+  },[]);
+  const deletePromo=useCallback(async(pid)=>{await safeDelete('promo_codes','id',pid);setPromos(prev=>prev.filter(p=>p.id!==pid))},[]);
+
+  // ===== CREATE AGENT ACCOUNT (Marketing → Supervisor) =====
+  const createAgent=useCallback(async(name,email,password,phone,commission=10)=>{
+    try{
+      // 1. Create auth account
+      const{data:auth}=await supabase.auth.signUp({email,password:password||'agent123'});
+      const uid=auth?.user?.id||genId();
+      // 2. Create user with role='supervisor'
+      await safeInsert('users',{id:uid,email,name,phone,role:'supervisor',is_active:true});
+      // 3. Create promo code linked to supervisor email
+      const code='PROMO-'+Math.random().toString(36).substr(2,6).toUpperCase();
+      const promo=await safeInsert('promo_codes',{code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission});
+      setPromos(prev=>[...prev,promo||{id:genId(),code,agent_name:name,agent_phone:phone,agent_email:email,commission_rate:commission,used_count:0}]);
+      
+      // 4. Send welcome SMS with login details
+      if(phone){
+        const cleanPhone=phone.replace(/\s/g,'').replace(/^\+/,'').replace(/^0/,'255');
+        const smsMsg=`DUKA LANGU\n\nKARIBU ${name}!\n\nUmesajiliwa kama Supevaiza.\n\nLogin:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako: ${code}\nCommission: ${commission}%\n\nLink: duka-langu-system.vercel.app\n\nAsante!`;
+        try{
+          await fetch(API_BASE+'/api/send-sms',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({to:cleanPhone,message:smsMsg})
+          });
+        }catch(e){console.warn('Supervisor SMS failed:',e)}
+      }
+      
+      // 5. Send welcome email with login details
+      if(email){
+        try{
+          await fetch(API_BASE+'/api/send-email',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              to:email,
+              subject:`🎉 Karibu Duka Langu — Akaunti ya Supevaiza`,
+              type:'generic',
+              data:{
+                customerName:name,
+                title:`🎉 Hongera ${name}!`,
+                message:`Umesajiliwa kama Supevaiza wa Mauzo wa Duka Langu.\n\nDetails za Login:\nEmail: ${email}\nPassword: ${password||'agent123'}\n\nCode yako ya supevaiza: ${code}\nCommission: ${commission}%\n\nIngia kwenye mfumo: duka-langu-system.vercel.app\n\nBadilisha password ukiwa ndani ya mfumo.`,
+              }
+            })
+          });
+        }catch(e){console.warn('Supervisor email failed:',e)}
+      }
+      
+      return{uid,code,email};
+    }catch(e){console.warn('CreateAgent:',e);return null}
+  },[]);
+
+  // ===== REGISTER CUSTOMER BY AGENT =====
+  const registerCustomerByAgent=useCallback(async(bizName,custEmail,custPhone,custName)=>{
+    if(!user?.promo_code)return{error:'Promo code haijapatikana'};
+    try{
+      const password='duka'+Math.random().toString(36).substr(2,6);
+      const{data:auth}=await supabase.auth.signUp({email:custEmail,password});
+      const uid=auth?.user?.id||genId();
+      const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
+      await safeInsert('users',{id:uid,email:custEmail,name:custName||bizName,phone:custPhone,role:'office'});
+      const newBiz=await safeInsert('businesses',{name:bizName,email:custEmail,phone:custPhone,owner_id:uid,trial_end:trialEnd,promo_code:user.promo_code});
+      if(newBiz){
+        await safeUpdate('users',{business_id:newBiz.id},'id',uid);
+        setBiz(prev=>[newBiz,...prev]);
+        // Notify admin
+        await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Mteja Mpya (Supevaiza): ${bizName}`,message:`${custName||bizName} amesajiliwa na supevaiza ${user.name}. Code: ${user.promo_code}`});
+        // Welcome email
+        sendMail(custEmail,'🎉 Karibu kwenye Duka Langu!','welcome',{name:custName||bizName,businessName:bizName});
+        
+        // Welcome SMS to new customer's phone (immediately after registration)
+        if(custPhone){
+          const welcomeSMS=`Karibu DukaLangu Smart POS!\n\nHabari ${name||businessName},\n\nTunakukaribisha rasmi kwenye familia ya DukaLangu Smart POS.\n\nKupitia mfumo huu utaweza kusimamia mauzo, bidhaa, madeni, matumizi na kupata taarifa za biashara yako kwa wakati halisi ukiwa popote.\n\nIngia: dukalangu.com\nMsaada: +255 617 288 752\n\nTunakutakia mafanikio makubwa katika biashara yako.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`;
+          sendSMS(custPhone,welcomeSMS);
+        }
+        
+        // Admin + Partners notification
+        sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya (Supevaiza): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'});
+        supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+          (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya (Supevaiza): ${bizName}`,'new_customer',{name:bizName,email:custEmail,phone:custPhone||'-'})});
+        }).catch(()=>{});
+      }
+      return{success:true,email:custEmail,password,bizName};
+    }catch(e){console.warn('RegisterByAgent:',e);return{error:e.message||'Tatizo'}}
+  },[user,settings.trial_days]);
+
+  // ===== PAYMENT REQUESTS (Lipa na Kuthibitisha) =====
+  // Office: submit payment with transaction ID
+  // ===== SNIPPE PAYMENT (malipo ya moja kwa moja) =====
+  const snippeCreatePayment=useCallback(async({amount,phone,provider,days=30,plan='basic'})=>{
+    try{
+      const r=await fetch(API_BASE+'/api/snippe/create-payment',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          business_id:bizId,
+          business_name:biz?.name,
+          amount,phone,provider,days,plan,
+          customer_name:biz?.name,
+          customer_email:user?.email,
+        }),
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||d.status==='error')return{ok:false,error:d.message||'Imeshindwa kuanzisha malipo.'};
+      return{ok:true,reference:d.reference,message:d.message};
+    }catch(e){return{ok:false,error:'Hakuna mtandao. Angalia intaneti yako.'}}
+  },[bizId,biz,user]);
+
+  const snippeCheckStatus=useCallback(async(reference)=>{
+    try{
+      const r=await fetch(API_BASE+'/api/snippe/status?reference='+encodeURIComponent(reference));
+      const d=await r.json().catch(()=>({}));
+      if(d.status==='success')return{ok:true,paymentStatus:d.payment_status,failureReason:d.failure_reason};
+      return{ok:false};
+    }catch(e){return{ok:false}}
+  },[]);
+
+  const submitPayment=useCallback(async(transactionId,amount,payMethod='HALOPESA',phone='')=>{
+    const myBizId=bizId||user?.business_id;
+    const myBizName=biz?.name||user?.name||'Biashara';
+    const myEmail=user?.email||'';
+    
+    if(!myBizId){
+      console.error('[PAYMENT] No bizId! user:',user?.id,'biz:',biz);
+      return{error:'Biashara haijapatikana. Jaribu tena.'};
+    }
+    
+    
+    // Columns halisi za table: business_id, transaction_id, amount, status, payer_name, payer_phone, requested_by
+    const prBasic={business_id:myBizId,transaction_id:transactionId.trim(),amount:+amount,status:'pending'};
+    // Tumia payer_name/payer_phone (majina halisi ya table hii)
+    const prFull={...prBasic,payer_name:myBizName,payer_phone:phone,requested_by:user?.id};
+    
+    // Insert: jaribu full, kisha basic. Ondoa columns zinazokosekana kiotomatiki.
+    let saved=null;
+    const tryInsert=async(obj)=>{
+      const{data,error}=await supabase.from('payment_requests').insert(obj).select().single();
+      return{data,error};
+    };
+    let attempt=await tryInsert(prFull);
+    // Kama column haipo, iondoe na jaribu tena (mara kadhaa)
+    let tries=0;
+    while(attempt.error&&attempt.error.message&&attempt.error.message.includes('column')&&tries<8){
+      const m=attempt.error.message.match(/column "([^"]+)"/);
+      if(m&&m[1]){delete prFull[m[1]];tries++;attempt=await tryInsert(prFull);}
+      else break;
+    }
+    if(attempt.error){
+      // Fallback ya mwisho - basic tu
+      attempt=await tryInsert(prBasic);
+      if(attempt.error){
+        console.error('[PAYMENT] All inserts failed:',attempt.error.message);
+        return{error:'Tatizo la database: '+attempt.error.message};
+      }
+    }
+    saved=attempt.data;
+    
+    if(saved)setPayReqs(prev=>[saved,...prev]);
+    const final=saved||{...prFull,id:genId(),created_at:nowISO()};
+    
+    // Notify admin AND accountant — in-app notification
+    safeInsert('notifications',{target_type:'admin',type:'warning',title:`💰 MALIPO MAPYA! — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()} kupitia ${payMethod}. Transaction: ${transactionId}. Muhasibu athibitishe!`}).catch(()=>{});
+    safeInsert('notifications',{target_type:'accountant',type:'warning',title:`💰 THIBITISHA MALIPO — ${myBizName}`,message:`${myBizName} amelipa TZS ${(+amount).toLocaleString()}. Fungua Tokens → Toa token kwa mteja.`}).catch(()=>{});
+    // Notify admin — email
+    sendMail(ADMIN_EMAIL,`💰 MALIPO MAPYA — ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone});
+    // Notify admin — SMS via Beem (kwa Admin namba 0628986770)
+    sendSMS('255628986770',`DUKA LANGU\n💰 MALIPO MAPYA!\n\nMteja: ${myBizName}\nKiasi: TZS ${(+amount).toLocaleString()}\nNjia: ${payMethod}\nTX: ${transactionId}\nSimu: ${phone||'—'}\n\nMuhasibu athibitishe.`);
+    // Notify partners
+    supabase.from('marketing_partners').select('email').then(({data:pts})=>{
+      (pts||[]).forEach(p=>{if(p.email)sendMail(p.email,`💰 Malipo Mapya: ${myBizName}`,'admin_payment',{businessName:myBizName,email:myEmail,transactionId,amount:+amount,method:payMethod,phone})});
+    }).catch(()=>{});
+    
+    return final;
+  },[bizId,biz,user]);
+
+  // Admin: approve payment → auto-generate token → activate
+  const approvePayment=useCallback(async(paymentId,days=30)=>{
+    const pr=paymentRequests.find(p=>p.id===paymentId);
+    if(!pr)return null;
+    // 1. Generate token
+    const code='TK-'+Math.random().toString(36).substr(2,8).toUpperCase();
+    const tokenData=await safeInsert('tokens',{code,days:parseInt(days),plan:pr.plan||'basic',created_by:user?.id,used:true,used_by:pr.business_id,used_by_name:pr.business_name,used_at:nowISO()});
+    setTokens(prev=>[tokenData||{id:genId(),code,days,plan:pr.plan||'basic',used:true,used_by:pr.business_id,used_by_name:pr.business_name,created_at:nowISO()},...prev]);
+    // 2. Activate business
+    const exp=new Date(Date.now()+parseInt(days)*86400000).toISOString();
+    await safeUpdate('businesses',{token_active:true,token_expiry:exp,plan:pr.plan||'basic',is_suspended:false},'id',pr.business_id);
+    setBiz(prev=>prev.map(b=>b.id===pr.business_id?{...b,token_active:true,token_expiry:exp,is_suspended:false}:b));
+    // 3. Update payment request status
+    await safeUpdate('payment_requests',{status:'approved',approved_by:user?.id,approved_at:nowISO(),token_code:code,days_given:days},'id',paymentId);
+    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'approved',token_code:code,days_given:days}:p));
+    // 4. Notify business — in-app
+    await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'success',title:'🎉 Malipo Yamethibitishwa!',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamethibitishwa! Mfumo umefunguliwa kwa siku ${days}. Token: ${code}`});
+    // 5. Email customer
+    if(pr.user_email){
+      sendMail(pr.user_email,'🎉 Malipo Yamethibitishwa — Duka Langu','payment_received',{customerName:pr.business_name,amount:pr.amount,remaining:0,method:pr.payment_method||'HALOPESA'});
+    }
+    // 6. SMS token to customer phone
+    if(pr.phone){
+      sendSMS(pr.phone,`Habari ${pr.payer_name||pr.business_name||'Mteja'},\n\nMalipo yako yamepokelewa kikamilifu.\n\nAkaunti yako ya DukaLangu Smart POS imefunguliwa na huduma zote zimeanza kufanya kazi tena.\n\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nMuda: Siku ${days}\n\nIngia: dukalangu.com\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS\nSimamia Biashara Yako Kidijitali.`);
+    }
+    // 7. SMS admin confirmation
+    sendSMS('255628986770',`DUKA LANGU\n✅ Umethibitisha malipo\n\nMteja: ${pr.business_name}\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nSiku: ${days}\nToken: ${code}`);
+    return{code,days};
+  },[paymentRequests,user]);
+
+  // Admin: reject payment
+  const rejectPayment=useCallback(async(paymentId,reason='')=>{
+    const pr=paymentRequests.find(p=>p.id===paymentId);
+    if(!pr)return;
+    await safeUpdate('payment_requests',{status:'rejected',reject_reason:reason||'Transaction ID si sahihi',approved_by:user?.id,approved_at:nowISO()},'id',paymentId);
+    setPayReqs(prev=>prev.map(p=>p.id===paymentId?{...p,status:'rejected',reject_reason:reason||'Transaction ID si sahihi'}:p));
+    // Notify business — in-app
+    await safeInsert('notifications',{target_type:'business',target_id:pr.business_id,type:'danger',title:'❌ Malipo Yamekataliwa',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamekataliwa. Sababu: ${reason||'Transaction ID si sahihi'}. Jaribu tena.`});
+    // Email customer
+    if(pr.user_email){
+      sendMail(pr.user_email,'❌ Malipo Yamekataliwa — Duka Langu','promotional',{title:'❌ Malipo Yamekataliwa',emoji:'❌',message:`Malipo yako ya TZS ${(pr.amount||0).toLocaleString()} yamekataliwa.\n\nSababu: ${reason||'Transaction ID si sahihi'}\n\nTafadhali jaribu tena na Transaction ID sahihi.`,cta:'Jaribu Tena →'});
+    }
+    // SMS customer
+    if(pr.phone){
+      sendSMS(pr.phone,`DUKA LANGU\n❌ Malipo Yamekataliwa\n\nKiasi: TZS ${(pr.amount||0).toLocaleString()}\nSababu: ${reason||'Transaction ID si sahihi'}\n\nTafadhali jaribu tena na Transaction ID sahihi:\nduka-langu-system.vercel.app\n\nMsaada: 0617288752`);
+    }
+  },[paymentRequests,user]);
+
+  // Check my latest payment status (for office/locked page)
+  const myLatestPayment=useMemo(()=>{
+    if(!bizId)return null;
+    return paymentRequests.filter(p=>p.business_id===bizId).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))[0]||null;
+  },[paymentRequests,bizId]);
+
+  // Pending payments count (for admin badge)
+  const pendingPayments=useMemo(()=>paymentRequests.filter(p=>p.status==='pending'),[paymentRequests]);
+
+  // Real-time subscription for payment status updates
+  useEffect(()=>{
+    if(!bizId||user?.role==='admin')return;
+    // Realtime: angalia mabadiliko ya biashara (branch_enabled, plan, is_suspended)
+    const bizChannel=supabase.channel('biz-updates-'+bizId)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'businesses',filter:`id=eq.${bizId}`},(payload)=>{
+        const updated=payload.new;
+        if(updated){
+          setBiz(prev=>prev.map(b=>b.id===bizId?{...b,...updated}:b));
+        }
+      }).subscribe();
+
+    const channel=supabase.channel('payment-updates')
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'payment_requests',filter:`business_id=eq.${bizId}`},(payload)=>{
+        const updated=payload.new;
+        setPayReqs(prev=>prev.map(p=>p.id===updated.id?{...p,...updated}:p));
+        if(updated.status==='approved'){
+          // Auto-refresh business data
+          setPopups(prev=>[{id:genId(),type:'success',title:'🎉 Malipo Yamethibitishwa!',message:'Mfumo unafunguka...'},...prev]);
+          // Reload business data after 1.5 seconds
+          setTimeout(()=>{loadData(user.id,user.role,bizId)},1500);
+        }
+      }).subscribe();
+    return()=>{supabase.removeChannel(channel)};
+  },[bizId,user,loadData]);
+
+  // Admin: real-time new payment requests
+  useEffect(()=>{
+    if(user?.role!=='admin')return;
+    // Listen for new payment requests
+    const ch1=supabase.channel('admin-payments')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'payment_requests'},(payload)=>{
+        setPayReqs(prev=>[payload.new,...prev]);
+        setPopups(prev=>[{id:genId(),type:'warning',title:'💰 Malipo Mapya!',message:`${payload.new.business_name} amelipa TZS ${(payload.new.amount||0).toLocaleString()}! Thibitisha SASA.`},...prev]);
+      }).subscribe();
+    // Listen for new notifications
+    const ch2=supabase.channel('admin-notifs')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:'target_type=eq.admin'},(payload)=>{
+        setNotifs(prev=>[payload.new,...prev]);
+      }).subscribe();
+    return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2)};
+  },[user]);
+
+  // ===== SMART ALERT ENGINE =====
+  // Runs once on load — generates auto-notifications for important events
+  useEffect(()=>{
+    if(!user||!bizId||user.role==='admin'||user.role==='marketing'||(user.role==='supervisor'||user.role==='agent'))return;
+    // WAIT for data to load — don't run with empty data
+    if(products.length===0&&sales.length===0&&customers.length===0)return;
+    const today=todayStr();
+    const alertKey=`alerts_${bizId}_${today}`;
+    // Prevent duplicate alerts per day
+    if(sessionStorage.getItem(alertKey))return;
+    sessionStorage.setItem(alertKey,'1');
+
+    const alerts=[];
+
+    // 1. LOW STOCK ALERT
+    const lowItems=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5));    if(lowItems.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'warning',
+        title:`📦 Bidhaa ${lowItems.length} Zinaisha!`,
+        message:`Agiza haraka: ${lowItems.slice(0,5).map(p=>`${p.name} (${p.quantity} zimebaki)`).join(', ')}${lowItems.length>5?` na ${lowItems.length-5} nyingine`:''}.`
+      });
+    }
+
+    // 2. OVERDUE DEBT ALERT
+    if(overdueCustomers.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'danger',
+        title:`🚨 Deni Limechelewa — Wateja ${overdueCustomers.length}!`,
+        message:`Deni la jumla TZS ${overdueTotal.toLocaleString()} limechelewa! ${overdueCustomers.slice(0,3).map(c=>`${c.name}: TZS ${(c.credit_balance||0).toLocaleString()}`).join(', ')}.`
+      });
+    }
+
+    // 3. SUBSCRIPTION EXPIRY ALERT
+    if(biz){
+      const end=biz.token_active?biz.token_expiry:biz.trial_end;
+      if(end){
+        const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
+        if(dLeft>0&&dLeft<=5){
+          alerts.push({target_type:'business',target_id:bizId,type:'warning',
+            title:`⏳ Muda Unakaribia Kuisha — Siku ${dLeft}!`,
+            message:`Muda wako wa mfumo utaisha ${dLeft===1?'KESHO':`baada ya siku ${dLeft}`}. Lipa sasa ili kuendelea: HALOPESA Lipa Namba 25187616 — DUKALANGU.`
+          });
+        }
+      }
+    }
+
+    // 4. EXPIRY DATE ALERT (products expiring soon)
+    const expiring=products.filter(p=>{
+      if(!p.expiry_date||p.business_id!==bizId)return false;
+      const dLeft=Math.ceil((new Date(p.expiry_date)-new Date())/86400000);
+      return dLeft>0&&dLeft<=14;
+    });
+    if(expiring.length>0){
+      alerts.push({target_type:'business',target_id:bizId,type:'warning',
+        title:`📅 Bidhaa ${expiring.length} Zinakaribia Kuisha Muda!`,
+        message:`Angalia: ${expiring.slice(0,3).map(p=>{const d=Math.ceil((new Date(p.expiry_date)-new Date())/86400000);return`${p.name} (siku ${d})`}).join(', ')}.`
+      });
+    }
+
+    // 5. DAILY PERFORMANCE SUMMARY (if sales exist today)
+    const todaySales=sales.filter(s=>s.created_at?.startsWith(today));
+    const todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
+    const todayProfit=todaySales.reduce((a,s)=>a+s.profit,0);
+    const todayExp=expenses.filter(e=>e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+    // Only show if it's after 6 PM
+    const hour=new Date().getHours();
+    if(hour>=18&&todaySales.length>0){
+      const topProd={};todaySales.forEach(s=>s.items?.forEach(i=>{topProd[i.name]=(topProd[i.name]||0)+i.qty}));
+      const best=Object.entries(topProd).sort((a,b)=>b[1]-a[1])[0];
+      alerts.push({target_type:'business',target_id:bizId,type:'info',
+        title:`📊 Ripoti ya Leo — ${new Date().toLocaleDateString('sw-TZ')}`,
+        message:`Mauzo: TZS ${todayTotal.toLocaleString()} | Faida: TZS ${todayProfit.toLocaleString()} | Matumizi: TZS ${todayExp.toLocaleString()} | Mauzo: ${todaySales.length}${best?` | Bidhaa bora: ${best[0]} (x${best[1]})`:''}`
+      });
+    }
+
+    // Save alerts + Send emails
+    alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
+    const ownerEmail=biz?.email;
+    if(ownerEmail&&alerts.length>0){
+      if(lowItems.length>0){
+        sendMail(ownerEmail,'📦 Bidhaa '+lowItems.length+' Zinaisha!','low_stock',{count:lowItems.length,items:lowItems.slice(0,10).map(p=>({name:p.name,image:p.image,quantity:p.quantity,min_stock:p.min_stock||5}))});
+      }
+      if(overdueCustomers.length>0){
+        sendMail(ownerEmail,'🚨 Deni Limechelewa!','overdue_debt',{count:overdueCustomers.length,total:overdueTotal,customers:overdueCustomers.slice(0,10).map(c=>({name:c.name,phone:c.phone,balance:c.credit_balance,daysOverdue:Math.floor((Date.now()-new Date(c.last_credit_date||c.created_at).getTime())/86400000)}))});
+      }
+      if(biz){
+        const end=biz.token_active?biz.token_expiry:biz.trial_end;
+        if(end){const dLeft=Math.ceil((new Date(end)-new Date())/86400000);
+          if(dLeft>0&&dLeft<=5){sendMail(ownerEmail,'⏳ Muda Unakaribia Kuisha!','subscription_expiry',{daysLeft:dLeft,price:parseInt(settings.system_price||15000)});}
+        }
+      }
+    }
+
+    // ===== FULL SHOP REPORT — Saa 10 Usiku (22:00) =====
+    const fullReportKey=`full_report_${todayStr()}_${bizId}`;
+    // Only send if: it's after 10PM, data has loaded, and not sent today
+    const hasShopData=products.filter(p=>p.business_id===bizId).length>0||sales.filter(s=>s.business_id===bizId).length>0;
+    if(hour>=22&&ownerEmail&&hasShopData&&!sessionStorage.getItem(fullReportKey)){
+      sessionStorage.setItem(fullReportKey,'1');
+
+      // TODAY stats
+      const todaySales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(today));
+      const todayTotal=todaySales.reduce((a,s)=>a+(s.total||0),0);
+      const todayProfit=todaySales.reduce((a,s)=>a+(s.profit||0),0);
+      const todayExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
+
+      // WEEK stats
+      const weekAgo=new Date(Date.now()-7*86400000).toISOString();
+      const weekSales=sales.filter(s=>s.business_id===bizId&&s.created_at>=weekAgo);
+      const weekTotal=weekSales.reduce((a,s)=>a+(s.total||0),0);
+      const weekProfit=weekSales.reduce((a,s)=>a+(s.profit||0),0);
+      const weekExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at>=weekAgo).reduce((a,e)=>a+(e.amount||0),0);
+
+      // MONTH stats
+      const monthStart=today.slice(0,7);
+      const monthSales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(monthStart));
+      const monthTotal=monthSales.reduce((a,s)=>a+(s.total||0),0);
+      const monthProfit=monthSales.reduce((a,s)=>a+(s.profit||0),0);
+      const monthExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(monthStart)).reduce((a,e)=>a+(e.amount||0),0);
+
+      // Top selling products (month)
+      const prodMap={};monthSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
+      const topProducts=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,qty])=>({name,qty}));
+
+      // Low stock
+      const lowStockList=products.filter(p=>p.business_id===bizId&&p.quantity>0&&p.quantity<=(p.min_stock||5)).slice(0,10).map(p=>({name:p.name,quantity:p.quantity,min_stock:p.min_stock||5}));
+
+      // Debts
+      const debtCustomers=customers.filter(c=>c.business_id===bizId&&(c.credit_balance||0)>0).map(c=>({name:c.name,phone:c.phone||'-',balance:c.credit_balance,daysOverdue:c.last_credit_date?Math.floor((Date.now()-new Date(c.last_credit_date).getTime())/86400000):0})).sort((a,b)=>b.balance-a.balance);
+      const totalDebt=debtCustomers.reduce((a,c)=>a+(c.balance||0),0);
+
+      // Days remaining
+      const subEnd=biz?.token_active?biz?.token_expiry:biz?.trial_end;
+      const daysLeft=subEnd?Math.max(0,Math.ceil((new Date(subEnd)-new Date())/86400000)):0;
+
+      sendMail(ownerEmail,`📊 RIPOTI KAMILI — ${biz?.name||'Duka'} — ${new Date().toLocaleDateString('sw-TZ')}`,'full_shop_report',{
+        shopName:biz?.name||'Duka',
+        date:today,
+        // Daily
+        daySales:todayTotal,dayProfit:todayProfit,dayExpenses:todayExpTotal,dayCount:todaySales.length,dayNet:todayProfit-todayExpTotal,
+        // Weekly
+        weekSales:weekTotal,weekProfit:weekProfit,weekExpenses:weekExpTotal,weekCount:weekSales.length,weekNet:weekProfit-weekExpTotal,
+        // Monthly
+        monthSales:monthTotal,monthProfit:monthProfit,monthExpenses:monthExpTotal,monthCount:monthSales.length,monthNet:monthProfit-monthExpTotal,
+        // Products
+        topProducts,lowStock:lowStockList,lowStockCount:lowStockList.length,
+        // Debts
+        debts:debtCustomers.slice(0,15),totalDebt,debtCount:debtCustomers.length,
+        // Subscription
+        daysLeft,plan:(biz?.plan||'trial').toUpperCase(),
+      });
+    }
+  },[user,bizId,products,overdueCustomers,biz,sales,expenses,customers,settings,overdueTotal]);
+
+  // ===== ADMIN + PARTNER DAILY REPORT (8:00 AM) =====
+  useEffect(()=>{
+    if(user?.role!=='admin'&&user?.role!=='marketing')return;
+    // WAIT for data to load — don't send report with zero data
+    if(businesses.length===0)return;
+    const today=todayStr();
+    const alertKey=`admin_alerts_${today}_${user?.role}`;
+    if(sessionStorage.getItem(alertKey))return;
+    sessionStorage.setItem(alertKey,'1');
+    const alerts=[];
+    const hour=new Date().getHours();
+
+    // Customer stats
+    const activeBiz=businesses.filter(b=>b.token_active&&!b.is_suspended);
+    const trialBiz=businesses.filter(b=>!b.token_active&&!b.is_suspended);
+    const suspendedBiz=businesses.filter(b=>b.is_suspended);
+    const newToday=businesses.filter(b=>b.created_at?.startsWith(today));
+
+    // New customer alert (in-app)
+    if(newToday.length>0){
+      alerts.push({target_type:'admin',type:'success',
+        title:`🆕 Wateja Wapya ${newToday.length} Leo!`,
+        message:newToday.map(b=>`${b.name} (${b.email})`).join(', ')
+      });
+    }
+
+    // Expiring businesses
+    const expSoon=businesses.filter(b=>{
+      const end=b.token_active?b.token_expiry:b.trial_end;
+      if(!end)return false;const d=Math.ceil((new Date(end)-new Date())/86400000);return d>0&&d<=5;
+    });
+    if(expSoon.length>0){
+      alerts.push({target_type:'admin',type:'warning',
+        title:`⏳ Wateja ${expSoon.length} Muda Unaisha!`,
+        message:expSoon.map(b=>{const d=Math.ceil((new Date(b.token_expiry||b.trial_end)-new Date())/86400000);return`${b.name} (siku ${d})`}).join(', ')
+      });
+    }
+
+    // Pending payments
+    const pending=paymentRequests.filter(p=>p.status==='pending');
+    if(pending.length>0){
+      alerts.push({target_type:'admin',type:'warning',
+        title:`💰 Malipo ${pending.length} Yanasubiri!`,
+        message:pending.map(p=>`${p.business_name}: TZS ${(p.amount||0).toLocaleString()}`).join(', ')
+      });
+    }
+
+    alerts.forEach(a=>safeInsert('notifications',a).catch(()=>{}));
+
+    // ===== DAILY EMAIL REPORT =====
+    const dailyKey=`daily_email_${today}_${user?.role}`;
+    if(!sessionStorage.getItem(dailyKey)){
+      sessionStorage.setItem(dailyKey,'1');
+
+      // Revenue from approved payments
+      const approvedPay=paymentRequests.filter(p=>p.status==='approved');
+      const totalRevenue=approvedPay.reduce((a,p)=>a+(p.amount||0),0);
+      const monthPay=approvedPay.filter(p=>p.created_at?.startsWith(today.slice(0,7)));
+      const monthRevenue=monthPay.reduce((a,p)=>a+(p.amount||0),0);
+
+      // Conversion rate
+      const convRate=businesses.length>0?Math.round(activeBiz.length/businesses.length*100):0;
+
+      // Expiring list details
+      const expList=expSoon.map(b=>{const d=Math.ceil((new Date(b.token_expiry||b.trial_end)-new Date())/86400000);return{name:b.name,email:b.email,phone:b.phone||'-',daysLeft:d}});
+
+      // Suspended list
+      const suspList=suspendedBiz.slice(0,10).map(b=>({name:b.name,email:b.email,phone:b.phone||'-'}));
+
+      // Active list
+      const activeList=activeBiz.slice(0,15).map(b=>{const d=b.token_expiry?Math.ceil((new Date(b.token_expiry)-new Date())/86400000):0;return{name:b.name,email:b.email,phone:b.phone||'-',plan:(b.plan||'basic').toUpperCase(),daysLeft:d}});
+
+      // Trial list
+      const trialList=trialBiz.slice(0,10).map(b=>{const d=b.trial_end?Math.ceil((new Date(b.trial_end)-new Date())/86400000):0;return{name:b.name,email:b.email,phone:b.phone||'-',daysLeft:d}});
+
+      const reportData={
+        totalBiz:businesses.length,
+        activeBiz:activeBiz.length,
+        trialBiz:trialBiz.length,
+        suspendedBiz:suspendedBiz.length,
+        newToday:newToday.length,
+        expiringSoon:expSoon.length,
+        pendingPayments:pending.length,
+        totalRevenue,monthRevenue,convRate,
+        newCustomers:newToday.map(b=>({name:b.name,email:b.email,phone:b.phone||'-'})),
+        expiringList:expList,
+        suspendedList:suspList,
+        activeList,trialList,
+        agentCount:promoCodes.length,
+        partnerCount:partners.length,
+      };
+
+      // Send to ADMIN
+      if(user?.role==='admin'){
+        sendMail(ADMIN_EMAIL,`📊 Ripoti ya Asubuhi — ${today}`,'admin_daily_report',reportData);
+      }
+
+      // Send to ALL MARKETING PARTNERS
+      if(user?.role==='admin'){
+        partners.forEach(p=>{
+          if(p.email)sendMail(p.email,`📊 Ripoti ya Asubuhi — ${today}`,'admin_daily_report',reportData);
+        });
+      }
+
+      // New customer notification
+      if(newToday.length>0){
+        newToday.forEach(b=>{
+          sendMail(ADMIN_EMAIL,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'});
+          partners.forEach(p=>{if(p.email)sendMail(p.email,`🆕 Mteja Mpya: ${b.name}`,'new_customer',{name:b.name,email:b.email,phone:b.phone||'-'})});
+        });
+      }
+
+      if(expSoon.length>0){
+        sendMail(ADMIN_EMAIL,'⏳ Wateja Muda Unaisha!','subscription_expiry',{daysLeft:'multiple',price:0});
+      }
+    }
+  },[user,businesses,paymentRequests,partners,promoCodes]);
+
+  // ===== MARKETING PARTNERS =====
+  const createPartner=useCallback(async(name,email,password,phone,commission=10)=>{
+    try{
+      const{data:auth}=await supabase.auth.signUp({email,password:password||'partner123'});
+      const uid=auth?.user?.id||genId();
+      const d=await safeInsert('users',{id:uid,email,name,phone,role:'marketing'});
+      const partner=await safeInsert('marketing_partners',{user_id:uid,name,email,phone,commission_rate:commission,status:'active'});
+      const final=partner||{id:genId(),user_id:uid,name,email,phone,commission_rate:commission,status:'active',created_at:nowISO()};
+      setPartners(prev=>[...prev,final]);
+      return final;
+    }catch(e){console.warn('Partner:',e);return null}
+  },[]);
+  const updatePartner=useCallback(async(pid,updates)=>{
+    await safeUpdate('marketing_partners',updates,'id',pid);
+    setPartners(prev=>prev.map(p=>p.id===pid?{...p,...updates}:p));
+  },[]);
+  const deletePartner=useCallback(async(pid)=>{
+    await safeDelete('marketing_partners','id',pid);
+    setPartners(prev=>prev.filter(p=>p.id!==pid));
+  },[]);
+
+  // ===== CAMPAIGNS =====
+  const addCampaign=useCallback(async(c)=>{
+    const d=await safeInsert('campaigns',{...c,created_by:user?.id,status:'active'});
+    const f=d||{...c,id:genId(),created_by:user?.id,status:'active',signups:0,created_at:nowISO()};
+    setCampaigns(prev=>[f,...prev]);return f;
+  },[user]);
+  const updateCampaign=useCallback(async(cid,u)=>{await safeUpdate('campaigns',u,'id',cid);setCampaigns(prev=>prev.map(c=>c.id===cid?{...c,...u}:c))},[]);
+  const deleteCampaign=useCallback(async(cid)=>{await safeDelete('campaigns','id',cid);setCampaigns(prev=>prev.filter(c=>c.id!==cid))},[]);
+
+  // ===== INTERNAL MESSAGING (Admin ↔ Marketing) =====
+  const sendMessage=useCallback(async(to,message,subject='')=>{
+    const d=await safeInsert('internal_messages',{from_id:user?.id,from_name:user?.name||user?.email,from_role:user?.role,to_role:to,subject,message,is_read:false});
+    const f=d||{id:genId(),from_id:user?.id,from_name:user?.name||user?.email,from_role:user?.role,to_role:to,subject,message,is_read:false,created_at:nowISO()};
+    setMsgs(prev=>[f,...prev]);return f;
+  },[user]);
+  const markMsgRead=useCallback(async(mid)=>{await safeUpdate('internal_messages',{is_read:true},'id',mid);setMsgs(prev=>prev.map(m=>m.id===mid?{...m,is_read:true}:m))},[]);
+  const myMessages=useMemo(()=>internalMsgs.filter(m=>m.to_role===user?.role||m.from_role===user?.role).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[internalMsgs,user]);
+  const unreadMsgs=useMemo(()=>internalMsgs.filter(m=>m.to_role===user?.role&&!m.is_read).length,[internalMsgs,user]);
+
+  // ===== FOLLOW-UP REMINDERS =====
+  const addFollowup=useCallback(async(f)=>{
+    const d=await safeInsert('followups',{...f,created_by:user?.id,status:'pending'});
+    const final=d||{...f,id:genId(),created_by:user?.id,status:'pending',created_at:nowISO()};
+    setFollowups(prev=>[final,...prev]);return final;
+  },[user]);
+  const completeFollowup=useCallback(async(fid,note='')=>{
+    await safeUpdate('followups',{status:'done',completed_at:nowISO(),completion_note:note},'id',fid);
+    setFollowups(prev=>prev.map(f=>f.id===fid?{...f,status:'done',completed_at:nowISO()}:f));
+  },[]);
+  const todayFollowups=useMemo(()=>{
+    const today=todayStr();
+    return followups.filter(f=>f.status==='pending'&&f.due_date<=today);
+  },[followups]);
+
+  // ===== TESTIMONIALS =====
+  const addTestimonial=useCallback(async(t)=>{
+    const d=await safeInsert('testimonials',{...t,created_by:user?.id,status:'active'});
+    const f=d||{...t,id:genId(),created_by:user?.id,status:'active',created_at:nowISO()};
+    setTestimonials(prev=>[f,...prev]);return f;
+  },[user]);
+  const deleteTestimonial=useCallback(async(tid)=>{await safeDelete('testimonials','id',tid);setTestimonials(prev=>prev.filter(t=>t.id!==tid))},[]);
+
+  // Marketing computed values
+  const marketingStats=useMemo(()=>{
+    const totalClients=businesses.length;
+    const activeClients=businesses.filter(b=>b.token_active&&!b.is_suspended).length;
+    const trialClients=businesses.filter(b=>!b.token_active&&!b.is_suspended).length;
+    const suspendedClients=businesses.filter(b=>b.is_suspended).length;
+    const thisMonth=todayStr().slice(0,7);
+    const newThisMonth=businesses.filter(b=>b.created_at?.startsWith(thisMonth)).length;
+    const paidThisMonth=paymentRequests.filter(p=>p.status==='approved'&&p.created_at?.startsWith(thisMonth));
+    const revenueThisMonth=paidThisMonth.reduce((a,p)=>a+(p.amount||0),0);
+    const conversionRate=totalClients>0?Math.round(activeClients/totalClients*100):0;
+    // Pipeline
+    const pipeline={leads:trialClients,active:activeClients,churned:suspendedClients,total:totalClients};
+    return{totalClients,activeClients,trialClients,suspendedClients,newThisMonth,revenueThisMonth,conversionRate,pipeline};
+  },[businesses,paymentRequests]);
+
+  // ===== NOTIFICATIONS =====
+  const addNotif=useCallback(async(tt,tid,type,title,msg)=>{const d=await safeInsert('notifications',{target_type:tt,target_id:tid,type,title,message:msg});const n=d||{id:genId(),target_type:tt,target_id:tid,type,title,message:msg,created_at:nowISO(),is_read:false};setNotifs(prev=>[n,...prev]);return n},[]);
+  const broadcastNotif=useCallback(async(type,title,msg)=>{await safeInsert('notifications',{target_type:'broadcast',type,title,message:msg});setNotifs(prev=>[{id:genId(),target_type:'broadcast',type,title,message:msg,created_at:nowISO(),is_read:false},...prev])},[]);
+
+  // ===== TUMA EMAIL YA UPDATE KWA WATEJA WOTE (Admin) =====
+  // Inatuma email nzuri (HTML) kwa kila biashara yenye email.
+  // Inatuma kwa makundi (batches) ili isilemeze SMTP/function.
+  const buildUpdateEmailHTML=(title,body,bizName)=>{
+    const safe=(s)=>String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const paras=safe(body).split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:0 0 12px;font-size:15px;line-height:1.65;color:#334155;">${l}</p>`).join('');
+    return `<div style="max-width:600px;margin:0 auto;font-family:Segoe UI,Arial,sans-serif;background:#F8FAFC;padding:0 0 24px;">
+      <div style="background:linear-gradient(135deg,#0B7A3B,#065F2E);padding:28px 24px;text-align:center;border-radius:0 0 18px 18px;">
+        <div style="font-size:22px;font-weight:800;color:#fff;">🏪 DukaLangu Smart POS</div>
+        <div style="font-size:13px;color:#BBF7D0;margin-top:4px;">Simamia Biashara Yako Kidijitali</div>
+      </div>
+      <div style="background:#fff;margin:18px;border-radius:16px;padding:26px;box-shadow:0 2px 10px rgba(0,0,0,.05);">
+        <div style="display:inline-block;background:#F0FDF4;color:#15803D;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;">✨ TAARIFA MPYA / UPDATE</div>
+        <h1 style="font-size:20px;color:#0B7A3B;margin:0 0 14px;">${safe(title)}</h1>
+        ${bizName?`<p style="font-size:14px;color:#64748B;margin:0 0 16px;">Habari <b>${safe(bizName)}</b>,</p>`:''}
+        ${paras}
+        <div style="margin-top:22px;text-align:center;">
+          <a href="https://dukalangu.com" style="display:inline-block;background:#0B7A3B;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;">Fungua Mfumo →</a>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:#94A3B8;padding:0 24px;">
+        <p style="margin:4px 0;">Asante kwa kuendelea kutumia DukaLangu.</p>
+        <p style="margin:4px 0;">Msaada: +255 617 288 752 • dukalangu.com</p>
+      </div>
+    </div>`;
+  };
+
+  const broadcastUpdateEmail=useCallback(async(title,body,{onlyActive=false}={})=>{
+    if(!title?.trim()||!body?.trim())return{error:'Weka kichwa na maelezo ya update.'};
+    // Kusanya email za kipekee kutoka kwa biashara zote
+    const seen=new Set();
+    const targets=[];
+    (businesses||[]).forEach(b=>{
+      const em=(b.email||'').trim().toLowerCase();
+      if(!em||seen.has(em))return;
+      if(onlyActive&&b.is_suspended)return;
+      seen.add(em);
+      targets.push({email:b.email.trim(),name:b.name||''});
+    });
+    if(!targets.length)return{error:'Hakuna wateja wenye email.'};
+
+    let sent=0,failed=0;
+    const BATCH=10; // tuma 10 kwa wakati, subiri kidogo
+    for(let i=0;i<targets.length;i+=BATCH){
+      const chunk=targets.slice(i,i+BATCH);
+      const results=await Promise.allSettled(chunk.map(t=>
+        fetch(API_BASE+'/api/send-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:t.email,subject:`✨ ${title}`,html:buildUpdateEmailHTML(title,body,t.name)})})
+        .then(r=>{if(!r.ok)throw new Error('fail');return true;})
+      ));
+      results.forEach(r=>r.status==='fulfilled'?sent++:failed++);
+      if(i+BATCH<targets.length)await new Promise(res=>setTimeout(res,1200)); // pumzika ili kuepuka rate limit
+    }
+    // Hifadhi kumbukumbu ya update (kama jedwali lipo)
+    try{await safeInsert('app_updates',{title,body,sent_count:sent,created_by:user?.id});}catch(_){}
+    return{ok:true,total:targets.length,sent,failed};
+  },[businesses,user]);
+  const markRead=useCallback(async(nid)=>{await safeUpdate('notifications',{is_read:true},'id',nid);setNotifs(prev=>prev.map(n=>n.id===nid?{...n,is_read:true}:n))},[]);
+  const markAllRead=useCallback(async()=>{for(const n of notifications.filter(n=>!n.is_read)){await safeUpdate('notifications',{is_read:true},'id',n.id)}setNotifs(prev=>prev.map(n=>({...n,is_read:true})))},[notifications]);
+
+  // ===== SETTINGS =====
+  const updateSetting=useCallback(async(key,val)=>{await safeUpsert('system_settings',{key,value:val,updated_at:nowISO()},'key');setSettings(prev=>({...prev,[key]:val}))},[]);
+
+  // ===== ADMIN ACTIONS =====
+  const suspendBiz=useCallback(async(bid,suspend)=>{await safeUpdate('businesses',{is_suspended:suspend},'id',bid);setBiz(prev=>prev.map(b=>b.id===bid?{...b,is_suspended:suspend}:b));await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:suspend?'suspend':'activate',details:{text:'Biz '+bid}})},[user]);
+  
+  // ===== UPDATE BUSINESS INFO (Admin can edit customer details) =====
+  const updateBiz=useCallback(async(bid,updates)=>{
+    try{
+      // Try full update first
+      let{error:bizErr}=await supabase.from('businesses').update(updates).eq('id',bid);
+      
+      // If owner_name column missing, retry without it
+      if(bizErr&&bizErr.message?.includes('owner_name')){
+        console.warn('[updateBiz] owner_name column missing, retrying without it');
+        const {owner_name,...safeUpdates}=updates;
+        const result=await supabase.from('businesses').update(safeUpdates).eq('id',bid);
+        bizErr=result.error;
+      }
+      
+      // If any other column missing, try known-safe fields only
+      if(bizErr&&bizErr.message?.includes('column')){
+        console.warn('[updateBiz] Column missing, trying safe fields:',bizErr.message);
+        const safeFields=['name','email','phone','plan','is_suspended',
+          'branch_enabled','wholesale_enabled','business_type',
+          'token_active','token_expiry','trial_end'];
+        const safeUpdates={};
+        safeFields.forEach(k=>{if(updates[k]!==undefined)safeUpdates[k]=updates[k];});
+        if(Object.keys(safeUpdates).length>0){
+          const result=await supabase.from('businesses').update(safeUpdates).eq('id',bid);
+          bizErr=result.error;
+        }
+      }
+      
+      if(bizErr)throw bizErr;
+      
+      // Update local state
+      setBiz(prev=>prev.map(b=>b.id===bid?{...b,...updates}:b));
+      
+      // If email/phone/name changed, also update users table for owner
+      if(updates.email||updates.phone||updates.name){
+        const biz=businesses.find(b=>b.id===bid);
+        if(biz?.owner_id){
+          const userUpdates={};
+          if(updates.email)userUpdates.email=updates.email;
+          if(updates.phone)userUpdates.phone=updates.phone;
+          if(updates.name)userUpdates.name=updates.name;
+          try{await supabase.from('users').update(userUpdates).eq('id',biz.owner_id)}catch(e){console.warn('User update skipped:',e.message)}
+        }
+      }
+      
+      // Audit log
+      try{await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'update_biz',details:{biz_id:bid,changes:JSON.stringify(updates)}})}catch(e){}
+      
+      // Email customer
+      const biz=businesses.find(b=>b.id===bid);
+      if(biz?.email&&(updates.phone||updates.email)){
+        sendMail(updates.email||biz.email,'✅ Taarifa Zako Zimebadilishwa — Duka Langu','promotional',{title:'✅ Taarifa Zimebadilishwa',emoji:'✅',message:`Habari ${updates.name||biz.name},\n\nTaarifa za akaunti yako zimebadilishwa na Admin.\n\n${updates.email?`📧 Email mpya: ${updates.email}\n`:''}${updates.phone?`📱 Simu mpya: ${updates.phone}\n`:''}${updates.name?`🏪 Jina: ${updates.name}\n`:''}\nKama hukuomba mabadiliko haya, wasiliana nasi mara moja.`,cta:'Login →'});
+      }
+      return{success:true};
+    }catch(e){
+      console.error('[updateBiz] Error:',e);
+      return{success:false,error:e.message};
+    }
+  },[user,businesses]);
+  const deleteBiz=useCallback(async(bid)=>{await safeDelete('businesses','id',bid);setBiz(prev=>prev.filter(b=>b.id!==bid))},[]);
+
+  // ===== EXPORT ALL DATA =====
+  const exportAllData=useCallback(()=>{
+    const data={businesses,products,sales,expenses,customers,employees,tokens,promoCodes,branches,tickets,returns,exportDate:nowISO()};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`duka-langu-export-${todayStr()}.json`;a.click();URL.revokeObjectURL(url);
+  },[businesses,products,sales,expenses,customers,employees,tokens,promoCodes,branches,tickets,returns]);
+
+  // ===== QUICK EXTEND (ongeza siku bila token) =====
+  const quickExtend=useCallback(async(bid,days,payment={})=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    const currentEnd=b.token_active&&b.token_expiry?new Date(b.token_expiry):b.trial_end?new Date(b.trial_end):new Date();
+    const base=currentEnd>new Date()?currentEnd:new Date();
+    const newEnd=new Date(base.getTime()+parseInt(days)*86400000).toISOString();
+    await safeUpdate('businesses',{token_active:true,token_expiry:newEnd,is_suspended:false},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,token_active:true,token_expiry:newEnd,is_suspended:false}:x));
+
+    // ===== HIFADHI MAPATO (payment_requests) =====
+    const{amount=0,method=null,type='sale',note=''}=payment;
+    if(amount>0||type!=='sale'){
+      const rec={
+        business_id:bid,
+        amount:+amount||0,
+        status:'approved',
+        transaction_id:`ADMIN-${Date.now()}`,
+        approved_at:nowISO(),
+        approved_by:user?.id||null,
+      };
+      // Ongeza columns za hiari (zikikosekana, zitaondolewa kiotomatiki)
+      const full={...rec,payer_name:b.name,payer_phone:b.phone,payment_method:method,days_given:+days,revenue_type:type,notes:note||`Admin: +${days} siku`,source:'admin_extend'};
+      let{error}=await supabase.from('payment_requests').insert(full);
+      let t=0;
+      while(error&&error.message?.includes('column')&&t<8){
+        const m=error.message.match(/column "?([a-z_]+)"?/i);
+        if(m&&m[1]&&full[m[1]]!==undefined){delete full[m[1]];t++;({error}=await supabase.from('payment_requests').insert(full));}
+        else break;
+      }
+      if(error){await supabase.from('payment_requests').insert(rec).then(()=>{},()=>{});}
+    }
+
+    // ===== SMS + EMAIL KWA MTEJA (kulingana na aina) =====
+    const endDate=new Date(newEnd).toLocaleDateString('sw-TZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const daysLeft=Math.max(0,Math.ceil((new Date(newEnd)-new Date())/86400000));
+    const bizName=b.name||'Mteja';
+
+    let smsMsg='',emailSubject='',emailBody='';
+
+    if(type==='gift'){
+      smsMsg=`Habari ${bizName},\n\nUmepewa ZAWADI ya siku ${days} kutoka DukaLangu!\n\nHii ni bure kabisa - hakuna malipo yanayohitajika.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuwa mteja wetu mwaminifu.\n\nDukaLangu Smart POS`;
+      emailSubject=`🎁 Umepewa Zawadi ya Siku ${days}!`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#F5F3FF;border-left:4px solid #8B5CF6;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:16px;font-weight:800;color:#7C3AED;margin-bottom:6px;">🎁 Umepewa ZAWADI ya siku ${days}!</div>
+          <div style="font-size:13.5px;color:#5B21B6;">Hii ni bure kabisa — hakuna malipo yanayohitajika.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#7C3AED;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuwa mteja wetu mwaminifu.</p>`;
+    }
+    else if(type==='compensation'){
+      smsMsg=`Habari ${bizName},\n\nTunaomba radhi kwa usumbufu uliopata.\n\nTumekuongezea siku ${days} bure kama fidia.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nTunathamini uvumilivu wako.\n\nDukaLangu Smart POS`;
+      emailSubject=`🔧 Tumekuongezea Siku ${days} kama Fidia`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#FFF7ED;border-left:4px solid #EA580C;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:15px;font-weight:800;color:#9A3412;margin-bottom:6px;">🔧 Tunaomba radhi kwa usumbufu</div>
+          <div style="font-size:13.5px;color:#B45309;">Tumekuongezea siku ${days} bure kama fidia.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku za fidia</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#EA580C;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Tunathamini uvumilivu wako.</p>`;
+    }
+    else{
+      // MAUZO (sale)
+      smsMsg=`Habari ${bizName},\n\nMalipo yako ya TZS ${(+amount||0).toLocaleString()} yamepokelewa kikamilifu.\n\nSiku ${days} zimeongezwa kwenye akaunti yako.\nMfumo wako utaendelea hadi ${endDate}.\nSiku zilizobaki: ${daysLeft}\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS`;
+      emailSubject=`✅ Malipo Yamepokelewa — Siku ${days} Zimeongezwa`;
+      emailBody=`
+        <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
+        <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+          <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Malipo yamepokelewa kikamilifu</div>
+          <div style="font-size:13.5px;color:#166534;">Siku ${days} zimeongezwa kwenye akaunti yako.</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kiasi ulicholipa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">TZS ${(+amount||0).toLocaleString()}</td></tr>
+          ${method?`<tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Njia ya malipo</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#344054;font-size:13.5px;">${method}</td></tr>`:''}
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        </table>
+        <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
+    }
+
+    // Tuma SMS
+    if(b.phone&&smsMsg)sendSMS(b.phone,smsMsg);
+    // Tuma Email
+    if(b.email&&emailBody)sendMail(b.email,emailSubject,null,null,emailBody);
+
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_extend',details:{text:`${b.name}: +${days} siku${amount>0?` (TZS ${(+amount).toLocaleString()})`:` [${type}]`}`,amount:+amount||0,type,method}});
+    const notifTitle=type==='gift'?`🎁 Umepewa Zawadi ya Siku ${days}!`:type==='compensation'?`🔧 Fidia: Siku ${days} Zimeongezwa`:`✅ Malipo Yamepokelewa — Siku ${days}`;
+    const notifMsg=type==='gift'
+      ?`Umepewa zawadi ya siku ${days} bure! Mfumo wako utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`
+      :type==='compensation'
+      ?`Tumekuongezea siku ${days} kama fidia. Mfumo wako utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`
+      :`Malipo yako ya TZS ${(+amount||0).toLocaleString()} yamepokelewa. Siku ${days} zimeongezwa. Mfumo utaendelea hadi ${endDate}. Siku zilizobaki: ${daysLeft}.`;
+    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:notifTitle,message:notifMsg});
+  },[businesses,user]);
+
+  // ===== QUICK UPGRADE (badilisha plan) =====
+  const quickUpgrade=useCallback(async(bid,newPlan)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    await safeUpdate('businesses',{plan:newPlan},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,plan:newPlan}:x));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'quick_upgrade',details:{text:`${b.name}: ${b.plan} → ${newPlan}`}});
+    await safeInsert('notifications',{target_type:'business',target_id:bid,type:'success',title:`⬆️ Plan Imebadilishwa!`,message:`Plan yako imebadilishwa kuwa ${newPlan.toUpperCase()}. Furahia features mpya!`});
+  },[businesses,user]);
+
+  // ===== QUICK TRANSFER (hamisha kwa supervisor mwingine) =====
+  const quickTransfer=useCallback(async(bid,newPromoCode)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    await safeUpdate('businesses',{promo_code:newPromoCode||null},'id',bid);
+    setBiz(prev=>prev.map(x=>x.id===bid?{...x,promo_code:newPromoCode||null}:x));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'transfer',details:{text:`${b.name}: supervisor → ${newPromoCode||'none'}`}});
+  },[businesses,user]);
+
+  // ===== DELETE ALL CUSTOMER DATA (GDPR) =====
+  const deleteAllCustomerData=useCallback(async(bid)=>{
+    const b=businesses.find(x=>x.id===bid);if(!b)return;
+    // Delete all related data
+    await safeDelete('sales','business_id',bid);
+    await safeDelete('products','business_id',bid);
+    await safeDelete('expenses','business_id',bid);
+    await safeDelete('customers','business_id',bid);
+    await safeDelete('credit_transactions','business_id',bid);
+    await safeDelete('branches','business_id',bid);
+    await safeDelete('support_tickets','business_id',bid);
+    await safeDelete('returns','business_id',bid);
+    await safeDelete('payment_requests','business_id',bid);
+    await safeDelete('notifications','target_id',bid);
+    // Delete users of this business
+    const bizUsers=employees.filter(e=>e.business_id===bid);
+    for(const u of bizUsers){await safeDelete('users','id',u.id)}
+    // Delete the business itself
+    await safeDelete('businesses','id',bid);
+    setBiz(prev=>prev.filter(x=>x.id!==bid));
+    await safeInsert('system_logs',{user_id:user?.id,user_email:user?.email,action:'gdpr_delete',details:{text:`GDPR: ${b.name} — data zote zimefutwa`}});
+  },[businesses,employees,user]);
+
+  // ===== ACTIVITY FEED (real-time) =====
+  const activityFeed=useMemo(()=>{
+    const feed=[];
+    // Recent logins (last 24h)
+    const day=Date.now()-86400000;
+    loginLogs.filter(l=>new Date(l.created_at)>new Date(day)).forEach(l=>{
+      feed.push({type:'login',icon:'🔑',title:`${l.email} ameingia`,time:l.created_at,color:'#3B82F6'});
+    });
+    // Recent sales (last 24h)
+    sales.filter(s=>new Date(s.created_at)>new Date(day)).forEach(s=>{
+      feed.push({type:'sale',icon:'🛒',title:`Mauzo: TZS ${(s.total||0).toLocaleString()} — ${s.seller_name||''}`,time:s.created_at,color:'#22C55E',biz:businesses.find(b=>b.id===s.business_id)?.name});
+    });
+    // Recent signups (last 7 days)
+    businesses.filter(b=>new Date(b.created_at)>new Date(Date.now()-7*86400000)).forEach(b=>{
+      feed.push({type:'signup',icon:'🆕',title:`Duka jipya: ${b.name}`,time:b.created_at,color:'#8B5CF6'});
+    });
+    // Recent payments
+    paymentRequests.filter(p=>new Date(p.created_at)>new Date(day)).forEach(p=>{
+      feed.push({type:'payment',icon:p.status==='approved'?'✅':p.status==='pending'?'⏳':'❌',title:`Malipo: ${p.business_name} — TZS ${(p.amount||0).toLocaleString()}`,time:p.created_at,color:p.status==='approved'?'#22C55E':p.status==='pending'?'#F59E0B':'#EF4444'});
+    });
+    // Sort by time (newest first)
+    return feed.sort((a,b)=>new Date(b.time)-new Date(a.time)).slice(0,50);
+  },[loginLogs,sales,businesses,paymentRequests]);
+
+  // ===== SYSTEM USAGE STATS =====
+  const systemUsage=useMemo(()=>{
+    const today=todayStr();const day=Date.now()-86400000;const week=Date.now()-7*86400000;
+    const activeToday=new Set(loginLogs.filter(l=>l.created_at?.startsWith(today)).map(l=>l.email)).size;
+    const activeWeek=new Set(loginLogs.filter(l=>new Date(l.created_at)>new Date(week)).map(l=>l.email)).size;
+    const salesToday=sales.filter(s=>s.created_at?.startsWith(today)).length;
+    const salesWeek=sales.filter(s=>new Date(s.created_at)>new Date(week)).length;
+    const prodTotal=products.length;
+    const custTotal=customers.length;
+    // Feature usage (rough estimate)
+    const features={
+      mauzo:salesToday,
+      bidhaa:products.filter(p=>new Date(p.created_at)>new Date(week)).length,
+      matumizi:expenses.filter(e=>new Date(e.created_at)>new Date(week)).length,
+      wateja:customers.filter(c=>new Date(c.created_at)>new Date(week)).length,
+      deni:sales.filter(s=>s.payment_method==='credit'&&new Date(s.created_at)>new Date(week)).length,
+      matawi:branches.length,
+    };
+    const topFeature=Object.entries(features).sort((a,b)=>b[1]-a[1])[0];
+    return{activeToday,activeWeek,salesToday,salesWeek,prodTotal,custTotal,features,topFeature:topFeature?{name:topFeature[0],count:topFeature[1]}:null,totalBiz:businesses.length};
+  },[loginLogs,sales,products,customers,expenses,branches,businesses]);
+
+  // ===== 2FA STATE =====
+  const[twoFACode,setTwoFACode]=useState(null);
+  const[twoFAVerified,setTwoFAVerified]=useState(false);
+  const generate2FA=useCallback(()=>{
+    const code=Math.floor(100000+Math.random()*900000).toString();
+    setTwoFACode(code);
+    // Send code via email
+    sendMail(ADMIN_EMAIL,'🔐 Duka Langu — Code ya Kuingia','welcome',{name:'Admin',businessName:`Code yako ni: ${code}. Itaisha baada ya dakika 5.`});
+    return code;
+  },[]);
+  const verify2FA=useCallback((input)=>{
+    if(input===twoFACode){setTwoFAVerified(true);return true}
+    return false;
+  },[twoFACode]);
+
+  // ===== TRIAL/SUBSCRIPTION =====
+  const isExpired=useCallback(()=>{if(!biz)return false;if(biz.is_suspended)return true;if(biz.token_active){if(biz.token_expiry&&new Date(biz.token_expiry)>new Date())return false;if(!biz.token_expiry)return false;return true}if(biz.trial_end)return new Date()>new Date(biz.trial_end);return false},[biz]);
+  const daysLeft=useCallback(()=>{if(!biz)return 0;const end=biz.token_active?biz.token_expiry:biz.trial_end;if(!end)return 999;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))},[biz]);
+
+  // ===== STOCK ALERTS + AUTO-REORDER LIST + PROFIT MARGIN ALERTS =====
+  const lowStockProducts=useMemo(()=>products.filter(p=>p.quantity<=p.min_stock&&p.business_id===bizId),[products,bizId]);
+  const autoReorderList=useMemo(()=>lowStockProducts.map(p=>({...p,suggestedQty:Math.max(p.min_stock*3,10)-p.quantity})),[lowStockProducts]);
+  const lowMarginProducts=useMemo(()=>products.filter(p=>{if(!p.buy_price||!p.sell_price)return false;const margin=((p.sell_price-p.buy_price)/p.sell_price)*100;return margin<15&&p.business_id===bizId}).map(p=>({...p,margin:((p.sell_price-p.buy_price)/p.sell_price*100).toFixed(1)})),[products,bizId]);
+
+  // Stock notification effect
+  useEffect(()=>{
+    if(!bizId||!products.length)return;
+    lowStockProducts.forEach(async(p)=>{
+      if(notifications.find(n=>n.title?.includes(p.name)&&n.target_id===bizId))return;
+      const isDanger=p.quantity===0;
+      const n={id:genId(),target_type:'business',target_id:bizId,type:isDanger?'danger':'warning',title:isDanger?`${p.image} ${p.name} IMEISHA!`:`${p.image} ${p.name} Inakaribia Kuisha!`,message:isDanger?`${p.name} imeisha kabisa.`:`${p.name} imebaki ${p.quantity}. (Min: ${p.min_stock})`,created_at:nowISO(),is_read:false};
+      setNotifs(prev=>[n,...prev]);setPopups(prev=>[n,...prev]);
+      await safeInsert('notifications',{target_type:n.target_type,target_id:n.target_id,type:n.type,title:n.title,message:n.message});
+    });
+  },[products,bizId]);// eslint-disable-line
+
+  // ===== DAILY AUTO REPORT (generates summary) =====
+  const getDailyReport=useCallback(()=>{
+    const today=todayStr();
+    const tSales=sales.filter(s=>s.created_at?.startsWith(today));
+    const tExp=expenses.filter(e=>e.created_at?.startsWith(today));
+    const tReturns=(returns||[]).filter(r=>r.created_at?.startsWith(today));
+    const tPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(today));
+    const tCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(today));
+    const fin=computePeriodFinance({sales:tSales,returns:tReturns,expenses:tExp,purchases:tPurch,creditHistory:tCredit});
+    return{date:today,
+      totalSales:fin.grossSales,totalProfit:fin.grossProfit,totalExpenses:fin.totalExpenses,
+      netCash:fin.netCash,netProfit:fin.netProfit,stockBuy:fin.stockBuyShop,refunds:fin.totalRefunds,
+      salesCount:tSales.length,
+      topItems:tSales.flatMap(s=>s.items||[]).reduce((a,i)=>{a[i.name]=(a[i.name]||0)+i.qty;return a},{}),
+      lowStock:lowStockProducts.length};
+  },[sales,expenses,returns,purchases,creditHistory,lowStockProducts]);
+
+  // Weekly Report
+  const getWeeklyReport=useCallback(()=>{
+    const now=new Date();const weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());
+    const prevWeekStart=new Date(weekStart);prevWeekStart.setDate(prevWeekStart.getDate()-7);
+    const wSales=sales.filter(s=>new Date(s.created_at)>=weekStart);
+    const pwSales=sales.filter(s=>{const d=new Date(s.created_at);return d>=prevWeekStart&&d<weekStart});
+    const wExp=expenses.filter(e=>new Date(e.created_at)>=weekStart);
+    const wReturns=(returns||[]).filter(r=>new Date(r.created_at)>=weekStart);
+    const wPurch=(purchases||[]).filter(p=>new Date(p.created_at)>=weekStart);
+    const wCredit=(creditHistory||[]).filter(t=>new Date(t.created_at)>=weekStart);
+    const fin=computePeriodFinance({sales:wSales,returns:wReturns,expenses:wExp,purchases:wPurch,creditHistory:wCredit});
+    const wTotal=fin.grossSales;const pwTotal=pwSales.reduce((a,s)=>a+s.total,0);
+    const wProfit=fin.grossProfit;const pwProfit=pwSales.reduce((a,s)=>a+s.profit,0);
+    const wExpTotal=fin.totalExpenses;
+    const salesChange=pwTotal>0?Math.round((wTotal-pwTotal)/pwTotal*100):0;
+    const profitChange=pwProfit>0?Math.round((wProfit-pwProfit)/pwProfit*100):0;
+    // Top items this week
+    const itemMap={};wSales.forEach(s=>s.items?.forEach(i=>{itemMap[i.name]=(itemMap[i.name]||0)+i.qty}));
+    const topItems=Object.entries(itemMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    // By day
+    const dayData=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);const ds=d.toISOString().split('T')[0];
+      dayData.push({day:d.toLocaleDateString('sw',{weekday:'short'}),sales:sales.filter(s=>s.created_at?.startsWith(ds)).reduce((a,s)=>a+s.total,0)});
+    }
+    return{totalSales:wTotal,prevTotalSales:pwTotal,salesChange,totalProfit:wProfit,prevProfit:pwProfit,profitChange,
+      totalExpenses:wExpTotal,netProfit:fin.netProfit,netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
+      salesCount:wSales.length,topItems,dayData,newCustomers:customers.filter(c=>new Date(c.created_at)>=weekStart).length};
+  },[sales,expenses,returns,purchases,creditHistory,customers]);
+
+  // Monthly Report
+  const getMonthlyReport=useCallback(()=>{
+    const now=new Date();const thisMonth=now.toISOString().slice(0,7);
+    const prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);const prevMonth=prevDate.toISOString().slice(0,7);
+    const mSales=sales.filter(s=>s.created_at?.startsWith(thisMonth));
+    const pmSales=sales.filter(s=>s.created_at?.startsWith(prevMonth));
+    const mExp=expenses.filter(e=>e.created_at?.startsWith(thisMonth));
+    const pmExp=expenses.filter(e=>e.created_at?.startsWith(prevMonth));
+    const mReturns=(returns||[]).filter(r=>r.created_at?.startsWith(thisMonth));
+    const mPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(thisMonth));
+    const mCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(thisMonth));
+    const fin=computePeriodFinance({sales:mSales,returns:mReturns,expenses:mExp,purchases:mPurch,creditHistory:mCredit});
+    const mTotal=fin.grossSales;const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
+    const mProfit=fin.grossProfit;const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
+    const mExpTotal=fin.totalExpenses;const pmExpTotal=pmExp.reduce((a,e)=>a+(e.amount||0),0);
+    const salesChange=pmTotal>0?Math.round((mTotal-pmTotal)/pmTotal*100):0;
+    const profitChange=pmProfit>0?Math.round((mProfit-pmProfit)/pmProfit*100):0;
+    const expenseChange=pmExpTotal>0?Math.round((mExpTotal-pmExpTotal)/pmExpTotal*100):0;
+    return{totalSales:mTotal,prevSales:pmTotal,salesChange,totalProfit:mProfit,prevProfit:pmProfit,profitChange,
+      totalExpenses:mExpTotal,prevExpenses:pmExpTotal,expenseChange,netProfit:fin.netProfit,prevNetProfit:pmProfit-pmExpTotal,
+      netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
+      salesCount:mSales.length,prevSalesCount:pmSales.length,newCustomers:customers.filter(c=>c.created_at?.startsWith(thisMonth)).length,
+      totalDebt:customers.reduce((a,c)=>a+(c.credit_balance||0),0),inventoryValue:products.reduce((a,p)=>a+p.quantity*(p.buy_price||0),0)};
+  },[sales,expenses,returns,purchases,creditHistory,customers,products]);
+
+  // ===== CHURN DETECTION (for admin) =====
+  const churnRisk=useMemo(()=>{
+    const now=Date.now();
+    return businesses.filter(b=>{
+      const lastSale=sales.filter(s=>s.business_id===b.id).sort((a,c)=>new Date(c.created_at)-new Date(a.created_at))[0];
+      if(!lastSale)return true;
+      const daysSince=Math.floor((now-new Date(lastSale.created_at).getTime())/86400000);
+      return daysSince>7;
+    }).map(b=>{
+      const lastSale=sales.filter(s=>s.business_id===b.id).sort((a,c)=>new Date(c.created_at)-new Date(a.created_at))[0];
+      const daysSince=lastSale?Math.floor((Date.now()-new Date(lastSale.created_at).getTime())/86400000):999;
+      return{...b,daysSince,risk:daysSince>30?'high':daysSince>14?'medium':'low'};
+    });
+  },[businesses,sales]);
+
+  // ===== AUTO INVOICE (businesses expiring in 7 days) =====
+  const expiringBiz=useMemo(()=>{
+    return businesses.filter(b=>{
+      const end=b.token_active?b.token_expiry:b.trial_end;
+      if(!end)return false;
+      const daysLeft=Math.ceil((new Date(end)-new Date())/86400000);
+      return daysLeft>0&&daysLeft<=7;
+    }).map(b=>{
+      const end=b.token_active?b.token_expiry:b.trial_end;
+      return{...b,daysRemaining:Math.ceil((new Date(end)-new Date())/86400000)};
+    });
+  },[businesses]);
+
+  // ===== AGENT LEADERBOARD =====
+  // Supervisor tier definitions
+  const AGENT_TIERS=[
+    {min:51,name:'Shujaa',emoji:'👑',color:'#F59E0B',bonus:650000},
+    {min:36,name:'Bingwa',emoji:'💎',color:'#8B5CF6',bonus:400000},
+    {min:21,name:'Hodari',emoji:'🥇',color:'#0B7A3B',bonus:250000},
+    {min:11,name:'Wastani',emoji:'🥈',color:'#3B82F6',bonus:130000},
+    {min:5,name:'Mwanzo',emoji:'🥉',color:'#64748B',bonus:50000},
+    {min:0,name:'Bado',emoji:'⏳',color:'#94A3B8',bonus:0},
+  ];
+  const getAgentTier=(activeCount)=>AGENT_TIERS.find(t=>activeCount>=t.min)||AGENT_TIERS[AGENT_TIERS.length-1];
+
+  const agentLeaderboard=useMemo(()=>{
+    return promoCodes.map(p=>{
+      const clients=businesses.filter(b=>b.promo_code===p.code);
+      const activeClients=clients.filter(b=>b.token_active);
+      const revenue=activeClients.length*parseInt(settings.system_price||15000);
+      const commission=revenue*(p.commission_rate||10)/100;
+      const tier=getAgentTier(activeClients.length);
+      const nextTier=AGENT_TIERS[AGENT_TIERS.indexOf(tier)-1];
+      const toNextTier=nextTier?nextTier.min-activeClients.length:0;
+      return{...p,clients:clients.length,activeClients:activeClients.length,revenue,commission,tier,nextTier,toNextTier};
+    }).sort((a,b)=>b.activeClients-a.activeClients);
+  },[promoCodes,businesses,settings.system_price]);
+
+  useEffect(()=>{if(!popups.length)return;const t=setTimeout(()=>setPopups(p=>p.slice(0,-1)),6000);return()=>clearTimeout(t)},[popups]);
+
+  // ===== PROFIT GOALS =====
+  const saveGoal=useCallback(async(type,amount)=>{
+    const key=`goal_${type}_${bizId}`;
+    await safeUpsert('system_settings',{key,value:String(amount),updated_at:nowISO()},'key');
+    setSettings(prev=>({...prev,[key]:String(amount)}));
+  },[bizId]);
+  const getGoal=useCallback((type)=>{
+    const key=`goal_${type}_${bizId}`;
+    return parseInt(settings[key])||0;
+  },[settings,bizId]);
+  const goalProgress=useMemo(()=>{
+    const today=todayStr();
+    const dayProfit=sales.filter(s=>s.created_at?.startsWith(today)).reduce((a,s)=>a+s.profit,0);
+    const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());
+    const weekProfit=sales.filter(s=>new Date(s.created_at)>=weekStart).reduce((a,s)=>a+s.profit,0);
+    const monthProfit=sales.filter(s=>s.created_at?.startsWith(today.slice(0,7))).reduce((a,s)=>a+s.profit,0);
+    return{
+      daily:{current:dayProfit,goal:getGoal('daily'),pct:getGoal('daily')?Math.min(100,Math.round(dayProfit/getGoal('daily')*100)):0},
+      weekly:{current:weekProfit,goal:getGoal('weekly'),pct:getGoal('weekly')?Math.min(100,Math.round(weekProfit/getGoal('weekly')*100)):0},
+      monthly:{current:monthProfit,goal:getGoal('monthly'),pct:getGoal('monthly')?Math.min(100,Math.round(monthProfit/getGoal('monthly')*100)):0},
+    };
+  },[sales,getGoal]);
+
+  // ===== AI SMART INSIGHTS =====
+  const aiInsights=useMemo(()=>{
+    if(!sales.length)return[];
+    const insights=[];
+    const today=todayStr();
+    const todaySales=sales.filter(s=>s.created_at?.startsWith(today));
+    const yesterdayDate=new Date();yesterdayDate.setDate(yesterdayDate.getDate()-1);
+    const yesterday=yesterdayDate.toISOString().split('T')[0];
+    const yesterdaySales=sales.filter(s=>s.created_at?.startsWith(yesterday));
+    const tTotal=todaySales.reduce((a,s)=>a+s.total,0);
+    const yTotal=yesterdaySales.reduce((a,s)=>a+s.total,0);
+
+    // Trend: today vs yesterday
+    if(yTotal>0){
+      const change=((tTotal-yTotal)/yTotal*100).toFixed(0);
+      if(+change>10)insights.push({type:'success',icon:'📈',title:'Mauzo yanakua!',desc:`Leo +${change}% kuliko jana. Endelea hivyo!`});
+      else if(+change<-10)insights.push({type:'warning',icon:'📉',title:'Mauzo yameshuka',desc:`Leo ${change}% kuliko jana. Angalia sababu.`});
+    }
+
+    // Best selling day of the week
+    const dayMap={0:'Jumapili',1:'Jumatatu',2:'Jumanne',3:'Jumatano',4:'Alhamisi',5:'Ijumaa',6:'Jumamosi'};
+    const daySales={};
+    sales.forEach(s=>{const d=new Date(s.created_at).getDay();daySales[d]=(daySales[d]||0)+s.total});
+    const bestDay=Object.entries(daySales).sort((a,b)=>b[1]-a[1])[0];
+    if(bestDay)insights.push({type:'info',icon:'🏆',title:`Siku bora: ${dayMap[bestDay[0]]}`,desc:`Mauzo mengi zaidi yanafanyika ${dayMap[bestDay[0]]}. Hakikisha una stock ya kutosha!`});
+
+    // Top product suggestion
+    const prodMap={};
+    sales.slice(0,50).forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));
+    const topProd=Object.entries(prodMap).sort((a,b)=>b[1]-a[1])[0];
+    if(topProd)insights.push({type:'success',icon:'⭐',title:`${topProd[0]} inauza zaidi`,desc:`Bidhaa hii ndiyo inayouza zaidi (x${topProd[1]}). Agiza zaidi na usiishe!`});
+
+    // Slow moving products
+    const recentProds=new Set();
+    sales.slice(0,100).forEach(s=>s.items?.forEach(i=>recentProds.add(i.name)));
+    const slowProds=products.filter(p=>!recentProds.has(p.name)&&p.quantity>0&&p.business_id===bizId);
+    if(slowProds.length>0)insights.push({type:'warning',icon:'🐢',title:`Bidhaa ${slowProds.length} zinasimama`,desc:`${slowProds.slice(0,3).map(p=>p.name).join(', ')} hazijauza hivi karibuni. Fikiria kupunguza bei.`});
+
+    // Profit margin analysis
+    if(lowMarginProducts.length>0)insights.push({type:'danger',icon:'⚠️',title:`Bidhaa ${lowMarginProducts.length} zina faida ndogo`,desc:`${lowMarginProducts.slice(0,2).map(p=>`${p.name} (${p.margin}%)`).join(', ')}. Ongeza bei au tafuta supplier mpya.`});
+
+    // Stock alert
+    if(lowStockProducts.length>0)insights.push({type:'danger',icon:'📦',title:`Bidhaa ${lowStockProducts.length} zinaisha`,desc:`Agiza haraka: ${lowStockProducts.slice(0,3).map(p=>p.name).join(', ')}.`});
+
+    // Average sale value
+    if(sales.length>=10){
+      const avg=sales.slice(0,30).reduce((a,s)=>a+s.total,0)/Math.min(30,sales.length);
+      insights.push({type:'info',icon:'💰',title:`Wastani wa mauzo: TZS ${Math.round(avg).toLocaleString()}`,desc:`Kila mteja ananunua wastani wa TZS ${Math.round(avg).toLocaleString()}. Jaribu upselling!`});
+    }
+
+    return insights.slice(0,6);
+  },[sales,products,bizId,lowMarginProducts,lowStockProducts]);
+
+  const myNotifs=user?.role==='admin'||user?.role==='marketing'?notifications.filter(n=>n.target_type==='admin'||n.target_type==='broadcast'||n.target_type==='marketing'):notifications.filter(n=>(n.target_type==='business'&&n.target_id===bizId)||n.target_type==='broadcast');
+
+  return <Ctx.Provider value={{
+    user,loading,restoring,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
+    branches,activeBranch,setActiveBranch,
+    // Branch-aware: pages zinapata data ya branch iliyochaguliwa (au zote kama hakuna)
+    products:canUseBranches&&activeBranch?branchProducts:products,
+    copyProductsToBranch,
+    sales:canUseBranches&&activeBranch?branchSales:sales,
+    expenses:canUseBranches&&activeBranch?branchExpenses:expenses,
+    // Raw data (zote) - kwa admin, combined reports, na backup
+    allProducts:products,allSales:sales,allExpenses:expenses,
+    branchProducts,branchSales,branchExpenses,
+    customers,employees,tokens,promoCodes,notifications:myNotifs,
+    stockHistory,loginLogs,settings,popups,setPopups,systemLogs,tickets,returns,creditHistory,totalDebt,
+    paymentRequests,pendingPayments,myLatestPayment,overdueCustomers,overdueTotal,debtAging,
+    // Auth
+    supabase,updateUserProfile,
+    login,signup,logout,forgotPassword,sendResetOtp,verifyResetOtp,setNewPassword,
+    signInWithGoogle,needsOnboarding,completeGoogleSignup,cancelOnboarding,
+    // CRUD
+    addProduct,updateProduct,deleteProduct,completeSale,processReturn,creditSale,receivePayment:receivePaymentWithAlert,setCreditLimit,
+    addExpense,updateExpense,deleteExpense,addCustomer,updateCustomer,deleteCustomer,addEmployee,updateEmployee,deleteEmployee,
+    // Manunuzi ya stock
+    purchases,addPurchase,deletePurchase,
+    addBranch,updateBranch,deleteBranch,getBranches,
+    // Orders (Pending + Partial Payments)
+    orders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,
+    // Tickets
+    createTicket,replyTicket,closeTicket,
+    chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
+    // Tokens & Promo & Payments
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,systemExpenses,snippeCreatePayment,snippeCheckStatus,
+    // Notifications
+    addNotif,broadcastNotif,broadcastUpdateEmail,markRead,markAllRead,
+    // Settings & Admin
+    updateSetting,suspendBiz,deleteBiz,updateBiz,exportAllData,
+    quickExtend,quickUpgrade,quickTransfer,deleteAllCustomerData,activityFeed,systemUsage,
+    generate2FA,verify2FA,twoFAVerified,setTwoFAVerified,
+    createPartner,updatePartner,deletePartner,partners,marketingStats,
+    campaigns,addCampaign,updateCampaign,deleteCampaign,
+    sendMessage,markMsgRead,myMessages,unreadMsgs,
+    followups,addFollowup,completeFollowup,todayFollowups,
+    testimonials,addTestimonial,deleteTestimonial,
+    // Computed
+    isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
+    promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
+    getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
+    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,hasWholesale,
+    saveGoal,getGoal,goalProgress,aiInsights,
+  }}>{children}</Ctx.Provider>;
+}
+
+export const useApp=()=>{const c=useContext(Ctx);if(!c)throw new Error('useApp outside provider');return c};
