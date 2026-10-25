@@ -1054,6 +1054,27 @@ export function ReportsPage({onReceipt}){
   const fPurch=purchases.filter(p=>filterByDate(p.created_at));
   const fin=computePeriodFinance({sales:fSales,returns:fReturns,expenses:expenses.filter(e=>filterByDate(e.created_at)),purchases:fPurch,creditHistory:creditHistory.filter(t=>filterByDate(t.created_at))});
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
+  // ===== FAIDA KWA MFANYAKAZI (net + profit + count) =====
+  const staffStats=React.useMemo(()=>{
+    const m={};
+    fSales.forEach(s=>{const n=s.seller_name||'Hajatajwa';if(!m[n])m[n]={name:n,sales:0,profit:0,count:0};m[n].sales+=s.total||0;m[n].profit+=s.profit||0;m[n].count++;});
+    return Object.values(m).sort((a,b)=>b.profit-a.profit);
+  },[fSales]);
+  // ===== MAUZO KWA KATEGORIA =====
+  const categoryData=React.useMemo(()=>{
+    const m={};
+    fSales.forEach(s=>(s.items||[]).forEach(it=>{
+      const prod=products.find(p=>p.id===it.productId||p.name===it.name);
+      const cat=prod?.category||'Nyingine';
+      if(!m[cat])m[cat]={category:cat,revenue:0,profit:0,qty:0};
+      const q=(it.qty||0)*(it.fraction||1);
+      m[cat].revenue+=(it.qty||0)*(it.price||0)*(it.fraction||1);
+      m[cat].profit+=(it.qty||0)*((it.price||0)-(it.buyPrice||it.buy_price||0))*(it.fraction||1);
+      m[cat].qty+=q;
+    }));
+    const total=Object.values(m).reduce((a,c)=>a+c.revenue,0)||1;
+    return Object.values(m).map(c=>({...c,pct:Math.round(c.revenue/total*100)})).sort((a,b)=>b.revenue-a.revenue);
+  },[fSales,products]);
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   
   // ===== ORODHA YA BIDHAA ZILIZOUZWA — Per period with stock remaining =====
@@ -1517,6 +1538,51 @@ export function ReportsPage({onReceipt}){
       </div>
     </div>}
     
+    {/* ===== MAUZO KWA KATEGORIA ===== */}
+    {categoryData.length>0&&<div className="card" style={{marginBottom:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>📂 Mauzo kwa Kategoria</h3>
+        <button onClick={()=>{const rows=categoryData.map(c=>[c.category,Math.round(c.qty),Math.round(c.revenue),Math.round(c.profit),c.pct+'%']);rows.push(['JUMLA',Math.round(categoryData.reduce((a,c)=>a+c.qty,0)),Math.round(categoryData.reduce((a,c)=>a+c.revenue,0)),Math.round(categoryData.reduce((a,c)=>a+c.profit,0)),'100%']);exportToCSV(`Mauzo kwa Kategoria - ${periodLabel}`,['Kategoria','Idadi','Mapato (TZS)','Faida (TZS)','Asilimia'],rows,`kategoria-${tab}-${Date.now()}.csv`);}} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {categoryData.map((c,i)=>(
+          <div key={c.category}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4}}>
+              <span style={{fontWeight:700,color:'#475569'}}>{['🥇','🥈','🥉'][i]||'📦'} {c.category} <span style={{color:'#94A3B8',fontSize:11,fontWeight:500}}>({Math.round(c.qty)} vipimo)</span></span>
+              <span><b style={{color:'#0B7A3B'}}>{fm(c.revenue)}</b> <span style={{color:'#3B82F6',fontSize:12}}>• Faida {fm(c.profit)}</span></span>
+            </div>
+            <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',width:`${c.pct}%`,background:'linear-gradient(90deg,#0B7A3B,#22C55E)',borderRadius:4}}/></div>
+          </div>
+        ))}
+      </div>
+    </div>}
+
+    {/* ===== FAIDA KWA MFANYAKAZI ===== */}
+    {staffStats.length>0&&<div className="card" style={{marginBottom:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0B7A3B'}}>💼 Utendaji wa Wafanyakazi</h3>
+        <button onClick={()=>{const rows=staffStats.map(s=>[s.name,s.count,Math.round(s.sales),Math.round(s.profit)]);rows.push(['JUMLA',staffStats.reduce((a,s)=>a+s.count,0),Math.round(staffStats.reduce((a,s)=>a+s.sales,0)),Math.round(staffStats.reduce((a,s)=>a+s.profit,0))]);exportToCSV(`Utendaji wa Wafanyakazi - ${periodLabel}`,['Mfanyakazi','Mauzo (idadi)','Jumla (TZS)','Faida (TZS)'],rows,`wafanyakazi-${tab}-${Date.now()}.csv`);}} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
+      </div>
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+          <thead><tr style={{borderBottom:'2px solid #E2E8F0',textAlign:'left'}}>
+            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11}}>MFANYAKAZI</th>
+            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'center'}}>MAUZO</th>
+            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>JUMLA</th>
+            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>FAIDA</th>
+          </tr></thead>
+          <tbody>{staffStats.map((s,i)=>(
+            <tr key={s.name} style={{borderBottom:'1px solid #F1F5F9'}}>
+              <td style={{padding:'10px 6px',fontWeight:600}}>{['🥇','🥈','🥉'][i]||'👤'} {s.name}</td>
+              <td style={{padding:'10px 6px',textAlign:'center',color:'#64748B'}}>{s.count}</td>
+              <td style={{padding:'10px 6px',textAlign:'right',fontWeight:700,color:'#0B7A3B'}}>{fm(s.sales)}</td>
+              <td style={{padding:'10px 6px',textAlign:'right',fontWeight:700,color:'#3B82F6'}}>{fm(s.profit)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>}
+
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Bidhaa Bora</h3>
         {topProds.map(([n,q],i)=><div key={n} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #F1F5F9'}}>

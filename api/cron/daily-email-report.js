@@ -269,7 +269,42 @@ export default async function handler(req, res) {
         .gte('created_at', yStart.toISOString())
         .lte('created_at', yEnd.toISOString());
       const expenses = (dExp || []).reduce((a, e) => a + (e.amount || 0), 0);
-      const netCash = Math.max(0, daily.sales - expenses);
+
+      // Marejesho (returns) ya jana — cash refunds
+      const { data: dReturns } = await supabase
+        .from('returns').select('refund_amount,was_credit')
+        .eq('business_id', biz.id)
+        .gte('created_at', yStart.toISOString())
+        .lte('created_at', yEnd.toISOString());
+      const cashRefunds = (dReturns || []).filter(r => !r.was_credit).reduce((a, r) => a + (r.refund_amount || 0), 0);
+
+      // Manunuzi ya stock (pesa ya duka) ya jana
+      let stockBuy = 0;
+      try {
+        const { data: dPurch } = await supabase
+          .from('purchases').select('total,source')
+          .eq('business_id', biz.id)
+          .gte('created_at', yStart.toISOString())
+          .lte('created_at', yEnd.toISOString());
+        stockBuy = (dPurch || []).filter(p => p.source === 'shop' || !p.source).reduce((a, p) => a + (p.total || 0), 0);
+      } catch (e) {}
+
+      // Malipo ya deni yaliyopokewa jana (pesa taslimu iliyoingia)
+      let creditPaymentsReceived = 0;
+      try {
+        const { data: dCredit } = await supabase
+          .from('credit_transactions').select('amount,type')
+          .eq('business_id', biz.id)
+          .eq('type', 'payment')
+          .gte('created_at', yStart.toISOString())
+          .lte('created_at', yEnd.toISOString());
+        creditPaymentsReceived = (dCredit || []).reduce((a, t) => a + (t.amount || 0), 0);
+      } catch (e) {}
+
+      // Mauzo ya taslimu (si deni)
+      const cashSalesTotal = (dSales || []).filter(s => s.payment_method !== 'credit').reduce((a, s) => a + (s.total || 0), 0);
+      // PESA MKONONI = mauzo ya taslimu + malipo ya deni − marejesho − matumizi − manunuzi ya stock
+      const netCash = Math.max(0, cashSalesTotal + creditPaymentsReceived - cashRefunds - expenses - stockBuy);
 
       // Bidhaa zilizouzwa zaidi jana (top sellers)
       const itemMap = {};
@@ -321,15 +356,17 @@ export default async function handler(req, res) {
         .eq('business_id', biz.id);
       const lowStock = (products || []).filter(p => (p.quantity || 0) <= (p.low_stock_alert || 5));
 
-      // Madeni
+      // Madeni — tumia credit_balance (kama mfumo mzima), debt kama fallback
       const { data: customers } = await supabase
-        .from('customers').select('debt,due_date')
+        .from('customers').select('*')
         .eq('business_id', biz.id);
-      const withDebt = (customers || []).filter(c => (c.debt || 0) > 0);
+      const bal = (c) => (c.credit_balance != null ? c.credit_balance : (c.debt || 0)) || 0;
+      const dueDate = (c) => c.due_date || c.last_credit_date || null;
+      const withDebt = (customers || []).filter(c => bal(c) > 0);
       const debts = {
-        total: withDebt.reduce((a, c) => a + (c.debt || 0), 0),
+        total: withDebt.reduce((a, c) => a + bal(c), 0),
         count: withDebt.length,
-        overdue: withDebt.filter(c => c.due_date && new Date(c.due_date) < now).length,
+        overdue: withDebt.filter(c => dueDate(c) && new Date(dueDate(c)) < now).length,
       };
 
       // Usajili
