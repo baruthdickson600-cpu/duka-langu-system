@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
-import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel} from '../../utils/helpers';
+import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance} from '../../utils/helpers';
 import {playSaleSuccess,playCreditSale,playError,unlockAudio} from '../../utils/sounds';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
@@ -1050,6 +1050,9 @@ export function ReportsPage({onReceipt}){
   // Manunuzi ya stock (pesa ya duka) ya kipindi — yanapunguza pesa mkononi, si faida
   const fStockBuy=purchases.filter(p=>p.source==='shop'&&filterByDate(p.created_at)).reduce((a,p)=>a+(p.total||0),0);
   const fBankAmount=Math.max(0,fTotal-fExp-fStockBuy);
+  // CHANZO KIMOJA: hesabu zinazolingana na Dashboard/email
+  const fPurch=purchases.filter(p=>filterByDate(p.created_at));
+  const fin=computePeriodFinance({sales:fSales,returns:fReturns,expenses:expenses.filter(e=>filterByDate(e.created_at)),purchases:fPurch,creditHistory:creditHistory.filter(t=>filterByDate(t.created_at))});
   const staffMap={};fSales.forEach(s=>{const n=s.seller_name||'?';staffMap[n]=(staffMap[n]||0)+s.total});const staffData=Object.entries(staffMap).map(([n,t])=>({name:n,total:t}));
   const prodMap={};fSales.forEach(s=>s.items?.forEach(i=>{prodMap[i.name]=(prodMap[i.name]||0)+i.qty}));const topProds=Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
   
@@ -1143,14 +1146,32 @@ export function ReportsPage({onReceipt}){
   
   // Export PDF
   const doExport=()=>{
-    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',payLabel(s.payment_method),s.total.toLocaleString()]);
-    exportToPDF(`Ripoti — ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`ripoti-${tab}-${Date.now()}.pdf`);
+    const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',payLabel(s.payment_method),Math.round(s.total||0).toLocaleString()]);
+    // Muhtasari wa fedha
+    rows.push(['','','','','']);
+    rows.push(['MUHTASARI','','','','']);
+    rows.push(['Mauzo Ghafi','','','',Math.round(fin.grossSales).toLocaleString()]);
+    rows.push(['Faida Ghafi','','','',Math.round(fin.grossProfit).toLocaleString()]);
+    rows.push(['Matumizi','','','','-'+Math.round(fin.totalExpenses).toLocaleString()]);
+    rows.push(['Manunuzi ya stock','','','','-'+Math.round(fin.stockBuyShop).toLocaleString()]);
+    if(fin.cashRefunds>0)rows.push(['Marejesho','','','','-'+Math.round(fin.cashRefunds).toLocaleString()]);
+    rows.push(['PESA MKONONI','','','',Math.round(fin.netCash).toLocaleString()]);
+    rows.push(['FAIDA HALISI','','','',Math.round(fin.netProfit).toLocaleString()]);
+    exportToPDF(`Ripoti ya Fedha — ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla (TZS)'],rows,`ripoti-${tab}-${Date.now()}.pdf`);
   };
 
-  // Export Excel (CSV) — mauzo ya kipindi
+  // Export Excel (CSV) — mauzo ya kipindi + muhtasari wa fedha
   const doExportExcel=()=>{
     const rows=fSales.map(s=>[fmtDate(s.created_at),s.items?.map(i=>`${i.name} x${i.qty}`).join('; '),s.seller_name||'-',payLabel(s.payment_method),Math.round(s.total||0),Math.round(s.profit||0)]);
-    rows.push(['','','','JUMLA',Math.round(grossTotal),Math.round(grossProfit)]);
+    rows.push(['','','','','','']);
+    rows.push(['MUHTASARI WA FEDHA','','','','','']);
+    rows.push(['Mauzo Ghafi','','','','',Math.round(fin.grossSales)]);
+    rows.push(['Faida Ghafi','','','','',Math.round(fin.grossProfit)]);
+    rows.push(['Matumizi','','','','',-Math.round(fin.totalExpenses)]);
+    rows.push(['Manunuzi ya stock (pesa ya duka)','','','','',-Math.round(fin.stockBuyShop)]);
+    rows.push(['Marejesho','','','','',-Math.round(fin.cashRefunds)]);
+    rows.push(['PESA MKONONI','','','','',Math.round(fin.netCash)]);
+    rows.push(['FAIDA HALISI','','','','',Math.round(fin.netProfit)]);
     exportToCSV(`Ripoti ya Mauzo - ${periodLabel}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla (TZS)','Faida (TZS)'],rows,`ripoti-${tab}-${Date.now()}.csv`);
   };
 
@@ -1354,13 +1375,15 @@ export function ReportsPage({onReceipt}){
     
     <div className="flex-wrap" style={{marginBottom:16}}>
       <div style={{background:'#F0FDF4',border:'2px solid #0B7A3B',borderRadius:14,padding:'14px 16px',flex:1}}>
-        <div style={{fontSize:10,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MUHTASARI WA PESA</div>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(fTotal)}</span></div>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #BBF7D0'}}><span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fExp)}</span></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>💰 Mauzo Halisi (Baada ya Matumizi)</span><span style={{fontSize:20,fontWeight:900,color:'#0B7A3B'}}>{fm(fBankAmount)}</span></div>
+        <div style={{fontSize:10,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MUHTASARI WA PESA MKONONI</div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo ya taslimu + malipo ya deni</span><span style={{fontSize:13,fontWeight:700,color:'#0B7A3B'}}>{fm(fin.cashSalesTotal+fin.creditPaymentsReceived)}</span></div>
+        {fin.cashRefunds>0&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>↩️ Marejesho</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.cashRefunds)}</span></div>}
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.totalExpenses)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #BBF7D0'}}><span style={{fontSize:12,color:'#64748B'}}>🛒 Manunuzi ya stock (pesa ya duka)</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.stockBuyShop)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>💰 Pesa Mkononi</span><span style={{fontSize:20,fontWeight:900,color:'#0B7A3B'}}>{fm(fin.netCash)}</span></div>
       </div>
-      <Stat icon={IC.chart} label="Faida" value={fm(fProfit)} color="#3B82F6" sub={refundProfit>0?`Imepunguzwa: ${fm(refundProfit)}`:null}/>
-      <Stat icon={IC.dollar} label="Halisi" value={fm(fProfit-fExp)} color={fProfit-fExp>=0?'#F59E0B':'#EF4444'}/>
+      <Stat icon={IC.chart} label="Faida Ghafi" value={fm(fin.grossProfit)} color="#3B82F6" sub={fin.refundProfit>0?`Returns: -${fm(fin.refundProfit)}`:null}/>
+      <Stat icon={IC.dollar} label="Faida Halisi" value={fm(fin.netProfit)} color={fin.netProfit>=0?'#F59E0B':'#EF4444'} sub="Baada ya returns & matumizi"/>
     </div>
     
     {/* ===== CREDIT BREAKDOWN ===== */}

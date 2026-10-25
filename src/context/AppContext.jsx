@@ -2,6 +2,7 @@ import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} f
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
+import {computePeriodFinance} from '../utils/helpers';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
@@ -2533,8 +2534,17 @@ export function AppProvider({children}){
     const today=todayStr();
     const tSales=sales.filter(s=>s.created_at?.startsWith(today));
     const tExp=expenses.filter(e=>e.created_at?.startsWith(today));
-    return{date:today,totalSales:tSales.reduce((a,s)=>a+s.total,0),totalProfit:tSales.reduce((a,s)=>a+s.profit,0),totalExpenses:tExp.reduce((a,e)=>a+(e.amount||0),0),salesCount:tSales.length,topItems:tSales.flatMap(s=>s.items||[]).reduce((a,i)=>{a[i.name]=(a[i.name]||0)+i.qty;return a},{}),lowStock:lowStockProducts.length};
-  },[sales,expenses,lowStockProducts]);
+    const tReturns=(returns||[]).filter(r=>r.created_at?.startsWith(today));
+    const tPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(today));
+    const tCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(today));
+    const fin=computePeriodFinance({sales:tSales,returns:tReturns,expenses:tExp,purchases:tPurch,creditHistory:tCredit});
+    return{date:today,
+      totalSales:fin.grossSales,totalProfit:fin.grossProfit,totalExpenses:fin.totalExpenses,
+      netCash:fin.netCash,netProfit:fin.netProfit,stockBuy:fin.stockBuyShop,refunds:fin.totalRefunds,
+      salesCount:tSales.length,
+      topItems:tSales.flatMap(s=>s.items||[]).reduce((a,i)=>{a[i.name]=(a[i.name]||0)+i.qty;return a},{}),
+      lowStock:lowStockProducts.length};
+  },[sales,expenses,returns,purchases,creditHistory,lowStockProducts]);
 
   // Weekly Report
   const getWeeklyReport=useCallback(()=>{
@@ -2543,9 +2553,13 @@ export function AppProvider({children}){
     const wSales=sales.filter(s=>new Date(s.created_at)>=weekStart);
     const pwSales=sales.filter(s=>{const d=new Date(s.created_at);return d>=prevWeekStart&&d<weekStart});
     const wExp=expenses.filter(e=>new Date(e.created_at)>=weekStart);
-    const wTotal=wSales.reduce((a,s)=>a+s.total,0);const pwTotal=pwSales.reduce((a,s)=>a+s.total,0);
-    const wProfit=wSales.reduce((a,s)=>a+s.profit,0);const pwProfit=pwSales.reduce((a,s)=>a+s.profit,0);
-    const wExpTotal=wExp.reduce((a,e)=>a+(e.amount||0),0);
+    const wReturns=(returns||[]).filter(r=>new Date(r.created_at)>=weekStart);
+    const wPurch=(purchases||[]).filter(p=>new Date(p.created_at)>=weekStart);
+    const wCredit=(creditHistory||[]).filter(t=>new Date(t.created_at)>=weekStart);
+    const fin=computePeriodFinance({sales:wSales,returns:wReturns,expenses:wExp,purchases:wPurch,creditHistory:wCredit});
+    const wTotal=fin.grossSales;const pwTotal=pwSales.reduce((a,s)=>a+s.total,0);
+    const wProfit=fin.grossProfit;const pwProfit=pwSales.reduce((a,s)=>a+s.profit,0);
+    const wExpTotal=fin.totalExpenses;
     const salesChange=pwTotal>0?Math.round((wTotal-pwTotal)/pwTotal*100):0;
     const profitChange=pwProfit>0?Math.round((wProfit-pwProfit)/pwProfit*100):0;
     // Top items this week
@@ -2556,8 +2570,9 @@ export function AppProvider({children}){
       dayData.push({day:d.toLocaleDateString('sw',{weekday:'short'}),sales:sales.filter(s=>s.created_at?.startsWith(ds)).reduce((a,s)=>a+s.total,0)});
     }
     return{totalSales:wTotal,prevTotalSales:pwTotal,salesChange,totalProfit:wProfit,prevProfit:pwProfit,profitChange,
-      totalExpenses:wExpTotal,netProfit:wProfit-wExpTotal,salesCount:wSales.length,topItems,dayData,newCustomers:customers.filter(c=>new Date(c.created_at)>=weekStart).length};
-  },[sales,expenses,customers]);
+      totalExpenses:wExpTotal,netProfit:fin.netProfit,netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
+      salesCount:wSales.length,topItems,dayData,newCustomers:customers.filter(c=>new Date(c.created_at)>=weekStart).length};
+  },[sales,expenses,returns,purchases,creditHistory,customers]);
 
   // Monthly Report
   const getMonthlyReport=useCallback(()=>{
@@ -2567,17 +2582,22 @@ export function AppProvider({children}){
     const pmSales=sales.filter(s=>s.created_at?.startsWith(prevMonth));
     const mExp=expenses.filter(e=>e.created_at?.startsWith(thisMonth));
     const pmExp=expenses.filter(e=>e.created_at?.startsWith(prevMonth));
-    const mTotal=mSales.reduce((a,s)=>a+s.total,0);const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
-    const mProfit=mSales.reduce((a,s)=>a+s.profit,0);const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
-    const mExpTotal=mExp.reduce((a,e)=>a+(e.amount||0),0);const pmExpTotal=pmExp.reduce((a,e)=>a+(e.amount||0),0);
+    const mReturns=(returns||[]).filter(r=>r.created_at?.startsWith(thisMonth));
+    const mPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(thisMonth));
+    const mCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(thisMonth));
+    const fin=computePeriodFinance({sales:mSales,returns:mReturns,expenses:mExp,purchases:mPurch,creditHistory:mCredit});
+    const mTotal=fin.grossSales;const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
+    const mProfit=fin.grossProfit;const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
+    const mExpTotal=fin.totalExpenses;const pmExpTotal=pmExp.reduce((a,e)=>a+(e.amount||0),0);
     const salesChange=pmTotal>0?Math.round((mTotal-pmTotal)/pmTotal*100):0;
     const profitChange=pmProfit>0?Math.round((mProfit-pmProfit)/pmProfit*100):0;
     const expenseChange=pmExpTotal>0?Math.round((mExpTotal-pmExpTotal)/pmExpTotal*100):0;
     return{totalSales:mTotal,prevSales:pmTotal,salesChange,totalProfit:mProfit,prevProfit:pmProfit,profitChange,
-      totalExpenses:mExpTotal,prevExpenses:pmExpTotal,expenseChange,netProfit:mProfit-mExpTotal,prevNetProfit:pmProfit-pmExpTotal,
+      totalExpenses:mExpTotal,prevExpenses:pmExpTotal,expenseChange,netProfit:fin.netProfit,prevNetProfit:pmProfit-pmExpTotal,
+      netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
       salesCount:mSales.length,prevSalesCount:pmSales.length,newCustomers:customers.filter(c=>c.created_at?.startsWith(thisMonth)).length,
       totalDebt:customers.reduce((a,c)=>a+(c.credit_balance||0),0),inventoryValue:products.reduce((a,p)=>a+p.quantity*(p.buy_price||0),0)};
-  },[sales,expenses,customers,products]);
+  },[sales,expenses,returns,purchases,creditHistory,customers,products]);
 
   // ===== CHURN DETECTION (for admin) =====
   const churnRisk=useMemo(()=>{

@@ -24,6 +24,61 @@ export const isThisWeek = (d) => {
 };
 export const isThisMonth = (d) => d?.startsWith(todayStr().slice(0, 7));
 
+// ============================================================
+// CHANZO KIMOJA CHA UKWELI — Hesabu za fedha za kipindi
+// computePeriodFinance({sales, returns, expenses, purchases, creditHistory})
+// Zote tayari zimechujwa kwa kipindi husika (siku/wiki/mwezi/custom).
+// Inarudisha namba zinazolingana kila mahali (Ripoti, Dashboard, email).
+// ============================================================
+export const computePeriodFinance = ({ sales = [], returns = [], expenses = [], purchases = [], creditHistory = [] } = {}) => {
+  // Mauzo ya taslimu dhidi ya deni
+  const cashSales = sales.filter(s => s.payment_method !== 'credit');
+  const creditSales = sales.filter(s => s.payment_method === 'credit');
+
+  const grossSales = sales.reduce((a, s) => a + (s.total || 0), 0);
+  const grossProfit = sales.reduce((a, s) => a + (s.profit || 0), 0);
+  const cashSalesTotal = cashSales.reduce((a, s) => a + (s.total || 0), 0);
+  const cashSalesProfit = cashSales.reduce((a, s) => a + (s.profit || 0), 0);
+  const creditSalesTotal = creditSales.reduce((a, s) => a + (s.total || 0), 0);
+
+  // Malipo ya deni yaliyopokewa (pesa taslimu iliyoingia)
+  const creditPaymentsReceived = (creditHistory || [])
+    .filter(t => t.type === 'payment')
+    .reduce((a, p) => a + (p.amount || 0), 0);
+
+  // Marejesho (returns): tenga cash refunds na credit refunds
+  const cashRefunds = (returns || []).filter(r => !r.was_credit).reduce((a, r) => a + (r.refund_amount || 0), 0);
+  const totalRefunds = (returns || []).reduce((a, r) => a + (r.refund_amount || 0), 0);
+  // Faida iliyopotea kwa returns zote
+  const refundProfit = (returns || []).reduce((sum, r) => sum + ((r.items || []).reduce((s, i) => s + ((i.qty || 0) * ((i.price || 0) - (i.buyPrice || i.buy_price || 0)) * (i.fraction || 1)), 0)), 0);
+
+  // Matumizi (expenses)
+  const totalExpenses = (expenses || []).reduce((a, e) => a + (e.amount || 0), 0);
+
+  // Manunuzi ya stock yaliyotumia PESA YA DUKA (yanapunguza pesa mkononi, si faida)
+  const stockBuyShop = (purchases || []).filter(p => p.source === 'shop' || !p.source).reduce((a, p) => a + (p.total || 0), 0);
+
+  // ===== PESA MKONONI (cash on hand) =====
+  // = mauzo ya taslimu + malipo ya deni yaliyopokewa − cash refunds − matumizi − manunuzi ya duka
+  const netCash = Math.max(0, cashSalesTotal + creditPaymentsReceived - cashRefunds - totalExpenses - stockBuyShop);
+
+  // ===== FAIDA HALISI (net profit, cash-basis) =====
+  // = faida ya mauzo ya taslimu − faida iliyopotea kwa refunds − matumizi
+  const netProfit = cashSalesProfit - refundProfit - totalExpenses;
+
+  return {
+    grossSales, grossProfit,
+    cashSalesTotal, cashSalesProfit, creditSalesTotal,
+    creditPaymentsReceived,
+    cashRefunds, totalRefunds, refundProfit,
+    totalExpenses, stockBuyShop,
+    netCash, netProfit,
+    salesCount: sales.length,
+    cashSalesCount: cashSales.length,
+    creditSalesCount: creditSales.length,
+  };
+};
+
 // Offline queue
 const OFFLINE_KEY = 'duka_offline_queue';
 export const addToOfflineQueue = (action) => {
