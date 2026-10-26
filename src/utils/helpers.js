@@ -134,6 +134,131 @@ export const exportToPDF = async (title, headers, rows, filename) => {
   doc.save(filename || 'report.pdf');
 };
 
+// ============================================================
+// STATEMENT KAMILI YA PDF — kwa kipindi/tarehe maalum
+// exportStatementPDF({biz, periodLabel, from, to, fin, sales, returns, currency, payMap})
+// Ina: kichwa cha biashara, kipindi, muhtasari wa fedha, orodha ya mauzo.
+// ============================================================
+export const exportStatementPDF = async ({ biz = {}, periodLabel = '', from = '', to = '', fin = {}, sales = [], returns = [], currency = 'TZS', payMap = {} } = {}) => {
+  const { default: jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+  const doc = new jsPDF();
+  const PW = doc.internal.pageSize.getWidth();
+  const money = (n) => `${currency} ${Math.round(n || 0).toLocaleString()}`;
+  const green = [11, 122, 59];
+  let y = 0;
+
+  // ===== KICHWA (banner ya kijani) =====
+  doc.setFillColor(...green);
+  doc.rect(0, 0, PW, 34, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20);
+  doc.text((biz.name || biz.business_name || 'DUKA LANGU').toUpperCase(), 14, 15);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  const sub = [biz.phone, biz.location || biz.address].filter(Boolean).join('  •  ');
+  if (sub) doc.text(sub, 14, 22);
+  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+  doc.text('TAARIFA YA MAPATO (STATEMENT)', 14, 30);
+
+  // ===== KIPINDI =====
+  y = 44;
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+  doc.text('Kipindi:', 14, y);
+  doc.setFont('helvetica', 'normal');
+  const periodTxt = (from && to) ? `${fmtDate(from)}  —  ${fmtDate(to)}` : (periodLabel || '-');
+  doc.text(periodTxt, 38, y);
+  doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+  doc.text(`Imetolewa: ${fmtDate(new Date())} ${timeStr()}`, PW - 14, y, { align: 'right' });
+
+  // ===== MUHTASARI WA FEDHA (box) =====
+  y += 8;
+  const rowsSummary = [
+    ['Mauzo Ghafi (jumla)', money(fin.grossSales)],
+    ['Mauzo ya Taslimu', money(fin.cashSalesTotal)],
+    ['Mauzo ya Deni (mkopo)', money(fin.creditSalesTotal)],
+    ['Malipo ya Deni Yaliyopokewa', money(fin.creditPaymentsReceived)],
+    ['Marejesho (refunds)', '- ' + money(fin.totalRefunds)],
+    ['Matumizi (expenses)', '- ' + money(fin.totalExpenses)],
+    ['Manunuzi ya Stock (pesa ya duka)', '- ' + money(fin.stockBuyShop)],
+  ];
+  doc.autoTable({
+    startY: y,
+    body: rowsSummary,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 2 },
+    columnStyles: { 0: { cellWidth: 120, textColor: [71, 85, 105] }, 1: { halign: 'right', fontStyle: 'bold', textColor: [30, 41, 59] } },
+  });
+  y = doc.lastAutoTable.finalY + 4;
+
+  // Matokeo makuu — PESA MKONONI + FAIDA HALISI (highlighted)
+  doc.setFillColor(240, 253, 244);
+  doc.setDrawColor(...green); doc.setLineWidth(0.5);
+  doc.roundedRect(14, y, PW - 28, 24, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(11, 122, 59); doc.setFontSize(12);
+  doc.text('PESA MKONONI', 20, y + 9);
+  doc.setFontSize(15);
+  doc.text(money(fin.netCash), PW - 20, y + 9, { align: 'right' });
+  doc.setTextColor(59, 130, 246); doc.setFontSize(12);
+  doc.text('FAIDA HALISI', 20, y + 19);
+  doc.setFontSize(15);
+  doc.text(money(fin.netProfit), PW - 20, y + 19, { align: 'right' });
+  y += 30;
+
+  // ===== MCHANGANUO WA NJIA ZA MALIPO (kama zipo) =====
+  const payRows = Object.entries(payMap || {}).filter(([, v]) => (v?.total || 0) > 0)
+    .sort((a, b) => (b[1].total || 0) - (a[1].total || 0))
+    .map(([m, v]) => [payLabel(m), String(v.count || 0), money(v.total)]);
+  if (payRows.length) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 41, 59);
+    doc.text('Mchanganuo wa Njia za Malipo', 14, y);
+    doc.autoTable({
+      startY: y + 3,
+      head: [['Njia', 'Idadi', 'Jumla']],
+      body: payRows,
+      theme: 'grid', styles: { fontSize: 9 },
+      headStyles: { fillColor: green }, columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+
+  // ===== ORODHA YA MAUZO =====
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 41, 59);
+  doc.text(`Orodha ya Mauzo (${sales.length})`, 14, y);
+  const saleRows = sales
+    .slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .map(s => [
+      fmtDate(s.created_at),
+      (s.items || []).map(i => `${i.name} x${i.qty}`).join(', ').slice(0, 45) || '-',
+      s.seller_name || '-',
+      payLabel(s.payment_method),
+      Math.round(s.total || 0).toLocaleString(),
+    ]);
+  doc.autoTable({
+    startY: y + 3,
+    head: [['Tarehe', 'Bidhaa', 'Muuzaji', 'Malipo', 'Jumla']],
+    body: saleRows.length ? saleRows : [['-', 'Hakuna mauzo kwa kipindi hiki', '-', '-', '-']],
+    theme: 'striped', styles: { fontSize: 8, cellPadding: 1.8 },
+    headStyles: { fillColor: green }, columnStyles: { 4: { halign: 'right' } },
+    foot: saleRows.length ? [['', '', '', 'JUMLA', Math.round(fin.grossSales).toLocaleString()]] : undefined,
+    footStyles: { fillColor: [241, 245, 249], textColor: [11, 122, 59], fontStyle: 'bold', halign: 'right' },
+  });
+
+  // ===== FOOTER kwa kila ukurasa =====
+  const pages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    const PH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(8); doc.setTextColor(148, 163, 184); doc.setFont('helvetica', 'normal');
+    doc.text('DukaLangu Smart POS — dukalangu.com', 14, PH - 8);
+    doc.text(`Ukurasa ${p}/${pages}`, PW - 14, PH - 8, { align: 'right' });
+  }
+
+  const fnamePart = (from && to) ? `${from}_${to}` : (periodLabel || 'statement').replace(/\s+/g, '-');
+  doc.save(`statement-${fnamePart}.pdf`);
+};
+
 // Excel/CSV export (inafunguka kwenye Excel; ina BOM kwa herufi za Kiswahili)
 export const exportToCSV = (title, headers, rows, filename) => {
   const esc = (v) => {

@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
-import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange} from '../../utils/helpers';
+import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,exportStatementPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange} from '../../utils/helpers';
 import {playSaleSuccess,playCreditSale,playError,unlockAudio} from '../../utils/sounds';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
@@ -944,7 +944,7 @@ export function ReturnsPage(){
 
 // ===== REPORTS =====
 export function ReportsPage({onReceipt}){
-  const{sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
+  const{biz,sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[tab,setTab]=useState('day');
   const myBranches=canUseBranches?getBranches():[];
@@ -1214,15 +1214,38 @@ export function ReportsPage({onReceipt}){
     return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,total])=>({day:d.slice(5),total}));
   },[fSales]);
   
-  // Export monthly statement
+  // payMap kwa statement (njia za malipo)
+  const payMapObj=React.useMemo(()=>{
+    const m={};
+    fSales.forEach(s=>{const k=s.payment_method||'cash';if(!m[k])m[k]={total:0,count:0};m[k].total+=s.total||0;m[k].count++;});
+    return m;
+  },[fSales]);
+
+  // ===== STATEMENT KAMILI YA PDF (kipindi/tarehe maalum) =====
+  const doExportStatement=()=>{
+    exportStatementPDF({
+      biz,
+      periodLabel,
+      from: tab==='custom'?customFrom:'',
+      to: tab==='custom'?customTo:'',
+      fin, sales:fSales, returns:fReturns, currency:currency||'TZS', payMap:payMapObj,
+    });
+  };
+
+  // Export monthly statement — sasa inatumia statement kamili
   const exportMonthlyStatement=(month)=>{
     const ms=sales.filter(s=>localDateStr(s.created_at).startsWith(month.ym));
-    const rows=ms.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);
-    rows.push(['','','','JUMLA',month.total.toLocaleString()]);
-    rows.push(['','','','REJESHO',`-${month.refunds.toLocaleString()}`]);
-    rows.push(['','','','HALISI',month.netSales.toLocaleString()]);
-    rows.push(['','','','FAIDA',month.netProfit.toLocaleString()]);
-    exportToPDF(`Statement — ${month.label}`,['Tarehe','Bidhaa','Muuzaji','Malipo','Jumla'],rows,`statement-${month.ym}.pdf`);
+    const mReturns=(returns||[]).filter(r=>localDateStr(r.created_at).startsWith(month.ym));
+    const mExp=expenses.filter(e=>localDateStr(e.created_at).startsWith(month.ym));
+    const mPurch=purchases.filter(p=>localDateStr(p.created_at).startsWith(month.ym));
+    const mCredit=creditHistory.filter(t=>localDateStr(t.created_at).startsWith(month.ym));
+    const mfin=computePeriodFinance({sales:ms,returns:mReturns,expenses:mExp,purchases:mPurch,creditHistory:mCredit});
+    const pm={};ms.forEach(s=>{const k=s.payment_method||'cash';if(!pm[k])pm[k]={total:0,count:0};pm[k].total+=s.total||0;pm[k].count++;});
+    exportStatementPDF({
+      biz, periodLabel:month.label,
+      from:month.ym+'-01', to:month.ym+'-'+String(new Date(+month.ym.slice(0,4),+month.ym.slice(5,7),0).getDate()).padStart(2,'0'),
+      fin:mfin, sales:ms, returns:mReturns, currency:currency||'TZS', payMap:pm,
+    });
   };
 
   return <div>
@@ -1328,6 +1351,12 @@ export function ReportsPage({onReceipt}){
       <div style={{marginTop:10,fontSize:12,color:'#1E40AF'}}>
         📅 Statement: <b>{new Date(customFrom).toLocaleDateString('sw-TZ')}</b> mpaka <b>{new Date(customTo).toLocaleDateString('sw-TZ')}</b>
       </div>
+
+      {/* KITUFE: Pakua Statement Kamili ya PDF */}
+      <button onClick={doExportStatement} style={{marginTop:14,width:'100%',padding:14,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.3)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+        📄 Pakua Statement Kamili (PDF)
+      </button>
+      <div style={{marginTop:6,fontSize:10,color:'#64748B',textAlign:'center'}}>Ina muhtasari kamili wa fedha + orodha ya mauzo yote ya kipindi</div>
     </div>}
     
     {/* MONTHLY HISTORY VIEW */}
@@ -1471,9 +1500,10 @@ export function ReportsPage({onReceipt}){
       </div>}
     </div>}
 
-    <div style={{marginBottom:12,display:'flex',gap:8,flexWrap:'wrap'}}>
-      <Btn v="outline" onClick={doExport}>{IC.dl} PDF</Btn>
+    <div style={{marginBottom:12,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+      <button onClick={doExportStatement} style={{padding:'10px 18px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 14px rgba(11,122,59,0.25)',display:'flex',alignItems:'center',gap:6}}>📄 Pakua Statement (PDF)</button>
       <button onClick={doExportExcel} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer'}}>📊 Pakua Excel</button>
+      <button onClick={doExport} style={{padding:'9px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>PDF Fupi</button>
     </div>
 
     {/* ===== BIDHAA ZILIZOUZWA — Complete List with Stock ===== */}
