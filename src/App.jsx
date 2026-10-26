@@ -9,7 +9,7 @@ import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
-import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,SupportPage,GoalsPage,InvoicePage,ReferralPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,GoalsPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
 import OrdersPage from './pages/office/OrdersPage';
 import PurchasesPage from './pages/office/PurchasesPage';
 import AnimatedLogo from './components/AnimatedLogo';
@@ -97,12 +97,9 @@ const MENUS={
     {id:'returns',icon:IC.refresh,label:'Rudisha'},
     {id:'reports',icon:IC.chart,label:'Ripoti'},
     {id:'goals',icon:IC.chart,label:'Malengo'},
-    {id:'invoices',icon:IC.file,label:'Ankara'},
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'employees',icon:IC.users,label:'Wafanyakazi'},
     {id:'customers',icon:IC.people,label:'Wateja'},
-    {id:'referral',icon:IC.gift,label:'🎁 Karibisha Rafiki'},
-    {id:'support',icon:IC.send,label:'Msaada'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   employee:[
@@ -112,7 +109,6 @@ const MENUS={
     {id:'emp_reports',icon:IC.chart,label:'📦 Bidhaa Zilizouzwa'},
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'customers',icon:IC.people,label:'Wateja'},
-    {id:'support',icon:IC.send,label:'Msaada'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   supervisor:[
@@ -322,13 +318,10 @@ export default function App(){
       case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
       case'emp_reports':return role==='employee'?<EmployeeReportsPage/>:null;
       case'goals':return <GoalsPage/>;
-      case'invoices':return <InvoicePage/>;
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
       case'customers':return <CustomersPage/>;
       case'analytics':return <ProductAnalyticsPage/>;
-      case'referral':return <ReferralPage/>;
-      case'support':return <SupportPage/>;
       case'notifications':return <NotifsPage/>;
       default:return <OfficeDash onReceipt={setReceipt}/>;
     }
