@@ -80,9 +80,15 @@ export default async function handler(req, res) {
     }
 
     const now = new Date();
-    const yStart = new Date(now); yStart.setDate(yStart.getDate() - 1); yStart.setHours(0, 0, 0, 0);
-    const yEnd = new Date(yStart); yEnd.setHours(23, 59, 59, 999);
-    const wStart = new Date(now); wStart.setDate(wStart.getDate() - 7);
+    // Mipaka ya siku kwa saa za EAT (UTC+3) — tarehe zisirukwe
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const eatDateStr = (d) => new Date(new Date(d).getTime() + EAT_OFFSET_MS).toISOString().slice(0, 10);
+    const eatDayStartUTC = (ymd) => new Date(new Date(ymd + 'T00:00:00.000Z').getTime() - EAT_OFFSET_MS);
+    const eatDayEndUTC = (ymd) => new Date(new Date(ymd + 'T23:59:59.999Z').getTime() - EAT_OFFSET_MS);
+    const yYmd = eatDateStr(now.getTime() - 24 * 3600 * 1000);
+    const yStart = eatDayStartUTC(yYmd);
+    const yEnd = eatDayEndUTC(yYmd);
+    const wStart = new Date(yEnd.getTime() - 7 * 24 * 3600 * 1000);
 
     // Data ya pamoja
     const { data: allBiz } = await supabase.from('businesses').select('id,name,phone,email,plan,token_active,token_expiry,trial_end,created_at,referred_by_code');

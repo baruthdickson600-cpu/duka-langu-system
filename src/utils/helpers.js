@@ -8,21 +8,43 @@ export const payLabel=(m)=>PAY_LABELS[m]||m||'Taslimu';
 
 // ===== HELPERS =====
 export const genId = () => crypto.randomUUID?.() || Math.random().toString(36).substr(2, 12);
-export const todayStr = () => new Date().toISOString().split('T')[0];
+
+// ---- TAREHE ZA NDANI (LOCAL) — zinazozingatia saa za mtumiaji (EAT UTC+3) ----
+// MUHIMU: created_at inahifadhiwa UTC. Kulinganisha kwa UTC (toISOString) kunafanya
+// mauzo ya jioni/usiku "yaruke" tarehe. Hapa tunatumia tarehe ya ndani ya kila muamala.
+export const localDateStr = (d) => {
+  const x = d ? new Date(d) : new Date();
+  if (isNaN(x)) return '';
+  // Toa tarehe kwa saa za ndani (sYYYY-MM-DD) bila athari ya UTC
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, '0');
+  const day = String(x.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+export const todayStr = () => localDateStr(new Date()); // tarehe ya leo kwa saa za ndani
 export const nowISO = () => new Date().toISOString();
 export const timeStr = () => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 export const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '-';
 export const fmtMoney = (n, cur = 'TZS') => `${cur} ${(n || 0).toLocaleString()}`;
 
-// Date ranges
-export const isToday = (d) => d?.startsWith(todayStr());
+// Date ranges — zote zinatumia tarehe ya NDANI ya muamala
+export const isToday = (d) => d ? localDateStr(d) === todayStr() : false;
 export const isThisWeek = (d) => {
   if (!d) return false;
-  const now = new Date(), start = new Date(now);
-  start.setDate(now.getDate() - now.getDay());
-  return new Date(d) >= start;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 7, 0, 0, 0);
+  const x = new Date(d);
+  return x >= start && x < end;
 };
-export const isThisMonth = (d) => d?.startsWith(todayStr().slice(0, 7));
+export const isThisMonth = (d) => d ? localDateStr(d).slice(0, 7) === todayStr().slice(0, 7) : false;
+
+// Je muamala uko ndani ya kipindi [from..to] (tarehe za ndani, zote zikijumuishwa)?
+export const inDateRange = (d, from, to) => {
+  if (!d || !from || !to) return false;
+  const ds = localDateStr(d);
+  return ds >= from && ds <= to;
+};
 
 // ============================================================
 // CHANZO KIMOJA CHA UKWELI — Hesabu za fedha za kipindi

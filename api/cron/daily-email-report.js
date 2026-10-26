@@ -12,6 +12,15 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_S
 
 const fmt = (n) => 'TZS ' + Math.round(n || 0).toLocaleString();
 
+// ===== SAA ZA TANZANIA (EAT = UTC+3) =====
+// Serverless inakimbia UTC. Mipaka ya siku lazima iwe ya EAT ili tarehe zisirukwe.
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+// Rudisha tarehe ya EAT (sYYYY-MM-DD) kwa muda wowote
+const eatDateStr = (d) => new Date(new Date(d).getTime() + EAT_OFFSET_MS).toISOString().slice(0, 10);
+// Mwanzo wa siku ya EAT (00:00 EAT) kama muda wa UTC (ISO)
+const eatDayStartUTC = (ymd) => new Date(ymd + 'T00:00:00.000Z').getTime() - EAT_OFFSET_MS;
+const eatDayEndUTC = (ymd) => new Date(ymd + 'T23:59:59.999Z').getTime() - EAT_OFFSET_MS;
+
 // ===== HTML ya email =====
 const PAY_LABELS = { cash: 'Taslimu', mpesa: 'M-Pesa', airtel: 'Airtel', tigo: 'Tigo/Mixx', halopesa: 'HaloPesa', nmb: 'NMB', crdb: 'CRDB', mix: 'Mchanganyiko', credit: 'Deni' };
 const payLabel = (m) => PAY_LABELS[m] || m || 'Taslimu';
@@ -221,14 +230,20 @@ export default async function handler(req, res) {
     }
 
     const now = new Date();
-    const isMonday = now.getDay() === 1;
-    const isFirstOfMonth = now.getDate() === 1;
+    // "Sasa" kwa saa za EAT (ili siku ya juma na tarehe 1 zihesabiwe kwa EAT, si UTC)
+    const nowEAT = new Date(now.getTime() + EAT_OFFSET_MS);
+    const isMonday = nowEAT.getUTCDay() === 1;
+    const isFirstOfMonth = nowEAT.getUTCDate() === 1;
 
-    // Tarehe: jana, wiki, mwezi
-    const yStart = new Date(now); yStart.setDate(yStart.getDate() - 1); yStart.setHours(0, 0, 0, 0);
-    const yEnd = new Date(yStart); yEnd.setHours(23, 59, 59, 999);
-    const wStart = new Date(now); wStart.setDate(wStart.getDate() - 7);
-    const mStart = new Date(now.getFullYear(), now.getMonth() - (isFirstOfMonth ? 1 : 0), 1);
+    // Tarehe: JANA kwa EAT (sYYYY-MM-DD)
+    const todayEAT = eatDateStr(now);
+    const yYmd = eatDateStr(now.getTime() - 24 * 3600 * 1000); // jana (EAT)
+    const yStart = new Date(eatDayStartUTC(yYmd)); // 00:00 EAT ya jana (kama UTC)
+    const yEnd = new Date(eatDayEndUTC(yYmd));     // 23:59 EAT ya jana (kama UTC)
+    // Wiki: siku 7 kabla ya mwisho wa jana
+    const wStart = new Date(yEnd.getTime() - 7 * 24 * 3600 * 1000);
+    // Mwezi: mwanzo wa mwezi wa EAT wa jana (tarehe 1 -> mwezi uliomalizika)
+    const mStart = new Date(eatDayStartUTC(yYmd.slice(0, 7) + '-01'));
 
     // Chukua biashara zenye email
     const { data: businesses } = await supabase
@@ -251,9 +266,10 @@ export default async function handler(req, res) {
         count: (dSales || []).length,
       };
 
-      // Siku iliyotangulia jana (kwa ulinganisho wa mwenendo)
-      const dbStart = new Date(yStart); dbStart.setDate(dbStart.getDate() - 1);
-      const dbEnd = new Date(dbStart); dbEnd.setHours(23, 59, 59, 999);
+      // Siku iliyotangulia jana (EAT) kwa ulinganisho wa mwenendo
+      const dbYmd = eatDateStr(yStart.getTime() - 12 * 3600 * 1000); // juzi (EAT)
+      const dbStart = new Date(eatDayStartUTC(dbYmd));
+      const dbEnd = new Date(eatDayEndUTC(dbYmd));
       const { data: dbSales } = await supabase
         .from('sales').select('total')
         .eq('business_id', biz.id)

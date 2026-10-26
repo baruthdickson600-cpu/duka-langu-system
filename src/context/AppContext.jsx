@@ -2,13 +2,13 @@ import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} f
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
-import {computePeriodFinance} from '../utils/helpers';
+import {computePeriodFinance,localDateStr} from '../utils/helpers';
 
 const Ctx=createContext(null);
 const genId=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2,12)+Math.random().toString(36).substr(2,12);
 const sortProducts=(arr)=>[...arr].sort((a,b)=>(a.name||'').toLowerCase().localeCompare((b.name||'').toLowerCase(),'sw'));
 const nowISO=()=>new Date().toISOString();
-const todayStr=()=>new Date().toISOString().split('T')[0];
+const todayStr=()=>localDateStr(new Date()); // tarehe ya ndani (EAT), si UTC
 const ADMIN_EMAIL='baruthdickson600@gmail.com';
 const ADMIN_PASS='baruth@500';
 
@@ -2577,11 +2577,11 @@ export function AppProvider({children}){
   // ===== DAILY AUTO REPORT (generates summary) =====
   const getDailyReport=useCallback(()=>{
     const today=todayStr();
-    const tSales=sales.filter(s=>s.created_at?.startsWith(today));
-    const tExp=expenses.filter(e=>e.created_at?.startsWith(today));
-    const tReturns=(returns||[]).filter(r=>r.created_at?.startsWith(today));
-    const tPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(today));
-    const tCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(today));
+    const tSales=sales.filter(s=>localDateStr(s.created_at)===today);
+    const tExp=expenses.filter(e=>localDateStr(e.created_at)===today);
+    const tReturns=(returns||[]).filter(r=>localDateStr(r.created_at)===today);
+    const tPurch=(purchases||[]).filter(p=>localDateStr(p.created_at)===today);
+    const tCredit=(creditHistory||[]).filter(t=>localDateStr(t.created_at)===today);
     const fin=computePeriodFinance({sales:tSales,returns:tReturns,expenses:tExp,purchases:tPurch,creditHistory:tCredit});
     return{date:today,
       totalSales:fin.grossSales,totalProfit:fin.grossProfit,totalExpenses:fin.totalExpenses,
@@ -2611,8 +2611,8 @@ export function AppProvider({children}){
     const itemMap={};wSales.forEach(s=>s.items?.forEach(i=>{itemMap[i.name]=(itemMap[i.name]||0)+i.qty}));
     const topItems=Object.entries(itemMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
     // By day
-    const dayData=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);const ds=d.toISOString().split('T')[0];
-      dayData.push({day:d.toLocaleDateString('sw',{weekday:'short'}),sales:sales.filter(s=>s.created_at?.startsWith(ds)).reduce((a,s)=>a+s.total,0)});
+    const dayData=[];for(let i=0;i<7;i++){const d=new Date(weekStart);d.setDate(d.getDate()+i);const ds=localDateStr(d);
+      dayData.push({day:d.toLocaleDateString('sw',{weekday:'short'}),sales:sales.filter(s=>localDateStr(s.created_at)===ds).reduce((a,s)=>a+s.total,0)});
     }
     return{totalSales:wTotal,prevTotalSales:pwTotal,salesChange,totalProfit:wProfit,prevProfit:pwProfit,profitChange,
       totalExpenses:wExpTotal,netProfit:fin.netProfit,netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
@@ -2621,15 +2621,15 @@ export function AppProvider({children}){
 
   // Monthly Report
   const getMonthlyReport=useCallback(()=>{
-    const now=new Date();const thisMonth=now.toISOString().slice(0,7);
-    const prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);const prevMonth=prevDate.toISOString().slice(0,7);
-    const mSales=sales.filter(s=>s.created_at?.startsWith(thisMonth));
-    const pmSales=sales.filter(s=>s.created_at?.startsWith(prevMonth));
-    const mExp=expenses.filter(e=>e.created_at?.startsWith(thisMonth));
-    const pmExp=expenses.filter(e=>e.created_at?.startsWith(prevMonth));
-    const mReturns=(returns||[]).filter(r=>r.created_at?.startsWith(thisMonth));
-    const mPurch=(purchases||[]).filter(p=>p.created_at?.startsWith(thisMonth));
-    const mCredit=(creditHistory||[]).filter(t=>t.created_at?.startsWith(thisMonth));
+    const now=new Date();const thisMonth=todayStr().slice(0,7);
+    const prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);const prevMonth=localDateStr(prevDate).slice(0,7);
+    const mSales=sales.filter(s=>localDateStr(s.created_at).startsWith(thisMonth));
+    const pmSales=sales.filter(s=>localDateStr(s.created_at).startsWith(prevMonth));
+    const mExp=expenses.filter(e=>localDateStr(e.created_at).startsWith(thisMonth));
+    const pmExp=expenses.filter(e=>localDateStr(e.created_at).startsWith(prevMonth));
+    const mReturns=(returns||[]).filter(r=>localDateStr(r.created_at).startsWith(thisMonth));
+    const mPurch=(purchases||[]).filter(p=>localDateStr(p.created_at).startsWith(thisMonth));
+    const mCredit=(creditHistory||[]).filter(t=>localDateStr(t.created_at).startsWith(thisMonth));
     const fin=computePeriodFinance({sales:mSales,returns:mReturns,expenses:mExp,purchases:mPurch,creditHistory:mCredit});
     const mTotal=fin.grossSales;const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
     const mProfit=fin.grossProfit;const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
@@ -2640,7 +2640,7 @@ export function AppProvider({children}){
     return{totalSales:mTotal,prevSales:pmTotal,salesChange,totalProfit:mProfit,prevProfit:pmProfit,profitChange,
       totalExpenses:mExpTotal,prevExpenses:pmExpTotal,expenseChange,netProfit:fin.netProfit,prevNetProfit:pmProfit-pmExpTotal,
       netCash:fin.netCash,refunds:fin.totalRefunds,stockBuy:fin.stockBuyShop,
-      salesCount:mSales.length,prevSalesCount:pmSales.length,newCustomers:customers.filter(c=>c.created_at?.startsWith(thisMonth)).length,
+      salesCount:mSales.length,prevSalesCount:pmSales.length,newCustomers:customers.filter(c=>localDateStr(c.created_at).startsWith(thisMonth)).length,
       totalDebt:customers.reduce((a,c)=>a+(c.credit_balance||0),0),inventoryValue:products.reduce((a,p)=>a+p.quantity*(p.buy_price||0),0)};
   },[sales,expenses,returns,purchases,creditHistory,customers,products]);
 

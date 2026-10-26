@@ -1,7 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
-import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance} from '../../utils/helpers';
+import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange} from '../../utils/helpers';
 import {playSaleSuccess,playCreditSale,playError,unlockAudio} from '../../utils/sounds';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6'];
@@ -170,11 +170,11 @@ export function OfficeDash({onReceipt}){
   // For credit payments — estimate profit proportionally
   const mProfit=Math.max(0,mCashProfit-returnProfit(mReturns.filter(r=>!r.was_credit)));
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
-  // ===== Matumizi ya LEO =====
-  const _today=new Date().toISOString().slice(0,10);
-  const tExp=expenses.filter(e=>e.business_id===biz?.id&&e.created_at?.startsWith(_today)).reduce((a,e)=>a+(e.amount||0),0);
+  // ===== Matumizi ya LEO ===== (tarehe za ndani)
+  const _today=todayStr();
+  const tExp=expenses.filter(e=>e.business_id===biz?.id&&localDateStr(e.created_at)===_today).reduce((a,e)=>a+(e.amount||0),0);
   // Manunuzi ya stock ya LEO yaliyotumia PESA YA DUKA (yanapunguza pesa mkononi, si faida)
-  const tStockBuy=purchases.filter(p=>p.source==='shop'&&p.created_at?.startsWith(_today)).reduce((a,p)=>a+(p.total||0),0);
+  const tStockBuy=purchases.filter(p=>p.source==='shop'&&localDateStr(p.created_at)===_today).reduce((a,p)=>a+(p.total||0),0);
   // ===== PESA YA BENKI = Mauzo - Matumizi - Manunuzi ya stock (pesa ya duka) =====
   const tBankAmount=Math.max(0,tTotal-tExp-tStockBuy);
   const isOff=user?.role==='office';
@@ -184,10 +184,10 @@ export function OfficeDash({onReceipt}){
     const d=[];
     for(let i=6;i>=0;i--){
       const dt=new Date();dt.setDate(dt.getDate()-i);
-      const ds=dt.toISOString().split('T')[0];
-      const dCash=sales.filter(s=>s.created_at?.startsWith(ds)&&s.payment_method!=='credit');
-      const dPayments=creditHistory.filter(t=>t.type==='payment'&&t.created_at?.startsWith(ds));
-      const drs=(returns||[]).filter(r=>r.created_at?.startsWith(ds)&&!r.was_credit);
+      const ds=localDateStr(dt);
+      const dCash=sales.filter(s=>localDateStr(s.created_at)===ds&&s.payment_method!=='credit');
+      const dPayments=creditHistory.filter(t=>t.type==='payment'&&localDateStr(t.created_at)===ds);
+      const drs=(returns||[]).filter(r=>localDateStr(r.created_at)===ds&&!r.was_credit);
       const dayTotal=dCash.reduce((a,s)=>a+s.total,0)+
                      dPayments.reduce((a,p)=>a+(p.amount||0),0)-
                      drs.reduce((a,r)=>a+(r.refund_amount||0),0);
@@ -950,24 +950,18 @@ export function ReportsPage({onReceipt}){
   const myBranches=canUseBranches?getBranches():[];
   
   // Custom date range
-  const today=new Date().toISOString().slice(0,10);
-  const monthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10);
+  const today=todayStr();
+  const monthStart=localDateStr(new Date(new Date().getFullYear(),new Date().getMonth(),1));
   const[customFrom,setCustomFrom]=useState(monthStart);
   const[customTo,setCustomTo]=useState(today);
   
-  // Filter function based on selected tab
+  // Filter function based on selected tab (tarehe za NDANI — hazirukwi tarehe)
   const filterByDate=(dateStr)=>{
     if(!dateStr)return false;
-    const d=new Date(dateStr);
     if(tab==='day')return isToday(dateStr);
     if(tab==='week')return isThisWeek(dateStr);
     if(tab==='month')return isThisMonth(dateStr);
-    if(tab==='custom'){
-      if(!customFrom||!customTo)return false;
-      const from=new Date(customFrom+'T00:00:00');
-      const to=new Date(customTo+'T23:59:59');
-      return d>=from&&d<=to;
-    }
+    if(tab==='custom')return inDateRange(dateStr,customFrom,customTo);
     return false;
   };
   
@@ -975,7 +969,7 @@ export function ReportsPage({onReceipt}){
   const monthlyStats=React.useMemo(()=>{
     const map={};
     sales.forEach(s=>{
-      const ym=s.created_at?.slice(0,7);
+      const ym=localDateStr(s.created_at).slice(0,7);
       if(!ym)return;
       if(!map[ym])map[ym]={total:0,profit:0,count:0,refunds:0,refundProfit:0};
       map[ym].total+=s.total||0;
@@ -983,7 +977,7 @@ export function ReportsPage({onReceipt}){
       map[ym].count++;
     });
     (returns||[]).forEach(r=>{
-      const ym=r.created_at?.slice(0,7);
+      const ym=localDateStr(r.created_at).slice(0,7);
       if(!ym)return;
       if(!map[ym])map[ym]={total:0,profit:0,count:0,refunds:0,refundProfit:0};
       map[ym].refunds+=r.refund_amount||0;
@@ -1158,8 +1152,8 @@ export function ReportsPage({onReceipt}){
       from=new Date(now.getFullYear()-1,0,1);
       to=new Date(now.getFullYear()-1,11,31);
     }
-    setCustomFrom(from.toISOString().slice(0,10));
-    setCustomTo(to.toISOString().slice(0,10));
+    setCustomFrom(localDateStr(from));
+    setCustomTo(localDateStr(to));
   };
   
   // Period label
@@ -1216,13 +1210,13 @@ export function ReportsPage({onReceipt}){
   // ===== Mwenendo wa mauzo kwa siku (kipindi) =====
   const trendData=React.useMemo(()=>{
     const map={};
-    fSales.forEach(s=>{const d=s.created_at?.slice(0,10);if(!d)return;if(!map[d])map[d]=0;map[d]+=s.total||0;});
+    fSales.forEach(s=>{const d=localDateStr(s.created_at);if(!d)return;if(!map[d])map[d]=0;map[d]+=s.total||0;});
     return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([d,total])=>({day:d.slice(5),total}));
   },[fSales]);
   
   // Export monthly statement
   const exportMonthlyStatement=(month)=>{
-    const ms=sales.filter(s=>s.created_at?.startsWith(month.ym));
+    const ms=sales.filter(s=>localDateStr(s.created_at).startsWith(month.ym));
     const rows=ms.map(s=>[fmtDate(s.created_at),s.items?.map(i=>i.name).join(', ').slice(0,30),s.seller_name||'-',s.payment_method,s.total.toLocaleString()]);
     rows.push(['','','','JUMLA',month.total.toLocaleString()]);
     rows.push(['','','','REJESHO',`-${month.refunds.toLocaleString()}`]);
@@ -1243,10 +1237,10 @@ export function ReportsPage({onReceipt}){
     {/* MCHANGANUO KWA TAWI - tu kwenye Matawi Yote */}
     {canUseBranches&&!activeBranch&&myBranches.length>0&&(()=>{
       // Hesabu takwimu kwa kila tawi (mauzo yote ya leo)
-      const todayStr2=new Date().toISOString().slice(0,10);
+      const todayStr2=todayStr();
       const branchStats=myBranches.map(br=>{
-        const bSales=(allSales||[]).filter(s=>s.branch_id===br.id&&s.created_at?.startsWith(todayStr2));
-        const bExp=(allExpenses||[]).filter(e=>e.branch_id===br.id&&e.created_at?.startsWith(todayStr2));
+        const bSales=(allSales||[]).filter(s=>s.branch_id===br.id&&localDateStr(s.created_at)===todayStr2);
+        const bExp=(allExpenses||[]).filter(e=>e.branch_id===br.id&&localDateStr(e.created_at)===todayStr2);
         return{
           branch:br,
           sales:bSales.reduce((a,s)=>a+(s.total||0),0),
@@ -1347,7 +1341,7 @@ export function ReportsPage({onReceipt}){
       
       {monthlyStats.length?<div style={{display:'grid',gap:10}}>
         {monthlyStats.map((m,i)=>{
-          const isCurrent=m.ym===new Date().toISOString().slice(0,7);
+          const isCurrent=m.ym===todayStr().slice(0,7);
           return <div key={m.ym} className="card" style={{padding:18,border:isCurrent?'2px solid #0B7A3B':'1px solid #E2E8F0',background:isCurrent?'linear-gradient(135deg,#F0FDF4,#FFFFFF)':'#fff',transition:'all 0.3s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:12}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
