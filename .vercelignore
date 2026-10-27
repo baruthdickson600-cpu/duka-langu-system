@@ -1,0 +1,6 @@
+# Zuia files zisizotakiwa kuwa Serverless Functions (kikomo cha Hobby = 12)
+# Snippe imeondolewa — kama ikibaki GitHub kwa bahati mbaya, Vercel isiihesabu
+api/snippe
+api/test-email.js
+api/**/*.test.js
+api/**/*.spec.js
