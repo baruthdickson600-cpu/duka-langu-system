@@ -210,7 +210,7 @@ export default function AskMe(){
         <button onClick={()=>setOpen(true)} style={{
           position:'fixed',bottom:24,right:24,zIndex:9998,
           width:60,height:60,borderRadius:'50%',border:'none',
-          background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+          background:'linear-gradient(135deg,#065F2E,#065F2E)',
           color:'#fff',fontSize:26,cursor:'pointer',
           boxShadow:'0 8px 28px rgba(11,122,59,0.45)',
           display:'flex',alignItems:'center',justifyContent:'center',
@@ -234,7 +234,7 @@ export default function AskMe(){
         }}>
           {/* Header */}
           <div style={{
-            background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+            background:'linear-gradient(135deg,#065F2E,#065F2E)',
             padding:'16px 18px',display:'flex',alignItems:'center',gap:12,
           }}>
             <div style={{
@@ -262,7 +262,7 @@ export default function AskMe(){
                 <div style={{maxWidth:'85%'}}>
                   <div style={{
                     padding:'10px 14px',borderRadius:14,fontSize:13.5,lineHeight:1.5,
-                    background:m.sender==='user'?'linear-gradient(135deg,#0B7A3B,#065F2E)':'#fff',
+                    background:m.sender==='user'?'linear-gradient(135deg,#065F2E,#065F2E)':'#fff',
                     color:m.sender==='user'?'#fff':'#1E293B',
                     border:m.sender==='user'?'none':'1px solid #E2E8F0',
                     borderBottomRightRadius:m.sender==='user'?4:14,
@@ -276,7 +276,7 @@ export default function AskMe(){
                         {m.quick.map((q,i)=>(
                           <button key={i} onClick={()=>send(q)} style={{
                             textAlign:'left',background:'#F0FDF4',border:'1px solid #BBF7D0',
-                            borderRadius:8,padding:'8px 10px',fontSize:12,color:'#0B7A3B',
+                            borderRadius:8,padding:'8px 10px',fontSize:12,color:'#065F2E',
                             cursor:'pointer',fontWeight:600,
                           }}>❓ {q}</button>
                         ))}
@@ -288,7 +288,7 @@ export default function AskMe(){
                         {m.related.map(f=>(
                           <button key={f.id} onClick={()=>askRelated(f)} style={{
                             textAlign:'left',background:'#F0FDF4',border:'1px solid #BBF7D0',
-                            borderRadius:8,padding:'8px 10px',fontSize:12,color:'#0B7A3B',
+                            borderRadius:8,padding:'8px 10px',fontSize:12,color:'#065F2E',
                             cursor:'pointer',fontWeight:600,
                           }}>❓ {f.question}</button>
                         ))}
@@ -336,7 +336,7 @@ export default function AskMe(){
             />
             <button onClick={send} disabled={!input.trim()} style={{
               width:44,height:44,borderRadius:12,border:'none',
-              background:input.trim()?'linear-gradient(135deg,#0B7A3B,#065F2E)':'#CBD5E1',
+              background:input.trim()?'linear-gradient(135deg,#065F2E,#065F2E)':'#CBD5E1',
               color:'#fff',fontSize:18,cursor:input.trim()?'pointer':'default',
               display:'flex',alignItems:'center',justifyContent:'center',
             }}>➤</button>

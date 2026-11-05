@@ -12,14 +12,29 @@ export const genId = () => crypto.randomUUID?.() || Math.random().toString(36).s
 // ---- TAREHE ZA NDANI (LOCAL) — zinazozingatia saa za mtumiaji (EAT UTC+3) ----
 // MUHIMU: created_at inahifadhiwa UTC. Kulinganisha kwa UTC (toISOString) kunafanya
 // mauzo ya jioni/usiku "yaruke" tarehe. Hapa tunatumia tarehe ya ndani ya kila muamala.
+// Tanzania iko EAT (UTC+3). Tunahesabu tarehe kwa EAT MOJA KWA MOJA, bila kutegemea
+// timezone ya kifaa — hivyo hata kifaa kikiwa UTC au timezone nyingine, tarehe inabaki sahihi.
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
 export const localDateStr = (d) => {
   const x = d ? new Date(d) : new Date();
   if (isNaN(x)) return '';
-  // Toa tarehe kwa saa za ndani (sYYYY-MM-DD) bila athari ya UTC
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, '0');
-  const day = String(x.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  // Hamisha muda kwenda EAT, kisha toa sehemu ya tarehe (YYYY-MM-DD)
+  return new Date(x.getTime() + EAT_OFFSET_MS).toISOString().slice(0, 10);
+};
+// Orodha ya tarehe zote (YYYY-MM-DD) kuanzia 'from' hadi 'to' (zote zikijumuishwa) — kwa EAT
+export const dateRangeList = (from, to) => {
+  if (!from || !to) return [];
+  const out = [];
+  let cur = new Date(from + 'T00:00:00Z');
+  const end = new Date(to + 'T00:00:00Z');
+  if (isNaN(cur) || isNaN(end) || cur > end) return [];
+  let guard = 0;
+  while (cur <= end && guard < 1000) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur = new Date(cur.getTime() + 24 * 3600 * 1000);
+    guard++;
+  }
+  return out;
 };
 export const todayStr = () => localDateStr(new Date()); // tarehe ya leo kwa saa za ndani
 export const nowISO = () => new Date().toISOString();

@@ -11,7 +11,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:#F1F5F9;color:#1E29
 /* ===== INPUTS & FORMS ===== */
 input,select,textarea{transition:all 0.3s cubic-bezier(.4,0,.2,1)}
 input:focus,select:focus,textarea:focus{
-  border-color:#0B7A3B!important;
+  border-color:#065F2E!important;
   box-shadow:0 0 0 3px rgba(11,122,59,.12),0 2px 8px rgba(11,122,59,.08);
   outline:none;transform:translateY(-1px)
 }
@@ -50,7 +50,7 @@ button:active::after{transform:scale(0);opacity:.3;transition:0s}
 .sidebar button:hover,.sidebar a:hover{
   background:rgba(11,122,59,.08)!important;
   padding-left:20px!important;
-  box-shadow:inset 3px 0 0 #0B7A3B;
+  box-shadow:inset 3px 0 0 #065F2E;
 }
 
 /* ===== TABLE ROWS ===== */
@@ -143,7 +143,7 @@ span[style*="borderRadius"]{transition:all 0.2s ease}
 .page-enter{animation:fadeIn 0.3s cubic-bezier(.4,0,.2,1) both}
 
 /* ===== CHART BARS ===== */
-div[style*="background:linear-gradient(90deg,#0B7A3B"]{
+div[style*="background:linear-gradient(90deg,#065F2E"]{
   transition:width 0.8s cubic-bezier(.4,0,.2,1)!important;
 }
 

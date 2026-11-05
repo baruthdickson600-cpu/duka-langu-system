@@ -4,7 +4,7 @@ import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,todayStr} from '../../utils/helpers';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
-const CL=['#0B7A3B','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+const CL=['#065F2E','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
 const fm=n=>fmtMoney(n);
 
 // ===== MARKETING DASHBOARD =====
@@ -23,20 +23,20 @@ export function MarketingDash(){
     {unreadMsgs>0&&<div style={{background:'#EFF6FF',border:'1px solid #93C5FD',borderRadius:12,padding:'10px 16px',marginBottom:14,fontSize:13,color:'#1E40AF',fontWeight:600}}>💬 Ujumbe {unreadMsgs} mpya kutoka Admin!</div>}
 
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.store} label="Wateja" value={ms.totalClients} color="#0B7A3B" sub={`${ms.newThisMonth} mwezi huu`}/>
+      <Stat icon={IC.store} label="Wateja" value={ms.totalClients} color="#065F2E" sub={`${ms.newThisMonth} mwezi huu`}/>
       <Stat icon={IC.ok} label="Active" value={ms.activeClients} color="#22C55E" sub={`${ms.conversionRate}% conversion`}/>
       <Stat icon={IC.clock} label="Trial" value={ms.trialClients} color="#F59E0B"/>
       <Stat icon={IC.dollar} label="Mapato" value={fm(ms.revenueThisMonth)} color="#3B82F6"/>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📈 Usajili (Siku 7)</h3>
-        <ResponsiveContainer width="100%" height={160}><BarChart data={regData}><XAxis dataKey="day" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="count" fill="#0B7A3B" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></div>
+        <ResponsiveContainer width="100%" height={160}><BarChart data={regData}><XAxis dataKey="day" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="count" fill="#065F2E" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📊 Pipeline</h3>
         {pipeData.length>0?<><ResponsiveContainer width="100%" height={140}><PieChart><Pie data={pipeData} cx="50%" cy="50%" outerRadius={55} dataKey="value" label={({name,value})=>`${name}: ${value}`} style={{fontSize:10}}>{pipeData.map((d,i)=><Cell key={i} fill={d.color}/>)}</Pie></PieChart></ResponsiveContainer>
         <div style={{display:'flex',gap:12,justifyContent:'center',marginTop:8}}>{pipeData.map(d=><div key={d.name} style={{display:'flex',alignItems:'center',gap:4,fontSize:11}}><div style={{width:10,height:10,borderRadius:3,background:d.color}}/>{d.name}: {d.value}</div>)}</div></>:<Empty icon="📊" text="Hakuna data"/>}</div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Mawakala Bora</h3>
         {agentLeaderboard.slice(0,5).map((a,i)=><div key={a.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{width:24,height:24,borderRadius:'50%',background:i===0?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:i===0?'#0B7A3B':'#64748B'}}>{i+1}</span>
+          <span style={{width:24,height:24,borderRadius:'50%',background:i===0?'#F0FDF4':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:i===0?'#065F2E':'#64748B'}}>{i+1}</span>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13}}>{a.agent_name}</div><div style={{fontSize:11,color:'#64748B'}}>{a.clients} wateja • {fm(a.commission)}</div></div>
         </div>)}{!agentLeaderboard.length&&<Empty icon="👥" text="Sajili masupervaiza"/>}</div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px',color:'#EF4444'}}>⚠️ Wanaoondoka ({churnRisk.length})</h3>
@@ -96,18 +96,18 @@ export function MktAgentsPage(){
           <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94A3B8',marginTop:2}}><span>{a.activeClients} active</span><span>{a.nextTier?.min} kwa {a.nextTier?.name}</span></div>
         </div>}
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-          <span style={{width:36,height:36,borderRadius:'50%',background:i===0?'#F0FDF4':i===1?'#EFF6FF':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:i===0?'#0B7A3B':'#64748B'}}>#{i+1}</span>
+          <span style={{width:36,height:36,borderRadius:'50%',background:i===0?'#F0FDF4':i===1?'#EFF6FF':'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:i===0?'#065F2E':'#64748B'}}>#{i+1}</span>
           <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{a.agent_name}</div><div style={{fontSize:12,color:'#64748B'}}>{a.agent_phone||'-'} • <span style={{fontFamily:'monospace',color:'#8B5CF6'}}>{a.code}</span></div></div>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
-          <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Wateja</div><div style={{fontWeight:800,fontSize:16,color:'#0B7A3B'}}>{a.clients}</div></div>
+          <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Wateja</div><div style={{fontWeight:800,fontSize:16,color:'#065F2E'}}>{a.clients}</div></div>
           <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Active</div><div style={{fontWeight:800,fontSize:16,color:'#3B82F6'}}>{a.activeClients}</div></div>
           <div style={{background:'#F5F3FF',borderRadius:8,padding:'6px 8px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Kamisheni</div><div style={{fontWeight:800,fontSize:14,color:'#8B5CF6'}}>{fm(a.commission)}</div></div>
         </div>
         <div style={{fontSize:12,color:'#64748B'}}>Commission: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fm(a.totalRevenue)}</b></div>
         <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px',marginTop:8,fontSize:11}}>
           🔗 Link: <code style={{background:'#E2E8F0',padding:'2px 6px',borderRadius:4,fontSize:10}}>duka-langu-system.vercel.app?ref={a.code}</code>
-          <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app?ref=${a.code}`);alert('Link imecopy!')}} style={{marginLeft:6,fontSize:10,background:'#0B7A3B',color:'#fff',border:'none',borderRadius:4,padding:'2px 8px',cursor:'pointer'}}>Copy</button>
+          <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app?ref=${a.code}`);alert('Link imecopy!')}} style={{marginLeft:6,fontSize:10,background:'#065F2E',color:'#fff',border:'none',borderRadius:4,padding:'2px 8px',cursor:'pointer'}}>Copy</button>
         </div>
         <div style={{display:'flex',gap:6,marginTop:8}}>
           {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{flex:1,padding:'6px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:11,cursor:'pointer',textDecoration:'none',textAlign:'center'}}>💬 WhatsApp</a>}
@@ -143,12 +143,12 @@ export function PipelinePage(){
   const filtered=businesses.filter(b=>{if(filter==='trial')return!b.token_active&&!b.is_suspended;if(filter==='active')return b.token_active;if(filter==='suspended')return b.is_suspended;return true});
   return <div>
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.store} label="Jumla" value={marketingStats.totalClients} color="#0B7A3B"/>
+      <Stat icon={IC.store} label="Jumla" value={marketingStats.totalClients} color="#065F2E"/>
       <Stat icon={IC.clock} label="Trial" value={marketingStats.trialClients} color="#F59E0B"/>
       <Stat icon={IC.ok} label="Active" value={marketingStats.activeClients} color="#22C55E"/>
       <Stat icon={IC.warn} label="Wameondoka" value={marketingStats.suspendedClients} color="#EF4444"/>
     </div>
-    <div style={{display:'flex',gap:6,marginBottom:14}}>{[{v:'all',l:'Wote'},{v:'trial',l:'Trial'},{v:'active',l:'Active'},{v:'suspended',l:'Wameondoka'}].map(f=><button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'7px 16px',borderRadius:8,border:filter===f.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontWeight:filter===f.v?700:500,fontSize:12,cursor:'pointer',color:filter===f.v?'#0B7A3B':'#64748B'}}>{f.l}</button>)}</div>
+    <div style={{display:'flex',gap:6,marginBottom:14}}>{[{v:'all',l:'Wote'},{v:'trial',l:'Trial'},{v:'active',l:'Active'},{v:'suspended',l:'Wameondoka'}].map(f=><button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'7px 16px',borderRadius:8,border:filter===f.v?'2px solid #065F2E':'1.5px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontWeight:filter===f.v?700:500,fontSize:12,cursor:'pointer',color:filter===f.v?'#065F2E':'#64748B'}}>{f.l}</button>)}</div>
     <div className="card">{filtered.map(b=><div key={b.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
       <div style={{width:36,height:36,borderRadius:8,background:'#F0FDF4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>🏪</div>
       <div style={{flex:1,minWidth:150}}><div style={{fontWeight:700,fontSize:13}}>{b.name}</div><div style={{fontSize:11,color:'#64748B'}}>{b.email} • {fmtDate(b.created_at)}</div></div>
@@ -183,7 +183,7 @@ export function CampaignPage(){
           <Badge color={c.status==='active'?'#22C55E':'#94A3B8'}>{c.status}</Badge>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
-          <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Signups</div><div style={{fontWeight:800,fontSize:18,color:'#0B7A3B'}}>{st.signups}</div></div>
+          <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Signups</div><div style={{fontWeight:800,fontSize:18,color:'#065F2E'}}>{st.signups}</div></div>
           <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>Budget</div><div style={{fontWeight:700,fontSize:13,color:'#3B82F6'}}>{fm(c.budget||0)}</div></div>
           <div style={{background:'#F5F3FF',borderRadius:8,padding:'6px',textAlign:'center'}}><div style={{fontSize:9,color:'#94A3B8'}}>ROI</div><div style={{fontWeight:800,fontSize:16,color:st.roi>100?'#22C55E':'#F59E0B'}}>{st.roi}%</div></div>
         </div>
@@ -305,9 +305,9 @@ export function MessagingPage(){
       <h4 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>Mazungumzo</h4>
       {myMessages.length?myMessages.map(m=>{
         const isMe=m.from_role===user?.role;
-        return <div key={m.id} onClick={()=>!isMe&&!m.is_read&&markMsgRead(m.id)} style={{padding:'12px',marginBottom:8,borderRadius:12,background:isMe?'#F0FDF4':'#EFF6FF',borderLeft:isMe?'4px solid #0B7A3B':'4px solid #3B82F6',cursor:!isMe&&!m.is_read?'pointer':'default'}}>
+        return <div key={m.id} onClick={()=>!isMe&&!m.is_read&&markMsgRead(m.id)} style={{padding:'12px',marginBottom:8,borderRadius:12,background:isMe?'#F0FDF4':'#EFF6FF',borderLeft:isMe?'4px solid #065F2E':'4px solid #3B82F6',cursor:!isMe&&!m.is_read?'pointer':'default'}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-            <span style={{fontWeight:700,fontSize:12,color:isMe?'#0B7A3B':'#3B82F6'}}>{isMe?'Wewe':m.from_name} ({m.from_role})</span>
+            <span style={{fontWeight:700,fontSize:12,color:isMe?'#065F2E':'#3B82F6'}}>{isMe?'Wewe':m.from_name} ({m.from_role})</span>
             <span style={{fontSize:10,color:'#94A3B8'}}>{fmtDate(m.created_at)} {!isMe&&!m.is_read&&<span style={{color:'#EF4444',fontWeight:700}}>● Mpya</span>}</span>
           </div>
           {m.subject&&<div style={{fontWeight:600,fontSize:13,marginBottom:2}}>{m.subject}</div>}
@@ -343,11 +343,11 @@ export function EmailCampaignPage(){
       </div>
       <Sel label="Wapokeaji" value={filter} onChange={e=>setFilter(e.target.value)} options={[{value:'all',label:`Wote (${businesses.length})`},{value:'active',label:'Active tu'},{value:'trial',label:'Trial tu'},{value:'expired',label:'Expired/Suspended'}]}/>
       <div style={{marginBottom:10}}><label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:6}}>Emoji</label>
-        <div style={{display:'flex',gap:6}}>{['🎉','🔥','⭐','💰','🎁','📢','🚀','💎'].map(e=><button key={e} onClick={()=>setEmoji(e)} style={{fontSize:20,padding:5,borderRadius:8,border:emoji===e?'2px solid #0B7A3B':'1px solid #E2E8F0',background:emoji===e?'#F0FDF4':'#fff',cursor:'pointer'}}>{e}</button>)}</div>
+        <div style={{display:'flex',gap:6}}>{['🎉','🔥','⭐','💰','🎁','📢','🚀','💎'].map(e=><button key={e} onClick={()=>setEmoji(e)} style={{fontSize:20,padding:5,borderRadius:8,border:emoji===e?'2px solid #065F2E':'1px solid #E2E8F0',background:emoji===e?'#F0FDF4':'#fff',cursor:'pointer'}}>{e}</button>)}</div>
       </div>
       <Input label="Kichwa cha Email *" value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Mf: Offer Maalum ya Mei!"/>
       <Area label="Ujumbe *" value={body} onChange={e=>setBody(e.target.value)} placeholder="Leo na kesho tu — punguzo la 30% kwa plan zote!"/>
-      <Btn onClick={sendAll} disabled={sending} style={{width:'100%',justifyContent:'center',background:sending?'#86EFAC':'#0B7A3B'}}>
+      <Btn onClick={sendAll} disabled={sending} style={{width:'100%',justifyContent:'center',background:sending?'#86EFAC':'#065F2E'}}>
         {sending?'Inatuma...':sent?'✅ Imetumwa!':` Tuma kwa ${targets.length} Wateja`}
       </Btn>
     </div>
@@ -360,7 +360,7 @@ export function DemoPage(){
     <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 16px'}}>🎮 Demo Account</h3>
     <div className="card" style={{textAlign:'center',padding:30}}>
       <div style={{fontSize:50,marginBottom:12}}>🎮</div>
-      <h2 style={{fontSize:20,fontWeight:800,color:'#0B7A3B',margin:'0 0 8px'}}>Akaunti ya Demo</h2>
+      <h2 style={{fontSize:20,fontWeight:800,color:'#065F2E',margin:'0 0 8px'}}>Akaunti ya Demo</h2>
       <p style={{color:'#64748B',fontSize:14,lineHeight:1.6,marginBottom:20}}>Tumia akaunti hii kuonyesha wateja jinsi mfumo unavyofanya kazi. Data ni ya mfano — haigusi mfumo halisi.</p>
       <div style={{background:'#F8FAFC',borderRadius:12,padding:16,marginBottom:20,textAlign:'left'}}>
         <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #E2E8F0'}}><span style={{color:'#64748B'}}>Link:</span><code style={{fontWeight:700}}>duka-langu-system.vercel.app</code></div>
@@ -393,14 +393,14 @@ export function MktReportsPage(){
 
   return <div>
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.chart} label="Conversion" value={`${marketingStats.conversionRate}%`} color="#0B7A3B"/>
+      <Stat icon={IC.chart} label="Conversion" value={`${marketingStats.conversionRate}%`} color="#065F2E"/>
       <Stat icon={IC.store} label="Mwezi Huu" value={marketingStats.newThisMonth} color="#3B82F6"/>
       <Stat icon={IC.dollar} label="Mapato" value={fm(marketingStats.revenueThisMonth)} color="#F59E0B"/>
       <Stat icon={IC.warn} label="Churn Risk" value={churnRisk.length} color="#EF4444"/>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:16}}>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>📈 Usajili/Mwezi</h3>
-        {monthData.length>0?<ResponsiveContainer width="100%" height={180}><BarChart data={monthData}><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="signups" fill="#0B7A3B" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<Empty icon="📊" text="Hakuna"/>}</div>
+        {monthData.length>0?<ResponsiveContainer width="100%" height={180}><BarChart data={monthData}><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}} allowDecimals={false}/><Tooltip/><Bar dataKey="signups" fill="#065F2E" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<Empty icon="📊" text="Hakuna"/>}</div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>💰 Mapato/Mwezi</h3>
         {revData.length>0?<ResponsiveContainer width="100%" height={180}><BarChart data={revData}><XAxis dataKey="month" tick={{fontSize:11}}/><YAxis tick={{fontSize:11}}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="revenue" fill="#3B82F6" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>:<Empty icon="💰" text="Hakuna"/>}</div>
     </div>
@@ -441,7 +441,7 @@ export function MktTokensPage(){
     
     {/* Stats */}
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.key} label="Jumla" value={myTokens.length} color="#0B7A3B"/>
+      <Stat icon={IC.key} label="Jumla" value={myTokens.length} color="#065F2E"/>
       <Stat icon={IC.ok} label="Zinapatikana" value={freeTokens.length} color="#22C55E"/>
       <Stat icon={IC.clock} label="Zimetumika" value={usedTokens.length} color="#F59E0B"/>
     </div>
@@ -457,7 +457,7 @@ export function MktTokensPage(){
     {myTokens.length>0&&<>
       <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
         {[
-          {id:'all',label:`Zote (${myTokens.length})`,color:'#0B7A3B'},
+          {id:'all',label:`Zote (${myTokens.length})`,color:'#065F2E'},
           {id:'free',label:`Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
           {id:'used',label:`Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
         ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1px solid #E2E8F0',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
@@ -475,8 +475,8 @@ export function MktTokensPage(){
             {/* Details */}
             <div style={{flex:1,minWidth:180}}>
               <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                <span style={{fontFamily:'monospace',fontWeight:800,fontSize:15,background:t.used?'#FFF7ED':'#F0FDF4',padding:'4px 12px',borderRadius:8,color:t.used?'#92400E':'#0B7A3B',letterSpacing:1}}>{t.code}</span>
-                <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#0B7A3B':'#64748B'}>{(t.plan||'basic').toUpperCase()}</Badge>
+                <span style={{fontFamily:'monospace',fontWeight:800,fontSize:15,background:t.used?'#FFF7ED':'#F0FDF4',padding:'4px 12px',borderRadius:8,color:t.used?'#92400E':'#065F2E',letterSpacing:1}}>{t.code}</span>
+                <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#065F2E':'#64748B'}>{(t.plan||'basic').toUpperCase()}</Badge>
                 <Badge color={t.used?'#F59E0B':'#22C55E'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
               </div>
               <div style={{fontSize:12,color:'#64748B',marginTop:5}}>
@@ -490,7 +490,7 @@ export function MktTokensPage(){
             
             {/* Actions */}
             <div style={{textAlign:'right',flexShrink:0}}>
-              {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy: '+t.code)}} style={{padding:'8px 16px',borderRadius:10,border:'2px solid #0B7A3B',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0B7A3B',display:'flex',alignItems:'center',gap:4}}>
+              {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy: '+t.code)}} style={{padding:'8px 16px',borderRadius:10,border:'2px solid #065F2E',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#065F2E',display:'flex',alignItems:'center',gap:4}}>
                 📋 Copy Code
               </button>}
             </div>
@@ -516,7 +516,7 @@ export function MktTokensPage(){
         </div>
         <div style={{background:'#F0FDF4',borderRadius:10,padding:'10px 14px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span style={{fontWeight:700,color:'#15803D',fontSize:13}}>JUMLA WATEJA ULIOFUNGUA</span>
-          <span style={{fontWeight:900,fontSize:20,color:'#0B7A3B'}}>{usedTokens.length}</span>
+          <span style={{fontWeight:900,fontSize:20,color:'#065F2E'}}>{usedTokens.length}</span>
         </div>
       </div>}
     </>}

@@ -4,7 +4,7 @@ import {IC} from '../components/UI';
 export function TermsPage({onBack}){
   return <div style={{minHeight:'100vh',background:'#F8FAFC',padding:16}}>
     <div style={{maxWidth:700,margin:'0 auto'}}>
-      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#0B7A3B',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#065F2E',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
       <div style={{background:'#fff',borderRadius:16,padding:'28px 24px',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
         <h1 style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:4}}>📄 TERMS OF SERVICE</h1>
         <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Masharti ya Huduma — Duka Langu Platform | Effective: 04/04/2026</p>
@@ -31,7 +31,7 @@ export function TermsPage({onBack}){
 export function PrivacyPage({onBack}){
   return <div style={{minHeight:'100vh',background:'#F8FAFC',padding:16}}>
     <div style={{maxWidth:700,margin:'0 auto'}}>
-      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#0B7A3B',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#065F2E',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
       <div style={{background:'#fff',borderRadius:16,padding:'28px 24px',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
         <h1 style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:4}}>🔒 SERA YA FARAGHA</h1>
         <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Privacy Policy — Duka Langu Platform | Effective: 04/04/2026</p>
