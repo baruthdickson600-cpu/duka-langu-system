@@ -943,6 +943,18 @@ export function ReturnsPage(){
 }
 
 // ===== REPORTS =====
+// Kadi inayojifunua (collapsible) — kwa sehemu za ziada za report
+function CollapseCard({title,count,children,open:openDefault=false}){
+  const[open,setOpen]=useState(openDefault);
+  return <div style={{background:'#fff',borderRadius:16,marginBottom:12,border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',overflow:'hidden'}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',background:'none',border:'none',cursor:'pointer'}}>
+      <span style={{fontSize:14,fontWeight:800,color:'#065F2E'}}>{title}{count!=null&&<span style={{marginLeft:7,fontSize:11,color:'#94A3B8',fontWeight:600}}>({count})</span>}</span>
+      <span style={{fontSize:14,color:'#065F2E',transform:open?'rotate(180deg)':'none',transition:'transform .2s'}}>▼</span>
+    </button>
+    {open&&<div style={{padding:'0 16px 16px'}}>{children}</div>}
+  </div>;
+}
+
 export function ReportsPage({onReceipt}){
   const{biz,sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
@@ -1274,414 +1286,265 @@ export function ReportsPage({onReceipt}){
     });
   };
 
-  return <div>
-    {/* HEADER */}
-    <div style={{marginBottom:14}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>📊 Ripoti za Mauzo</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>
-        {canUseBranches&&activeBranch?`Tawi: ${myBranches.find(b=>b.id===activeBranch)?.name||''}`:canUseBranches?'Matawi Yote (Pamoja)':'Angalia mauzo ya leo, wiki, mwezi, au chagua tarehe maalum'}
+  // ===== ULINGANISHO NA KIPINDI KILICHOPITA (kwa mishale ya KPI) =====
+  const prevFin=React.useMemo(()=>{
+    let pf=null,pt=null;
+    const d=new Date();
+    if(tab==='day'){const y=new Date(d.getTime()-86400000);pf=pt=localDateStr(y);}
+    else if(tab==='week'){const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()-7);pf=localDateStr(s);pt=localDateStr(new Date(s.getTime()+6*86400000));}
+    else if(tab==='month'){const s=new Date(d.getFullYear(),d.getMonth()-1,1);const e=new Date(d.getFullYear(),d.getMonth(),0);pf=localDateStr(s);pt=localDateStr(e);}
+    else if(tab==='custom'&&customFrom&&customTo){
+      const a=new Date(customFrom+'T00:00:00Z'),b=new Date(customTo+'T00:00:00Z');
+      const span=Math.round((b-a)/86400000)+1;
+      pt=localDateStr(new Date(a.getTime()-86400000));
+      pf=localDateStr(new Date(a.getTime()-span*86400000));
+    }
+    if(!pf||!pt)return null;
+    const inPrev=(x)=>{const ds=localDateStr(x);return ds>=pf&&ds<=pt;};
+    return computePeriodFinance({
+      sales:sales.filter(s=>inPrev(s.created_at)),
+      returns:(returns||[]).filter(r=>inPrev(r.created_at)),
+      expenses:expenses.filter(e=>inPrev(e.created_at)),
+      purchases:purchases.filter(p=>inPrev(p.created_at)),
+      creditHistory:creditHistory.filter(t=>inPrev(t.created_at)),
+    });
+  },[tab,customFrom,customTo,sales,returns,expenses,purchases,creditHistory]);
+
+  const pctChange=(now,prev)=>{if(!prev||prev===0)return now>0?100:0;return Math.round(((now-prev)/prev)*100);};
+
+  const KPI=({icon,label,value,prev,now,color,invert})=>{
+    const ch=prev!=null?pctChange(now,prev):null;
+    const up=ch!=null&&ch>=0;
+    const good=invert?!up:up;
+    return <div style={{background:'#fff',borderRadius:16,padding:'16px 18px',border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:0,left:0,width:4,height:'100%',background:color}}/>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+        <span style={{fontSize:22}}>{icon}</span>
+        {ch!=null&&<span style={{fontSize:11,fontWeight:800,padding:'3px 8px',borderRadius:20,background:good?'#ECFDF5':'#FEF2F2',color:good?'#065F2E':'#DC2626'}}>{up?'▲':'▼'} {Math.abs(ch)}%</span>}
+      </div>
+      <div style={{fontSize:11,color:'#64748B',fontWeight:600,marginBottom:3}}>{label}</div>
+      <div style={{fontSize:20,fontWeight:900,color}}>{value}</div>
+    </div>;
+  };
+
+  return <div style={{paddingBottom:24}}>
+    {/* ===== HEADER ===== */}
+    <div style={{marginBottom:16}}>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>📊 Ripoti za Biashara</h2>
+      <p style={{fontSize:12.5,color:'#64748B',margin:0}}>
+        {canUseBranches&&activeBranch?`Tawi: ${myBranches.find(b=>b.id===activeBranch)?.name||''}`:canUseBranches?'Matawi Yote (Pamoja)':'Angalia mauzo yako kwa undani — kila tarehe inaonekana'}
       </p>
     </div>
 
-    {/* MCHANGANUO KWA TAWI - tu kwenye Matawi Yote */}
-    {canUseBranches&&!activeBranch&&myBranches.length>0&&(()=>{
-      // Hesabu takwimu kwa kila tawi (mauzo yote ya leo)
-      const todayStr2=todayStr();
-      const branchStats=myBranches.map(br=>{
-        const bSales=(allSales||[]).filter(s=>s.branch_id===br.id&&localDateStr(s.created_at)===todayStr2);
-        const bExp=(allExpenses||[]).filter(e=>e.branch_id===br.id&&localDateStr(e.created_at)===todayStr2);
-        return{
-          branch:br,
-          sales:bSales.reduce((a,s)=>a+(s.total||0),0),
-          profit:bSales.reduce((a,s)=>a+(s.profit||0),0),
-          expenses:bExp.reduce((a,e)=>a+(e.amount||0),0),
-          count:bSales.length,
-        };
-      });
-      const grandTotal=branchStats.reduce((a,b)=>a+b.sales,0);
-      return <div style={{background:'#fff',borderRadius:14,padding:16,marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #E2E8F0'}}>
-        <div style={{fontWeight:800,fontSize:15,marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
-          🏪 Mchanganuo kwa Tawi (Leo)
-        </div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-            <thead>
-              <tr style={{borderBottom:'2px solid #E2E8F0',textAlign:'left'}}>
-                <th style={{padding:'8px 6px',color:'#64748B',fontSize:11}}>TAWI</th>
-                <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>MAUZO</th>
-                <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>FAIDA</th>
-                <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>MATUMIZI</th>
-                <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>RISITI</th>
-              </tr>
-            </thead>
-            <tbody>
-              {branchStats.map(st=>(
-                <tr key={st.branch.id} style={{borderBottom:'1px solid #F1F5F9'}}>
-                  <td style={{padding:'10px 6px',fontWeight:600}}>🏪 {st.branch.name}</td>
-                  <td style={{padding:'10px 6px',textAlign:'right',fontWeight:700,color:'#065F2E'}}>{fm(st.sales)}</td>
-                  <td style={{padding:'10px 6px',textAlign:'right',color:'#15803D'}}>{fm(st.profit)}</td>
-                  <td style={{padding:'10px 6px',textAlign:'right',color:'#EF4444'}}>{fm(st.expenses)}</td>
-                  <td style={{padding:'10px 6px',textAlign:'right',color:'#64748B'}}>{st.count}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{borderTop:'2px solid #E2E8F0',fontWeight:800}}>
-                <td style={{padding:'10px 6px'}}>JUMLA</td>
-                <td style={{padding:'10px 6px',textAlign:'right',color:'#065F2E'}}>{fm(grandTotal)}</td>
-                <td style={{padding:'10px 6px',textAlign:'right',color:'#15803D'}}>{fm(branchStats.reduce((a,b)=>a+b.profit,0))}</td>
-                <td style={{padding:'10px 6px',textAlign:'right',color:'#EF4444'}}>{fm(branchStats.reduce((a,b)=>a+b.expenses,0))}</td>
-                <td style={{padding:'10px 6px',textAlign:'right'}}>{branchStats.reduce((a,b)=>a+b.count,0)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:8}}>💡 Chagua tawi kwenye menu ya pembeni kuona ripoti kamili ya tawi hilo</div>
-      </div>;
-    })()}
+    {/* ===== CHUJIO (TABS) ===== */}
+    <div style={{display:'flex',gap:7,overflowX:'auto',paddingBottom:6,marginBottom:14}}>
+      {[
+        {id:'day',label:'📅 Leo'},
+        {id:'week',label:'🗓️ Wiki'},
+        {id:'month',label:'📆 Mwezi'},
+        {id:'custom',label:'🎯 Tarehe Maalum'},
+        {id:'history',label:'📚 Nyuma'},
+      ].map(t=>(
+        <button key={t.id} onClick={()=>setTab(t.id)} style={{
+          flex:'0 0 auto',padding:'9px 15px',borderRadius:11,border:'none',cursor:'pointer',
+          fontWeight:800,fontSize:12.5,whiteSpace:'nowrap',transition:'all .2s',
+          background:tab===t.id?'linear-gradient(135deg,#065F2E,#043D1E)':'#F1F5F9',
+          color:tab===t.id?'#fff':'#64748B',
+          boxShadow:tab===t.id?'0 4px 12px rgba(6,95,46,0.25)':'none',
+        }}>{t.label}</button>
+      ))}
+    </div>
 
-    <Tabs tabs={[
-      {id:'day',label:'📅 Leo'},
-      {id:'week',label:'🗓️ Wiki'},
-      {id:'month',label:'📆 Mwezi Huu'},
-      {id:'custom',label:'🎯 Tarehe Maalum'},
-      {id:'history',label:'📚 Mahesabu ya Nyuma'},
-    ]} active={tab} onChange={setTab}/>
-    
-    {/* CUSTOM DATE RANGE PICKER */}
-    {tab==='custom'&&<div style={{background:'linear-gradient(135deg,#EFF6FF,#DBEAFE)',border:'1px solid #BFDBFE',borderRadius:14,padding:18,marginBottom:16}}>
-      <div style={{fontWeight:800,fontSize:14,color:'#1E40AF',marginBottom:12}}>🎯 Chagua Tarehe</div>
-      
-      {/* Quick range buttons */}
-      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
-        {[
-          {id:'thisMonth',l:'Mwezi Huu'},
-          {id:'lastMonth',l:'Mwezi Uliopita'},
-          {id:'last3Months',l:'Miezi 3 Iliyopita'},
-          {id:'thisYear',l:'Mwaka Huu'},
-          {id:'lastYear',l:'Mwaka Uliopita'},
-        ].map(r=><button key={r.id} onClick={()=>setQuickRange(r.id)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #BFDBFE',background:'#fff',color:'#1E40AF',fontWeight:700,fontSize:11,cursor:'pointer'}}>{r.l}</button>)}
+    {/* ===== CUSTOM DATE PICKER ===== */}
+    {tab==='custom'&&<div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1px solid #BBF7D0',borderRadius:16,padding:16,marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:13.5,color:'#065F2E',marginBottom:10}}>🎯 Chagua Tarehe</div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
+        {[{id:'thisMonth',l:'Mwezi Huu'},{id:'lastMonth',l:'Mwezi Uliopita'},{id:'last3Months',l:'Miezi 3'},{id:'thisYear',l:'Mwaka Huu'},{id:'lastYear',l:'Mwaka Uliopita'}].map(r=>(
+          <button key={r.id} onClick={()=>setQuickRange(r.id)} style={{padding:'6px 12px',borderRadius:8,border:'1.5px solid #86EFAC',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:11,cursor:'pointer'}}>{r.l}</button>
+        ))}
       </div>
-      
-      {/* Manual date pickers */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
         <div>
-          <label style={{fontSize:11,fontWeight:700,color:'#1E40AF',display:'block',marginBottom:4}}>Kuanzia Tarehe:</label>
-          <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BFDBFE',fontSize:13,boxSizing:'border-box'}}/>
+          <label style={{fontSize:11,fontWeight:700,color:'#065F2E',display:'block',marginBottom:4}}>Kuanzia</label>
+          <input type="date" value={customFrom} onChange={e=>setCustomFrom(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #86EFAC',fontSize:13,boxSizing:'border-box'}}/>
         </div>
         <div>
-          <label style={{fontSize:11,fontWeight:700,color:'#1E40AF',display:'block',marginBottom:4}}>Mpaka Tarehe:</label>
-          <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BFDBFE',fontSize:13,boxSizing:'border-box'}}/>
+          <label style={{fontSize:11,fontWeight:700,color:'#065F2E',display:'block',marginBottom:4}}>Mpaka</label>
+          <input type="date" value={customTo} onChange={e=>setCustomTo(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #86EFAC',fontSize:13,boxSizing:'border-box'}}/>
         </div>
       </div>
-      <div style={{marginTop:10,fontSize:12,color:'#1E40AF'}}>
-        📅 Statement: <b>{new Date(customFrom).toLocaleDateString('sw-TZ')}</b> mpaka <b>{new Date(customTo).toLocaleDateString('sw-TZ')}</b>
-      </div>
-
-      {/* KITUFE: Pakua Statement Kamili ya PDF */}
-      <button onClick={doExportStatement} style={{marginTop:14,width:'100%',padding:14,background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.3)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-        📄 Pakua Statement Kamili (PDF)
-      </button>
-      <div style={{marginTop:6,fontSize:10,color:'#64748B',textAlign:'center'}}>Ina muhtasari kamili wa fedha + orodha ya mauzo yote ya kipindi</div>
     </div>}
-    
-    {/* MONTHLY HISTORY VIEW */}
-    {tab==='history'&&<div>
-      <div style={{background:'linear-gradient(135deg,#F5F3FF,#EDE9FE)',border:'1px solid #DDD6FE',borderRadius:14,padding:14,marginBottom:14}}>
-        <div style={{fontSize:13,color:'#5B21B6',display:'flex',gap:8,alignItems:'flex-start'}}>
+
+    {/* ===== MAHESABU YA NYUMA (HISTORY) ===== */}
+    {tab==='history'?<div>
+      <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1px solid #BBF7D0',borderRadius:14,padding:14,marginBottom:14}}>
+        <div style={{fontSize:13,color:'#065F2E',display:'flex',gap:8,alignItems:'flex-start'}}>
           <span style={{fontSize:18}}>📚</span>
-          <span><b>Mahesabu ya Nyuma</b> — Kila mwezi una mahesabu yake. Bofya mwezi wowote kuona maelezo kamili au kupakua PDF.</span>
+          <span><b>Mahesabu ya Nyuma</b> — Kila mwezi una mahesabu yake. Bofya kupakua statement kamili ya PDF.</span>
         </div>
       </div>
-      
       {monthlyStats.length?<div style={{display:'grid',gap:10}}>
         {monthlyStats.map((m,i)=>{
           const isCurrent=m.ym===todayStr().slice(0,7);
-          return <div key={m.ym} className="card" style={{padding:18,border:isCurrent?'2px solid #065F2E':'1px solid #E2E8F0',background:isCurrent?'linear-gradient(135deg,#F0FDF4,#FFFFFF)':'#fff',transition:'all 0.3s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+          return <div key={m.ym} style={{padding:16,borderRadius:16,border:isCurrent?'2px solid #065F2E':'1px solid #E2E8F0',background:isCurrent?'linear-gradient(135deg,#F0FDF4,#fff)':'#fff'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:12}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{width:48,height:48,background:isCurrent?'linear-gradient(135deg,#065F2E,#065F2E)':'linear-gradient(135deg,#94A3B8,#64748B)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:900,fontSize:20}}>📅</div>
+                <div style={{width:46,height:46,background:isCurrent?'linear-gradient(135deg,#065F2E,#043D1E)':'#94A3B8',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:20}}>📅</div>
                 <div>
-                  <div style={{fontWeight:900,fontSize:16,color:'#1E293B'}}>{m.label}</div>
-                  <div style={{fontSize:11,color:'#64748B'}}>{m.count} mauzo {isCurrent&&<span style={{background:'#DCFCE7',color:'#15803D',padding:'2px 8px',borderRadius:6,marginLeft:6,fontWeight:700,fontSize:9}}>SASA</span>}</div>
+                  <div style={{fontWeight:900,fontSize:15,color:'#1E293B'}}>{m.label}</div>
+                  <div style={{fontSize:11,color:'#64748B'}}>{m.count} mauzo {isCurrent&&<span style={{background:'#DCFCE7',color:'#065F2E',padding:'2px 8px',borderRadius:6,marginLeft:6,fontWeight:700,fontSize:9}}>SASA</span>}</div>
                 </div>
               </div>
-              <button onClick={()=>exportMonthlyStatement(m)} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #065F2E',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
-                📄 Pakua PDF
-              </button>
+              <button onClick={()=>exportMonthlyStatement(m)} style={{padding:'8px 16px',borderRadius:10,border:'1.5px solid #065F2E',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 Statement PDF</button>
             </div>
-            
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,paddingTop:12,borderTop:'1px solid #F1F5F9'}}>
-              <div>
-                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>MAUZO YOTE</div>
-                <div style={{fontSize:16,fontWeight:900,color:'#065F2E'}}>{fm(m.total)}</div>
-              </div>
-              {m.refunds>0&&<div>
-                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>YAMERUDISHWA</div>
-                <div style={{fontSize:14,fontWeight:900,color:'#EF4444'}}>−{fm(m.refunds)}</div>
-              </div>}
-              <div>
-                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>MAUZO HALISI</div>
-                <div style={{fontSize:16,fontWeight:900,color:'#22C55E'}}>{fm(m.netSales)}</div>
-              </div>
-              <div>
-                <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>FAIDA</div>
-                <div style={{fontSize:16,fontWeight:900,color:'#3B82F6'}}>{fm(m.netProfit)}</div>
-              </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:10,paddingTop:12,borderTop:'1px solid #F1F5F9'}}>
+              <div><div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>MAUZO</div><div style={{fontSize:15,fontWeight:900,color:'#065F2E'}}>{fm(m.netSales)}</div></div>
+              <div><div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>FAIDA</div><div style={{fontSize:15,fontWeight:900,color:'#3B82F6'}}>{fm(m.netProfit)}</div></div>
+              <div><div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>REJESHO</div><div style={{fontSize:15,fontWeight:900,color:'#EF4444'}}>{fm(m.refunds)}</div></div>
             </div>
           </div>;
         })}
-      </div>:<Empty icon="📚" text="Hakuna mauzo ya zamani bado"/>}
-    </div>}
-    
-    {/* MAIN STATS — only show for day/week/month/custom */}
-    {tab!=='history'&&<>
-    <div style={{background:tab==='custom'?'linear-gradient(135deg,#065F2E,#065F2E)':'#fff',borderRadius:16,padding:tab==='custom'?'16px 20px':0,marginBottom:tab==='custom'?14:0,color:tab==='custom'?'#fff':'inherit'}}>
-      {tab==='custom'&&<div style={{fontSize:11,fontWeight:700,opacity:0.9,letterSpacing:1,marginBottom:8}}>📊 STATEMENT YA TAREHE MAALUM</div>}
-      {tab==='custom'&&<div style={{fontSize:14,fontWeight:700,marginBottom:14}}>
-        Kuanzia: <b>{new Date(customFrom).toLocaleDateString('sw-TZ')}</b> — Mpaka: <b>{new Date(customTo).toLocaleDateString('sw-TZ')}</b>
-      </div>}
+      </div>:<Empty icon="📚" text="Hakuna mahesabu ya nyuma bado"/>}
+    </div>:<>
+
+    {/* ===== JIBU LA HARAKA (HERO CARD) ===== */}
+    <div style={{background:'linear-gradient(135deg,#065F2E,#043D1E)',borderRadius:20,padding:'20px 22px',marginBottom:14,color:'#fff',boxShadow:'0 10px 30px rgba(6,95,46,0.3)'}}>
+      <div style={{fontSize:11,fontWeight:700,opacity:0.8,letterSpacing:1,marginBottom:4}}>💰 PESA MKONONI — {periodLabel.toUpperCase()}</div>
+      <div style={{fontSize:34,fontWeight:900,lineHeight:1.1,marginBottom:10}}>{fm(fin.netCash)}</div>
+      <div style={{display:'flex',gap:20,flexWrap:'wrap',paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.15)'}}>
+        <div>
+          <div style={{fontSize:10.5,opacity:0.8,marginBottom:2}}>📈 Faida Halisi</div>
+          <div style={{fontSize:17,fontWeight:800}}>{fm(fin.netProfit)}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10.5,opacity:0.8,marginBottom:2}}>🛒 Mauzo Ghafi</div>
+          <div style={{fontSize:17,fontWeight:800}}>{fm(fin.grossSales)}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10.5,opacity:0.8,marginBottom:2}}>🧾 Idadi ya Mauzo</div>
+          <div style={{fontSize:17,fontWeight:800}}>{fin.salesCount}</div>
+        </div>
+      </div>
     </div>
-    
-    <div className="flex-wrap" style={{marginBottom:16}}>
-      <div style={{background:'#F0FDF4',border:'2px solid #065F2E',borderRadius:14,padding:'14px 16px',flex:1}}>
-        <div style={{fontSize:10,fontWeight:700,color:'#64748B',letterSpacing:1,marginBottom:8}}>💵 MUHTASARI WA PESA MKONONI</div>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📈 Mauzo ya taslimu + malipo ya deni</span><span style={{fontSize:13,fontWeight:700,color:'#065F2E'}}>{fm(fin.cashSalesTotal+fin.creditPaymentsReceived)}</span></div>
-        {fin.cashRefunds>0&&<div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>↩️ Marejesho</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.cashRefunds)}</span></div>}
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:12,color:'#64748B'}}>📤 Matumizi</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.totalExpenses)}</span></div>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,paddingBottom:8,borderBottom:'1.5px dashed #BBF7D0'}}><span style={{fontSize:12,color:'#64748B'}}>🛒 Manunuzi ya stock (pesa ya duka)</span><span style={{fontSize:13,fontWeight:700,color:'#EF4444'}}>- {fm(fin.stockBuyShop)}</span></div>
-        <div style={{display:'flex',justifyContent:'space-between'}}><span style={{fontSize:13,fontWeight:800,color:'#1E293B'}}>💰 Pesa Mkononi</span><span style={{fontSize:20,fontWeight:900,color:'#065F2E'}}>{fm(fin.netCash)}</span></div>
-      </div>
-      <Stat icon={IC.chart} label="Faida Ghafi" value={fm(fin.grossProfit)} color="#3B82F6" sub={fin.refundProfit>0?`Returns: -${fm(fin.refundProfit)}`:null}/>
-      <Stat icon={IC.dollar} label="Faida Halisi" value={fm(fin.netProfit)} color={fin.netProfit>=0?'#F59E0B':'#EF4444'} sub="Baada ya returns & matumizi"/>
+
+    {/* ===== KPI CARDS ===== */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:14}}>
+      <KPI icon="🛒" label="Mauzo Ghafi" value={fm(fin.grossSales)} now={fin.grossSales} prev={prevFin?.grossSales} color="#065F2E"/>
+      <KPI icon="📈" label="Faida Halisi" value={fm(fin.netProfit)} now={fin.netProfit} prev={prevFin?.netProfit} color="#3B82F6"/>
+      <KPI icon="📤" label="Matumizi" value={fm(fin.totalExpenses)} now={fin.totalExpenses} prev={prevFin?.totalExpenses} color="#EF4444" invert={true}/>
+      <KPI icon="💳" label="Mauzo ya Deni" value={fm(fin.creditSalesTotal)} now={fin.creditSalesTotal} prev={prevFin?.creditSalesTotal} color="#F59E0B"/>
     </div>
-    
-    {/* ===== CREDIT BREAKDOWN ===== */}
-    {(fCreditSales.length>0||fCreditPayments.length>0)&&<div style={{
-      background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
-      border:'1.5px solid #F59E0B',
-      borderRadius:12,
-      padding:'16px 18px',
-      marginBottom:16,
-    }}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-        <div style={{fontSize:24}}>💳</div>
-        <div style={{fontWeight:800,fontSize:14,color:'#92400E'}}>Mikopo (Kipindi Hiki)</div>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,fontSize:12}}>
-        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #F59E0B'}}>
-          <div style={{color:'#78350F',fontWeight:600,fontSize:11}}>💳 BIDHAA ZILIZOKOPESHWA</div>
-          <div style={{fontWeight:900,color:'#92400E',fontSize:17,marginTop:2}}>{fm(creditSalesTotal)}</div>
-          <div style={{fontSize:10,color:'#78350F',marginTop:2}}>{fCreditSales.length} mauzo • haijaonyeshwa kwenye "Pesa"</div>
-        </div>
-        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #22C55E'}}>
-          <div style={{color:'#15803D',fontWeight:600,fontSize:11}}>💵 MALIPO YA DENI YAMEPOKEWA</div>
-          <div style={{fontWeight:900,color:'#15803D',fontSize:17,marginTop:2}}>{fm(fCreditPaymentTotal)}</div>
-          <div style={{fontSize:10,color:'#15803D',marginTop:2}}>{fCreditPayments.length} malipo • IMEONGEZWA kwenye "Pesa"</div>
-        </div>
-        <div style={{background:'#fff',padding:'10px 14px',borderRadius:10,borderLeft:'3px solid #3B82F6'}}>
-          <div style={{color:'#1D4ED8',fontWeight:600,fontSize:11}}>📊 TOFAUTI (DENI MPYA)</div>
-          <div style={{fontWeight:900,color:creditSalesTotal-fCreditPaymentTotal>=0?'#1D4ED8':'#15803D',fontSize:17,marginTop:2}}>{fm(creditSalesTotal-fCreditPaymentTotal)}</div>
-          <div style={{fontSize:10,color:'#1D4ED8',marginTop:2}}>{creditSalesTotal>fCreditPaymentTotal?'Wateja wanadai zaidi':'Wateja walilipa zaidi'}</div>
-        </div>
-      </div>
-    </div>}
-    
-    {/* Show breakdown if there are returns */}
-    {refundTotal>0&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'14px 18px',marginBottom:16}}>
-      <div style={{fontWeight:800,fontSize:13,color:'#9A3412',marginBottom:8}}>📊 Mchanganuo wa Mauzo:</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,fontSize:12}}>
-        <div>
-          <div style={{color:'#7C2D12',fontWeight:600}}>Mauzo Yaliyofanyika</div>
-          <div style={{fontWeight:900,color:'#065F2E',fontSize:15}}>{fm(grossTotal)}</div>
-        </div>
-        <div>
-          <div style={{color:'#7C2D12',fontWeight:600}}>− Yamerudishwa</div>
-          <div style={{fontWeight:900,color:'#EF4444',fontSize:15}}>−{fm(refundTotal)}</div>
-        </div>
-        <div>
-          <div style={{color:'#7C2D12',fontWeight:600}}>= Mauzo Halisi</div>
-          <div style={{fontWeight:900,color:'#9A3412',fontSize:15}}>{fm(fTotal)}</div>
-        </div>
-        <div>
-          <div style={{color:'#7C2D12',fontWeight:600}}>Idadi Rudishwa</div>
-          <div style={{fontWeight:900,color:'#9A3412',fontSize:15}}>{fReturns.length}</div>
-        </div>
-      </div>
-    </div>}
-    {/* ===== MAUZO KWA KILA TAREHE (kila siku inaonekana) ===== */}
-    {tab!=='history'&&dailyBreakdown.length>0&&<div className="card" style={{marginBottom:14,padding:0,overflow:'hidden'}}>
-      <div style={{background:'linear-gradient(135deg,#065F2E,#043D1E)',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+
+    {/* ===== STATEMENT PDF + EXCEL ===== */}
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+      <button onClick={doExportStatement} style={{flex:1,minWidth:160,padding:13,background:'linear-gradient(135deg,#065F2E,#043D1E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:13.5,cursor:'pointer',boxShadow:'0 4px 14px rgba(6,95,46,0.25)'}}>📄 Pakua Statement (PDF)</button>
+      <button onClick={doExportExcel} style={{flex:1,minWidth:130,padding:13,background:'#F0FDF4',color:'#065F2E',border:'1.5px solid #86EFAC',borderRadius:12,fontWeight:700,fontSize:13.5,cursor:'pointer'}}>📊 Excel</button>
+    </div>
+
+    {fSales.length===0&&fReturns.length===0?<Empty icon="📊" text="Hakuna mauzo kwa kipindi hiki. Chagua tarehe nyingine au uza kwanza."/>:<>
+
+    {/* ===== MAUZO KWA KILA TAREHE ===== */}
+    {dailyBreakdown.length>0&&<div style={{background:'#fff',borderRadius:16,marginBottom:14,overflow:'hidden',border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+      <div style={{background:'linear-gradient(135deg,#065F2E,#043D1E)',padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <h3 style={{fontSize:14,fontWeight:800,margin:0,color:'#fff'}}>📅 Mauzo kwa Kila Tarehe</h3>
         <span style={{fontSize:11,color:'#A7F3D0',fontWeight:600}}>{dailyBreakdown.length} siku</span>
       </div>
-      <div style={{maxHeight:360,overflowY:'auto'}}>
+      <div style={{maxHeight:380,overflowY:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
           <thead style={{position:'sticky',top:0,background:'#F0FDF4',zIndex:1}}>
             <tr style={{textAlign:'left',color:'#065F2E'}}>
-              <th style={{padding:'9px 12px',fontWeight:800}}>Tarehe</th>
-              <th style={{padding:'9px 12px',fontWeight:800,textAlign:'center'}}>Mauzo</th>
-              <th style={{padding:'9px 12px',fontWeight:800,textAlign:'right'}}>Jumla</th>
+              <th style={{padding:'9px 14px',fontWeight:800}}>Tarehe</th>
+              <th style={{padding:'9px 10px',fontWeight:800,textAlign:'center'}}>Idadi</th>
+              <th style={{padding:'9px 10px',fontWeight:800,textAlign:'right'}}>Faida</th>
+              <th style={{padding:'9px 14px',fontWeight:800,textAlign:'right'}}>Mauzo</th>
             </tr>
           </thead>
           <tbody>
             {dailyBreakdown.map((d,i)=>(
               <tr key={d.date} style={{borderTop:'1px solid #F1F5F9',background:d.count===0?'#FAFAFA':(i%2?'#fff':'#F8FEFB')}}>
-                <td style={{padding:'9px 12px',fontWeight:600,color:d.count===0?'#94A3B8':'#1E293B'}}>{d.label}</td>
-                <td style={{padding:'9px 12px',textAlign:'center',color:d.count===0?'#CBD5E1':'#64748B'}}>{d.count}</td>
-                <td style={{padding:'9px 12px',textAlign:'right',fontWeight:800,color:d.sales>0?'#065F2E':'#CBD5E1'}}>{d.sales>0?fm(d.sales):'—'}</td>
+                <td style={{padding:'9px 14px',fontWeight:600,color:d.count===0?'#94A3B8':'#1E293B'}}>{d.label}</td>
+                <td style={{padding:'9px 10px',textAlign:'center',color:d.count===0?'#CBD5E1':'#64748B'}}>{d.count}</td>
+                <td style={{padding:'9px 10px',textAlign:'right',color:d.profit>0?'#3B82F6':'#CBD5E1',fontWeight:600}}>{d.profit>0?fm(d.profit):'—'}</td>
+                <td style={{padding:'9px 14px',textAlign:'right',fontWeight:800,color:d.sales>0?'#065F2E':'#CBD5E1'}}>{d.sales>0?fm(d.sales):'—'}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{borderTop:'2px solid #065F2E',background:'#ECFDF5'}}>
-              <td style={{padding:'10px 12px',fontWeight:900,color:'#065F2E'}}>JUMLA</td>
-              <td style={{padding:'10px 12px',textAlign:'center',fontWeight:900,color:'#065F2E'}}>{dailyBreakdown.reduce((a,d)=>a+d.count,0)}</td>
-              <td style={{padding:'10px 12px',textAlign:'right',fontWeight:900,color:'#065F2E'}}>{fm(dailyBreakdown.reduce((a,d)=>a+d.sales,0))}</td>
+              <td style={{padding:'11px 14px',fontWeight:900,color:'#065F2E'}}>JUMLA</td>
+              <td style={{padding:'11px 10px',textAlign:'center',fontWeight:900,color:'#065F2E'}}>{dailyBreakdown.reduce((a,d)=>a+d.count,0)}</td>
+              <td style={{padding:'11px 10px',textAlign:'right',fontWeight:900,color:'#3B82F6'}}>{fm(dailyBreakdown.reduce((a,d)=>a+d.profit,0))}</td>
+              <td style={{padding:'11px 14px',textAlign:'right',fontWeight:900,color:'#065F2E'}}>{fm(dailyBreakdown.reduce((a,d)=>a+d.sales,0))}</td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>}
 
-    {/* ===== MWENENDO WA MAUZO + NJIA ZA MALIPO ===== */}
-    {tab!=='history'&&fSales.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12,marginBottom:14}}>
-      {trendData.length>1&&<div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#065F2E'}}>📈 Mwenendo wa Mauzo</h3>
-        <ResponsiveContainer width="100%" height={170}><BarChart data={trendData}><XAxis dataKey="day" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}} width={44}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="total" fill="#065F2E" radius={[5,5,0,0]}/></BarChart></ResponsiveContainer>
-      </div>}
-      {payBreakdown.length>0&&<div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 10px',color:'#065F2E'}}>💳 Njia za Malipo</h3>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {payBreakdown.map(p=>{const pct=grossTotal>0?Math.round(p.total/grossTotal*100):0;return <div key={p.method}>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:12.5,marginBottom:3}}><span style={{fontWeight:600,color:'#475569'}}>{payLabel(p.method)} <span style={{color:'#94A3B8',fontSize:11}}>({p.count})</span></span><b style={{color:'#065F2E'}}>{fm(p.total)}</b></div>
-            <div style={{height:7,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',width:`${pct}%`,background:p.method==='credit'?'#EF4444':'linear-gradient(90deg,#065F2E,#22C55E)',borderRadius:4}}/></div>
-          </div>;})}
-        </div>
-      </div>}
+    {/* ===== CHATI YA MWENENDO ===== */}
+    {trendData.length>1&&<div style={{background:'#fff',borderRadius:16,padding:16,marginBottom:14,border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#065F2E'}}>📈 Mwenendo wa Mauzo</h3>
+      <ResponsiveContainer width="100%" height={180}><BarChart data={trendData}><XAxis dataKey="day" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}} width={46}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="total" fill="#065F2E" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>
     </div>}
 
-    <div style={{marginBottom:12,display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-      <button onClick={doExportStatement} style={{padding:'10px 18px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 14px rgba(11,122,59,0.25)',display:'flex',alignItems:'center',gap:6}}>📄 Pakua Statement (PDF)</button>
-      <button onClick={doExportExcel} style={{padding:'9px 16px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer'}}>📊 Pakua Excel</button>
-      <button onClick={doExport} style={{padding:'9px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>PDF Fupi</button>
-    </div>
-
-    {/* ===== BIDHAA ZILIZOUZWA — Complete List with Stock ===== */}
-    {productsSold.length>0&&<div className="card" style={{marginBottom:14}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#065F2E'}}>📦 Bidhaa Zilizouzwa ({productsSold.length})</h3>
-        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          <button onClick={exportProductsList} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #065F2E',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer'}}>📄 PDF</button>
-          <button onClick={exportProductsExcel} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
-        </div>
-      </div>
-      
-      {/* Quick stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:8,marginBottom:14,padding:12,background:'#F0FDF4',borderRadius:10,border:'1px solid #BBF7D0'}}>
-        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>AINA ZA BIDHAA</div><div style={{fontSize:18,fontWeight:900,color:'#065F2E'}}>{productsSold.length}</div></div>
-        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>JUMLA ZILIZOUZWA</div><div style={{fontSize:18,fontWeight:900,color:'#065F2E'}}>{productsSold.reduce((s,p)=>s+p.netSold,0).toFixed(1)}</div></div>
-        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>STOCK NDOGO</div><div style={{fontSize:18,fontWeight:900,color:'#F59E0B'}}>{productsSold.filter(p=>p.stockRemaining<=p.minStock&&p.stockRemaining>0).length}</div></div>
-        <div><div style={{fontSize:10,color:'#15803D',fontWeight:600}}>HAZIPO STOCK</div><div style={{fontSize:18,fontWeight:900,color:'#EF4444'}}>{productsSold.filter(p=>p.stockRemaining<=0).length}</div></div>
-      </div>
-      
-      {/* Table header */}
-      <div style={{display:'grid',gridTemplateColumns:'36px 1fr 90px 100px 100px',gap:6,padding:'8px',background:'#065F2E',color:'#fff',borderRadius:6,fontSize:10,fontWeight:800,textTransform:'uppercase',marginBottom:4}}>
-        <div>#</div><div>Bidhaa</div>
-        <div style={{textAlign:'right'}}>Zilizouzwa</div>
-        <div style={{textAlign:'right'}}>Mapato</div>
-        <div style={{textAlign:'right'}}>Stock Imebaki</div>
-      </div>
-      
-      {/* Products list */}
-      <div style={{maxHeight:500,overflowY:'auto'}}>
-        {productsSold.map((p,i)=>{
-          const stockColor=p.stockRemaining<=0?'#EF4444':p.stockRemaining<=p.minStock?'#F59E0B':'#22C55E';
-          const stockIcon=p.stockRemaining<=0?'🚫':p.stockRemaining<=p.minStock?'⚠️':'✅';
-          return <div key={p.id} style={{display:'grid',gridTemplateColumns:'36px 1fr 90px 100px 100px',gap:6,padding:'10px 6px',borderBottom:'1px solid #F1F5F9',alignItems:'center',background:i%2===0?'#fff':'#F8FAFC'}}>
-            <div style={{width:24,height:24,borderRadius:5,background:i<3?'#FEF3C7':'#F1F5F9',color:i<3?'#92400E':'#64748B',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11}}>{i+1}</div>
-            <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-              <span style={{fontSize:18}}>{p.image}</span>
-              <div style={{minWidth:0}}>
-                <div style={{fontWeight:700,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
-                <div style={{fontSize:9,color:'#94A3B8'}}>{p.category} • {p.salesCount} mauzo{p.returned>0&&<span style={{color:'#EF4444'}}> • ↩️ {p.returned.toFixed(1)}</span>}</div>
-              </div>
+    {/* ===== SEHEMU ZINAZOJIFUNUA (COLLAPSIBLE) ===== */}
+    {productsSold.length>0&&<CollapseCard title="🏆 Bidhaa Zinazoingiza Faida Zaidi" count={productsSold.length}>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {[...productsSold].sort((a,b)=>b.profit-a.profit).slice(0,8).map((p,i)=>(
+          <div key={p.id||i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:10,background:i%2?'#fff':'#F8FEFB'}}>
+            <div style={{width:26,height:26,borderRadius:8,background:i<3?'#065F2E':'#CBD5E1',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13,color:'#1E293B',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.image} {p.name}</div>
+              <div style={{fontSize:11,color:'#64748B'}}>{p.netSold.toFixed(1)} {p.unit} • Mapato {fm(p.revenue)}</div>
             </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:900,fontSize:13,color:'#065F2E'}}>{p.netSold.toFixed(1)}</div>
-              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:800,fontSize:12,color:'#22C55E'}}>{fm(p.revenue)}</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:900,fontSize:13,color:stockColor}}>{stockIcon} {p.stockRemaining.toFixed(1)}</div>
-              <div style={{fontSize:9,color:'#94A3B8'}}>{p.unit}</div>
-            </div>
-          </div>;
-        })}
-      </div>
-    </div>}
-    
-    {/* ===== MAUZO KWA KATEGORIA ===== */}
-    {categoryData.length>0&&<div className="card" style={{marginBottom:14}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#065F2E'}}>📂 Mauzo kwa Kategoria</h3>
-        <button onClick={()=>{const rows=categoryData.map(c=>[c.category,Math.round(c.qty),Math.round(c.revenue),Math.round(c.profit),c.pct+'%']);rows.push(['JUMLA',Math.round(categoryData.reduce((a,c)=>a+c.qty,0)),Math.round(categoryData.reduce((a,c)=>a+c.revenue,0)),Math.round(categoryData.reduce((a,c)=>a+c.profit,0)),'100%']);exportToCSV(`Mauzo kwa Kategoria - ${periodLabel}`,['Kategoria','Idadi','Mapato (TZS)','Faida (TZS)','Asilimia'],rows,`kategoria-${tab}-${Date.now()}.csv`);}} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
-      </div>
-      <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {categoryData.map((c,i)=>(
-          <div key={c.category}>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4}}>
-              <span style={{fontWeight:700,color:'#475569'}}>{['🥇','🥈','🥉'][i]||'📦'} {c.category} <span style={{color:'#94A3B8',fontSize:11,fontWeight:500}}>({Math.round(c.qty)} vipimo)</span></span>
-              <span><b style={{color:'#065F2E'}}>{fm(c.revenue)}</b> <span style={{color:'#3B82F6',fontSize:12}}>• Faida {fm(c.profit)}</span></span>
-            </div>
-            <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',width:`${c.pct}%`,background:'linear-gradient(90deg,#065F2E,#22C55E)',borderRadius:4}}/></div>
+            <div style={{fontWeight:900,fontSize:13,color:'#3B82F6',flexShrink:0}}>{fm(p.profit)}</div>
           </div>
         ))}
       </div>
-    </div>}
+      <button onClick={exportProductsExcel} style={{marginTop:10,width:'100%',padding:10,borderRadius:10,border:'1.5px solid #86EFAC',background:'#F0FDF4',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Pakua Orodha Kamili (Excel)</button>
+    </CollapseCard>}
 
-    {/* ===== FAIDA KWA MFANYAKAZI ===== */}
-    {staffStats.length>0&&<div className="card" style={{marginBottom:14}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#065F2E'}}>💼 Utendaji wa Wafanyakazi</h3>
-        <button onClick={()=>{const rows=staffStats.map(s=>[s.name,s.count,Math.round(s.sales),Math.round(s.profit)]);rows.push(['JUMLA',staffStats.reduce((a,s)=>a+s.count,0),Math.round(staffStats.reduce((a,s)=>a+s.sales,0)),Math.round(staffStats.reduce((a,s)=>a+s.profit,0))]);exportToCSV(`Utendaji wa Wafanyakazi - ${periodLabel}`,['Mfanyakazi','Mauzo (idadi)','Jumla (TZS)','Faida (TZS)'],rows,`wafanyakazi-${tab}-${Date.now()}.csv`);}} style={{padding:'8px 14px',borderRadius:10,border:'1.5px solid #16A34A',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12,cursor:'pointer'}}>📊 Excel</button>
+    {categoryData.length>0&&<CollapseCard title="🗂️ Mauzo kwa Kategoria" count={categoryData.length}>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {categoryData.map((c,i)=>(
+          <div key={c.category}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,fontSize:12.5}}>
+              <span style={{fontWeight:700,color:'#1E293B'}}>{c.category}</span>
+              <span style={{fontWeight:800,color:'#065F2E'}}>{fm(c.revenue)} <span style={{color:'#94A3B8',fontWeight:600}}>({c.pct}%)</span></span>
+            </div>
+            <div style={{height:7,background:'#F1F5F9',borderRadius:10,overflow:'hidden'}}><div style={{width:c.pct+'%',height:'100%',background:'linear-gradient(90deg,#065F2E,#0E8A45)',borderRadius:10}}/></div>
+          </div>
+        ))}
       </div>
-      <div style={{overflowX:'auto'}}>
-        <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-          <thead><tr style={{borderBottom:'2px solid #E2E8F0',textAlign:'left'}}>
-            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11}}>MFANYAKAZI</th>
-            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'center'}}>MAUZO</th>
-            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>JUMLA</th>
-            <th style={{padding:'8px 6px',color:'#64748B',fontSize:11,textAlign:'right'}}>FAIDA</th>
-          </tr></thead>
-          <tbody>{staffStats.map((s,i)=>(
-            <tr key={s.name} style={{borderBottom:'1px solid #F1F5F9'}}>
-              <td style={{padding:'10px 6px',fontWeight:600}}>{['🥇','🥈','🥉'][i]||'👤'} {s.name}</td>
-              <td style={{padding:'10px 6px',textAlign:'center',color:'#64748B'}}>{s.count}</td>
-              <td style={{padding:'10px 6px',textAlign:'right',fontWeight:700,color:'#065F2E'}}>{fm(s.sales)}</td>
-              <td style={{padding:'10px 6px',textAlign:'right',fontWeight:700,color:'#3B82F6'}}>{fm(s.profit)}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-    </div>}
+    </CollapseCard>}
 
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Bidhaa Bora</h3>
-        {topProds.map(([n,q],i)=><div key={n} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #F1F5F9'}}>
-          <span style={{width:20,height:20,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,background:i===0?'#F0FDF4':'#F1F5F9',color:i===0?'#065F2E':'#64748B'}}>{i+1}</span>
-          <div style={{flex:1,fontWeight:600,fontSize:12}}>{n}</div><span style={{fontWeight:700,color:'#065F2E'}}>{q}</span>
-        </div>)}{!topProds.length&&<Empty text="Hakuna"/>}</div>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>👥 Kwa Mfanyakazi</h3>
-        {staffData.length?<ResponsiveContainer width="100%" height={160}><BarChart data={staffData} layout="vertical"><XAxis type="number" tick={{fontSize:10}}/><YAxis type="category" dataKey="name" tick={{fontSize:11}} width={70}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="total" fill="#3B82F6" radius={[0,6,6,0]}/></BarChart></ResponsiveContainer>:<Empty text="Hakuna"/>}</div>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>Mauzo ({fSales.length})</h3>
-        <div style={{maxHeight:280,overflowY:'auto'}}>{fSales.map(s=><div key={s.id} onClick={()=>onReceipt?.(s)} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',cursor:'pointer',display:'flex',justifyContent:'space-between'}}>
-          <div><div style={{fontSize:12,fontWeight:600}}>{s.items?.map(i=>i.name).join(', ').slice(0,30)}</div><div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(s.created_at)}</div></div>
-          <div style={{fontWeight:700,color:'#065F2E',fontSize:12}}>{fm(s.total)}</div>
-        </div>)}</div></div>
-    </div>
+    {staffStats.length>0&&<CollapseCard title="👥 Faida kwa Mfanyakazi" count={staffStats.length}>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {staffStats.map((s,i)=>(
+          <div key={s.name} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:10,background:i%2?'#fff':'#F8FEFB'}}>
+            <div style={{width:34,height:34,borderRadius:'50%',background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:13,flexShrink:0}}>{(s.name||'?')[0].toUpperCase()}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13,color:'#1E293B'}}>{s.name}</div>
+              <div style={{fontSize:11,color:'#64748B'}}>{s.count} mauzo • {fm(s.sales)}</div>
+            </div>
+            <div style={{fontWeight:900,fontSize:13,color:'#3B82F6',flexShrink:0}}>{fm(s.profit)}</div>
+          </div>
+        ))}
+      </div>
+    </CollapseCard>}
+
+    {payBreakdown.length>0&&<CollapseCard title="💳 Njia za Malipo" count={payBreakdown.length}>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {payBreakdown.map((p,i)=>(
+          <div key={p.method} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 12px',borderRadius:10,background:i%2?'#fff':'#F8FEFB'}}>
+            <span style={{fontWeight:700,fontSize:13,color:'#1E293B'}}>{payLabel(p.method)} <span style={{color:'#94A3B8',fontWeight:600,fontSize:11}}>({p.count})</span></span>
+            <span style={{fontWeight:900,fontSize:13,color:'#065F2E'}}>{fm(p.total)}</span>
+          </div>
+        ))}
+      </div>
+    </CollapseCard>}
+
+    </>}
     </>}
   </div>;
 }
