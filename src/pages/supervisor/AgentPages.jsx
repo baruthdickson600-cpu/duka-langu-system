@@ -1,9 +1,12 @@
 import React,{useState,useMemo} from 'react';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Btn,Stat,Modal,Badge,Empty} from '../../components/UI';
-import {fmtMoney,fmtDate} from '../../utils/helpers';
+import {fmtMoney,fmtDate,exportToPDF} from '../../utils/helpers';
 
 const fm=n=>fmtMoney(n);
+
+// Siku zilizobaki kwa duka (active=token_expiry, trial=trial_end)
+const daysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 999;return Math.ceil((new Date(end)-new Date())/86400000);};
 
 // ===== AGENT DASHBOARD =====
 export function AgentDashboard(){
@@ -52,6 +55,37 @@ export function AgentDashboard(){
       <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F59E0B"/>
       <Stat icon={IC.dollar} label="Kamisheni" value={fm(commission)} color="#8B5CF6"/>
     </div>
+
+    {/* ===== WATEJA WANAOHITAJI MSAADA ===== */}
+    {(()=>{
+      const expiringSoon=myBiz.filter(b=>b.token_active&&!b.is_suspended&&daysLeft(b)<=5&&daysLeft(b)>=0);
+      const notStarted=trial.filter(b=>{const age=Math.ceil((new Date()-new Date(b.created_at))/86400000);return age>=2;});
+      const needHelp=[...expiringSoon.map(b=>({...b,reason:'expiring',dl:daysLeft(b)})),...notStarted.map(b=>({...b,reason:'idle'}))];
+      if(!needHelp.length)return null;
+      const reminderMsg=(b)=>{
+        if(b.reason==='expiring')return `Habari ${b.name}! Muda wa DukaLangu unakaribia kuisha (siku ${b.dl}). Tafadhali lipia ili uendelee kutumia mfumo bila kukatizwa. Nipo kukusaidia. Asante!`;
+        return `Habari ${b.name}! Umejisajili DukaLangu lakini bado hujaanza kutumia. Nipo kukusaidia kuanza — ni rahisi sana! Nijulishe uko tayari lini.`;
+      };
+      return <div style={{background:'#fff',borderRadius:16,marginBottom:16,overflow:'hidden',border:'1px solid #FED7AA',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+        <div style={{background:'linear-gradient(135deg,#EA580C,#C2410C)',padding:'13px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3 style={{fontSize:14,fontWeight:800,margin:0,color:'#fff'}}>🔔 Wateja Wanaohitaji Msaada</h3>
+          <span style={{fontSize:11,color:'#FFEDD5',fontWeight:600}}>{needHelp.length}</span>
+        </div>
+        <div style={{padding:12,display:'flex',flexDirection:'column',gap:8}}>
+          {needHelp.slice(0,10).map(b=>(
+            <div key={b.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 11px',borderRadius:10,background:b.reason==='expiring'?'#FFF7ED':'#FEFCE8'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:13,color:'#1E293B',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{b.name}</div>
+                <div style={{fontSize:11,color:b.reason==='expiring'?'#C2410C':'#A16207',fontWeight:600}}>
+                  {b.reason==='expiring'?`⏳ Inaisha siku ${b.dl}`:'💤 Hajaanza kutumia'}
+                </div>
+              </div>
+              {b.phone&&<a href={`https://wa.me/${b.phone.replace(/\D/g,'')}?text=${encodeURIComponent(reminderMsg(b))}`} target="_blank" rel="noreferrer" style={{padding:'7px 12px',borderRadius:8,background:'#22C55E',color:'#fff',fontWeight:700,fontSize:12,textDecoration:'none',flexShrink:0}}>💬 Kumbusha</a>}
+            </div>
+          ))}
+        </div>
+      </div>;
+    })()}
 
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
       {/* Promo Code */}
@@ -283,6 +317,82 @@ export function AgentTiersPage(){
 
     <div style={{background:'#FFF7ED',borderRadius:12,padding:'12px 16px',marginTop:16,fontSize:12,color:'#92400E',lineHeight:1.6}}>
       <b>Vigezo:</b> Ni wateja wanaolipa tu (Active) wanaohesabika. Trial na expired hawahesabiwi. Malipo hulipwa tarehe 1-5 ya mwezi unaofuata kupitia M-Pesa au Benki.
+    </div>
+  </div>;
+}
+
+// ===== ZANA & RIPOTI YA WAKALA =====
+export function AgentToolsPage(){
+  const{user,businesses,settings}=useApp();
+  const myCode=user?.promo_code;
+  const myBiz=useMemo(()=>businesses.filter(b=>b.promo_code===myCode),[businesses,myCode]);
+  const active=myBiz.filter(b=>b.token_active&&!b.is_suspended);
+  const trial=myBiz.filter(b=>!b.token_active&&!b.is_suspended);
+  const expired=myBiz.filter(b=>b.is_suspended);
+  const price=parseInt(settings?.system_price||15000);
+  const commission=active.length*price*(user?.commission_rate||10)/100;
+
+  // Pakua ripoti kamili ya PDF
+  const downloadReport=()=>{
+    const rows=myBiz
+      .slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+      .map((b,i)=>[
+        i+1,
+        b.name||'—',
+        b.phone||'—',
+        b.token_active?'Analipa':b.is_suspended?'Imeisha':'Trial',
+        (b.plan||'trial').toUpperCase(),
+        fmtDate(b.created_at),
+      ]);
+    rows.push(['','','','','','']);
+    rows.push(['','JUMLA YA WATEJA',String(myBiz.length),`Analipa: ${active.length}`,`Trial: ${trial.length}`,`Imeisha: ${expired.length}`]);
+    exportToPDF(
+      `Ripoti ya Wakala — ${user?.name||''} (Code: ${myCode||'—'})`,
+      ['#','Biashara','Simu','Hali','Plan','Alisajili'],
+      rows,
+      `ripoti-wakala-${Date.now()}.pdf`
+    );
+  };
+
+  const steps=[
+    {icon:'1️⃣',t:'Msaidie kujisajili',d:'Mfungulie akaunti kwa kutumia ukurasa wa "Sajili Mteja", kisha mpe email na password zake. Mhakikishie anaweza kuingia.'},
+    {icon:'2️⃣',t:'Mwonyeshe kuweka bidhaa',d:'Msaidie kuongeza bidhaa zake za kwanza (jina, bei ya kununua, bei ya kuuza). Hii ndiyo msingi wa mfumo.'},
+    {icon:'3️⃣',t:'Mfundishe kuuza',d:'Mwonyeshe jinsi ya kufanya mauzo — kuchagua bidhaa, kupokea pesa, na kutoa risiti. Mfanye jaribio moja pamoja naye.'},
+    {icon:'4️⃣',t:'Mwonyeshe ripoti',d:'Mwambie aangalie ripoti zake za kila siku — mauzo, faida, na pesa mkononi. Hii humfanya aone thamani ya mfumo.'},
+    {icon:'5️⃣',t:'Fuatilia na kumbusha',d:'Rudi kumuangalia baada ya siku chache. Ukiona muda unakaribia kuisha, mkumbushe mapema kulipia.'},
+  ];
+
+  return <div style={{paddingBottom:20}}>
+    <h2 style={{fontSize:20,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🧰 Zana & Ripoti</h2>
+    <p style={{fontSize:12.5,color:'#64748B',margin:'0 0 16px'}}>Pakua ripoti ya wateja wako na jifunze jinsi ya kuwasaidia</p>
+
+    {/* Muhtasari + Pakua PDF */}
+    <div style={{background:'linear-gradient(135deg,#065F2E,#043D1E)',borderRadius:18,padding:'20px 22px',marginBottom:16,color:'#fff'}}>
+      <div style={{fontSize:11,fontWeight:700,opacity:0.8,letterSpacing:1,marginBottom:10}}>📊 MUHTASARI WAKO</div>
+      <div style={{display:'flex',gap:18,flexWrap:'wrap',marginBottom:16}}>
+        <div><div style={{fontSize:10.5,opacity:0.8}}>Wateja Jumla</div><div style={{fontSize:22,fontWeight:900}}>{myBiz.length}</div></div>
+        <div><div style={{fontSize:10.5,opacity:0.8}}>Wanaolipa</div><div style={{fontSize:22,fontWeight:900}}>{active.length}</div></div>
+        <div><div style={{fontSize:10.5,opacity:0.8}}>Trial</div><div style={{fontSize:22,fontWeight:900}}>{trial.length}</div></div>
+        <div><div style={{fontSize:10.5,opacity:0.8}}>Kamisheni</div><div style={{fontSize:22,fontWeight:900}}>{fm(commission)}</div></div>
+      </div>
+      <button onClick={downloadReport} style={{width:'100%',padding:13,background:'#fff',color:'#065F2E',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>📄 Pakua Ripoti Kamili (PDF)</button>
+    </div>
+
+    {/* Mafunzo */}
+    <div style={{background:'#fff',borderRadius:16,padding:18,border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+      <h3 style={{fontSize:15,fontWeight:800,color:'#065F2E',margin:'0 0 4px'}}>📚 Jinsi ya Kumsaidia Mteja Afanikiwe</h3>
+      <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Mteja akifanikiwa kutumia mfumo, anaendelea kulipa — na wewe unapata kamisheni endelevu.</p>
+      <div style={{display:'flex',flexDirection:'column',gap:12}}>
+        {steps.map((s,i)=>(
+          <div key={i} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+            <div style={{fontSize:22,flexShrink:0}}>{s.icon}</div>
+            <div>
+              <div style={{fontWeight:800,fontSize:13.5,color:'#1E293B',marginBottom:2}}>{s.t}</div>
+              <div style={{fontSize:12.5,color:'#64748B',lineHeight:1.5}}>{s.d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   </div>;
 }

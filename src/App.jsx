@@ -20,7 +20,7 @@ import CommsCenterPage from './pages/admin/CommsCenter';
 import AccountCleanupPage from './pages/admin/AccountCleanup';
 import RevenuePage from './pages/admin/RevenuePage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
-import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
+import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
@@ -116,6 +116,7 @@ const MENUS={
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
+    {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},
     {id:'tiers',icon:IC.chart,label:'Madaraja'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
@@ -303,6 +304,7 @@ export default function App(){
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;
         case'visits':return <SupervisorVisitsPage/>;
+        case'tools':return <AgentToolsPage/>;
         case'tiers':return <AgentTiersPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AgentDashboard/>;
