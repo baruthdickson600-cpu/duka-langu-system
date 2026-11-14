@@ -147,6 +147,65 @@ div[style*="background:linear-gradient(90deg,#0A6E47"]{
   transition:width 0.8s cubic-bezier(.4,0,.2,1)!important;
 }
 
+/* ============================================================
+   MWINGILIANO + ANIMATION (interaction) — kufurahisha watumiaji
+   ============================================================ */
+
+/* Vitufe vyote — mguso wa kubonyeza + hover laini */
+button{transition:transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease}
+button:active:not(:disabled){transform:scale(.96)}
+button:not(:disabled){cursor:pointer}
+
+/* Kadi — hover inayoinua kidogo (desktop) */
+@media(hover:hover){
+  .card{transition:transform .2s cubic-bezier(.4,0,.2,1), box-shadow .25s ease}
+  .card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(16,26,21,.1)}
+}
+
+/* Stagger: kadi/vitu vinaingia moja baada ya nyingine */
+.stagger>*{animation:fadeIn .45s cubic-bezier(.4,0,.2,1) both}
+.stagger>*:nth-child(1){animation-delay:.02s}
+.stagger>*:nth-child(2){animation-delay:.07s}
+.stagger>*:nth-child(3){animation-delay:.12s}
+.stagger>*:nth-child(4){animation-delay:.17s}
+.stagger>*:nth-child(5){animation-delay:.22s}
+.stagger>*:nth-child(6){animation-delay:.27s}
+.stagger>*:nth-child(7){animation-delay:.32s}
+.stagger>*:nth-child(8){animation-delay:.37s}
+
+/* Ripple kwenye vitufe (mguso wa kugusa) */
+.ripple{position:relative;overflow:hidden}
+.ripple::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at center,rgba(255,255,255,.5) 10%,transparent 10.01%);
+  background-repeat:no-repeat;background-position:50%;transform:scale(10);opacity:0;transition:transform .4s,opacity .8s}
+.ripple:active::after{transform:scale(0);opacity:.3;transition:0s}
+
+/* Ikoni za kadi zinazojibu kwa hover */
+@media(hover:hover){
+  .kpi:hover .ic, .qbtn:hover{transform:scale(1.08);transition:transform .2s cubic-bezier(.4,0,.2,1)}
+}
+
+/* Vitendo vya haraka — bonyeza kunakokua */
+.qbtn{transition:transform .15s ease, box-shadow .2s ease, background .2s ease}
+.qbtn:active{transform:scale(.93)}
+@media(hover:hover){.qbtn:hover{box-shadow:0 8px 20px rgba(10,110,71,.15);transform:translateY(-2px)}}
+
+/* Page transition — ukurasa unaingia laini */
+.page-enter{animation:pageIn .4s cubic-bezier(.4,0,.2,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* Bounce ya mafanikio */
+@keyframes successBounce{0%{transform:scale(0)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+.success-icon{animation:successBounce .5s cubic-bezier(.34,1.56,.64,1) both}
+
+/* Float laini (kwa ikoni za hero n.k.) */
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.floaty{animation:floaty 3s ease-in-out infinite}
+
+/* Heshimu watumiaji wanaopendelea mwendo mdogo */
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
 /* ===== PRINT ===== */
 @media print{
   .sidebar,.mobile-btn{display:none!important}

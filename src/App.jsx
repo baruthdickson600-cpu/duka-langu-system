@@ -454,7 +454,7 @@ export default function App(){
           <div style={{width:32,height:32,borderRadius:'50%',background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700}}>{user.name?.[0]?.toUpperCase()}</div>
         </div>
       </div>
-      <div style={{padding:'16px 20px',maxWidth:1200,margin:'0 auto'}}>{renderPage()}</div>
+      <div key={page} className="page-enter" style={{padding:'16px 20px',maxWidth:1200,margin:'0 auto'}}>{renderPage()}</div>
       {/* Ask Me FAQ - office users kwenye dashboard pekee */}
       {role==='office'&&(page==='dashboard'||!page)&&<AskMe/>}
     </div>

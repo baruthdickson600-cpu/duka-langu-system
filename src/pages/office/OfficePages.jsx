@@ -269,9 +269,9 @@ export function OfficeDash({onReceipt,onNav}){
     </div>
 
     {/* ===== VITENDO VYA HARAKA ===== */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+    <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
       {[{i:'🛒',t:'Uza',p:'sales'},{i:'📦',t:'Bidhaa',p:'products'},{i:'👥',t:'Wateja',p:'customers'},{i:'📊',t:'Ripoti',p:'reports'}].map(a=>(
-        <button key={a.p} onClick={()=>onNav?.(a.p)} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:16,padding:'14px 6px',textAlign:'center',cursor:'pointer'}}>
+        <button key={a.p} className="qbtn ripple" onClick={()=>onNav?.(a.p)} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:16,padding:'14px 6px',textAlign:'center',cursor:'pointer'}}>
           <div style={{fontSize:22}}>{a.i}</div>
           <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginTop:6}}>{a.t}</div>
         </button>
@@ -279,15 +279,15 @@ export function OfficeDash({onReceipt,onNav}){
     </div>
 
     {/* ===== KPI CARDS za kisasa ===== */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
+    <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
       {[
         {ic:'🛒',k:'Mauzo Ghafi',v:fm(tSales.reduce((a,s)=>a+s.total,0)),c:'#0A6E47',bg:'#E6F2EC'},
         {ic:'💳',k:'Deni Nje',v:fm(outstandingDebt),c:'#C2412D',bg:'#FBECE9'},
         {ic:'📦',k:'Thamani ya Stock',v:fm(stockValue),c:'#F2B705',bg:'rgba(242,183,5,.12)'},
         {ic:'⚠️',k:'Stock Alert',v:lowStockProducts.length,c:'#C2412D',bg:'#FBECE9'},
       ].map((s,i)=>(
-        <div key={i} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:18,padding:15,boxShadow:'0 1px 3px rgba(16,26,21,.04)'}}>
-          <div style={{width:38,height:38,borderRadius:11,background:s.bg,display:'grid',placeItems:'center',fontSize:18,marginBottom:10}}>{s.ic}</div>
+        <div key={i} className="kpi card" style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:18,padding:15,boxShadow:'0 1px 3px rgba(16,26,21,.04)'}}>
+          <div className="ic" style={{width:38,height:38,borderRadius:11,background:s.bg,display:'grid',placeItems:'center',fontSize:18,marginBottom:10}}>{s.ic}</div>
           <div style={{fontSize:12,color:'#5C6A62',fontWeight:600}}>{s.k}</div>
           <div style={{fontSize:19,fontWeight:900,letterSpacing:'-.5px',marginTop:2,color:s.c}}>{s.v}</div>
         </div>
