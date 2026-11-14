@@ -30,9 +30,21 @@ CREATE INDEX IF NOT EXISTS idx_paytx_ref ON payment_transactions(provider_ref);
 CREATE INDEX IF NOT EXISTS idx_paytx_created ON payment_transactions(created_at);
 
 ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+
+-- Futa policies za zamani (zote) ili tuanze upya
 DROP POLICY IF EXISTS "paytx_all" ON payment_transactions;
-CREATE POLICY "paytx_all" ON payment_transactions
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "paytx_public" ON payment_transactions;
+DROP POLICY IF EXISTS "paytx_insert" ON payment_transactions;
+DROP POLICY IF EXISTS "paytx_select" ON payment_transactions;
+
+-- Ruhusu WOTE (anon + authenticated) kuingiza na kusoma.
+-- Hii ni muhimu kwa sababu malipo yanaanzishwa wakati biashara imefungwa
+-- (session dhaifu). API ya server (service_role) ndiyo inayothibitisha malipo.
+CREATE POLICY "paytx_public" ON payment_transactions
+  FOR ALL
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
 SELECT 'payment_transactions table ready!' AS status;

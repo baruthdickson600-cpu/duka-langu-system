@@ -9,27 +9,41 @@ const CL=['#0A6E47','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6']
 // ===== OFFICE DASHBOARD with Daily Report + Alerts =====
 // ===== SUBSCRIPTION MINI-BAR (kimstari kidogo) =====
 function SubscriptionMiniBar(){
-  const{biz,daysLeft,settings,submitPayment,paymentRequests=[]}=useApp();
+  const{biz,daysLeft,settings,initiatePayment,checkPaymentStatus}=useApp();
   const[modal,setModal]=React.useState(false);
-  const[showForm,setShowForm]=React.useState(false);
-  const[form,setForm]=React.useState({phone:'',amount:'',ref:'',notes:''});
+  const[phone,setPhone]=React.useState('');
   const[submitting,setSubmitting]=React.useState(false);
   const[done,setDone]=React.useState(false);
-  // Angalia kama kuna ombi linalosubiri
-  const hasPending=paymentRequests.some(p=>p.business_id===biz?.id&&p.status==='pending');
+  const[msg,setMsg]=React.useState('');
+  const[errMsg,setErrMsg]=React.useState('');
+  const price=parseInt(settings?.system_price||'15000');
 
-  const submitReq=async()=>{
-    if(!form.phone.trim())return alert('Weka namba ya simu uliyotumia kulipa!');
-    if(!form.amount||+form.amount<=0)return alert('Weka kiasi ulicholipa!');
-    if(hasPending)return alert('Tayari una ombi linalosubiri uthibitisho. Subiri muhasibu alithibitishe.');
-    setSubmitting(true);
-    const r=await submitPayment(form.ref||('PAY-'+Date.now()),+form.amount,'HALOPESA',form.phone.trim());
+  // Lipa kwa Snippe (auto) — weka namba -> push -> mfumo unajifungua
+  const payNow=async()=>{
+    const ph=phone.trim();
+    if(!ph||ph.replace(/\D/g,'').length<9)return setErrMsg('Weka namba sahihi ya simu (mf. 0712345678)!');
+    setSubmitting(true);setErrMsg('');setMsg('');
+    try{
+      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:ph});
+      if(!res?.success){setErrMsg(res?.error||'Imeshindwa kuanzisha malipo.');setSubmitting(false);return}
+      const ref=res.reference||'';
+      setMsg(res.message||'📲 Angalia simu yako — weka PIN kuthibitisha malipo. Mfumo utajifungua wenyewe.');
+      // Polling kila sekunde 5 kwa dakika 3
+      if(ref&&checkPaymentStatus){
+        let tries=0;
+        const timer=setInterval(async()=>{
+          tries++;
+          const st=await checkPaymentStatus(ref);
+          if(st?.status==='paid'){clearInterval(timer);setDone(true);setMsg('');setTimeout(()=>window.location.reload(),1800);}
+          else if(st?.status==='failed'){clearInterval(timer);setErrMsg('❌ Malipo hayakufaulu. Jaribu tena.');setMsg('');}
+          else if(tries>=36){clearInterval(timer);setMsg('⏳ Bado tunasubiri uthibitisho. Ukishamaliza kulipa, mfumo utajifungua wenyewe.');}
+        },5000);
+      }
+    }catch(e){setErrMsg('Tatizo: '+(e.message||'Jaribu tena'))}
     setSubmitting(false);
-    if(r&&r.error){alert('⚠️ '+r.error);return;}
-    setDone(true);
   };
 
-  const closeAll=()=>{setModal(false);setShowForm(false);setDone(false);setForm({phone:'',amount:'',ref:'',notes:''});};
+  const closeAll=()=>{setModal(false);setDone(false);setMsg('');setErrMsg('');setPhone('');};
   const days=typeof daysLeft==='function'?daysLeft():daysLeft;
   const planName=biz?.plan?biz.plan.charAt(0).toUpperCase()+biz.plan.slice(1):'Basic';
   const expiry=biz?.token_active?biz?.token_expiry:biz?.trial_end;
@@ -41,10 +55,6 @@ function SubscriptionMiniBar(){
   else if(days<=7)color='#DC2626';
   else if(days<=15)color='#EA580C';
   else color='#0A6E47';
-
-  const payNumber='25187616';
-  const payName='DUKALANGU';
-  const payProvider='HALOPESA';
 
   return <>
     <div style={{display:'flex',alignItems:'center',gap:12,background:`${color}0A`,border:`1px solid ${color}25`,borderRadius:12,padding:'10px 16px',marginBottom:16,flexWrap:'wrap'}}>
@@ -61,53 +71,44 @@ function SubscriptionMiniBar(){
       </button>
     </div>
 
-    {/* Modal ya Lipa Namba */}
-    <Modal open={modal} onClose={()=>setModal(false)} title="🔄 Ongeza Muda wa Usajili">
-      <div style={{textAlign:'center'}}>
-        <div style={{fontSize:14,color:'#64748B',marginBottom:16,lineHeight:1.6}}>
-          Lipa kupitia <b style={{color:'#0A6E47'}}>{payProvider}</b> ili kuongeza muda wa mfumo wako.
+    {/* Modal ya Malipo — Snippe auto (weka namba -> push -> jifungua) */}
+    <Modal open={modal} onClose={closeAll} title="🔄 Ongeza Muda wa Usajili">
+      {done?(
+        <div style={{background:'#F0FDF4',border:'1.5px solid #BBF7D0',borderRadius:14,padding:24,textAlign:'center'}}>
+          <div style={{fontSize:44,marginBottom:10}}>🎉</div>
+          <div style={{fontSize:16,fontWeight:800,color:'#15803D',marginBottom:8}}>Malipo Yamethibitishwa!</div>
+          <div style={{fontSize:13,color:'#475569',lineHeight:1.6}}>Mfumo unafunguka wenyewe...</div>
         </div>
-        <div style={{background:'#F0FDF4',border:'2px dashed #22C55E',borderRadius:14,padding:20,marginBottom:16}}>
-          <div style={{fontSize:12,color:'#64748B',marginBottom:4}}>Lipa Namba — {payProvider}</div>
-          <div style={{fontSize:32,fontWeight:900,color:'#0A6E47',letterSpacing:1}}>{payNumber}</div>
-          <div style={{fontSize:13,color:'#64748B',marginTop:6}}>Jina: <b>{payName}</b></div>
+      ):(
+        <div>
+          <div style={{background:'linear-gradient(135deg,#0A6E47,#06502F)',borderRadius:16,padding:'18px',marginBottom:14,color:'#fff',textAlign:'center'}}>
+            <div style={{fontSize:11,fontWeight:700,opacity:0.85,letterSpacing:1}}>KIASI CHA KULIPA</div>
+            <div style={{fontSize:32,fontWeight:900,letterSpacing:-1,margin:'4px 0'}}>TZS {price.toLocaleString()}</div>
+            <div style={{fontSize:12,opacity:0.85}}>siku 30 za matumizi</div>
+          </div>
+
+          <div style={{fontSize:13,color:'#475569',lineHeight:1.6,marginBottom:14,textAlign:'center'}}>
+            Weka namba yako ya simu, bonyeza "Lipa Sasa", kisha weka PIN kwenye simu. Mfumo utajifungua wenyewe.
+          </div>
+
+          {errMsg&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'11px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>⚠️ {errMsg}</div>}
+
+          {msg?(
+            <div style={{background:'#F0FDF4',border:'1.5px solid #BBF7D0',borderRadius:12,padding:'16px',fontSize:13,color:'#166534',lineHeight:1.55,textAlign:'center'}}>
+              <div style={{fontSize:28,marginBottom:8}}>⏳</div>
+              <div style={{fontWeight:800,marginBottom:4}}>Inasubiri uthibitisho...</div>
+              {msg}
+            </div>
+          ):(
+            <>
+              <Input label="📱 Namba yako ya simu" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXX"/>
+              <button onClick={payNow} disabled={submitting} style={{width:'100%',padding:14,marginTop:8,background:submitting?'#86EFAC':'linear-gradient(135deg,#0A6E47,#06502F)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 20px rgba(10,110,71,0.3)'}}>
+                {submitting?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
+              </button>
+            </>
+          )}
         </div>
-        {done?(
-          <div style={{background:'#F0FDF4',border:'1.5px solid #BBF7D0',borderRadius:14,padding:20,textAlign:'center'}}>
-            <div style={{fontSize:40,marginBottom:10}}>✅</div>
-            <div style={{fontSize:15,fontWeight:800,color:'#15803D',marginBottom:8}}>Tumepokea ombi lako!</div>
-            <div style={{fontSize:13,color:'#475569',lineHeight:1.6}}>Mhasibu atalithibitisha ndani ya muda mfupi. Mfumo utafunguka moja kwa moja baada ya uthibitisho.</div>
-            <button onClick={closeAll} style={{width:'100%',padding:12,marginTop:16,background:'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>Funga</button>
-          </div>
-        ):showForm?(
-          <div style={{textAlign:'left'}}>
-            <div style={{fontSize:14,fontWeight:700,color:'#1E293B',marginBottom:12,textAlign:'center'}}>📝 Jaza Taarifa za Malipo</div>
-            <Input label="Namba ya Simu Uliyotumia Kulipa *" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="07XXXXXXXX"/>
-            <Input label="Kiasi Ulicholipa *" type="number" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="15000"/>
-            <Input label="Namba ya Rejea (si lazima)" value={form.ref} onChange={e=>setForm({...form,ref:e.target.value})} placeholder="Reference/TX number"/>
-            <Area label="Maelezo Zaidi (si lazima)" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Maelezo yoyote..." rows={2}/>
-            <div style={{display:'flex',gap:8,marginTop:8}}>
-              <button onClick={()=>setShowForm(false)} style={{flex:1,padding:12,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
-              <button onClick={submitReq} disabled={submitting} style={{flex:2,padding:12,background:submitting?'#86EFAC':'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>{submitting?'Inatuma...':'Tuma Ombi'}</button>
-            </div>
-          </div>
-        ):(
-          <>
-            <div style={{fontSize:13,color:'#475569',lineHeight:1.7,textAlign:'left',background:'#FAFBFC',borderRadius:12,padding:14}}>
-              <b>Jinsi ya kulipa:</b><br/>
-              1. Fungua {payProvider} kwenye simu yako<br/>
-              2. Chagua "Lipa kwa Namba"<br/>
-              3. Weka Lipa Namba: <b>{payNumber}</b><br/>
-              4. Weka kiasi, kisha thibitisha<br/>
-              5. Bonyeza "Nimelipa" hapa chini
-            </div>
-            {hasPending&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,padding:'10px 14px',marginTop:12,fontSize:12,color:'#9A3412'}}>⏳ Una ombi linalosubiri uthibitisho wa muhasibu.</div>}
-            <button onClick={()=>hasPending?null:setShowForm(true)} disabled={hasPending} style={{width:'100%',padding:12,marginTop:16,background:hasPending?'#CBD5E1':'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:hasPending?'default':'pointer'}}>
-              {hasPending?'Ombi Linasubiri...':'✅ Nimelipa'}
-            </button>
-          </>
-        )}
-      </div>
+      )}
     </Modal>
   </>;
 }
