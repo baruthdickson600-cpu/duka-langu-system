@@ -6,7 +6,7 @@ const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 export default function LockedPage(){
-  const{biz,user,settings,submitPayment,activateToken,initiatePayment,checkPaymentStatus,paymentRequests,logout}=useApp();
+  const{biz,user,settings,submitPayment,activateToken,initiatePayment,checkPaymentStatus,testPayment,paymentRequests,logout}=useApp();
   const[tab,setTab]=useState('pay');
   const[txId,setTxId]=useState('');
   const[phone,setPhone]=useState(user?.phone||'');
@@ -210,6 +210,16 @@ export default function LockedPage(){
                         style={{width:'100%',padding:13,background:'#fff',color:'#0A6E47',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
                         {autoLoading?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
                       </button>}
+                    {/* KITUFE CHA KUJARIBU (test) — kinaiga malipo yaliyofaulu */}
+                    {testPayment&&<button onClick={async()=>{
+                      if(!window.confirm('JARIBIO: Hii itaiga malipo yaliyofaulu, kuwasha mfumo, na kutuma SMS kwa staff. Endelea?'))return;
+                      setErr('');setAutoMsg('');
+                      const res=await testPayment({amount:price,days:30,plan:'basic'});
+                      if(res?.success){setAutoMsg(res.message||'✅ Jaribio limefaulu. Mfumo unafunguka...');setTimeout(()=>window.location.reload(),2000);}
+                      else setErr(res?.error||'Jaribio limeshindwa.');
+                    }} style={{width:'100%',marginTop:8,padding:10,background:'rgba(255,255,255,0.15)',color:'#fff',border:'1px dashed rgba(255,255,255,0.5)',borderRadius:10,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>
+                      🧪 Jaribu Malipo (Test) — thibitisha mfumo
+                    </button>}
                   </div>
 
                   <div style={{display:'flex',alignItems:'center',gap:10,margin:'4px 0 14px'}}>

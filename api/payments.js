@@ -103,6 +103,25 @@ function verifyWebhook(req, rawBody) {
   } catch { return false; }
 }
 
+// ---- Tuma SMS kwa staff wa DukaLangu (admin, marketing, accountant) ----
+async function notifyStaff(supabase, tx) {
+  try {
+    // Chukua staff wenye namba za simu
+    const { data: staff } = await supabase.from('users')
+      .select('name,phone,role')
+      .in('role', ['admin', 'marketing', 'accountant']);
+    if (!staff || !staff.length) return;
+    const msg = `MALIPO MAPYA - DukaLangu\n\nMteja: ${tx.business_name || '—'}\nKiasi: TZS ${(tx.amount || 0).toLocaleString()}\nPlan: ${(tx.plan || 'basic')} siku ${tx.days || 30}\nSimu: ${tx.phone || '—'}\n\nMteja amelipa na mfumo umejifungua.`;
+    // Tuma SMS kwa kila mmoja mwenye namba
+    await Promise.all(staff.filter(s => s.phone).map(s =>
+      fetch(`${APP_URL}/api/send-sms`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: s.phone, message: msg }),
+      }).catch(() => {})
+    ));
+  } catch { /* usivunje activation kwa kosa la SMS */ }
+}
+
 // ---- Jifungue: washa biashara baada ya malipo kuthibitika ----
 async function activateBusiness(supabase, tx) {
   const days = parseInt(tx.days) || 30;
@@ -120,6 +139,8 @@ async function activateBusiness(supabase, tx) {
     title: '🎉 Malipo Yamethibitishwa!',
     message: `Malipo yako ya TZS ${(tx.amount || 0).toLocaleString()} yamethibitishwa. Mfumo umefunguliwa kwa siku ${days}.`,
   }).then(() => {}, () => {});
+  // Arifa kwa staff wa DukaLangu (SMS)
+  await notifyStaff(supabase, tx);
   return { code, days, exp };
 }
 
@@ -159,6 +180,24 @@ export default async function handler(req, res) {
         success: true, reference: gw.publicRef, transaction_id: tx.id, mode: 'gateway',
         message: '📲 Angalia simu yako — weka PIN kuthibitisha malipo.',
       });
+    }
+
+    // ===== 1B. TEST (jaribu malipo bila gateway — inaiga malipo yaliyofaulu) =====
+    if (action === 'test' && req.method === 'POST') {
+      const body = parseJSON(await readRawBody(req));
+      const { business_id, business_name, user_email, phone, amount, plan, days } = body;
+      if (!business_id) return res.status(400).json({ success: false, error: 'business_id inahitajika.' });
+      const reference = 'TEST-' + Date.now().toString(36).toUpperCase();
+      // Tengeneza muamala tayari umelipwa
+      const { data: tx, error } = await supabase.from('payment_transactions').insert({
+        business_id, business_name: business_name || null, user_email: user_email || null,
+        phone: phone || null, amount: amount || 0, plan: plan || 'basic', days: days || 30,
+        provider: 'test', provider_ref: reference, status: 'paid', paid_at: new Date().toISOString(),
+      }).select().single();
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      // Washa biashara + tuma SMS kwa staff (kama malipo halisi)
+      const act = await activateBusiness(supabase, tx);
+      return res.status(200).json({ success: true, test: true, reference, message: '✅ JARIBIO: Malipo yameigwa, mfumo umejifungua, SMS zimetumwa kwa staff.', ...act });
     }
 
     // ===== 2. WEBHOOK (TeePay inathibitisha) =====

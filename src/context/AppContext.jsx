@@ -1775,6 +1775,25 @@ export function AppProvider({children}){
     }
   },[bizId,biz,user]);
 
+  // JARIBU MALIPO (test) — inaiga malipo yaliyofaulu bila gateway halisi
+  const testPayment=useCallback(async({amount=15000,days=30,plan='basic'}={})=>{
+    if(!bizId)return{success:false,error:'Biashara haijapatikana.'};
+    const b=biz.find(x=>x.id===bizId)||{};
+    try{
+      const r=await fetch('/api/payments?action=test',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          business_id:bizId,business_name:b.name||b.business_name||'',
+          user_email:user?.email||'',phone:b.phone||'',
+          amount:parseFloat(amount)||0,plan,days:parseInt(days)||30,
+        }),
+      });
+      const d=await r.json();
+      if(!d.success)return{success:false,error:d.error||'Jaribio limeshindwa.'};
+      return{success:true,message:d.message};
+    }catch(e){return{success:false,error:'Tatizo la mtandao: '+(e.message||'')}}
+  },[bizId,biz,user]);
+
   // Angalia hali ya malipo kwa reference (polling kama hakuna realtime)
   const checkPaymentStatus=useCallback(async(reference)=>{
     try{
@@ -2796,7 +2815,7 @@ export function AppProvider({children}){
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
-    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,initiatePayment,checkPaymentStatus,systemExpenses,
+    genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,initiatePayment,checkPaymentStatus,testPayment,systemExpenses,
     // Notifications
     addNotif,broadcastNotif,broadcastUpdateEmail,markRead,markAllRead,
     // Settings & Admin
