@@ -116,23 +116,59 @@ function verifyWebhook(req, rawBody) {
   return false;
 }
 
-// ---- Tuma SMS kwa staff wa DukaLangu (admin, marketing, accountant) ----
+// ---- Tuma SMS + Email kwa staff wa DukaLangu (admin, marketing, accountant) ----
 async function notifyStaff(supabase, tx) {
   try {
-    // Chukua staff wenye namba za simu
     const { data: staff } = await supabase.from('users')
-      .select('name,phone,role')
+      .select('name,phone,email,role')
       .in('role', ['admin', 'marketing', 'accountant']);
     if (!staff || !staff.length) return;
-    const msg = `MALIPO MAPYA - DukaLangu\n\nMteja: ${tx.business_name || '—'}\nKiasi: TZS ${(tx.amount || 0).toLocaleString()}\nPlan: ${(tx.plan || 'basic')} siku ${tx.days || 30}\nSimu: ${tx.phone || '—'}\n\nMteja amelipa na mfumo umejifungua.`;
-    // Tuma SMS kwa kila mmoja mwenye namba
-    await Promise.all(staff.filter(s => s.phone).map(s =>
+
+    const amount = (tx.amount || 0).toLocaleString();
+    const biz = tx.business_name || '—';
+    const plan = (tx.plan || 'basic');
+    const days = tx.days || 30;
+    const phone = tx.phone || '—';
+    const when = new Date().toLocaleString('sw-TZ', { timeZone: 'Africa/Dar_es_Salaam' });
+
+    // ---- SMS ----
+    const msg = `MALIPO MAPYA - DukaLangu\n\nMteja: ${biz}\nKiasi: TZS ${amount}\nPlan: ${plan} siku ${days}\nSimu: ${phone}\n\nMteja amelipa na mfumo umejifungua.`;
+    const smsJobs = staff.filter(s => s.phone).map(s =>
       fetch(`${APP_URL}/api/send-sms`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: s.phone, message: msg }),
       }).catch(() => {})
-    ));
-  } catch { /* usivunje activation kwa kosa la SMS */ }
+    );
+
+    // ---- Email ----
+    const subject = `💰 Malipo Mapya — ${biz} (TZS ${amount})`;
+    const html = `
+      <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto">
+        <div style="background:linear-gradient(135deg,#0A6E47,#06502F);color:#fff;padding:22px;border-radius:14px 14px 0 0">
+          <div style="font-size:13px;opacity:.85;letter-spacing:.5px">MALIPO MAPYA</div>
+          <div style="font-size:26px;font-weight:800;margin-top:4px">TZS ${amount}</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E6F2EC;border-top:none;border-radius:0 0 14px 14px;padding:22px">
+          <table style="width:100%;font-size:14px;color:#17231D;border-collapse:collapse">
+            <tr><td style="padding:7px 0;color:#5C6A62">Mteja (Biashara)</td><td style="padding:7px 0;font-weight:700;text-align:right">${biz}</td></tr>
+            <tr><td style="padding:7px 0;color:#5C6A62">Plan</td><td style="padding:7px 0;font-weight:700;text-align:right">${plan} — siku ${days}</td></tr>
+            <tr><td style="padding:7px 0;color:#5C6A62">Simu ya Mteja</td><td style="padding:7px 0;font-weight:700;text-align:right">${phone}</td></tr>
+            <tr><td style="padding:7px 0;color:#5C6A62">Muda</td><td style="padding:7px 0;font-weight:700;text-align:right">${when}</td></tr>
+          </table>
+          <div style="margin-top:16px;padding:12px 14px;background:#E6F2EC;border-radius:10px;font-size:13px;color:#0A6E47;font-weight:600">
+            ✅ Mteja amelipa na mfumo umejifungua wenyewe.
+          </div>
+        </div>
+      </div>`;
+    const emailJobs = staff.filter(s => s.email).map(s =>
+      fetch(`${APP_URL}/api/send-email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: s.email, subject, html }),
+      }).catch(() => {})
+    );
+
+    await Promise.all([...smsJobs, ...emailJobs]);
+  } catch { /* usivunje activation kwa kosa la arifa */ }
 }
 
 // ---- Jifungue: washa biashara baada ya malipo kuthibitika ----
