@@ -495,3 +495,166 @@ export function AccReportsPage(){
     </div>
   </div>;
 }
+
+// ===== KUTOA PESA (PAYOUT) — Snippe =====
+export function AccPayoutPage(){
+  const{user}=useApp();
+  const[balance,setBalance]=useState(null);
+  const[loadingBal,setLoadingBal]=useState(true);
+  const[method,setMethod]=useState('mobile');
+  const[channel,setChannel]=useState('mpesa');
+  const[amount,setAmount]=useState('');
+  const[recipient,setRecipient]=useState('');
+  const[recipientName,setRecipientName]=useState('');
+  const[bankCode,setBankCode]=useState('');
+  const[reason,setReason]=useState('');
+  const[fee,setFee]=useState(0);
+  const[sending,setSending]=useState(false);
+  const[msg,setMsg]=useState('');
+  const[err,setErr]=useState('');
+  const[history,setHistory]=useState([]);
+  const[confirm,setConfirm]=useState(false);
+
+  const loadBalance=async()=>{
+    setLoadingBal(true);
+    try{const r=await fetch(API_BASE+'/api/payments?action=payout_balance');const d=await r.json();setBalance(d.success?d.balance:null);}catch{setBalance(null)}
+    setLoadingBal(false);
+  };
+  const loadHistory=async()=>{
+    try{
+      const {supabase}=await import('../../config/supabase');
+      const{data}=await supabase.from('payouts').select('*').order('created_at',{ascending:false}).limit(20);
+      setHistory(data||[]);
+    }catch{}
+  };
+  useEffect(()=>{loadBalance();loadHistory();},[]);
+
+  // Kokotoa ada amount ikibadilika
+  useEffect(()=>{
+    const amt=parseFloat(amount)||0;
+    if(amt<=0){setFee(0);return;}
+    const t=setTimeout(async()=>{
+      try{const r=await fetch(API_BASE+'/api/payments?action=payout_fee&amount='+Math.round(amt));const d=await r.json();setFee(d.fee||0);}catch{setFee(0)}
+    },500);
+    return()=>clearTimeout(t);
+  },[amount]);
+
+  const CHANNELS=[{v:'mpesa',l:'M-Pesa (Vodacom)'},{v:'tigopesa',l:'Mixx by Yas (Tigo)'},{v:'airtelmoney',l:'Airtel Money'},{v:'halopesa',l:'HaloPesa'}];
+
+  const doSend=async()=>{
+    const amt=parseFloat(amount)||0;
+    if(amt<=0)return setErr('Weka kiasi sahihi.');
+    if(!recipient.trim())return setErr('Weka namba ya kupokea.');
+    if(!reason.trim())return setErr('Andika sababu ya matumizi.');
+    setConfirm(false);setSending(true);setErr('');setMsg('');
+    try{
+      const r=await fetch(API_BASE+'/api/payments?action=payout_request',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          amount:amt,method,channel:method==='mobile'?channel:null,
+          recipient_number:recipient.trim(),recipient_name:recipientName.trim(),
+          bank_code:method==='bank'?bankCode.trim():null,reason:reason.trim(),
+          requested_by:user?.name||user?.email,requested_by_id:user?.id,
+        }),
+      });
+      const d=await r.json();
+      if(!d.success){setErr(d.error||'Imeshindwa kutuma ombi.');setSending(false);return;}
+      setMsg('✅ '+(d.message||'Ombi limetumwa kwa idhini.'));
+      setAmount('');setRecipient('');setRecipientName('');setReason('');
+      loadBalance();loadHistory();
+    }catch(e){setErr('Tatizo: '+(e.message||''))}
+    setSending(false);
+  };
+
+  const total=(parseFloat(amount)||0)+fee;
+  const stColor=s=>s==='completed'?'#0A6E47':s==='failed'||s==='rejected'?'#C2412D':s==='approved'?'#0A6E47':'#F2B705';
+  const stLabel=s=>({completed:'IMEKAMILIKA',failed:'IMESHINDWA',rejected:'IMEKATALIWA',approved:'IMEIDHINISHWA',pending:'INATUMWA',pending_approval:'INASUBIRI IDHINI'}[s]||'INASUBIRI');
+
+  return <div style={{paddingBottom:20}}>
+    <h2 style={{fontSize:20,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>💸 Kutoa Pesa</h2>
+    <p style={{fontSize:12.5,color:'#5C6A62',margin:'0 0 12px'}}>Toa mapato ya DukaLangu kwenda M-Pesa, Tigo, Airtel au benki</p>
+    <div style={{background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:12,padding:'11px 14px',marginBottom:16,fontSize:12.5,color:'#7A5C00',display:'flex',gap:8}}>
+      <span>🔒</span><span><b>Ulinzi wa fedha:</b> Unaanzisha ombi na sababu. Pesa haitatoka mpaka <b>Admin</b> NA <b>Marketing</b> waidhinishe. Idhini ikikamilika pesa inatumwa otomatiki.</span>
+    </div>
+
+    {/* Salio */}
+    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:20,padding:'22px',marginBottom:16,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>
+      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>💰 SALIO LILILOPO</div>
+      <div style={{fontSize:34,fontWeight:900,letterSpacing:'-1px',margin:'4px 0'}}>
+        {loadingBal?'...':balance!=null?fm(balance):'—'}
+      </div>
+      <button onClick={loadBalance} style={{background:'rgba(255,255,255,0.16)',border:'none',color:'#fff',padding:'6px 14px',borderRadius:10,fontSize:12,fontWeight:700,cursor:'pointer'}}>🔄 Pakua upya</button>
+    </div>
+
+    {/* Fomu ya kutoa */}
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:15,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>Anzisha Ombi la Kutoa Pesa</h3>
+      {err&&<div style={{background:'#FBECE9',color:'#C2412D',padding:'11px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #C2412D'}}>⚠️ {err}</div>}
+      {msg&&<div style={{background:'#E6F2EC',color:'#0A6E47',padding:'11px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #0A6E47'}}>{msg}</div>}
+
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <button onClick={()=>setMethod('mobile')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:method==='mobile'?'#0A6E47':'#F1F5F9',color:method==='mobile'?'#fff':'#5C6A62'}}>📱 Simu</button>
+        <button onClick={()=>setMethod('bank')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:method==='bank'?'#0A6E47':'#F1F5F9',color:method==='bank'?'#fff':'#5C6A62'}}>🏦 Benki</button>
+      </div>
+
+      {method==='mobile'&&<Sel label="Mtandao" value={channel} onChange={e=>setChannel(e.target.value)}>{CHANNELS.map(c=><option key={c.v} value={c.v}>{c.l}</option>)}</Sel>}
+      {method==='bank'&&<Input label="Bank Code" value={bankCode} onChange={e=>setBankCode(e.target.value)} placeholder="Mf: CRDBTZTZ"/>}
+      <Input label={method==='bank'?'Namba ya Akaunti':'Namba ya Simu'} value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder={method==='bank'?'0150XXXXXXXXX':'07XXXXXXXX'}/>
+      <Input label="Jina la Mpokeaji" value={recipientName} onChange={e=>setRecipientName(e.target.value)} placeholder="Jina kamili"/>
+      <Input label="Kiasi (TZS)" type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="50000"/>
+      <Input label="Sababu ya matumizi *" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Mf: Mshahara, kodi, manunuzi..."/>
+
+      {/* Muhtasari */}
+      {parseFloat(amount)>0&&<div style={{background:'#F6F8F7',borderRadius:12,padding:'12px 14px',margin:'4px 0 14px',fontSize:13}}>
+        <div style={{display:'flex',justifyContent:'space-between',color:'#5C6A62',marginBottom:4}}><span>Kiasi</span><span>{fm(parseFloat(amount)||0)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between',color:'#5C6A62',marginBottom:4}}><span>Ada</span><span>{fm(fee)}</span></div>
+        <div style={{display:'flex',justifyContent:'space-between',fontWeight:800,color:'#0A6E47',paddingTop:6,borderTop:'1px solid #D6E2DB'}}><span>JUMLA</span><span>{fm(total)}</span></div>
+      </div>}
+
+      <button onClick={()=>{const amt=parseFloat(amount)||0;if(amt<=0)return setErr('Weka kiasi sahihi.');if(!recipient.trim())return setErr('Weka namba ya kupokea.');if(!reason.trim())return setErr('Andika sababu ya matumizi.');setErr('');setConfirm(true);}} disabled={sending} style={{width:'100%',padding:14,background:sending?'#86EFAC':'linear-gradient(135deg,#0A6E47,#06502F)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:sending?'wait':'pointer',boxShadow:'0 8px 20px rgba(10,110,71,.3)'}}>
+        {sending?'Inatuma...':'📤 Tuma Ombi kwa Idhini'}
+      </button>
+    </div>
+
+    {/* Historia */}
+    <div className="card">
+      <h3 style={{fontSize:15,fontWeight:800,color:'#0A6E47',margin:'0 0 12px'}}>📜 Historia ya Maombi</h3>
+      {history.length?<div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {history.map(p=>(
+          <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:'#F6F8F7'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13,color:'#17231D'}}>{fm(p.amount)} <span style={{fontSize:11,color:'#5C6A62',fontWeight:500}}>→ {p.recipient_name||p.recipient_number}</span></div>
+              <div style={{fontSize:11,color:'#5C6A62'}}>{fmtDate(p.created_at)} • {p.channel||p.method} {p.reason?'• '+p.reason:''}</div>
+              {p.status==='pending_approval'&&<div style={{fontSize:10.5,marginTop:3,display:'flex',gap:8}}>
+                <span style={{color:p.admin_approved?'#0A6E47':'#9AA5A0'}}>{p.admin_approved?'✓':'○'} Admin</span>
+                <span style={{color:p.marketing_approved?'#0A6E47':'#9AA5A0'}}>{p.marketing_approved?'✓':'○'} Marketing</span>
+              </div>}
+              {p.status==='rejected'&&p.rejected_reason&&<div style={{fontSize:10.5,marginTop:3,color:'#C2412D'}}>❌ {p.rejected_reason}</div>}
+            </div>
+            <span style={{fontSize:9.5,fontWeight:800,padding:'4px 10px',borderRadius:20,background:stColor(p.status)+'20',color:stColor(p.status),whiteSpace:'nowrap'}}>{stLabel(p.status)}</span>
+          </div>
+        ))}
+      </div>:<Empty icon="💸" text="Hakuna maombi bado"/>}
+    </div>
+
+    {/* Modal ya uthibitisho */}
+    <Modal open={confirm} onClose={()=>setConfirm(false)} title="📤 Thibitisha Ombi">
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:40,marginBottom:10}}>📤</div>
+        <div style={{fontSize:14,color:'#5C6A62',marginBottom:12,lineHeight:1.6}}>
+          Ombi la <b style={{color:'#0A6E47',fontSize:18}}>{fm(parseFloat(amount)||0)}</b><br/>
+          kwenda <b>{recipientName||recipient}</b> ({method==='bank'?'Benki':channel})<br/>
+          Sababu: <b>{reason}</b><br/>
+          Ada: {fm(fee)} • Jumla: <b>{fm(total)}</b>
+        </div>
+        <div style={{background:'#FFF8E6',borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#7A5C00'}}>
+          🔒 Litatumwa kwa Admin na Marketing. Pesa haitatoka mpaka wote waidhinishe.
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>setConfirm(false)} style={{flex:1,padding:13,background:'#F1F5F9',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={doSend} style={{flex:2,padding:13,background:'linear-gradient(135deg,#0A6E47,#06502F)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>✅ Tuma Ombi</button>
+        </div>
+      </div>
+    </Modal>
+  </div>;
+}

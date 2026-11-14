@@ -21,7 +21,8 @@ import AccountCleanupPage from './pages/admin/AccountCleanup';
 import RevenuePage from './pages/admin/RevenuePage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
-import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
+import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
+import PayoutApprovals from './pages/shared/PayoutApprovals';
 
 const MENUS={
   admin:[
@@ -29,6 +30,7 @@ const MENUS={
     {group:'biashara',label:'🏢 Biashara',icon:IC.store,items:[
       {id:'stores',icon:IC.store,label:'Maduka'},
       {id:'payments',icon:IC.dollar,label:'Malipo'},
+      {id:'payout_approvals',icon:IC.shield,label:'✅ Idhini ya Kutoa Pesa'},
       {id:'info_requests',icon:IC.file,label:'Ombi za Mabadiliko'},
     ]},
     {group:'masoko',label:'📣 Masoko',icon:IC.send,items:[
@@ -61,6 +63,7 @@ const MENUS={
   accountant:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'payments',icon:IC.dollar,label:'Malipo'},
+    {id:'payout',icon:IC.dollar,label:'💸 Kutoa Pesa'},
     {id:'revenue',icon:IC.chart,label:'💰 Mapato'},
     {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
     {id:'budget',icon:IC.chart,label:'Bajeti'},
@@ -77,6 +80,7 @@ const MENUS={
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'supervisors',icon:IC.users,label:'Mawakala'},
+    {id:'payout_approvals',icon:IC.shield,label:'✅ Idhini ya Kutoa Pesa'},
     {id:'campaigns',icon:IC.gift,label:'Kampeni'},
     {id:'followups',icon:IC.clock,label:'Follow-up'},
     {id:'messaging',icon:IC.send,label:'Ujumbe'},
@@ -257,6 +261,7 @@ export default function App(){
     if(role==='admin'){
       switch(page){
         case'stores':return <StoresPage/>;case'payments':return <PaymentsPage/>;
+        case'payout_approvals':return <PayoutApprovals/>;
         case'promo':return <PromoPage/>;
         case'agent_visits':return <SupervisorVisitsAdminPage/>;
         case'agent_targets':return <SupervisorTargetsPage/>;
@@ -281,6 +286,7 @@ export default function App(){
     if(role==='marketing'){
       switch(page){
         case'pipeline':return <PipelinePage/>;case'supervisors':return <MktAgentsPage/>;
+        case'payout_approvals':return <PayoutApprovals/>;
         case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
         case'messaging':return <MessagingPage/>;case'testimonials':return <TestimonialsPage/>;
         case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;
@@ -292,6 +298,7 @@ export default function App(){
     if(role==='accountant'){
       switch(page){
         case'payments':return <AccPaymentsPage/>;
+        case'payout':return <AccPayoutPage/>;
         case'tokens':return <TokensPage/>;
         case'budget':return <AccBudgetPage/>;
         case'expenses':return <AccExpensesPage/>;
