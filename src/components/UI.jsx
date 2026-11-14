@@ -67,7 +67,7 @@ export function Area({label,...p}){
 }
 
 // ===== BUTTON =====
-const BV={primary:{background:'#0B7A3B',color:'#fff'},danger:{background:'#EF4444',color:'#fff'},ghost:{background:'#F1F5F9',color:'#475569'},outline:{background:'transparent',color:'#0B7A3B',border:'1.5px solid #0B7A3B'},warning:{background:'#F59E0B',color:'#fff'},blue:{background:'#3B82F6',color:'#fff'}};
+const BV={primary:{background:'#065F2E',color:'#fff'},danger:{background:'#EF4444',color:'#fff'},ghost:{background:'#F1F5F9',color:'#475569'},outline:{background:'transparent',color:'#065F2E',border:'1.5px solid #065F2E'},warning:{background:'#F59E0B',color:'#fff'},blue:{background:'#3B82F6',color:'#fff'}};
 export function Btn({children,v='primary',style:s,disabled,...p}){
   return <button {...p} disabled={disabled} style={{padding:'10px 20px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,display:'inline-flex',alignItems:'center',gap:6,opacity:disabled?.5:1,...BV[v],...s}}>{children}</button>;
 }
@@ -87,7 +87,7 @@ export function Modal({open,onClose,title,children,wide}){
 }
 
 // ===== STAT CARD =====
-export function Stat({icon,label,value,color='#0B7A3B',sub,trend}){
+export function Stat({icon,label,value,color='#065F2E',sub,trend}){
   return <div style={{background:'#fff',borderRadius:16,padding:'16px 18px',flex:'1 1 160px',minWidth:140,boxShadow:'0 1px 3px rgba(0,0,0,.04)',borderLeft:`4px solid ${color}`,transition:'all 0.3s cubic-bezier(.4,0,.2,1)',cursor:'default'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 25px rgba(0,0,0,.1)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,.04)'}}>
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
       <span style={{color,transition:'transform 0.3s'}}>{icon}</span>
@@ -114,14 +114,14 @@ export function NotifPopup({items,onDismiss,onClear}){
 }
 
 // ===== BADGE =====
-export function Badge({children,color='#0B7A3B',bg}){
+export function Badge({children,color='#065F2E',bg}){
   return <span style={{fontSize:11,padding:'3px 10px',borderRadius:6,fontWeight:600,background:bg||`${color}15`,color}}>{children}</span>;
 }
 
 // ===== TABS =====
 export function Tabs({tabs,active,onChange}){
   return <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:16}}>
-    {tabs.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:'9px 12px',borderRadius:11,border:'none',fontWeight:700,fontSize:13,background:active===t.id?'#fff':'transparent',color:active===t.id?'#0B7A3B':'#94A3B8',boxShadow:active===t.id?'0 2px 10px rgba(0,0,0,.06)':'none',transition:'all 0.25s cubic-bezier(.4,0,.2,1)'}}>{t.label}</button>)}
+    {tabs.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:'9px 12px',borderRadius:11,border:'none',fontWeight:700,fontSize:13,background:active===t.id?'#fff':'transparent',color:active===t.id?'#065F2E':'#94A3B8',boxShadow:active===t.id?'0 2px 10px rgba(0,0,0,.06)':'none',transition:'all 0.25s cubic-bezier(.4,0,.2,1)'}}>{t.label}</button>)}
   </div>;
 }
 

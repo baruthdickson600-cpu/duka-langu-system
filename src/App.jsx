@@ -20,7 +20,7 @@ import CommsCenterPage from './pages/admin/CommsCenter';
 import AccountCleanupPage from './pages/admin/AccountCleanup';
 import RevenuePage from './pages/admin/RevenuePage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
-import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage} from './pages/supervisor/AgentPages';
+import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage} from './pages/accountant/AccountantPages';
 
 const MENUS={
@@ -116,6 +116,7 @@ const MENUS={
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
+    {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},
     {id:'tiers',icon:IC.chart,label:'Madaraja'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
@@ -303,6 +304,7 @@ export default function App(){
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;
         case'visits':return <SupervisorVisitsPage/>;
+        case'tools':return <AgentToolsPage/>;
         case'tiers':return <AgentTiersPage/>;
         case'notifications':return <NotifsPage/>;
         default:return <AgentDashboard/>;
@@ -335,7 +337,7 @@ export default function App(){
     {sidebar&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:5000}} onClick={()=>setSidebar(false)}/>}
 
     {/* Sidebar */}
-    <div className={`sidebar ${sidebar?'open':''}`} style={{width:240,background:'linear-gradient(180deg,#0B7A3B 0%,#065F2E 100%)',color:'#fff',display:'flex',flexDirection:'column',position:'fixed',left:0,top:0,bottom:0,zIndex:5001,transition:'transform .3s'}}>
+    <div className={`sidebar ${sidebar?'open':''}`} style={{width:240,background:'linear-gradient(180deg,#065F2E 0%,#065F2E 100%)',color:'#fff',display:'flex',flexDirection:'column',position:'fixed',left:0,top:0,bottom:0,zIndex:5001,transition:'transform .3s'}}>
       <div style={{padding:'16px 14px',borderBottom:'1px solid rgba(255,255,255,.15)'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo-white.png" alt="Logo" style={{width:36,height:36,objectFit:'contain'}}/>
@@ -430,7 +432,7 @@ export default function App(){
         <div style={{display:'flex',alignItems:'center',gap:12}}>
           <button className="mobile-btn" onClick={()=>setSidebar(true)} style={{background:'none',border:'none',color:'#1E293B',padding:4}}>{IC.menu}</button>
           <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}>{menu.find(m=>m.id===page)?.label||'Dashboard'}</h2>
-          {activeBranch&&role==='office'&&<Badge color="#0B7A3B">{myBranches.find(b=>b.id===activeBranch)?.name}</Badge>}
+          {activeBranch&&role==='office'&&<Badge color="#065F2E">{myBranches.find(b=>b.id===activeBranch)?.name}</Badge>}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {!online&&<Badge color="#F59E0B">📡 Offline</Badge>}
@@ -440,7 +442,7 @@ export default function App(){
           {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
             {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
           </button>}
-          <div style={{width:32,height:32,borderRadius:'50%',background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700}}>{user.name?.[0]?.toUpperCase()}</div>
+          <div style={{width:32,height:32,borderRadius:'50%',background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700}}>{user.name?.[0]?.toUpperCase()}</div>
         </div>
       </div>
       <div style={{padding:'16px 20px',maxWidth:1200,margin:'0 auto'}}>{renderPage()}</div>
@@ -485,7 +487,7 @@ function ProfileModal({user, updateUserProfile, onClose}){
     <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:420,overflow:'hidden',boxShadow:'0 25px 60px rgba(0,0,0,.25)'}}>
         {/* Header */}
-        <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',padding:'24px 20px 60px',textAlign:'center',position:'relative'}}>
+        <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',padding:'24px 20px 60px',textAlign:'center',position:'relative'}}>
           <button onClick={onClose} style={{position:'absolute',top:14,right:14,background:'rgba(255,255,255,.15)',border:'none',color:'#fff',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
           <h3 style={{color:'#fff',margin:'0 0 4px',fontSize:18,fontWeight:800}}>Wasifu Wangu</h3>
           <p style={{color:'rgba(255,255,255,.7)',margin:0,fontSize:12}}>Bonyeza picha kubadilisha</p>
@@ -497,7 +499,7 @@ function ProfileModal({user, updateUserProfile, onClose}){
               ?<img src={preview} alt="" style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid #fff',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}/>
               :<div style={{width:90,height:90,borderRadius:'50%',background:'linear-gradient(135deg,#10B981,#065F2E)',border:'4px solid #fff',boxShadow:'0 4px 20px rgba(0,0,0,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,fontWeight:800,color:'#fff'}}>{initials}</div>
             }
-            <div style={{position:'absolute',bottom:2,right:2,background:'#0B7A3B',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #fff',fontSize:12}}>📷</div>
+            <div style={{position:'absolute',bottom:2,right:2,background:'#065F2E',borderRadius:'50%',width:26,height:26,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #fff',fontSize:12}}>📷</div>
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{display:'none'}}/>
         </div>
@@ -511,13 +513,13 @@ function ProfileModal({user, updateUserProfile, onClose}){
           {msg&&<div style={{background:msg.startsWith('✅')?'#F0FDF4':'#FEF2F2',color:msg.startsWith('✅')?'#15803D':'#B91C1C',padding:'8px 12px',borderRadius:10,fontSize:13,marginBottom:12,textAlign:'center',fontWeight:600}}>{msg}</div>}
           <div style={{marginBottom:14}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>👤 JINA KAMILI</label>
-            <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Jina lako kamili" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0B7A3B'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+            <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Jina lako kamili" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#065F2E'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
           </div>
           <div style={{marginBottom:20}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📱 NAMBARI YA SIMU</label>
-            <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0B7A3B'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+            <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#065F2E'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
           </div>
-          <button onClick={save} disabled={saving} style={{width:'100%',padding:14,background:saving?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:saving?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(11,122,59,.3)'}}>
+          <button onClick={save} disabled={saving} style={{width:'100%',padding:14,background:saving?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:saving?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(11,122,59,.3)'}}>
             {saving?'⏳ Inahifadhi...':'💾 Hifadhi Mabadiliko'}
           </button>
         </div>
@@ -545,7 +547,7 @@ export function PlanGate({feature, children, fallback}){
       </p>
       <div style={{background:'#fff',borderRadius:12,padding:'12px 16px',marginBottom:20,border:'1px solid #E2E8F0',textAlign:'left'}}>
         <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:8}}>KIFURUSHI CHAKO SASA: {currentPlan?.name?.toUpperCase()}</div>
-        {plan?.features?.map((f,i)=><div key={i} style={{fontSize:12,color:'#374151',padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{color:'#0B7A3B'}}>✓</span>{f}</div>)}
+        {plan?.features?.map((f,i)=><div key={i} style={{fontSize:12,color:'#374151',padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{color:'#065F2E'}}>✓</span>{f}</div>)}
       </div>
       <button onClick={()=>alert('Wasiliana nasi kuboresha:\n📞 +255 628 986 770 (WhatsApp)\n📧 dukalangusalesmanagement@gmail.com')}
         style={{background:`linear-gradient(135deg,${plan?.color||'#8B5CF6'},${plan?.color||'#8B5CF6'}cc)`,color:'#fff',border:'none',borderRadius:12,padding:'12px 28px',fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:`0 4px 20px ${plan?.color||'#8B5CF6'}44`}}>
@@ -573,11 +575,11 @@ function GoogleOnboarding({info,onComplete,onCancel}){
     const res=await onComplete(business.trim(),phone.trim(),type);
     if(res&&res.error){setErr(res.error);setBusy(false);}
   };
-  return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#064E2B,#0B7A3B)',padding:16}}>
+  return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#064E2B,#065F2E)',padding:16}}>
     <div style={{background:'#fff',borderRadius:20,padding:28,maxWidth:440,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
       <div style={{textAlign:'center',marginBottom:20}}>
         <div style={{fontSize:32,marginBottom:6}}>🎉</div>
-        <h2 style={{fontSize:20,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>Karibu DukaLangu!</h2>
+        <h2 style={{fontSize:20,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>Karibu DukaLangu!</h2>
         <p style={{fontSize:13,color:'#64748B',margin:0}}>Umeingia kama <b>{info?.email}</b>. Kamilisha taarifa za biashara yako.</p>
       </div>
       {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444'}}>⚠️ {err}</div>}
@@ -587,9 +589,9 @@ function GoogleOnboarding({info,onComplete,onCancel}){
       <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXX" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
       <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Aina ya Biashara</label>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:18}}>
-        {TYPES.map(t=><button key={t.v} onClick={()=>setType(t.v)} style={{padding:'9px 4px',borderRadius:9,border:type===t.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:type===t.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:type===t.v?'#0B7A3B':'#64748B',cursor:'pointer'}}>{t.l}</button>)}
+        {TYPES.map(t=><button key={t.v} onClick={()=>setType(t.v)} style={{padding:'9px 4px',borderRadius:9,border:type===t.v?'2px solid #065F2E':'1.5px solid #E2E8F0',background:type===t.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:type===t.v?'#065F2E':'#64748B',cursor:'pointer'}}>{t.l}</button>)}
       </div>
-      <button onClick={submit} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inaunda...':'✅ Anza Kutumia DukaLangu'}</button>
+      <button onClick={submit} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inaunda...':'✅ Anza Kutumia DukaLangu'}</button>
       <button onClick={onCancel} style={{width:'100%',marginTop:10,padding:10,background:'none',border:'none',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}}>Ghairi / Toka</button>
     </div>
   </div>;

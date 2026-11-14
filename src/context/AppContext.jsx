@@ -92,8 +92,25 @@ export function AppProvider({children}){
   const INACTIVITY_MS=2*60*60*1000; // saa 2
   const markActivity=useCallback(()=>{try{localStorage.setItem(ACTIVITY_KEY,String(Date.now()))}catch(_){}},[]);
 
+  // ===== DEMO MODE (kwa video ya maonyesho tu — ?demo=full) =====
+  const isDemo=typeof window!=='undefined'&&/[?&]demo=full/.test(window.location.search);
+  useEffect(()=>{
+    if(!isDemo)return;
+    import('../utils/demoData.js').then(({DEMO})=>{
+      setUser(DEMO.user);
+      setBiz([DEMO.biz]);
+      setProds(DEMO.products);
+      setSales(DEMO.sales);
+      setExp(DEMO.expenses);
+      setCust(DEMO.customers);
+      setEmps(DEMO.employees);
+      setRestoring(false);
+    });
+  },[isDemo]);
+
   // Rudisha session mwanzoni (page load / refresh / PWA relaunch)
   useEffect(()=>{
+    if(isDemo){setRestoring(false);return;}
     let cancelled=false;
     (async()=>{
       try{
@@ -408,7 +425,7 @@ export function AppProvider({children}){
               <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                 <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Biashara</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${businessName}</td></tr>
                 <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Jina</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${name||'—'}</td></tr>
-                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Simu</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#0B7A3B;font-size:13.5px;">${phone||'—'}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Simu</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#065F2E;font-size:13.5px;">${phone||'—'}</td></tr>
                 <tr><td style="padding:9px 0;color:#667085;font-size:13px;">Email</td><td style="padding:9px 0;text-align:right;font-weight:600;color:#344054;font-size:12.5px;">${email}</td></tr>
               </table>
               <p style="margin:16px 0 0;padding:11px 13px;background:#F0FDF4;border-radius:9px;font-size:13px;color:#15803D;">
@@ -1475,15 +1492,15 @@ export function AppProvider({children}){
 
     const emailBody=`
       <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
-      <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+      <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #065F2E;border-radius:10px;margin-bottom:18px;">
         <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Token imethibitishwa kikamilifu!</div>
         <div style="font-size:13.5px;color:#166534;">Mfumo wako umefunguliwa na uko tayari kutumika.</div>
       </div>
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kifurushi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${planName}</td></tr>
-        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${tk.days}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kifurushi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#065F2E;font-size:14px;">${planName}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#065F2E;font-size:14px;">${tk.days}</td></tr>
         <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
-        <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+        <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#065F2E;font-size:15px;">${daysLeft}</td></tr>
       </table>
       <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
 
@@ -2192,17 +2209,17 @@ export function AppProvider({children}){
     const safe=(s)=>String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const paras=safe(body).split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:0 0 12px;font-size:15px;line-height:1.65;color:#334155;">${l}</p>`).join('');
     return `<div style="max-width:600px;margin:0 auto;font-family:Segoe UI,Arial,sans-serif;background:#F8FAFC;padding:0 0 24px;">
-      <div style="background:linear-gradient(135deg,#0B7A3B,#065F2E);padding:28px 24px;text-align:center;border-radius:0 0 18px 18px;">
+      <div style="background:linear-gradient(135deg,#065F2E,#065F2E);padding:28px 24px;text-align:center;border-radius:0 0 18px 18px;">
         <div style="font-size:22px;font-weight:800;color:#fff;">🏪 DukaLangu Smart POS</div>
         <div style="font-size:13px;color:#BBF7D0;margin-top:4px;">Simamia Biashara Yako Kidijitali</div>
       </div>
       <div style="background:#fff;margin:18px;border-radius:16px;padding:26px;box-shadow:0 2px 10px rgba(0,0,0,.05);">
         <div style="display:inline-block;background:#F0FDF4;color:#15803D;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;">✨ TAARIFA MPYA / UPDATE</div>
-        <h1 style="font-size:20px;color:#0B7A3B;margin:0 0 14px;">${safe(title)}</h1>
+        <h1 style="font-size:20px;color:#065F2E;margin:0 0 14px;">${safe(title)}</h1>
         ${bizName?`<p style="font-size:14px;color:#64748B;margin:0 0 16px;">Habari <b>${safe(bizName)}</b>,</p>`:''}
         ${paras}
         <div style="margin-top:22px;text-align:center;">
-          <a href="https://dukalangu.com" style="display:inline-block;background:#0B7A3B;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;">Fungua Mfumo →</a>
+          <a href="https://dukalangu.com" style="display:inline-block;background:#065F2E;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;">Fungua Mfumo →</a>
         </div>
       </div>
       <div style="text-align:center;font-size:12px;color:#94A3B8;padding:0 24px;">
@@ -2369,7 +2386,7 @@ export function AppProvider({children}){
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#7C3AED;font-size:14px;">${days}</td></tr>
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
-          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#065F2E;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuwa mteja wetu mwaminifu.</p>`;
     }
@@ -2385,7 +2402,7 @@ export function AppProvider({children}){
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku za fidia</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#EA580C;font-size:14px;">${days}</td></tr>
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
-          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#065F2E;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Tunathamini uvumilivu wako.</p>`;
     }
@@ -2395,16 +2412,16 @@ export function AppProvider({children}){
       emailSubject=`✅ Malipo Yamepokelewa — Siku ${days} Zimeongezwa`;
       emailBody=`
         <p style="margin:0 0 16px;font-size:15.5px;"><b>Habari ${bizName},</b></p>
-        <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #0B7A3B;border-radius:10px;margin-bottom:18px;">
+        <div style="padding:16px 18px;background:#F0FDF4;border-left:4px solid #065F2E;border-radius:10px;margin-bottom:18px;">
           <div style="font-size:16px;font-weight:800;color:#15803D;margin-bottom:6px;">✅ Malipo yamepokelewa kikamilifu</div>
           <div style="font-size:13.5px;color:#166534;">Siku ${days} zimeongezwa kwenye akaunti yako.</div>
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kiasi ulicholipa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">TZS ${(+amount||0).toLocaleString()}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kiasi ulicholipa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#065F2E;font-size:15px;">TZS ${(+amount||0).toLocaleString()}</td></tr>
           ${method?`<tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Njia ya malipo</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#344054;font-size:13.5px;">${method}</td></tr>`:''}
-          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0B7A3B;font-size:14px;">${days}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#065F2E;font-size:14px;">${days}</td></tr>
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
-          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0B7A3B;font-size:15px;">${daysLeft}</td></tr>
+          <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#065F2E;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
     }
@@ -2649,7 +2666,7 @@ export function AppProvider({children}){
   const AGENT_TIERS=[
     {min:51,name:'Shujaa',emoji:'👑',color:'#F59E0B',bonus:650000},
     {min:36,name:'Bingwa',emoji:'💎',color:'#8B5CF6',bonus:400000},
-    {min:21,name:'Hodari',emoji:'🥇',color:'#0B7A3B',bonus:250000},
+    {min:21,name:'Hodari',emoji:'🥇',color:'#065F2E',bonus:250000},
     {min:11,name:'Wastani',emoji:'🥈',color:'#3B82F6',bonus:130000},
     {min:5,name:'Mwanzo',emoji:'🥉',color:'#64748B',bonus:50000},
     {min:0,name:'Bado',emoji:'⏳',color:'#94A3B8',bonus:0},

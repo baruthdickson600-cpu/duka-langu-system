@@ -60,16 +60,16 @@ export default function PurchasesPage(){
     {/* HEADER */}
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap',marginBottom:14}}>
       <div>
-        <h2 style={{fontSize:21,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🛒 Manunuzi ya Stock</h2>
+        <h2 style={{fontSize:21,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🛒 Manunuzi ya Stock</h2>
         <p style={{fontSize:12,color:'#64748B',margin:0,maxWidth:520,lineHeight:1.5}}>Rekodi unaponunua bidhaa za kuuza. Hii <b>si matumizi</b> — faida haibadiliki. Ukinunua kwa pesa ya duka, pesa mkononi inapungua.</p>
       </div>
-      <button onClick={()=>setModal(true)} style={{padding:'11px 20px',borderRadius:12,border:'none',background:'#0B7A3B',color:'#fff',fontWeight:800,fontSize:14,cursor:'pointer',whiteSpace:'nowrap'}}>+ Nunua Stock</button>
+      <button onClick={()=>setModal(true)} style={{padding:'11px 20px',borderRadius:12,border:'none',background:'#065F2E',color:'#fff',fontWeight:800,fontSize:14,cursor:'pointer',whiteSpace:'nowrap'}}>+ Nunua Stock</button>
     </div>
 
     {/* STATS */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:16}}>
       {[
-        {l:'🛒 Manunuzi Leo',v:fm(stats.todayTotal),c:'#0B7A3B'},
+        {l:'🛒 Manunuzi Leo',v:fm(stats.todayTotal),c:'#065F2E'},
         {l:'💵 Pesa ya Duka (Leo)',v:fm(stats.todayShop),c:'#EF4444'},
         {l:'📆 Manunuzi Mwezi',v:fm(stats.monthTotal),c:'#3B82F6'},
         {l:'🧾 Idadi Leo',v:stats.count,c:'#8B5CF6'},
@@ -99,7 +99,7 @@ export default function PurchasesPage(){
             <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{new Date(p.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
           </div>
           <div style={{textAlign:'right'}}>
-            <div style={{fontSize:16,fontWeight:900,color:'#0B7A3B'}}>{fm(p.total)}</div>
+            <div style={{fontSize:16,fontWeight:900,color:'#065F2E'}}>{fm(p.total)}</div>
             <button onClick={()=>{if(window.confirm('Futa manunuzi haya? Stock itapunguzwa.'))deletePurchase(p.id);}} style={{marginTop:4,background:'#FEF2F2',border:'none',borderRadius:6,padding:'4px 10px',color:'#EF4444',fontSize:11,fontWeight:700,cursor:'pointer'}}>Futa</button>
           </div>
         </div>
@@ -138,10 +138,10 @@ export default function PurchasesPage(){
 
       <div style={{background:'#F8FAFC',borderRadius:10,padding:12,margin:'6px 0 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Gharama Jumla</span>
-        <span style={{fontSize:19,fontWeight:900,color:'#0B7A3B'}}>{fm(total)}</span>
+        <span style={{fontSize:19,fontWeight:900,color:'#065F2E'}}>{fm(total)}</span>
       </div>
 
-      <button onClick={doSave} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'#0B7A3B',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inahifadhi...':'✅ Hifadhi Manunuzi'}</button>
+      <button onClick={doSave} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'#065F2E',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inahifadhi...':'✅ Hifadhi Manunuzi'}</button>
     </Modal>
   </div>;
 }

@@ -85,27 +85,27 @@ export function PWAInstallPrompt(){
       }}>
         <div style={{textAlign:'center',marginBottom:16}}>
           <div style={{fontSize:48,marginBottom:8}}>📱</div>
-          <h3 style={{margin:0,fontSize:20,fontWeight:900,color:'#0B7A3B'}}>Sakinisha App ya iOS</h3>
+          <h3 style={{margin:0,fontSize:20,fontWeight:900,color:'#065F2E'}}>Sakinisha App ya iOS</h3>
           <p style={{margin:'8px 0',fontSize:13,color:'#64748B'}}>Fuata hatua hizi 3:</p>
         </div>
         
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
           <div style={{display:'flex',gap:12,alignItems:'center',padding:'10px 14px',background:'#F0FDF4',borderRadius:12}}>
-            <div style={{width:32,height:32,borderRadius:'50%',background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>1</div>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>1</div>
             <div style={{fontSize:13}}>Bonyeza icon ya <b>Share</b> 🔗 chini ya Safari</div>
           </div>
           <div style={{display:'flex',gap:12,alignItems:'center',padding:'10px 14px',background:'#F0FDF4',borderRadius:12}}>
-            <div style={{width:32,height:32,borderRadius:'50%',background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>2</div>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>2</div>
             <div style={{fontSize:13}}>Telezesha chini, chagua <b>"Add to Home Screen"</b> ➕</div>
           </div>
           <div style={{display:'flex',gap:12,alignItems:'center',padding:'10px 14px',background:'#F0FDF4',borderRadius:12}}>
-            <div style={{width:32,height:32,borderRadius:'50%',background:'#0B7A3B',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>3</div>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,flexShrink:0}}>3</div>
             <div style={{fontSize:13}}>Bonyeza <b>"Add"</b> kona ya juu kulia ✅</div>
           </div>
         </div>
         
         <button onClick={()=>{setShowIOSGuide(false);handleDismiss()}} style={{
-          width:'100%',marginTop:18,padding:14,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+          width:'100%',marginTop:18,padding:14,background:'linear-gradient(135deg,#065F2E,#065F2E)',
           color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'
         }}>Nimeelewa</button>
       </div>
@@ -125,19 +125,19 @@ export function PWAInstallPrompt(){
     <div style={{display:'flex',gap:12,alignItems:'center'}}>
       <div style={{
         width:52,height:52,borderRadius:12,
-        background:'linear-gradient(135deg,#0B7A3B,#065F2E)',
+        background:'linear-gradient(135deg,#065F2E,#065F2E)',
         display:'flex',alignItems:'center',justifyContent:'center',
         boxShadow:'0 6px 20px rgba(11,122,59,0.3)',flexShrink:0
       }}>
         <img src="/logo.png" alt="" style={{width:32,height:32,borderRadius:8}}/>
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{fontWeight:900,fontSize:14,color:'#0B7A3B',marginBottom:2}}>📱 Sakinisha App!</div>
+        <div style={{fontWeight:900,fontSize:14,color:'#065F2E',marginBottom:2}}>📱 Sakinisha App!</div>
         <div style={{fontSize:11,color:'#64748B'}}>Pata uzoefu wa simu, fanya kazi popote</div>
       </div>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         <button onClick={handleInstall} style={{
-          padding:'10px 18px',background:'#0B7A3B',color:'#fff',border:'none',
+          padding:'10px 18px',background:'#065F2E',color:'#fff',border:'none',
           borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',
           whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(11,122,59,0.3)'
         }}>{isIOS?'📥 Sakinisha':'📥 Sakinisha'}</button>

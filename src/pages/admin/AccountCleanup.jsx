@@ -168,13 +168,13 @@ export default function AccountCleanupPage(){
     ['suspicious',`⚠️ Zinazoshukiwa (${counts.suspicious})`,'#EA580C'],
     ['suspended',`⏸️ Zilizozimwa (${counts.suspended})`,'#64748B'],
     ['active',`✅ Hai (${counts.active})`,'#16A34A'],
-    ['paid',`💰 Zilizolipa (${counts.paid})`,'#0B7A3B'],
+    ['paid',`💰 Zilizolipa (${counts.paid})`,'#065F2E'],
     ['all',`📋 Zote (${counts.all})`,'#3B82F6'],
   ];
 
   return <div>
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>🧹 Usafishaji wa Akaunti</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🧹 Usafishaji wa Akaunti</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Zima kwanza (salama) • Futa baadaye ukiwa na uhakika</p>
     </div>
 
@@ -215,14 +215,14 @@ export default function AccountCleanupPage(){
       {filtered.map(b=>{
         const d=b._;
         const sel=selected.includes(b.id);
-        return <div key={b.id} className="card" style={{padding:'12px 14px',border:sel?'2px solid #0B7A3B':'1px solid #EEF2F6',background:sel?'#F0FDF4':'#fff'}}>
+        return <div key={b.id} className="card" style={{padding:'12px 14px',border:sel?'2px solid #065F2E':'1px solid #EEF2F6',background:sel?'#F0FDF4':'#fff'}}>
           <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
-            <input type="checkbox" checked={sel} onChange={()=>toggle(b.id)} style={{marginTop:3,width:17,height:17,cursor:'pointer',accentColor:'#0B7A3B'}}/>
+            <input type="checkbox" checked={sel} onChange={()=>toggle(b.id)} style={{marginTop:3,width:17,height:17,cursor:'pointer',accentColor:'#065F2E'}}/>
 
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginBottom:3}}>
                 <b style={{fontSize:14,color:'#101828'}}>{b.name||'—'}</b>
-                {d.hasPaid&&<Badge color="#0B7A3B">💰 Alilipa</Badge>}
+                {d.hasPaid&&<Badge color="#065F2E">💰 Alilipa</Badge>}
                 {d.isSuspended&&<Badge color="#64748B">⏸️ Imezimwa</Badge>}
                 {d.isActive&&<Badge color="#16A34A">✅ Hai</Badge>}
                 {d.expired&&!d.hasPaid&&<Badge color="#EF4444">Imeisha</Badge>}
@@ -236,7 +236,7 @@ export default function AccountCleanupPage(){
               <div style={{display:'flex',gap:12,flexWrap:'wrap',fontSize:11.5}}>
                 <span style={{color:d.sales>0?'#16A34A':'#D0D5DD',fontWeight:600}}>🛒 Mauzo: {d.sales||0}</span>
                 <span style={{color:d.products>0?'#3B82F6':'#D0D5DD',fontWeight:600}}>📦 Bidhaa: {d.products||0}</span>
-                <span style={{color:d.paid>0?'#0B7A3B':'#D0D5DD',fontWeight:600}}>💰 Alilipa: {d.paid>0?fm(d.paid):'—'}</span>
+                <span style={{color:d.paid>0?'#065F2E':'#D0D5DD',fontWeight:600}}>💰 Alilipa: {d.paid>0?fm(d.paid):'—'}</span>
               </div>
 
               {/* Sababu */}

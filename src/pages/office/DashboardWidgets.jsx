@@ -64,7 +64,7 @@ export function SubscriptionWidget(){
   if(days<=0){color='#7F1D1D';bg='#FEE2E2';status='Imeisha';statusBg='#7F1D1D';}
   else if(days<=6){color='#DC2626';bg='#FEF2F2';status='Inaisha Karibuni';statusBg='#DC2626';}
   else if(days<=14){color='#EA580C';bg='#FFF7ED';status='Angalizo';statusBg='#EA580C';}
-  else{color='#0B7A3B';bg='#F0FDF4';status='Hai';statusBg='#22C55E';}
+  else{color='#065F2E';bg='#F0FDF4';status='Hai';statusBg='#22C55E';}
 
   const maxDays=isTrial?5:30;
   const percent=Math.min(100,(days/maxDays)*100);
@@ -123,11 +123,11 @@ export function NotificationWidget(){
     if(overdueCustomers.length>0)list.push({id:'debt',icon:'💰',text:`Wateja ${overdueCustomers.length} wana madeni yaliyochelewa`,color:'#DC2626'});
     // Wateja wapya wiki hii
     const newCust=customers.filter(c=>c.created_at&&isThisWeek(c.created_at)).length;
-    if(newCust>0)list.push({id:'newcust',icon:'👥',text:`Wateja wapya ${newCust} wiki hii`,color:'#0B7A3B'});
+    if(newCust>0)list.push({id:'newcust',icon:'👥',text:`Wateja wapya ${newCust} wiki hii`,color:'#065F2E'});
     // Ukuaji wa mauzo
     const tSales=sales.filter(s=>isToday(s.created_at)).reduce((a,s)=>a+(s.total||0),0);
     const ySales=sales.filter(s=>{const d=new Date();d.setDate(d.getDate()-1);return s.created_at?.startsWith(d.toISOString().slice(0,10))}).reduce((a,s)=>a+(s.total||0),0);
-    if(ySales>0&&tSales>ySales){const pct=Math.round(((tSales-ySales)/ySales)*100);list.push({id:'growth',icon:'📈',text:`Mauzo yameongezeka ${pct}% leo`,color:'#0B7A3B'});}
+    if(ySales>0&&tSales>ySales){const pct=Math.round(((tSales-ySales)/ySales)*100);list.push({id:'growth',icon:'📈',text:`Mauzo yameongezeka ${pct}% leo`,color:'#065F2E'});}
     return list;
   },[days,lowStockProducts,overdueCustomers,customers,sales]);
 
@@ -145,7 +145,7 @@ export function NotificationWidget(){
           </div>
           <span style={{fontSize:16,fontWeight:900,color:'#1E293B'}}>Arifa</span>
         </div>
-        {unread>0&&<button onClick={markAll} style={{background:'none',border:'none',color:'#0B7A3B',fontSize:12,fontWeight:700,cursor:'pointer'}}>Soma Zote</button>}
+        {unread>0&&<button onClick={markAll} style={{background:'none',border:'none',color:'#065F2E',fontSize:12,fontWeight:700,cursor:'pointer'}}>Soma Zote</button>}
       </div>
 
       {!notifs.length?(
@@ -208,15 +208,15 @@ export function BusinessHealthWidget(){
 
   // Score color
   let scoreColor;
-  if(stats.score>=90)scoreColor='#0B7A3B';
+  if(stats.score>=90)scoreColor='#065F2E';
   else if(stats.score>=70)scoreColor='#EA580C';
   else scoreColor='#DC2626';
 
   const items=[
-    {label:'Mauzo Leo',value:fm(stats.todayTotal),icon:'💵',color:'#0B7A3B'},
+    {label:'Mauzo Leo',value:fm(stats.todayTotal),icon:'💵',color:'#065F2E'},
     {label:'Mauzo Wiki',value:fm(stats.weekTotal),icon:'📊',color:'#3B82F6'},
     {label:'Mauzo Mwezi',value:fm(stats.monthTotal),icon:'📈',color:'#8B5CF6'},
-    {label:'Faida Mwezi',value:fm(stats.monthProfit),icon:'💰',color:'#0B7A3B'},
+    {label:'Faida Mwezi',value:fm(stats.monthProfit),icon:'💰',color:'#065F2E'},
     {label:'Matumizi',value:fm(stats.monthExp),icon:'🧾',color:'#EF4444'},
     {label:'Madeni',value:fm(totalDebt),icon:'📋',color:'#EA580C'},
     {label:'Stock Ndogo',value:lowStockProducts.length,icon:'⚠️',color:'#DC2626'},

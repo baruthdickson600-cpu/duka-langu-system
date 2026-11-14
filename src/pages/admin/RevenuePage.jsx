@@ -151,20 +151,20 @@ export default function RevenuePage(){
 
   return <div>
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>💰 Ripoti ya Mapato</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>💰 Ripoti ya Mapato</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Mapato yote — malipo ya wateja + siku ulizoongeza</p>
     </div>
 
     {/* Muda */}
     <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
       {PERIODS.map(([id,l])=>(
-        <button key={id} onClick={()=>setPeriod(id)} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:period===id?'#0B7A3B':'#F1F5F9',color:period===id?'#fff':'#64748B'}}>{l}</button>
+        <button key={id} onClick={()=>setPeriod(id)} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:period===id?'#065F2E':'#F1F5F9',color:period===id?'#fff':'#64748B'}}>{l}</button>
       ))}
     </div>
 
     {/* HERO — Jumla */}
     <div style={{
-      background:'linear-gradient(135deg,#064E2B 0%,#0B7A3B 55%,#16A34A 100%)',
+      background:'linear-gradient(135deg,#064E2B 0%,#065F2E 55%,#16A34A 100%)',
       borderRadius:20,padding:'22px 24px',marginBottom:14,color:'#fff',
       position:'relative',overflow:'hidden',boxShadow:'0 8px 24px -8px rgba(11,122,59,0.45)',
     }}>
@@ -190,7 +190,7 @@ export default function RevenuePage(){
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginBottom:14}}>
       <div className="card" style={{padding:16}}>
         <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:6}}>👑 ULIZOONGEZA WEWE</div>
-        <div style={{fontSize:22,fontWeight:900,color:'#0B7A3B'}}>{fm(stats.adminRevenue)}</div>
+        <div style={{fontSize:22,fontWeight:900,color:'#065F2E'}}>{fm(stats.adminRevenue)}</div>
         <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Malipo {stats.adminCount}</div>
       </div>
       <div className="card" style={{padding:16}}>
@@ -216,7 +216,7 @@ export default function RevenuePage(){
           <XAxis dataKey="name" tick={{fontSize:10,fill:'#94A3B8'}} interval="preserveStartEnd"/>
           <YAxis tick={{fontSize:10,fill:'#94A3B8'}} tickFormatter={v=>v>=1000?`${v/1000}K`:v}/>
           <Tooltip formatter={v=>fm(v)} contentStyle={{borderRadius:10,border:'1px solid #E2E8F0',fontSize:12}}/>
-          <Bar dataKey="value" fill="#0B7A3B" radius={[6,6,0,0]}/>
+          <Bar dataKey="value" fill="#065F2E" radius={[6,6,0,0]}/>
         </BarChart>
       </ResponsiveContainer>
     </div>}
@@ -230,13 +230,13 @@ export default function RevenuePage(){
             <span style={{
               width:24,height:24,borderRadius:'50%',flexShrink:0,fontSize:11,fontWeight:800,
               display:'flex',alignItems:'center',justifyContent:'center',
-              background:i<3?'#F0FDF4':'#F8FAFC',color:i<3?'#0B7A3B':'#94A3B8',
+              background:i<3?'#F0FDF4':'#F8FAFC',color:i<3?'#065F2E':'#94A3B8',
             }}>{i+1}</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:700,color:'#344054'}}>{p.name}</div>
               <div style={{fontSize:11,color:'#98A2B3'}}>{p.phone||'—'} • Malipo {p.count}</div>
             </div>
-            <span style={{fontSize:14,fontWeight:800,color:'#0B7A3B',flexShrink:0}}>{fm(p.total)}</span>
+            <span style={{fontSize:14,fontWeight:800,color:'#065F2E',flexShrink:0}}>{fm(p.total)}</span>
           </div>
         ))}
       </div>
@@ -247,10 +247,10 @@ export default function RevenuePage(){
       <Input placeholder="🔍 Tafuta biashara, simu, au namba..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:0,flex:1,minWidth:180}}/>
       <div style={{display:'flex',gap:6}}>
         {[['all','Zote'],['sale','💰 Mauzo'],['gift','🎁 Zawadi'],['compensation','🔧 Fidia']].map(([id,l])=>(
-          <button key={id} onClick={()=>setTypeFilter(id)} style={{padding:'8px 12px',borderRadius:8,border:typeFilter===id?'2px solid #0B7A3B':'1px solid #E2E8F0',background:typeFilter===id?'#F0FDF4':'#fff',color:typeFilter===id?'#0B7A3B':'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
+          <button key={id} onClick={()=>setTypeFilter(id)} style={{padding:'8px 12px',borderRadius:8,border:typeFilter===id?'2px solid #065F2E':'1px solid #E2E8F0',background:typeFilter===id?'#F0FDF4':'#fff',color:typeFilter===id?'#065F2E':'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
         ))}
       </div>
-      <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #0B7A3B',background:'#fff',color:'#0B7A3B',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap'}}>📥 Excel</button>
+      <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #065F2E',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap'}}>📥 Excel</button>
     </div>
 
     <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Malipo {filtered.length}</div>
@@ -266,7 +266,7 @@ export default function RevenuePage(){
             <div style={{flex:1,minWidth:150}}>
               <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginBottom:3}}>
                 <b style={{fontSize:13.5,color:'#101828'}}>{p.payer_name||p.business_name||'—'}</b>
-                {isAdmin&&<Badge color="#0B7A3B">👑 Admin</Badge>}
+                {isAdmin&&<Badge color="#065F2E">👑 Admin</Badge>}
                 {type==='gift'&&<Badge color="#8B5CF6">🎁 Zawadi</Badge>}
                 {type==='compensation'&&<Badge color="#EA580C">🔧 Fidia</Badge>}
               </div>
@@ -277,7 +277,7 @@ export default function RevenuePage(){
               {p.notes&&<div style={{fontSize:11,color:'#94A3B8',marginTop:3,fontStyle:'italic'}}>{p.notes}</div>}
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontSize:16,fontWeight:900,color:type==='sale'?'#0B7A3B':'#94A3B8'}}>
+              <div style={{fontSize:16,fontWeight:900,color:type==='sale'?'#065F2E':'#94A3B8'}}>
                 {type==='sale'?fm(p.amount):'—'}
               </div>
               <div style={{fontSize:10,color:'#98A2B3',marginTop:2}}>

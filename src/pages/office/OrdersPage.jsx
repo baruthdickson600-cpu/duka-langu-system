@@ -77,7 +77,7 @@ export default function OrdersPage(){
 
   return <div>
     <div style={{marginBottom:14}}>
-      <h2 style={{fontSize:21,fontWeight:900,color:'#0B7A3B',margin:'0 0 4px'}}>📋 Oda (Pending Orders)</h2>
+      <h2 style={{fontSize:21,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>📋 Oda (Pending Orders)</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Oda za wateja kabla ya malipo kamili. Hazihesabiki kama mauzo hadi zikamilike.</p>
     </div>
 
@@ -99,7 +99,7 @@ export default function OrdersPage(){
     {/* Tabs */}
     <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
       {TABS.map(([id,l])=>(
-        <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0B7A3B':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{l}</button>
+        <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#065F2E':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{l}</button>
       ))}
     </div>
 
@@ -123,7 +123,7 @@ export default function OrdersPage(){
               <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{new Date(o.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
             <div style={{textAlign:'right'}}>
-              <div style={{fontSize:16,fontWeight:900,color:'#0B7A3B'}}>{fm(o.total)}</div>
+              <div style={{fontSize:16,fontWeight:900,color:'#065F2E'}}>{fm(o.total)}</div>
               {o.status==='partial'&&<div style={{fontSize:11,color:'#EF4444',fontWeight:600}}>Imebaki: {fm(o.remaining_amount)}</div>}
               {o.status==='partial'&&<div style={{fontSize:10.5,color:'#16A34A'}}>Imelipwa: {fm(o.paid_amount)}</div>}
             </div>
@@ -136,7 +136,7 @@ export default function OrdersPage(){
 
           {/* Actions */}
           {(o.status==='pending'||o.status==='partial')&&<div style={{display:'flex',gap:6,marginTop:9,flexWrap:'wrap'}}>
-            <button onClick={()=>{setPayModal(o);setPayAmt(String(o.remaining_amount||o.total));}} style={{flex:1,padding:'8px 0',borderRadius:8,border:'none',background:'#0B7A3B',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>💰 Lipa</button>
+            <button onClick={()=>{setPayModal(o);setPayAmt(String(o.remaining_amount||o.total));}} style={{flex:1,padding:'8px 0',borderRadius:8,border:'none',background:'#065F2E',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>💰 Lipa</button>
             <button onClick={()=>openHistory(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>Historia</button>
             <button onClick={()=>doCancel(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#DC2626',fontWeight:600,fontSize:12,cursor:'pointer'}}>Ghairi</button>
           </div>}
@@ -158,16 +158,16 @@ export default function OrdersPage(){
         <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Kiasi cha kulipa</label>
         <input type="number" value={payAmt} onChange={e=>setPayAmt(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:16,fontWeight:700,boxSizing:'border-box',marginBottom:12,outline:'none'}}/>
         <div style={{display:'flex',gap:5,marginBottom:12}}>
-          <button onClick={()=>setPayAmt(String(payModal.remaining_amount))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#0B7A3B',fontWeight:700,fontSize:11.5,cursor:'pointer'}}>Lipa Yote</button>
+          <button onClick={()=>setPayAmt(String(payModal.remaining_amount))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#065F2E',fontWeight:700,fontSize:11.5,cursor:'pointer'}}>Lipa Yote</button>
           <button onClick={()=>setPayAmt(String(Math.round(payModal.remaining_amount/2)))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer'}}>Nusu</button>
         </div>
         <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Njia ya malipo</label>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5,marginBottom:16}}>
-          {PAY_OPTS.map(m=><button key={m.v} onClick={()=>setPayMethod(m.v)} style={{padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0B7A3B':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:payMethod===m.v?'#0B7A3B':'#64748B',cursor:'pointer'}}>{m.l}</button>)}
+          {PAY_OPTS.map(m=><button key={m.v} onClick={()=>setPayMethod(m.v)} style={{padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #065F2E':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:payMethod===m.v?'#065F2E':'#64748B',cursor:'pointer'}}>{m.l}</button>)}
         </div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>setPayModal(null)} style={{flex:1,padding:12,borderRadius:12,border:'none',background:'#F1F5F9',color:'#64748B',fontWeight:700,cursor:'pointer'}}>Ghairi</button>
-          <button onClick={doPay} disabled={busy} style={{flex:2,padding:12,borderRadius:12,border:'none',background:'#0B7A3B',color:'#fff',fontWeight:800,cursor:'pointer'}}>{busy?'Inatuma...':'✅ Pokea Malipo'}</button>
+          <button onClick={doPay} disabled={busy} style={{flex:2,padding:12,borderRadius:12,border:'none',background:'#065F2E',color:'#fff',fontWeight:800,cursor:'pointer'}}>{busy?'Inatuma...':'✅ Pokea Malipo'}</button>
         </div>
       </div>
     </div>}
@@ -182,7 +182,7 @@ export default function OrdersPage(){
           {history.map((p,i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'#F8FAFC',borderRadius:10}}>
               <div>
-                <div style={{fontWeight:700,fontSize:13.5,color:'#0B7A3B'}}>{fm(p.amount)}</div>
+                <div style={{fontWeight:700,fontSize:13.5,color:'#065F2E'}}>{fm(p.amount)}</div>
                 <div style={{fontSize:11,color:'#94A3B8'}}>{payLabel(p.payment_method)} • {new Date(p.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
               </div>
               <span style={{fontSize:16}}>✅</span>

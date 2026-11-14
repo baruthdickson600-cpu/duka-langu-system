@@ -6,7 +6,7 @@ const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 export default function LockedPage(){
-  const{biz,user,settings,submitPayment,activateToken,initiatePayment,paymentRequests,logout}=useApp();
+  const{biz,user,settings,submitPayment,activateToken,initiatePayment,checkPaymentStatus,paymentRequests,logout}=useApp();
   const[tab,setTab]=useState('pay');
   const[txId,setTxId]=useState('');
   const[phone,setPhone]=useState(user?.phone||'');
@@ -63,14 +63,38 @@ export default function LockedPage(){
   const[autoLoading,setAutoLoading]=useState(false);
   const[autoMsg,setAutoMsg]=useState('');
   const[autoRef,setAutoRef]=useState('');
+  const[polling,setPolling]=useState(false);
   const handleAutoPay=async()=>{
-    if(!phone.trim())return setErr('Weka namba yako ya simu kwanza!');
+    const ph=phone.trim();
+    if(!ph||ph.replace(/\D/g,'').length<9)return setErr('Weka namba sahihi ya simu (mf. 0712345678)!');
     setAutoLoading(true);setErr('');setAutoMsg('');
     try{
-      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:phone.trim()});
+      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:ph});
       if(!res?.success){setErr(res?.error||'Imeshindwa kuanzisha malipo.');setAutoLoading(false);return}
-      setAutoRef(res.reference||'');
-      setAutoMsg(res.message||'Subiri uthibitisho... mfumo utajifungua wenyewe pindi malipo yatakapothibitika.');
+      const ref=res.reference||'';
+      setAutoRef(ref);
+      setAutoMsg(res.message||'📲 Angalia simu yako — weka PIN kuthibitisha malipo. Mfumo utajifungua wenyewe.');
+      // Anza polling: angalia status kila sekunde 5 kwa hadi dakika 3
+      if(ref&&checkPaymentStatus){
+        setPolling(true);
+        let tries=0;
+        const timer=setInterval(async()=>{
+          tries++;
+          const st=await checkPaymentStatus(ref);
+          if(st?.status==='paid'){
+            clearInterval(timer);
+            setAutoMsg('🎉 Malipo yamethibitishwa! Mfumo unafunguka...');
+            setTimeout(()=>window.location.reload(),1800);
+          }else if(st?.status==='failed'){
+            clearInterval(timer);setPolling(false);
+            setErr('❌ Malipo hayakufaulu. Tafadhali jaribu tena.');
+            setAutoMsg('');
+          }else if(tries>=36){ // dakika 3 (36 x 5s)
+            clearInterval(timer);setPolling(false);
+            setAutoMsg('⏳ Bado tunasubiri uthibitisho. Ukishamaliza kulipa, mfumo utajifungua wenyewe. Unaweza kuonyesha upya ukurasa.');
+          }
+        },5000);
+      }
     }catch(e){setErr('Tatizo: '+(e.message||'Jaribu tena'))}
     setAutoLoading(false);
   };
@@ -138,7 +162,7 @@ export default function LockedPage(){
           {!hasPending&&!submitted&&<div style={{background:'#fff',borderRadius:20,padding:0,boxShadow:'0 25px 60px rgba(0,0,0,0.3)',overflow:'hidden'}}>
             
             {/* Price Hero */}
-            <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',padding:'24px 22px',color:'#fff',textAlign:'center',position:'relative',overflow:'hidden'}}>
+            <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',padding:'24px 22px',color:'#fff',textAlign:'center',position:'relative',overflow:'hidden'}}>
               <div style={{position:'absolute',top:-20,right:-20,width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.1)'}}/>
               <div style={{position:'absolute',bottom:-30,left:-30,width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
               <div style={{position:'relative',zIndex:1}}>
@@ -150,8 +174,8 @@ export default function LockedPage(){
 
             {/* Tabs */}
             <div style={{display:'flex',background:'#F8FAFC',padding:6,margin:'14px 14px 0',borderRadius:12}}>
-              <button onClick={()=>{setTab('pay');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='pay'?'#fff':'transparent',color:tab==='pay'?'#0B7A3B':'#94A3B8',boxShadow:tab==='pay'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>💰 Lipa Sasa</button>
-              <button onClick={()=>{setTab('token');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='token'?'#fff':'transparent',color:tab==='token'?'#0B7A3B':'#94A3B8',boxShadow:tab==='token'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>🔑 Nina Token</button>
+              <button onClick={()=>{setTab('pay');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='pay'?'#fff':'transparent',color:tab==='pay'?'#065F2E':'#94A3B8',boxShadow:tab==='pay'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>💰 Lipa Sasa</button>
+              <button onClick={()=>{setTab('token');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='token'?'#fff':'transparent',color:tab==='token'?'#065F2E':'#94A3B8',boxShadow:tab==='token'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>🔑 Nina Token</button>
             </div>
 
             {/* Content */}
@@ -160,12 +184,12 @@ export default function LockedPage(){
               {tab==='pay'&&<>
                 {/* Step Progress */}
                 <div style={{display:'flex',gap:6,marginBottom:14}}>
-                  {[1,2,3].map(n=><div key={n} style={{flex:1,height:5,borderRadius:5,background:step>=n?'#0B7A3B':'#E2E8F0',transition:'all 0.4s'}}/>)}
+                  {[1,2,3].map(n=><div key={n} style={{flex:1,height:5,borderRadius:5,background:step>=n?'#065F2E':'#E2E8F0',transition:'all 0.4s'}}/>)}
                 </div>
 
                 {step===1&&<>
                   {/* ==== MALIPO YA HARAKA (AUTO) — jifungua wenyewe ==== */}
-                  <div style={{background:'linear-gradient(135deg,#0B7A3B,#065F2E)',borderRadius:14,padding:'16px 18px',marginBottom:14,color:'#fff',boxShadow:'0 8px 24px rgba(11,122,59,0.25)'}}>
+                  <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:14,padding:'16px 18px',marginBottom:14,color:'#fff',boxShadow:'0 8px 24px rgba(11,122,59,0.25)'}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
                       <span style={{fontSize:20}}>⚡</span>
                       <span style={{fontWeight:800,fontSize:14}}>Malipo ya Haraka (Auto)</span>
@@ -183,7 +207,7 @@ export default function LockedPage(){
                         {autoRef&&<div style={{marginTop:6,fontFamily:'monospace',fontSize:11,opacity:0.85}}>Kumb: {autoRef}</div>}
                       </div>
                       :<button onClick={handleAutoPay} disabled={autoLoading}
-                        style={{width:'100%',padding:13,background:'#fff',color:'#0B7A3B',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
+                        style={{width:'100%',padding:13,background:'#fff',color:'#065F2E',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
                         {autoLoading?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
                       </button>}
                   </div>
@@ -219,7 +243,7 @@ export default function LockedPage(){
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,color:'#7C2D12',lineHeight:1.4}}>{s.t}</div>
                         {s.copy&&<div onClick={()=>copyText(s.copy,s.key)} style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:4,padding:'5px 10px',background:'#fff',borderRadius:8,border:'1px dashed #EA580C',cursor:'pointer',transition:'all 0.2s'}}>
-                          <span style={{fontFamily:'monospace',fontWeight:800,color:s.isAmount?'#0B7A3B':'#9A3412',fontSize:s.isAmount?15:13}}>{s.isAmount?`TZS ${(+s.copy).toLocaleString()}`:s.copy}</span>
+                          <span style={{fontFamily:'monospace',fontWeight:800,color:s.isAmount?'#065F2E':'#9A3412',fontSize:s.isAmount?15:13}}>{s.isAmount?`TZS ${(+s.copy).toLocaleString()}`:s.copy}</span>
                           <span style={{fontSize:10,color:copied===s.key?'#22C55E':'#94A3B8',fontWeight:700}}>{copied===s.key?'✓ COPIED':'📋 COPY'}</span>
                         </div>}
                       </div>
@@ -231,7 +255,7 @@ export default function LockedPage(){
                     </div>
                   </div>
 
-                  <button onClick={()=>setStep(2)} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
+                  <button onClick={()=>setStep(2)} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
                     ✅ Nimemaliza Kulipa →
                   </button>
                 </>}
@@ -255,7 +279,7 @@ export default function LockedPage(){
 
                   <div style={{display:'flex',gap:8}}>
                     <button onClick={()=>{setStep(1);setErr('')}} style={{padding:14,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:13,cursor:'pointer',minWidth:80}}>← Rudi</button>
-                    <button onClick={handleSubmitPayment} disabled={submitting} style={{flex:1,padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
+                    <button onClick={handleSubmitPayment} disabled={submitting} style={{flex:1,padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
                       {submitting?'⏳ Inatuma...':'📨 Tuma Ombi la Malipo'}
                     </button>
                   </div>
@@ -271,9 +295,9 @@ export default function LockedPage(){
 
                 {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>⚠️ {err}</div>}
 
-                <input value={token} onChange={e=>setToken(e.target.value.toUpperCase())} placeholder="TK-XXXXXXXX" style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #E2E8F0',fontSize:18,fontFamily:'monospace',fontWeight:800,letterSpacing:3,textAlign:'center',color:'#0B7A3B',boxSizing:'border-box',marginBottom:14,background:'#F0FDF4'}}/>
+                <input value={token} onChange={e=>setToken(e.target.value.toUpperCase())} placeholder="TK-XXXXXXXX" style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #E2E8F0',fontSize:18,fontFamily:'monospace',fontWeight:800,letterSpacing:3,textAlign:'center',color:'#065F2E',boxSizing:'border-box',marginBottom:14,background:'#F0FDF4'}}/>
 
-                <button onClick={handleToken} disabled={submitting} style={{width:'100%',padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#0B7A3B,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
+                <button onClick={handleToken} disabled={submitting} style={{width:'100%',padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
                   {submitting?'⏳ Inathibitisha...':'🔓 Fungua Mfumo'}
                 </button>
               </>}
@@ -283,7 +307,7 @@ export default function LockedPage(){
           {/* Success */}
           {submitted&&!hasPending&&<div style={{background:'#fff',borderRadius:20,padding:32,textAlign:'center',boxShadow:'0 25px 60px rgba(0,0,0,0.3)'}}>
             <div style={{fontSize:64,marginBottom:14,animation:'popIn 0.5s ease both'}}>✅</div>
-            <h2 style={{fontSize:22,fontWeight:900,color:'#0B7A3B',margin:'0 0 6px'}}>Ombi Limetumwa!</h2>
+            <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 6px'}}>Ombi Limetumwa!</h2>
             <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Admin atathibitisha malipo yako ndani ya dakika chache</p>
 
             <div style={{background:'#F0FDF4',borderRadius:12,padding:'14px 16px',textAlign:'left',marginBottom:14,border:'1px solid #BBF7D0'}}>
@@ -296,7 +320,7 @@ export default function LockedPage(){
               </ol>
             </div>
 
-            <button onClick={()=>window.location.reload()} style={{width:'100%',padding:13,background:'#0B7A3B',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>🔄 Refresh Mfumo</button>
+            <button onClick={()=>window.location.reload()} style={{width:'100%',padding:13,background:'#065F2E',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>🔄 Refresh Mfumo</button>
           </div>}
 
           {/* Footer */}
