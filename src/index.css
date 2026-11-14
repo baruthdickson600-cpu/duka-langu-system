@@ -154,3 +154,92 @@ div[style*="background:linear-gradient(90deg,#065F2E"]{
   .card{box-shadow:none;break-inside:avoid}
   *{animation:none!important;transition:none!important}
 }
+
+/* ============================================================
+   DARK MODE — inabadilisha rangi za kawaida kiotomatiki
+   (data-theme="dark" kwenye <html>). Haihitaji kuandika upya kurasa.
+   ============================================================ */
+html[data-theme="dark"] body{background:#0B1210;color:#EAF2EE}
+
+/* MUHIMU: browser hugeuza #fff -> rgb(255, 255, 255) kwenye DOM,
+   hivyo tunafananisha muundo wa rgb(...) wenye nafasi. */
+
+/* Nyeupe kamili (#fff / #ffffff) -> surface nyeusi */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+html[data-theme="dark"] [style*="background-color: rgb(255, 255, 255)"]{
+  background:#121A17!important;color:#EAF2EE;
+}
+/* Kijivu-nyeupe hafifu: #F8FAFC,#F1F5F9,#FAFAFA,#F9FAFB -> surface-2 */
+html[data-theme="dark"] [style*="background: rgb(248, 250, 252)"],
+html[data-theme="dark"] [style*="background: rgb(241, 245, 249)"],
+html[data-theme="dark"] [style*="background: rgb(250, 250, 250)"],
+html[data-theme="dark"] [style*="background: rgb(249, 250, 251)"],
+html[data-theme="dark"] [style*="background: rgb(248, 254, 251)"],
+html[data-theme="dark"] [style*="background: rgb(254, 252, 232)"],
+html[data-theme="dark"] [style*="background: rgb(226, 232, 240)"]{
+  background:#0F1714!important;
+}
+/* Kijani hafifu: #F0FDF4,#ECFDF5,#DCFCE7 -> brand-soft nyeusi */
+html[data-theme="dark"] [style*="background: rgb(240, 253, 244)"],
+html[data-theme="dark"] [style*="background: rgb(236, 253, 245)"],
+html[data-theme="dark"] [style*="background: rgb(220, 252, 231)"]{
+  background:#11291F!important;
+}
+/* Njano/chungwa hafifu -> nyeusi laini */
+html[data-theme="dark"] [style*="background: rgb(255, 247, 237)"],
+html[data-theme="dark"] [style*="background: rgb(254, 243, 199)"]{
+  background:#1E1A0F!important;
+}
+/* Mipaka: #E2E8F0,#F1F5F9,#ECFDF5 -> border nyeusi */
+html[data-theme="dark"] [style*="rgb(226, 232, 240)"],
+html[data-theme="dark"] [style*="rgb(241, 245, 249)"],
+html[data-theme="dark"] [style*="rgb(236, 253, 245)"]{
+  border-color:#1E2A25!important;
+}
+/* Maandishi meusi -> meupe */
+html[data-theme="dark"] [style*="color: rgb(30, 41, 59)"],
+html[data-theme="dark"] [style*="color: rgb(15, 23, 42)"],
+html[data-theme="dark"] [style*="color: rgb(17, 24, 39)"],
+html[data-theme="dark"] [style*="color: rgb(31, 41, 55)"],
+html[data-theme="dark"] [style*="color: rgb(0, 0, 0)"]{
+  color:#EAF2EE!important;
+}
+/* Kijivu cha kati -> kijivu laini */
+html[data-theme="dark"] [style*="color: rgb(100, 116, 139)"],
+html[data-theme="dark"] [style*="color: rgb(71, 85, 105)"],
+html[data-theme="dark"] [style*="color: rgb(51, 65, 85)"]{
+  color:#9FB3AA!important;
+}
+html[data-theme="dark"] [style*="color: rgb(148, 163, 184)"],
+html[data-theme="dark"] [style*="color: rgb(203, 213, 225)"]{
+  color:#6B7D74!important;
+}
+/* Inputs */
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea{
+  background:#0F1714!important;color:#EAF2EE!important;border-color:#1E2A25!important;
+}
+html[data-theme="dark"] input::placeholder{color:#6B7D74!important}
+/* Scrollbar + skeleton */
+html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#2A3A33}
+html[data-theme="dark"] .skeleton{background:linear-gradient(90deg,#121A17 25%,#1E2A25 50%,#121A17 75%)}
+/* Sidebar hover */
+html[data-theme="dark"] .sidebar button:hover,
+html[data-theme="dark"] .sidebar a:hover{background:rgba(25,194,119,.1)!important}
+/* Table hover */
+html[data-theme="dark"] table tr:hover td{background:rgba(25,194,119,.05)}
+
+/* Kitufe cha theme kisigeuzwe rangi na overrides */
+.theme-toggle,.theme-toggle *{background:transparent!important}
+
+/* Sidebar nzima kuwa nyeusi */
+html[data-theme="dark"] .sidebar{background:#0F1714!important;border-color:#1E2A25!important}
+html[data-theme="dark"] .sidebar *{color:inherit}
+/* Modal nyeusi */
+html[data-theme="dark"] .modal-content{background:#121A17!important;color:#EAF2EE}
+/* Gradient za kijani zisibadilike (zibaki brand) — tayari ni rangi maalum */
+html[data-theme="dark"] [style*="linear-gradient"]{color:inherit}
+/* Hakikisha maandishi meupe ndani ya gradient za kijani yanabaki meupe */
+html[data-theme="dark"] [style*="rgb(6, 95, 46)"]{color:#fff}

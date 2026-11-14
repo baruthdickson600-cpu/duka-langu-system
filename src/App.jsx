@@ -177,6 +177,12 @@ export default function App(){
     };
   },[]);
   const[profileOpen,setProfileOpen]=useState(false);
+  // ===== DARK / LIGHT MODE =====
+  const[theme,setTheme]=useState(()=>{try{return localStorage.getItem('dl-theme')||'light'}catch{return'light'}});
+  useEffect(()=>{
+    try{document.documentElement.setAttribute('data-theme',theme);localStorage.setItem('dl-theme',theme);}catch{}
+  },[theme]);
+  const toggleTheme=()=>setTheme(t=>t==='dark'?'light':'dark');
   const[page,setPage]=useState(()=>{
     // Support PWA shortcuts via ?page=sales etc.
     const url=new URL(window.location.href);
@@ -439,6 +445,9 @@ export default function App(){
           {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F59E0B',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⏳ {pendingSyncCount} pending
           </button>}
+          <button className="theme-toggle" onClick={toggleTheme} title={theme==='dark'?'Washa mwanga':'Washa giza'} style={{background:'none',border:'none',fontSize:18,padding:4,cursor:'pointer',lineHeight:1}}>
+            {theme==='dark'?'☀️':'🌙'}
+          </button>
           {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
             {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
           </button>}
