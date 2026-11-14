@@ -129,11 +129,6 @@ async function activateBusiness(supabase, tx) {
   await supabase.from('businesses').update({
     token_active: true, token_expiry: exp, plan: tx.plan || 'basic', is_suspended: false,
   }).eq('id', tx.business_id);
-  const code = 'TK-' + Math.random().toString(36).substr(2, 8).toUpperCase();
-  await supabase.from('tokens').insert({
-    code, days, plan: tx.plan || 'basic', used: true,
-    used_by: tx.business_id, used_by_name: tx.business_name, used_at: new Date().toISOString(),
-  }).then(() => {}, () => {});
   await supabase.from('notifications').insert({
     target_type: 'business', target_id: tx.business_id, type: 'success',
     title: '🎉 Malipo Yamethibitishwa!',
@@ -141,7 +136,7 @@ async function activateBusiness(supabase, tx) {
   }).then(() => {}, () => {});
   // Arifa kwa staff wa DukaLangu (SMS)
   await notifyStaff(supabase, tx);
-  return { code, days, exp };
+  return { days, exp };
 }
 
 export default async function handler(req, res) {

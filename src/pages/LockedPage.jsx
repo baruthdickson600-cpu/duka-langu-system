@@ -6,17 +6,10 @@ const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 export default function LockedPage(){
-  const{biz,user,settings,submitPayment,activateToken,initiatePayment,checkPaymentStatus,testPayment,paymentRequests,logout}=useApp();
-  const[tab,setTab]=useState('pay');
-  const[txId,setTxId]=useState('');
+  const{biz,user,settings,initiatePayment,checkPaymentStatus,paymentRequests,logout}=useApp();
   const[phone,setPhone]=useState(user?.phone||'');
-  const[payProvider,setPayProvider]=useState('HALOPESA');
-  const[token,setToken]=useState('');
-  const[submitting,setSubmitting]=useState(false);
   const[submitted,setSubmitted]=useState(false);
   const[err,setErr]=useState('');
-  const[step,setStep]=useState(1); // 1=instructions, 2=enter, 3=success
-  const[copied,setCopied]=useState('');
   const[bgA,setBgA]=useState(Math.floor(Math.random()*BG_COUNT)+1);
   const[bgB,setBgB]=useState(null);
   const[showB,setShowB]=useState(false);
@@ -27,8 +20,6 @@ export default function LockedPage(){
   const hasPending=!!myPending;
 
   const price=parseInt(settings?.system_price||'15000');
-  const PAYBILL='25187616';
-  const RECIPIENT='DUKALANGU';
 
   // Crossfade backgrounds
   useEffect(()=>{
@@ -39,25 +30,6 @@ export default function LockedPage(){
     },BG_INTERVAL);
     return()=>clearInterval(timer);
   },[bgA,bgB,showB]);
-
-  const copyText=(text,key)=>{
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(()=>setCopied(''),2000);
-  };
-
-  const handleSubmitPayment=async()=>{
-    if(!txId.trim())return setErr('Weka Transaction ID kutoka SMS!');
-    if(txId.trim().length<5)return setErr('Transaction ID si sahihi (lazima iwe 5+ herufi)');
-    if(!phone.trim())return setErr('Weka namba uliyolipia!');
-    setSubmitting(true);setErr('');
-    try{
-      const result=await submitPayment(txId.trim(),price,payProvider,phone.trim());
-      if(result?.error){setErr(result.error);setSubmitting(false);return}
-      setSubmitted(true);
-    }catch(e){setErr('Tatizo: '+(e.message||'Jaribu tena'))}
-    setSubmitting(false);
-  };
 
   // Malipo ya auto (gateway + webhook -> jifungua yenyewe)
   const[autoLoading,setAutoLoading]=useState(false);
@@ -99,14 +71,6 @@ export default function LockedPage(){
     setAutoLoading(false);
   };
 
-  const handleToken=async()=>{
-    if(!token.trim())return setErr('Weka token!');
-    setSubmitting(true);setErr('');
-    const result=await activateToken(token.trim().toUpperCase());
-    if(result?.error)setErr(result.error);
-    else window.location.reload();
-    setSubmitting(false);
-  };
 
   const bgStyle=(img,visible)=>({
     position:'fixed',inset:0,zIndex:0,
@@ -172,145 +136,37 @@ export default function LockedPage(){
               </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{display:'flex',background:'#F8FAFC',padding:6,margin:'14px 14px 0',borderRadius:12}}>
-              <button onClick={()=>{setTab('pay');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='pay'?'#fff':'transparent',color:tab==='pay'?'#0A6E47':'#94A3B8',boxShadow:tab==='pay'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>💰 Lipa Sasa</button>
-              <button onClick={()=>{setTab('token');setErr('')}} style={{flex:1,padding:'11px 0',borderRadius:9,border:'none',fontWeight:800,fontSize:13,background:tab==='token'?'#fff':'transparent',color:tab==='token'?'#0A6E47':'#94A3B8',boxShadow:tab==='token'?'0 2px 8px rgba(0,0,0,0.06)':'none',cursor:'pointer',transition:'all 0.25s'}}>🔑 Nina Token</button>
-            </div>
-
             {/* Content */}
             <div style={{padding:'18px 22px 22px'}}>
-              
-              {tab==='pay'&&<>
-                {/* Step Progress */}
-                <div style={{display:'flex',gap:6,marginBottom:14}}>
-                  {[1,2,3].map(n=><div key={n} style={{flex:1,height:5,borderRadius:5,background:step>=n?'#0A6E47':'#E2E8F0',transition:'all 0.4s'}}/>)}
+              {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
+
+              {/* ==== MALIPO YA HARAKA (AUTO) — mteja akilipa mfumo unajifungua wenyewe ==== */}
+              <div style={{background:'linear-gradient(135deg,#0A6E47,#06502F)',borderRadius:16,padding:'20px',marginBottom:14,color:'#fff',boxShadow:'0 10px 28px rgba(10,110,71,0.3)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <span style={{fontSize:22}}>⚡</span>
+                  <span style={{fontWeight:800,fontSize:16}}>Lipa Sasa</span>
+                  <span style={{marginLeft:'auto',fontSize:9,fontWeight:800,background:'rgba(242,183,5,0.25)',color:'#F2B705',padding:'3px 9px',borderRadius:20}}>MFUMO HUJIFUNGUA</span>
                 </div>
-
-                {step===1&&<>
-                  {/* ==== MALIPO YA HARAKA (AUTO) — jifungua wenyewe ==== */}
-                  <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:14,padding:'16px 18px',marginBottom:14,color:'#fff',boxShadow:'0 8px 24px rgba(11,122,59,0.25)'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                      <span style={{fontSize:20}}>⚡</span>
-                      <span style={{fontWeight:800,fontSize:14}}>Malipo ya Haraka (Auto)</span>
-                      <span style={{marginLeft:'auto',fontSize:9,fontWeight:800,background:'rgba(255,255,255,0.2)',padding:'3px 8px',borderRadius:20}}>MFUMO HUJIFUNGUA</span>
-                    </div>
-                    <div style={{fontSize:12,opacity:0.9,lineHeight:1.5,marginBottom:12}}>
-                      Lipa moja kwa moja na mfumo utajifungua wenyewe bila kusubiri admin. Weka namba yako kisha bonyeza "Lipa Sasa".
-                    </div>
-                    <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="📱 Namba yako (07XXXXXXXX)"
-                      style={{width:'100%',padding:'11px 14px',borderRadius:10,border:'none',fontSize:14,fontWeight:600,marginBottom:10,boxSizing:'border-box'}}/>
-                    {autoMsg
-                      ?<div style={{background:'rgba(255,255,255,0.15)',borderRadius:10,padding:'12px 14px',fontSize:12,lineHeight:1.5}}>
-                        <div style={{fontWeight:800,marginBottom:4}}>⏳ Inasubiri uthibitisho...</div>
-                        {autoMsg}
-                        {autoRef&&<div style={{marginTop:6,fontFamily:'monospace',fontSize:11,opacity:0.85}}>Kumb: {autoRef}</div>}
-                      </div>
-                      :<button onClick={handleAutoPay} disabled={autoLoading}
-                        style={{width:'100%',padding:13,background:'#fff',color:'#0A6E47',border:'none',borderRadius:10,fontWeight:800,fontSize:14,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
-                        {autoLoading?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
-                      </button>}
-                    {/* KITUFE CHA KUJARIBU (test) — kinaiga malipo yaliyofaulu */}
-                    {testPayment&&<button onClick={async()=>{
-                      if(!window.confirm('JARIBIO: Hii itaiga malipo yaliyofaulu, kuwasha mfumo, na kutuma SMS kwa staff. Endelea?'))return;
-                      setErr('');setAutoMsg('');
-                      const res=await testPayment({amount:price,days:30,plan:'basic'});
-                      if(res?.success){setAutoMsg(res.message||'✅ Jaribio limefaulu. Mfumo unafunguka...');setTimeout(()=>window.location.reload(),2000);}
-                      else setErr(res?.error||'Jaribio limeshindwa.');
-                    }} style={{width:'100%',marginTop:8,padding:10,background:'rgba(255,255,255,0.15)',color:'#fff',border:'1px dashed rgba(255,255,255,0.5)',borderRadius:10,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>
-                      🧪 Jaribu Malipo (Test) — thibitisha mfumo
-                    </button>}
-                  </div>
-
-                  <div style={{display:'flex',alignItems:'center',gap:10,margin:'4px 0 14px'}}>
-                    <div style={{flex:1,height:1,background:'#E2E8F0'}}/>
-                    <span style={{fontSize:11,color:'#94A3B8',fontWeight:700}}>AU LIPA KWA MKONO</span>
-                    <div style={{flex:1,height:1,background:'#E2E8F0'}}/>
-                  </div>
-
-                  <div style={{textAlign:'center',marginBottom:14}}>
-                    <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Hatua 1 — Lipa HaloPesa</div>
-                    <div style={{fontSize:12,color:'#64748B'}}>Fuata hatua hizi kwenye simu yako</div>
-                  </div>
-
-                  {/* Selcom Steps */}
-                  <div style={{background:'linear-gradient(135deg,#FFF7ED,#FFEDD5)',borderRadius:14,padding:'16px 18px',border:'1px solid #FED7AA',marginBottom:14}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                      <span style={{fontSize:20}}>🟠</span>
-                      <span style={{fontWeight:800,fontSize:14,color:'#9A3412'}}>Hatua za Kulipa HALOPESA Lipa Namba</span>
-                    </div>
-                    
-                    {[
-                      {n:1,t:'Fungua menyu ya mtandao wako wa simu'},
-                      {n:2,t:'Chagua "Lipa Bili" → "Lipa Namba"'},
-                      {n:3,t:'Weka Lipa Namba:',copy:PAYBILL,key:'paybill'},
-                      {n:4,t:'Hakikisha jina:',copy:RECIPIENT,key:'recipient',isText:true},
-                      {n:5,t:'Weka kiasi:',copy:`${price}`,key:'amount',isAmount:true},
-                      {n:6,t:'Thibitisha na ingiza PIN yako'},
-                      {n:7,t:'Hifadhi Reference Number kutoka SMS'},
-                    ].map((s,i)=><div key={i} style={{display:'flex',gap:10,marginBottom:8,alignItems:'flex-start'}}>
-                      <div style={{minWidth:24,height:24,borderRadius:'50%',background:'#EA580C',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:11,flexShrink:0}}>{s.n}</div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:13,color:'#7C2D12',lineHeight:1.4}}>{s.t}</div>
-                        {s.copy&&<div onClick={()=>copyText(s.copy,s.key)} style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:4,padding:'5px 10px',background:'#fff',borderRadius:8,border:'1px dashed #EA580C',cursor:'pointer',transition:'all 0.2s'}}>
-                          <span style={{fontFamily:'monospace',fontWeight:800,color:s.isAmount?'#0A6E47':'#9A3412',fontSize:s.isAmount?15:13}}>{s.isAmount?`TZS ${(+s.copy).toLocaleString()}`:s.copy}</span>
-                          <span style={{fontSize:10,color:copied===s.key?'#22C55E':'#94A3B8',fontWeight:700}}>{copied===s.key?'✓ COPIED':'📋 COPY'}</span>
-                        </div>}
-                      </div>
-                    </div>)}
-                    
-                    <div style={{marginTop:10,padding:'8px 12px',background:'#FEF3C7',borderRadius:8,fontSize:11,color:'#78350F',display:'flex',gap:6,alignItems:'flex-start'}}>
-                      <span style={{fontSize:14}}>💡</span>
-                      <span><b>Mitandao yote:</b> Vodacom, Tigo, Airtel, Halotel — wote wanaweza kulipia HaloPesa Lipa Namba <b>25187616</b> kwa kupiga menyu ya mtandao wako</span>
-                    </div>
-                  </div>
-
-                  <button onClick={()=>setStep(2)} style={{width:'100%',padding:14,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
-                    ✅ Nimemaliza Kulipa →
-                  </button>
-                </>}
-
-                {step===2&&<>
-                  <div style={{textAlign:'center',marginBottom:14}}>
-                    <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Hatua 2 — Thibitisha Malipo</div>
-                    <div style={{fontSize:12,color:'#64748B'}}>Weka taarifa kutoka kwenye SMS uliyopokea</div>
-                  </div>
-
-                  {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
-
-                  <Input label="🧾 Transaction ID (kutoka SMS ya HaloPesa)" placeholder="Mf: MP240501ABC123" value={txId} onChange={e=>setTxId(e.target.value)}/>
-                  
-                  <Input label="📱 Namba uliyolipia" placeholder="07XXXXXXXX" value={phone} onChange={e=>setPhone(e.target.value)}/>
-
-                  <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:11,color:'#1E40AF',display:'flex',gap:8,alignItems:'flex-start'}}>
-                    <span style={{fontSize:14,flexShrink:0}}>💡</span>
-                    <span>Transaction ID inapatikana kwenye SMS uliyopokea kutoka HaloPesa baada ya kulipa. Mfano: <b style={{fontFamily:'monospace'}}>MP240501ABC123</b></span>
-                  </div>
-
-                  <div style={{display:'flex',gap:8}}>
-                    <button onClick={()=>{setStep(1);setErr('')}} style={{padding:14,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:13,cursor:'pointer',minWidth:80}}>← Rudi</button>
-                    <button onClick={handleSubmitPayment} disabled={submitting} style={{flex:1,padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
-                      {submitting?'⏳ Inatuma...':'📨 Tuma Ombi la Malipo'}
-                    </button>
-                  </div>
-                </>}
-              </>}
-
-              {tab==='token'&&<>
-                <div style={{textAlign:'center',marginBottom:14}}>
-                  <div style={{fontSize:32,marginBottom:6}}>🔑</div>
-                  <div style={{fontSize:14,fontWeight:800,color:'#1E293B',marginBottom:2}}>Ingiza Token</div>
-                  <div style={{fontSize:12,color:'#64748B'}}>Token unayopata kutoka Admin au Mshirika</div>
+                <div style={{fontSize:12.5,opacity:0.92,lineHeight:1.55,marginBottom:14}}>
+                  Weka namba yako ya simu, bonyeza "Lipa Sasa", kisha weka PIN kwenye simu yako. Malipo yakithibitika, mfumo utajifungua wenyewe papo hapo.
                 </div>
+                <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="📱 Namba yako (07XXXXXXXX)"
+                  style={{width:'100%',padding:'13px 15px',borderRadius:11,border:'none',fontSize:15,fontWeight:600,marginBottom:11,boxSizing:'border-box'}}/>
+                {autoMsg
+                  ?<div style={{background:'rgba(255,255,255,0.16)',borderRadius:11,padding:'14px 15px',fontSize:12.5,lineHeight:1.55}}>
+                    <div style={{fontWeight:800,marginBottom:4}}>⏳ Inasubiri uthibitisho...</div>
+                    {autoMsg}
+                    {autoRef&&<div style={{marginTop:6,fontFamily:'monospace',fontSize:11,opacity:0.85}}>Kumb: {autoRef}</div>}
+                  </div>
+                  :<button onClick={handleAutoPay} disabled={autoLoading}
+                    style={{width:'100%',padding:15,background:'#fff',color:'#0A6E47',border:'none',borderRadius:11,fontWeight:800,fontSize:16,cursor:autoLoading?'wait':'pointer',opacity:autoLoading?0.7:1}}>
+                    {autoLoading?'Inatuma...':`⚡ Lipa Sasa — TZS ${price.toLocaleString()}`}
+                  </button>}
+              </div>
 
-                {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>⚠️ {err}</div>}
-
-                <input value={token} onChange={e=>setToken(e.target.value.toUpperCase())} placeholder="TK-XXXXXXXX" style={{width:'100%',padding:'16px 18px',borderRadius:12,border:'2px solid #E2E8F0',fontSize:18,fontFamily:'monospace',fontWeight:800,letterSpacing:3,textAlign:'center',color:'#0A6E47',boxSizing:'border-box',marginBottom:14,background:'#F0FDF4'}}/>
-
-                <button onClick={handleToken} disabled={submitting} style={{width:'100%',padding:14,background:submitting?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:submitting?'wait':'pointer',boxShadow:'0 8px 24px rgba(11,122,59,0.35)'}}>
-                  {submitting?'⏳ Inathibitisha...':'🔓 Fungua Mfumo'}
-                </button>
-              </>}
+              <div style={{textAlign:'center',fontSize:11.5,color:'#94A3B8',lineHeight:1.5}}>
+                Malipo yanashughulikiwa kwa usalama. Ukikwama, wasiliana nasi kupitia namba zilizo chini.
+              </div>
             </div>
           </div>}
 
