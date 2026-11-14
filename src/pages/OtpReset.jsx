@@ -7,7 +7,7 @@ import {useApp} from '../context/AppContext';
 // Backend inathibitisha OTP KABLA ya success animation.
 // ============================================================
 
-const GREEN='#065F2E';
+const GREEN='#0A6E47';
 const GREEN_LIGHT='#16A34A';
 const OTP_LEN=8; // Supabase email OTP = tarakimu 8
 
@@ -229,7 +229,7 @@ export default function OtpReset({email,onDone,onBack}){
               </span>
             </p>
           )}
-          <p onClick={onBack} style={{marginTop:14,color:'#065F2E',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
+          <p onClick={onBack} style={{marginTop:14,color:'#0A6E47',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
         </div>
       )}
     </>}
@@ -336,10 +336,10 @@ function NewPasswordForm({setNewPassword,onDone}){
 const OTP_CSS=`
 .otp-stage{position:relative;min-height:76px;display:flex;align-items:center;justify-content:center;}
 .otp-boxes{display:flex;gap:6px;justify-content:center;transition:opacity .2s ease;}
-.otp-box{width:38px;height:50px;border:1.5px solid #E2E8F0;border-radius:11px;text-align:center;font-size:21px;font-weight:800;color:#065F2E;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
+.otp-box{width:38px;height:50px;border:1.5px solid #E2E8F0;border-radius:11px;text-align:center;font-size:21px;font-weight:800;color:#0A6E47;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
 .otp-box::-webkit-outer-spin-button,.otp-box::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-.otp-box:focus{border-color:#065F2E;box-shadow:0 0 0 3px rgba(11,122,59,.14);transform:translateY(-2px);}
-.otp-box-filled{border-color:#065F2E;background:#F0FDF4;}
+.otp-box:focus{border-color:#0A6E47;box-shadow:0 0 0 3px rgba(11,122,59,.14);transform:translateY(-2px);}
+.otp-box-filled{border-color:#0A6E47;background:#F0FDF4;}
 .otp-box-err{border-color:#EF4444 !important;background:#FEF2F2 !important;}
 
 @media (max-width:400px){.otp-box{width:32px;height:44px;font-size:18px;border-radius:9px;}.otp-boxes{gap:4px;}}
@@ -350,7 +350,7 @@ const OTP_CSS=`
 
 /* ===== CAPSULE ===== */
 .dna-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.capsule{position:relative;width:120px;height:52px;border-radius:26px;background:linear-gradient(135deg,#065F2E,#16A34A);box-shadow:0 8px 24px -6px rgba(11,122,59,.55),0 0 0 4px rgba(11,122,59,.10);opacity:0;transform:scale(.2);animation:capIn .25s cubic-bezier(.34,1.56,.64,1) forwards;overflow:hidden;}
+.capsule{position:relative;width:120px;height:52px;border-radius:26px;background:linear-gradient(135deg,#0A6E47,#16A34A);box-shadow:0 8px 24px -6px rgba(11,122,59,.55),0 0 0 4px rgba(11,122,59,.10);opacity:0;transform:scale(.2);animation:capIn .25s cubic-bezier(.34,1.56,.64,1) forwards;overflow:hidden;}
 @keyframes capIn{to{opacity:1;transform:scale(1);}}
 
 /* Emerald wave kutoka center */
@@ -374,15 +374,15 @@ const OTP_CSS=`
 @keyframes logoOut{to{opacity:0;transform:scale(.7);}}
 
 .check-svg{position:absolute;width:60px;height:60px;opacity:0;animation:checkShow .01s linear .85s forwards;}
-.check-circle{stroke:#065F2E;stroke-width:3;stroke-dasharray:151;stroke-dashoffset:151;animation:checkCircle .5s ease .85s forwards;}
-.check-mark{stroke:#065F2E;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:checkMark .35s ease 1.15s forwards;}
+.check-circle{stroke:#0A6E47;stroke-width:3;stroke-dasharray:151;stroke-dashoffset:151;animation:checkCircle .5s ease .85s forwards;}
+.check-mark{stroke:#0A6E47;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:44;stroke-dashoffset:44;animation:checkMark .35s ease 1.15s forwards;}
 @keyframes checkShow{to{opacity:1;}}
 @keyframes checkCircle{to{stroke-dashoffset:0;}}
 @keyframes checkMark{to{stroke-dashoffset:0;}}
 
 /* Success text */
 .success-text{text-align:center;margin-top:18px;}
-.st-1{font-size:18px;font-weight:800;color:#065F2E;opacity:0;animation:fadeUp .4s ease 1.3s forwards;}
+.st-1{font-size:18px;font-weight:800;color:#0A6E47;opacity:0;animation:fadeUp .4s ease 1.3s forwards;}
 .st-2{font-size:13px;color:#64748B;margin-top:4px;opacity:0;animation:fadeUp .4s ease 1.55s forwards;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 

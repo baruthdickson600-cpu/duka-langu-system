@@ -62,8 +62,8 @@ export default function ThermalReceipt({sale,onClose}){
       <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #EEF2F6',flexShrink:0}}>
         <b style={{fontSize:14,color:'#101828',flex:1}}>🧾 Risiti</b>
         <div style={{display:'flex',gap:4,background:'#F1F5F9',borderRadius:8,padding:3}}>
-          <button onClick={()=>setWidth('58')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='58'?'#065F2E':'transparent',color:width==='58'?'#fff':'#64748B'}}>58mm</button>
-          <button onClick={()=>setWidth('80')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='80'?'#065F2E':'transparent',color:width==='80'?'#fff':'#64748B'}}>80mm</button>
+          <button onClick={()=>setWidth('58')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='58'?'#0A6E47':'transparent',color:width==='58'?'#fff':'#64748B'}}>58mm</button>
+          <button onClick={()=>setWidth('80')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='80'?'#0A6E47':'transparent',color:width==='80'?'#fff':'#64748B'}}>80mm</button>
         </div>
         <button onClick={onClose} style={{background:'#F1F5F9',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',fontSize:16,color:'#64748B'}}>×</button>
       </div>
@@ -169,7 +169,7 @@ export default function ThermalReceipt({sale,onClose}){
 
       {/* ACTIONS (hazichapishwi) */}
       <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,borderTop:'1px solid #EEF2F6',flexShrink:0}}>
-        <button onClick={doPrint} style={btnStyle('#065F2E','#fff')}>🖨️ Chapisha</button>
+        <button onClick={doPrint} style={btnStyle('#0A6E47','#fff')}>🖨️ Chapisha</button>
         <button onClick={doReprint} style={btnStyle('#F1F5F9','#475569')}>🔁 Chapisha Nakala</button>
         <button onClick={()=>exportReceiptPDF(sale,biz?.name,biz?.receipt_footer)} style={btnStyle('#EFF6FF','#2563EB')}>📄 Pakua PDF</button>
         <button onClick={()=>shareWhatsApp(sale,biz?.name)} style={btnStyle('#F0FDF4','#16A34A')}>💬 WhatsApp</button>

@@ -126,7 +126,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
       {[1,2,3].map(n=>(
         <div key={n} style={{
           width:n===step?28:8,height:8,borderRadius:4,
-          background:n===step?'#065F2E':n<step?'#22C55E':'#CBD5E1',
+          background:n===step?'#0A6E47':n<step?'#22C55E':'#CBD5E1',
           transition:'all 0.3s ease',
         }}/>
       ))}
@@ -173,14 +173,14 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                 {msg&&<div style={{background:'#F0FDF4',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #22C55E'}}>{msg}</div>}
                 <Input label="Email" type="email" placeholder="email@mfano.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleForgot()}/>
                 <Btn label={busy?'Inatuma...':'Tuma Code'} onClick={handleForgot} disabled={busy}/>
-                <p onClick={()=>{setShowForgot(false);setErr('');setMsg('');}} style={{textAlign:'center',marginTop:14,color:'#065F2E',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
+                <p onClick={()=>{setShowForgot(false);setErr('');setMsg('');}} style={{textAlign:'center',marginTop:14,color:'#0A6E47',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
               </>
             ):(
               <>
                 {/* ===== TABS ===== */}
                 <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:20}}>
                   {['login','signup'].map(t=>(
-                    <button key={t} onClick={()=>{setTab(t);setErr('');setStep(1);}} style={{flex:1,padding:'11px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#065F2E':'#94A3B8',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>
+                    <button key={t} onClick={()=>{setTab(t);setErr('');setStep(1);}} style={{flex:1,padding:'11px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#0A6E47':'#94A3B8',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>
                       {t==='login'?'Ingia':'Jisajili'}
                     </button>
                   ))}
@@ -195,7 +195,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     <PasswordInput label="Password" placeholder="••••••••" value={f.password} onChange={e=>s('password',e.target.value)} onKeyDown={e=>e.key==='Enter'&&submitLogin()}/>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:-4,marginBottom:10,gap:10}}>
                       <p onClick={()=>setShowInfoRequest(true)} style={{fontSize:11,color:'#64748B',cursor:'pointer',fontWeight:600,margin:0,textDecoration:'underline'}}>📝 Badilisha taarifa?</p>
-                      <p onClick={()=>{setShowForgot(true);setErr('');setForgotEmail(f.email);}} style={{fontSize:12,color:'#065F2E',cursor:'pointer',fontWeight:600,margin:0}}>Umesahau password?</p>
+                      <p onClick={()=>{setShowForgot(true);setErr('');setForgotEmail(f.email);}} style={{fontSize:12,color:'#0A6E47',cursor:'pointer',fontWeight:600,margin:0}}>Umesahau password?</p>
                     </div>
                     <Btn label={busy?'⏳ Subiri...':'Ingia'} onClick={submitLogin} disabled={busy}/>
                     <div style={{display:'flex',alignItems:'center',gap:10,margin:'16px 0'}}>
@@ -246,20 +246,20 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                           {BUSINESS_TYPES.map(bt=>(
                             <div key={bt.value} onClick={()=>s('businessType',bt.value)} style={{
                               padding:'14px 12px',borderRadius:14,cursor:'pointer',textAlign:'center',
-                              border:f.businessType===bt.value?'2.5px solid #065F2E':'2px solid #E2E8F0',
+                              border:f.businessType===bt.value?'2.5px solid #0A6E47':'2px solid #E2E8F0',
                               background:f.businessType===bt.value?'#F0FDF4':'#FAFAFA',
                               transform:f.businessType===bt.value?'scale(1.02)':'scale(1)',
                               transition:'all 0.18s',boxShadow:f.businessType===bt.value?'0 4px 16px rgba(11,122,59,0.15)':'none',
                             }}>
                               <div style={{fontSize:26,marginBottom:4}}>{bt.icon}</div>
-                              <div style={{fontSize:12,fontWeight:700,color:f.businessType===bt.value?'#065F2E':'#1E293B',lineHeight:1.2}}>{bt.label}</div>
+                              <div style={{fontSize:12,fontWeight:700,color:f.businessType===bt.value?'#0A6E47':'#1E293B',lineHeight:1.2}}>{bt.label}</div>
                               <div style={{fontSize:10,color:'#94A3B8',marginTop:2,lineHeight:1.3}}>{bt.desc}</div>
                             </div>
                           ))}
                         </div>
                         <div style={{display:'flex',gap:10}}>
                           <button onClick={goStep1} style={{flex:1,padding:13,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
-                          <button onClick={goStep3} style={{flex:2,padding:13,background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>Endelea →</button>
+                          <button onClick={goStep3} style={{flex:2,padding:13,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>Endelea →</button>
                         </div>
                       </>
                     )}
@@ -280,7 +280,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                                 <div style={{fontSize:12,color:'#15803D',fontWeight:700}}>{f.business}</div>
                                 <div style={{fontSize:11,color:'#64748B'}}>{bt.label}</div>
                               </div>
-                              <button onClick={()=>setStep(2)} style={{marginLeft:'auto',fontSize:11,color:'#065F2E',background:'none',border:'none',cursor:'pointer',fontWeight:700,textDecoration:'underline'}}>Badilisha</button>
+                              <button onClick={()=>setStep(2)} style={{marginLeft:'auto',fontSize:11,color:'#0A6E47',background:'none',border:'none',cursor:'pointer',fontWeight:700,textDecoration:'underline'}}>Badilisha</button>
                             </div>
                           ):null;
                         })()}
@@ -288,17 +288,17 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                         <PasswordInput label="Password" placeholder="Angalau herufi 6" value={f.password} onChange={e=>s('password',e.target.value)}/>
                         <Input label="Promo Code (si lazima)" placeholder="PROMO-XXXXXX" value={f.promo} onChange={e=>s('promo',e.target.value)}/>
                         <div style={{display:'flex',alignItems:'flex-start',gap:8,marginTop:4,marginBottom:14}}>
-                          <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} id="tc" style={{marginTop:3,width:18,height:18,accentColor:'#065F2E'}}/>
+                          <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} id="tc" style={{marginTop:3,width:18,height:18,accentColor:'#0A6E47'}}/>
                           <label htmlFor="tc" style={{fontSize:12,color:'#475569',lineHeight:1.5}}>
                             Nakubali{' '}
-                            <span onClick={e=>{e.preventDefault();setLegalPage('terms');}} style={{color:'#065F2E',fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Masharti</span>
+                            <span onClick={e=>{e.preventDefault();setLegalPage('terms');}} style={{color:'#0A6E47',fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Masharti</span>
                             {' '}na{' '}
-                            <span onClick={e=>{e.preventDefault();setLegalPage('privacy');}} style={{color:'#065F2E',fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Sera ya Faragha</span>
+                            <span onClick={e=>{e.preventDefault();setLegalPage('privacy');}} style={{color:'#0A6E47',fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Sera ya Faragha</span>
                           </label>
                         </div>
                         <div style={{display:'flex',gap:10}}>
                           <button onClick={()=>setStep(2)} style={{flex:1,padding:13,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
-                          <button onClick={submitSignup} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>
+                          <button onClick={submitSignup} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>
                             {busy?'⏳ Subiri...':'🎉 Jisajili Sasa'}
                           </button>
                         </div>
@@ -336,7 +336,7 @@ const ErrBox=({msg})=>(
 );
 
 const Btn=({label,onClick,disabled})=>(
-  <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:15,background:disabled?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,marginTop:6,cursor:'pointer',opacity:disabled?.7:1,boxShadow:'0 4px 20px rgba(11,122,59,0.35)',transition:'all 0.2s'}}>
+  <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:15,background:disabled?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,marginTop:6,cursor:'pointer',opacity:disabled?.7:1,boxShadow:'0 4px 20px rgba(11,122,59,0.35)',transition:'all 0.2s'}}>
     {label}
   </button>
 );

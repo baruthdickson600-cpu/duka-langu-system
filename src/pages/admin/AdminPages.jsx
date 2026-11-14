@@ -4,7 +4,7 @@ import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
-const CL=['#065F2E','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+const CL=['#0A6E47','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
 
 // ===== ADMIN DASHBOARD =====
 export function AdminDashboard(){
@@ -52,7 +52,7 @@ export function AdminDashboard(){
     {settings.announcement&&<div style={{background:settings.announcement_type==='warning'?'#FFF7ED':settings.announcement_type==='danger'?'#FEF2F2':'#F0FDF4',border:`1px solid ${settings.announcement_type==='warning'?'#FED7AA':settings.announcement_type==='danger'?'#FECACA':'#BBF7D0'}`,borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:13,fontWeight:600,color:settings.announcement_type==='warning'?'#92400E':settings.announcement_type==='danger'?'#B91C1C':'#15803D'}}>📢 {settings.announcement}</div>}
 
     {/* HERO REVENUE CARD */}
-    <div style={{background:'linear-gradient(135deg,#065F2E 0%,#065F2E 100%)',borderRadius:20,padding:24,marginBottom:18,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 12px 40px rgba(11,122,59,0.25)'}}>
+    <div style={{background:'linear-gradient(135deg,#0A6E47 0%,#0A6E47 100%)',borderRadius:20,padding:24,marginBottom:18,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 12px 40px rgba(11,122,59,0.25)'}}>
       <div style={{position:'absolute',top:-40,right:-40,width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
       <div style={{position:'absolute',bottom:-50,left:-50,width:180,height:180,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
       <div style={{position:'relative',zIndex:1,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:16}}>
@@ -78,13 +78,13 @@ export function AdminDashboard(){
 
     {/* PRIMARY STATS — 4 BIG CARDS */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:14,marginBottom:16}}>
-      <div className="card" style={{padding:18,borderTop:'4px solid #065F2E',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+      <div className="card" style={{padding:18,borderTop:'4px solid #0A6E47',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
           <div style={{fontSize:32}}>🏪</div>
-          <Badge color="#065F2E">+{todayBiz.length} leo</Badge>
+          <Badge color="#0A6E47">+{todayBiz.length} leo</Badge>
         </div>
         <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>MADUKA JUMLA</div>
-        <div style={{fontSize:32,fontWeight:900,color:'#065F2E',lineHeight:1}}>{businesses.length}</div>
+        <div style={{fontSize:32,fontWeight:900,color:'#0A6E47',lineHeight:1}}>{businesses.length}</div>
         <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>+{weekBiz.length} wiki • +{monthBiz.length} mwezi</div>
       </div>
       
@@ -141,20 +141,20 @@ export function AdminDashboard(){
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:16}}>
       {/* Monthly registration chart */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#065F2E',display:'flex',alignItems:'center',gap:6}}>📊 Usajili wa Mwezi</h3>
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#0A6E47',display:'flex',alignItems:'center',gap:6}}>📊 Usajili wa Mwezi</h3>
         {chartData.length>0?<ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartData}>
             <XAxis dataKey="month" tick={{fontSize:11}}/>
             <YAxis tick={{fontSize:11}}/>
             <Tooltip contentStyle={{borderRadius:10,border:'1px solid #E2E8F0',fontSize:12}}/>
-            <Bar dataKey="count" fill="#065F2E" radius={[8,8,0,0]}/>
+            <Bar dataKey="count" fill="#0A6E47" radius={[8,8,0,0]}/>
           </BarChart>
         </ResponsiveContainer>:<Empty icon="📊" text="Hakuna data ya kutosha"/>}
       </div>
 
       {/* Business Status Pie */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#065F2E'}}>🥧 Hali za Maduka</h3>
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#0A6E47'}}>🥧 Hali za Maduka</h3>
         {statusData.length>0?<ResponsiveContainer width="100%" height={200}>
           <PieChart>
             <Pie data={statusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({name,value})=>`${name}: ${value}`}>
@@ -211,7 +211,7 @@ export function AdminDashboard(){
 
       {/* Supervisor Leaderboard with Tiers */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#065F2E'}}>🏆 Mawakala — Madaraja</h3>
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>🏆 Mawakala — Madaraja</h3>
         {agentLeaderboard.slice(0,6).map((a,i)=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:22}}>{a.tier?.emoji||'⏳'}</span>
           <div style={{flex:1,minWidth:0}}>
@@ -352,14 +352,14 @@ export function StoresPage(){
   return <div>
     {/* HEADER */}
     <div style={{marginBottom:14}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>👥 Usimamizi wa Akaunti za Wateja</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>👥 Usimamizi wa Akaunti za Wateja</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Tatua changamoto zote za akaunti — siku, plan, email, password, na zaidi — mahali pamoja.</p>
     </div>
 
     {/* MUHTASARI (KPIs) */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:14}}>
       {[
-        {l:'👥 Wateja Wote',v:summary.total,c:'#065F2E',f:'all'},
+        {l:'👥 Wateja Wote',v:summary.total,c:'#0A6E47',f:'all'},
         {l:'✅ Active',v:summary.active,c:'#22C55E',f:'active'},
         {l:'🕒 Trial',v:summary.trial,c:'#F59E0B',f:'trial'},
         {l:'⛔ Suspended',v:summary.suspended,c:'#EF4444',f:'suspended'},
@@ -434,7 +434,7 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();setActionModal({type:'extend',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
             <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
-            <button onClick={(e)=>{e.stopPropagation();toggleBranch(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isBranchOn(b.id)?'1.5px solid #065F2E':'1.5px solid #E2E8F0',background:isBranchOn(b.id)?'#F0FDF4':'#fff',color:isBranchOn(b.id)?'#065F2E':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
+            <button onClick={(e)=>{e.stopPropagation();toggleBranch(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isBranchOn(b.id)?'1.5px solid #0A6E47':'1.5px solid #E2E8F0',background:isBranchOn(b.id)?'#F0FDF4':'#fff',color:isBranchOn(b.id)?'#0A6E47':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isBranchOn(b.id)?<>🏪 Matawi: <span style={{color:'#16A34A'}}>ON</span></>:<>🏪 Matawi: <span>OFF</span></>}
             </button>
             <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',background:isWholesaleOn(b.id)?'#FFF7ED':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
@@ -487,15 +487,15 @@ export function StoresPage(){
               <div style={{background:isWholesaleOn(detail.id)?'#FFF7ED':'#F8FAFC',border:isWholesaleOn(detail.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏷️ BEI YA JUMLA</div>
                 <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kuuza kwa bei ya jumla na rejareja</div>
-                <button onClick={()=>toggleWholesale(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isWholesaleOn(detail.id)?'#C2410C':'#065F2E',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                <button onClick={()=>toggleWholesale(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isWholesaleOn(detail.id)?'#C2410C':'#0A6E47',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                   {isWholesaleOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
                 </button>
               </div>
               {/* Branch Toggle */}
-              <div style={{background:isBranchOn(detail.id)?'#F0FDF4':'#F8FAFC',border:isBranchOn(detail.id)?'1.5px solid #065F2E':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
+              <div style={{background:isBranchOn(detail.id)?'#F0FDF4':'#F8FAFC',border:isBranchOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏪 MATAWI</div>
                 <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kusimamia matawi mengi</div>
-                <button onClick={()=>toggleBranch(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isBranchOn(detail.id)?'#065F2E':'#64748B',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+                <button onClick={()=>toggleBranch(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isBranchOn(detail.id)?'#0A6E47':'#64748B',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                   {isBranchOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
                 </button>
               </div>
@@ -522,20 +522,20 @@ export function StoresPage(){
     <Modal open={actionModal.type==='extend'} onClose={()=>setActionModal({type:null,biz:null})} title={`⏳ Ongeza Siku — ${actionModal.biz?.name||''}`}>
       <div style={{background:'#F0FDF4',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
         <div style={{fontSize:12,color:'#15803D'}}>Siku zilizobaki sasa</div>
-        <div style={{fontSize:28,fontWeight:900,color:'#065F2E'}}>{actionModal.biz?getDaysLeft(actionModal.biz):0}</div>
-        <div style={{fontSize:11,color:'#64748B',marginTop:2}}>Baada ya kuongeza: <b style={{color:'#065F2E'}}>{(actionModal.biz?getDaysLeft(actionModal.biz):0)+(+extendDays||0)} siku</b></div>
+        <div style={{fontSize:28,fontWeight:900,color:'#0A6E47'}}>{actionModal.biz?getDaysLeft(actionModal.biz):0}</div>
+        <div style={{fontSize:11,color:'#64748B',marginTop:2}}>Baada ya kuongeza: <b style={{color:'#0A6E47'}}>{(actionModal.biz?getDaysLeft(actionModal.biz):0)+(+extendDays||0)} siku</b></div>
       </div>
 
       <Input label="Ongeza siku ngapi?" type="number" value={extendDays} onChange={e=>setExtendDays(e.target.value)}/>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-        {[7,14,30,60,90,365].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #065F2E':'1px solid #E2E8F0',background:extendDays===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#065F2E':'#64748B'}}>{d}</button>)}
+        {[7,14,30,60,90,365].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:extendDays===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#0A6E47':'#64748B'}}>{d}</button>)}
       </div>
 
       {/* AINA YA MUAMALA */}
       <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Aina ya Muamala</label>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
         {[
-          {v:'sale',l:'💰 Mauzo',c:'#065F2E',d:'Mteja amelipa'},
+          {v:'sale',l:'💰 Mauzo',c:'#0A6E47',d:'Mteja amelipa'},
           {v:'gift',l:'🎁 Zawadi',c:'#8B5CF6',d:'Bure'},
           {v:'compensation',l:'🔧 Fidia',c:'#EA580C',d:'Tatizo la mfumo'},
         ].map(t=>(
@@ -554,7 +554,7 @@ export function StoresPage(){
       {extendType==='sale'&&<>
         <Input label="Kiasi alicholipa (TZS)" type="number" value={extendAmount} onChange={e=>setExtendAmount(e.target.value)}/>
         <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-          {[15000,25000,30000,50000,75000].map(a=><button key={a} onClick={()=>setExtendAmount(String(a))} style={{padding:'6px 12px',borderRadius:8,border:extendAmount===String(a)?'2px solid #065F2E':'1px solid #E2E8F0',background:extendAmount===String(a)?'#F0FDF4':'#fff',fontWeight:600,fontSize:11.5,cursor:'pointer',color:extendAmount===String(a)?'#065F2E':'#64748B'}}>{a.toLocaleString()}</button>)}
+          {[15000,25000,30000,50000,75000].map(a=><button key={a} onClick={()=>setExtendAmount(String(a))} style={{padding:'6px 12px',borderRadius:8,border:extendAmount===String(a)?'2px solid #0A6E47':'1px solid #E2E8F0',background:extendAmount===String(a)?'#F0FDF4':'#fff',fontWeight:600,fontSize:11.5,cursor:'pointer',color:extendAmount===String(a)?'#0A6E47':'#64748B'}}>{a.toLocaleString()}</button>)}
         </div>
 
         <Sel label="Njia ya Malipo" value={extendMethod} onChange={e=>setExtendMethod(e.target.value)} options={[
@@ -670,7 +670,7 @@ export function StoresPage(){
           setEditMsg({ok:false,msg:'❌ Tatizo: '+result.error});
         }
         setEditBusy(false);
-      }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+      }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
         {editBusy?'⏳ Inahifadhi...':'✅ Hifadhi Mabadiliko'}
       </button>
     </Modal>
@@ -687,7 +687,7 @@ export function StoresPage(){
       <Input label="Password Mpya (herufi 6+)" value={resetPass} onChange={e=>setResetPass(e.target.value)} placeholder="Mf: Duka2026"/>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
         {['Duka1234','Pesa2026','Mteja123'].map(p=><button key={p} onClick={()=>setResetPass(p)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:'#64748B'}}>{p}</button>)}
-        <button onClick={()=>setResetPass('DL'+Math.random().toString(36).slice(2,8))} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#065F2E'}}>🎲 Tengeneza</button>
+        <button onClick={()=>setResetPass('DL'+Math.random().toString(36).slice(2,8))} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0A6E47'}}>🎲 Tengeneza</button>
       </div>
 
       <button onClick={()=>doResetPassword(actionModal.biz)} disabled={resetBusy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:resetBusy?'#F9A8D4':'#BE185D',color:'#fff',fontWeight:800,fontSize:14,cursor:resetBusy?'wait':'pointer'}}>
@@ -721,7 +721,7 @@ export function TokensPage(){
 
   // Plan pricing (matches biashara plans)
   const PLAN_PRICES={basic:15000,branch2:25000,premium:30000,enterprise:60000};
-  const PLAN_COLORS={basic:'#64748B',branch2:'#F59E0B',premium:'#8B5CF6',enterprise:'#065F2E'};
+  const PLAN_COLORS={basic:'#64748B',branch2:'#F59E0B',premium:'#8B5CF6',enterprise:'#0A6E47'};
   const PLAN_ICONS={basic:'⚡',branch2:'🏪',premium:'⭐',enterprise:'👑'};
 
   // Period filter
@@ -796,7 +796,7 @@ export function TokensPage(){
   return <div>
     {/* HEADER */}
     <div style={{marginBottom:18}}>
-      <h2 style={{fontSize:24,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🔑 Tokens & Mahesabu</h2>
+      <h2 style={{fontSize:24,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🔑 Tokens & Mahesabu</h2>
       <p style={{fontSize:13,color:'#64748B',margin:0}}>Simamia tokens za wateja na uone mapato ya biashara</p>
     </div>
 
@@ -808,12 +808,12 @@ export function TokensPage(){
         {id:'week',label:'🗓️ Wiki Hii'},
         {id:'month',label:'📆 Mwezi Huu'},
         {id:'year',label:'🎯 Mwaka Huu'},
-      ].map(p=><button key={p.id} onClick={()=>setPeriod(p.id)} style={{padding:'8px 14px',borderRadius:10,border:period===p.id?'2px solid #065F2E':'1.5px solid #E2E8F0',background:period===p.id?'#065F2E':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:period===p.id?'#fff':'#475569'}}>{p.label}</button>)}
+      ].map(p=><button key={p.id} onClick={()=>setPeriod(p.id)} style={{padding:'8px 14px',borderRadius:10,border:period===p.id?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:period===p.id?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:period===p.id?'#fff':'#475569'}}>{p.label}</button>)}
     </div>
 
     {/* HERO REVENUE CARD */}
     <div style={{
-      background:'linear-gradient(135deg,#065F2E,#065F2E)',
+      background:'linear-gradient(135deg,#0A6E47,#0A6E47)',
       borderRadius:16,
       padding:'24px 28px',
       marginBottom:16,
@@ -865,7 +865,7 @@ export function TokensPage(){
 
     {/* REVENUE BY PLAN — Breakdown */}
     <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:15,fontWeight:800,color:'#065F2E',margin:'0 0 14px'}}>📊 Mahesabu kwa Kila Plan</h3>
+      <h3 style={{fontSize:15,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📊 Mahesabu kwa Kila Plan</h3>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}}>
         {['basic','premium','enterprise'].map(p=>{
           const planRevenue=revenueByPlan[p];
@@ -900,9 +900,9 @@ export function TokensPage(){
     {/* GENERATE TOKEN — Accountant Only */}
     <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-        <div style={{width:42,height:42,borderRadius:10,background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🔑</div>
+        <div style={{width:42,height:42,borderRadius:10,background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🔑</div>
         <div>
-          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#065F2E'}}>Tengeneza Token Mpya</h3>
+          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0A6E47'}}>Tengeneza Token Mpya</h3>
           <div style={{fontSize:11,color:'#64748B'}}>Token itamruhusu mteja kufungua mfumo</div>
         </div>
       </div>
@@ -910,7 +910,7 @@ export function TokensPage(){
         <div>
           <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Muda (Siku)</label>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #065F2E':'1px solid #E2E8F0',background:days===String(d)?'#065F2E':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#64748B'}}>{d}</button>)}
+            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:days===String(d)?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#64748B'}}>{d}</button>)}
           </div>
         </div>
         <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[
@@ -922,7 +922,7 @@ export function TokensPage(){
         <div><Input label="Idadi" type="number" value={qty} onChange={e=>setQty(e.target.value)}/></div>
         <div><Sel label="Weka kwa Mshirika (Optional)" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Muhasibu (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
       </div>
-      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:generating?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:generating?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
         {generating?'⏳ Inatengeneza...':`🔑 Tengeneza Token ${qty>1?qty+' ':''}— Siku ${days} (${plan})`}
       </button>
     </div>
@@ -947,7 +947,7 @@ export function TokensPage(){
       />
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
         {[
-          {id:'all',label:`📚 Zote (${periodTokens.length})`,color:'#065F2E'},
+          {id:'all',label:`📚 Zote (${periodTokens.length})`,color:'#0A6E47'},
           {id:'free',label:`✅ Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
           {id:'used',label:`🎯 Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
         ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 14px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:tab===t.id?t.color+'12':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
@@ -956,7 +956,7 @@ export function TokensPage(){
 
     {/* TOKENS LIST */}
     <div className="card">
-      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#065F2E'}}>📋 Orodha ya Tokens ({filtered.length})</h3>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>📋 Orodha ya Tokens ({filtered.length})</h3>
       
       {filtered.length>0?<div style={{display:'flex',flexDirection:'column',gap:8}}>
         {filtered.map(t=>{
@@ -987,10 +987,10 @@ export function TokensPage(){
             
             <div style={{minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
-                <span style={{fontFamily:'monospace',fontWeight:900,fontSize:15,background:'#fff',padding:'4px 10px',borderRadius:6,color:t.used?'#92400E':'#065F2E',border:`1px solid ${t.used?'#FCD34D':'#86EFAC'}`}}>{t.code}</span>
+                <span style={{fontFamily:'monospace',fontWeight:900,fontSize:15,background:'#fff',padding:'4px 10px',borderRadius:6,color:t.used?'#92400E':'#0A6E47',border:`1px solid ${t.used?'#FCD34D':'#86EFAC'}`}}>{t.code}</span>
                 <span style={{padding:'2px 10px',borderRadius:6,background:PLAN_COLORS[t.plan||'basic'],color:'#fff',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:0.5}}>{PLAN_ICONS[t.plan||'basic']} {t.plan||'basic'}</span>
                 <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#64748B',fontWeight:700,fontSize:10,border:'1px solid #E2E8F0'}}>📅 Siku {t.days}</span>
-                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#065F2E',fontWeight:800,fontSize:10,border:'1px solid #BBF7D0'}}>💰 TZS {(PLAN_PRICES[t.plan]||PLAN_PRICES.basic).toLocaleString()}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#0A6E47',fontWeight:800,fontSize:10,border:'1px solid #BBF7D0'}}>💰 TZS {(PLAN_PRICES[t.plan]||PLAN_PRICES.basic).toLocaleString()}</span>
               </div>
               <div style={{fontSize:11,color:'#64748B',display:'flex',gap:8,flexWrap:'wrap'}}>
                 <span>🕒 Imetolewa: {fmtTime(t.created_at)}</span>
@@ -1004,7 +1004,7 @@ export function TokensPage(){
               </div>}
             </div>
             
-            {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy:\n\n'+t.code)}} style={{padding:'8px 14px',borderRadius:8,border:'2px solid #065F2E',background:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',color:'#065F2E'}}>📋 Copy</button>}
+            {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy:\n\n'+t.code)}} style={{padding:'8px 14px',borderRadius:8,border:'2px solid #0A6E47',background:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',color:'#0A6E47'}}>📋 Copy</button>}
           </div>;
         })}
       </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
@@ -1016,7 +1016,7 @@ export function TokensPage(){
 
     {/* REVENUE BREAKDOWN (Approved Payments) */}
     {approvedPay.length>0&&<div className="card" style={{marginTop:16}}>
-      <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px',color:'#065F2E'}}>💰 Mapato Halisi — Malipo Yaliyothibitishwa</h3>
+      <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>💰 Mapato Halisi — Malipo Yaliyothibitishwa</h3>
       <div style={{maxHeight:400,overflowY:'auto'}}>
         {approvedPay.map(p=><div key={p.id} style={{padding:'12px 14px',background:'#F8FAFC',borderRadius:10,marginBottom:6,display:'grid',gridTemplateColumns:'1fr auto',gap:10,alignItems:'center'}}>
           <div>
@@ -1026,10 +1026,10 @@ export function TokensPage(){
             </div>
             {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6',marginTop:3,fontWeight:600}}>🔑 Token: {p.token_code} • Siku: {p.days_given}</div>}
           </div>
-          <div style={{fontWeight:900,fontSize:16,color:'#065F2E'}}>TZS {(p.amount||0).toLocaleString()}</div>
+          <div style={{fontWeight:900,fontSize:16,color:'#0A6E47'}}>TZS {(p.amount||0).toLocaleString()}</div>
         </div>)}
       </div>
-      <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:12,padding:'14px 18px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center',color:'#fff'}}>
+      <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:12,padding:'14px 18px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center',color:'#fff'}}>
         <span style={{fontWeight:800,fontSize:14}}>JUMLA YA MAPATO HALISI</span>
         <span style={{fontWeight:900,fontSize:24}}>TZS {totalRevenue.toLocaleString()}</span>
       </div>
@@ -1148,7 +1148,7 @@ export function PromoPage(){
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
             <div style={{background:'#F0FDF4',borderRadius:10,padding:'8px',textAlign:'center'}}>
               <div style={{fontSize:10,color:'#94A3B8'}}>Jumla</div>
-              <div style={{fontWeight:800,fontSize:20,color:'#065F2E'}}>{agentBiz.length}</div>
+              <div style={{fontWeight:800,fontSize:20,color:'#0A6E47'}}>{agentBiz.length}</div>
             </div>
             <div style={{background:'#F5F3FF',borderRadius:10,padding:'8px',textAlign:'center'}}>
               <div style={{fontSize:10,color:'#94A3B8'}}>Active</div>
@@ -1344,12 +1344,12 @@ function SystemStatusSection(){
     loadStats();
   },[]);
 
-  return <div className="card" style={{marginBottom:16,border:'2px solid #065F2E'}}>
-    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 12px',color:'#065F2E'}}>📊 System Status</h3>
+  return <div className="card" style={{marginBottom:16,border:'2px solid #0A6E47'}}>
+    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>📊 System Status</h3>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
       {Object.entries(dbStats).map(([t,c])=><div key={t} style={{background:'#F8FAFC',borderRadius:8,padding:'8px 10px',border:'1px solid #E2E8F0',textAlign:'center'}}>
         <div style={{fontSize:9,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>{t.replace(/_/g,' ')}</div>
-        <div style={{fontSize:18,fontWeight:900,color:'#065F2E'}}>{c}</div>
+        <div style={{fontSize:18,fontWeight:900,color:'#0A6E47'}}>{c}</div>
       </div>)}
     </div>
   </div>;
@@ -1375,11 +1375,11 @@ function EmailTestSection(){
     <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>📧 Email System</h3>
     <div style={{background:'#EFF6FF',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'#1E40AF',lineHeight:1.6}}>
       <b>Hali ya Email:</b> Mfumo unatumia <b>Gmail SMTP</b> kutuma email kwa wateja WOTE moja kwa moja kutoka <b>pesafly1@gmail.com</b>.<br/><br/>
-      <b>Kama email haifanyi kazi:</b> Hakikisha <code>GMAIL_APP_PASSWORD</code> imewekwa kwenye Vercel Environment Variables. <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{color:'#065F2E',fontWeight:700}}>Tengeneza App Password hapa</a>.
+      <b>Kama email haifanyi kazi:</b> Hakikisha <code>GMAIL_APP_PASSWORD</code> imewekwa kwenye Vercel Environment Variables. <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{color:'#0A6E47',fontWeight:700}}>Tengeneza App Password hapa</a>.
     </div>
     <div style={{display:'flex',gap:8,alignItems:'flex-end',marginBottom:12}}>
       <div style={{flex:1}}><Input label="Test Email" value={testEmail} onChange={e=>setTestEmail(e.target.value)}/></div>
-      <button onClick={runTest} disabled={testing} style={{padding:'10px 20px',background:testing?'#86EFAC':'#065F2E',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',marginBottom:12,whiteSpace:'nowrap'}}>
+      <button onClick={runTest} disabled={testing} style={{padding:'10px 20px',background:testing?'#86EFAC':'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',marginBottom:12,whiteSpace:'nowrap'}}>
         {testing?'⏳ Inatuma...':'📧 Test Email'}
       </button>
     </div>
@@ -1446,7 +1446,7 @@ export function SettingsPage(){
 
     {/* ===== TUMA EMAIL YA UPDATE KWA WATEJA WOTE ===== */}
     <div className="card" style={{marginBottom:16,border:'1.5px solid #BBF7D0'}}>
-      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 4px',color:'#065F2E'}}>✉️ Tuma Update kwa Wateja Wote</h3>
+      <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 4px',color:'#0A6E47'}}>✉️ Tuma Update kwa Wateja Wote</h3>
       <p style={{fontSize:12,color:'#64748B',margin:'0 0 14px'}}>Andika taarifa ya feature mpya. Email nzuri itatumwa kwa wateja <b>{emailCount}</b> wenye email.</p>
       <Input label="Kichwa cha Update *" value={updTitle} onChange={e=>setUpdTitle(e.target.value)} placeholder="Mf: Risiti Mpya ya Kitaalamu Imezinduliwa!"/>
       <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Maelezo *</label>
@@ -1455,7 +1455,7 @@ export function SettingsPage(){
       {(updTitle||updBody)&&<div style={{background:'#F8FAFC',border:'1px dashed #CBD5E1',borderRadius:10,padding:14,marginBottom:12}}>
         <div style={{fontSize:10,color:'#94A3B8',fontWeight:700,marginBottom:8,letterSpacing:1}}>PREVIEW YA EMAIL</div>
         <div style={{display:'inline-block',background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:16,marginBottom:8}}>✨ TAARIFA MPYA</div>
-        <div style={{fontSize:16,fontWeight:800,color:'#065F2E',marginBottom:6}}>{updTitle||'(Kichwa)'}</div>
+        <div style={{fontSize:16,fontWeight:800,color:'#0A6E47',marginBottom:6}}>{updTitle||'(Kichwa)'}</div>
         <div style={{fontSize:13,color:'#475569',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{updBody||'(Maelezo)'}</div>
       </div>}
 
@@ -1464,7 +1464,7 @@ export function SettingsPage(){
         :<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:10,fontSize:12.5,color:'#15803D',marginBottom:12}}>✅ Imetumwa kwa {updResult.sent}/{updResult.total} wateja.{updResult.failed>0?` (${updResult.failed} zimeshindwa)`:''}</div>
       )}
 
-      <button onClick={sendUpdate} disabled={updSending||emailCount===0} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:updSending?'#86EFAC':'#065F2E',color:'#fff',fontWeight:800,fontSize:15,cursor:updSending?'not-allowed':'pointer',opacity:emailCount===0?0.6:1}}>
+      <button onClick={sendUpdate} disabled={updSending||emailCount===0} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:updSending?'#86EFAC':'#0A6E47',color:'#fff',fontWeight:800,fontSize:15,cursor:updSending?'not-allowed':'pointer',opacity:emailCount===0?0.6:1}}>
         {updSending?'⏳ Inatuma email...':`✉️ Tuma kwa Wateja ${emailCount}`}
       </button>
       <div style={{fontSize:11,color:'#94A3B8',marginTop:8,textAlign:'center'}}>💡 Email zinatumwa kwa makundi ili zisilemewe. Subiri hadi ikamilike.</div>
@@ -1539,7 +1539,7 @@ export function TicketsPage(){
           </div>
         </div>
         <div style={{fontSize:12,color:'#475569',marginTop:4,background:'#F8FAFC',padding:8,borderRadius:6}}>{t.message}</div>
-        {t.reply&&<div style={{fontSize:12,color:'#065F2E',marginTop:4,background:'#F0FDF4',padding:8,borderRadius:6}}>Jibu: {t.reply}</div>}
+        {t.reply&&<div style={{fontSize:12,color:'#0A6E47',marginTop:4,background:'#F0FDF4',padding:8,borderRadius:6}}>Jibu: {t.reply}</div>}
         {t.status!=='closed'&&<div style={{display:'flex',gap:6,marginTop:6}}>
           <Btn v="ghost" style={{padding:'4px 10px',fontSize:11}} onClick={()=>setSel(t.id===sel?null:t.id)}>Jibu</Btn>
           <Btn v="ghost" style={{padding:'4px 10px',fontSize:11}} onClick={()=>closeTicket(t.id)}>Funga</Btn>
@@ -1651,12 +1651,12 @@ export function BackupPage(){
   
   return <div>
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>💾 Backup ya Database</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>💾 Backup ya Database</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Hifadhi na simamia backups za mfumo</p>
     </div>
     
     <div style={{
-      background: isHealthy?'linear-gradient(135deg,#065F2E,#065F2E)':'linear-gradient(135deg,#DC2626,#991B1B)',
+      background: isHealthy?'linear-gradient(135deg,#0A6E47,#0A6E47)':'linear-gradient(135deg,#DC2626,#991B1B)',
       borderRadius:16,padding:'24px 28px',marginBottom:16,color:'#fff',
       boxShadow:'0 8px 30px rgba(0,0,0,0.15)',
     }}>
@@ -1693,9 +1693,9 @@ export function BackupPage(){
     </div>
     
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #065F2E'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>BACKUPS ZOTE</div>
-        <div style={{fontSize:28,fontWeight:900,color:'#065F2E',marginTop:4}}>{backups.length}</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#0A6E47',marginTop:4}}>{backups.length}</div>
         <div style={{fontSize:10,color:'#94A3B8'}}>siku 30 zilizopita</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #22C55E'}}>
@@ -1717,14 +1717,14 @@ export function BackupPage(){
     
     <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
       <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-        <div style={{width:54,height:54,borderRadius:14,background:'#065F2E',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>⚡</div>
+        <div style={{width:54,height:54,borderRadius:14,background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>⚡</div>
         <div style={{flex:1,minWidth:200}}>
-          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#065F2E'}}>Backup ya Haraka</h3>
+          <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0A6E47'}}>Backup ya Haraka</h3>
           <p style={{fontSize:12,color:'#64748B',margin:'4px 0 0'}}>Anza backup mara moja — itahifadhiwa kwenye email yako</p>
         </div>
         <button onClick={triggerBackup} disabled={triggering} style={{
           padding:'14px 28px',
-          background:triggering?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',
+          background:triggering?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',
           color:'#fff',border:'none',borderRadius:12,
           fontWeight:800,fontSize:14,cursor:triggering?'wait':'pointer',
           boxShadow:'0 4px 15px rgba(11,122,59,0.3)',
@@ -1745,7 +1745,7 @@ export function BackupPage(){
     </div>
     
     <div className="card">
-      <h3 style={{fontSize:14,fontWeight:800,color:'#065F2E',margin:'0 0 14px'}}>📋 Historia ya Backups (Siku 30)</h3>
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📋 Historia ya Backups (Siku 30)</h3>
       
       {loading?<div style={{textAlign:'center',padding:30,color:'#94A3B8'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
@@ -1873,7 +1873,7 @@ export function PaymentsPage(){
       <Stat icon={IC.bell} label="Inasubiri" value={pendingPayments.length} color="#F59E0B"/>
       <Stat icon={IC.ok} label="Zimethibitishwa" value={paymentRequests.filter(p=>p.status==='approved').length} color="#22C55E"/>
       <Stat icon={IC.warn} label="Zimekataliwa" value={paymentRequests.filter(p=>p.status==='rejected').length} color="#EF4444"/>
-      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRevenue.toLocaleString()}`} color="#065F2E"/>
+      <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRevenue.toLocaleString()}`} color="#0A6E47"/>
     </div>
 
     {/* Days + Refresh */}
@@ -1881,9 +1881,9 @@ export function PaymentsPage(){
       <span style={{fontSize:13,fontWeight:600}}>Siku za Token:</span>
       <div style={{width:80}}><Input type="number" value={days} onChange={e=>setDays(e.target.value)}/></div>
       <div style={{display:'flex',gap:4}}>
-        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #065F2E':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#065F2E':'#64748B'}}>{d}</button>)}
+        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#0A6E47':'#64748B'}}>{d}</button>)}
       </div>
-      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:refreshing?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#065F2E',display:'flex',alignItems:'center',gap:4}}>
+      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:refreshing?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#0A6E47',display:'flex',alignItems:'center',gap:4}}>
         {refreshing?'⏳ Inapakia...':'🔄 Refresh'}
       </button>
     </div>
@@ -1932,7 +1932,7 @@ export function PaymentsPage(){
           </div>
           <div>
             <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>KIASI</div>
-            <div style={{fontWeight:800,fontSize:18,color:'#065F2E',marginTop:2}}>TZS {(p.amount||0).toLocaleString()}</div>
+            <div style={{fontWeight:800,fontSize:18,color:'#0A6E47',marginTop:2}}>TZS {(p.amount||0).toLocaleString()}</div>
           </div>
           <div>
             <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>NJIA</div>
@@ -1966,7 +1966,7 @@ export function PaymentsPage(){
         <div style={{fontSize:40,marginBottom:12}}>{tab==='pending'?'✅':'📋'}</div>
         <div style={{fontSize:16,fontWeight:700,color:'#1E293B',marginBottom:6}}>{tab==='pending'?'Hakuna Malipo Yanasubiri':'Hakuna Malipo'}</div>
         <div style={{fontSize:13,color:'#64748B'}}>{tab==='pending'?'Mteja akilipa na kutuma ombi, litaonekana hapa.':'Badilisha tab kuona malipo mengine.'}</div>
-        <button onClick={handleRefresh} style={{marginTop:16,padding:'8px 20px',borderRadius:10,border:'1px solid #E2E8F0',background:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',color:'#065F2E'}}>🔄 Refresh</button>
+        <button onClick={handleRefresh} style={{marginTop:16,padding:'8px 20px',borderRadius:10,border:'1px solid #E2E8F0',background:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',color:'#0A6E47'}}>🔄 Refresh</button>
       </div>}
     </div>
 
@@ -2051,7 +2051,7 @@ export function ActivityFeedPage(){
     </div>
     <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
       {[{v:'all',l:'Zote',c:activityFeed.length},{v:'login',l:'🔑 Login'},{v:'sale',l:'🛒 Mauzo'},{v:'signup',l:'🆕 Wapya'},{v:'payment',l:'💰 Malipo'}].map(f=>
-        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'6px 12px',borderRadius:8,border:filter===f.v?'2px solid #065F2E':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:filter===f.v?700:500,cursor:'pointer',color:filter===f.v?'#065F2E':'#64748B'}}>{f.l}</button>
+        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'6px 12px',borderRadius:8,border:filter===f.v?'2px solid #0A6E47':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:filter===f.v?700:500,cursor:'pointer',color:filter===f.v?'#0A6E47':'#64748B'}}>{f.l}</button>
       )}
     </div>
     <div className="card">
@@ -2075,7 +2075,7 @@ export function SystemUsagePage(){
   return <div>
     <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 16px'}}>📊 System Usage Report</h3>
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.people} label="Active Leo" value={su.activeToday} color="#065F2E" sub="wanatumia leo"/>
+      <Stat icon={IC.people} label="Active Leo" value={su.activeToday} color="#0A6E47" sub="wanatumia leo"/>
       <Stat icon={IC.people} label="Active Wiki" value={su.activeWeek} color="#3B82F6" sub="wiki hii"/>
       <Stat icon={IC.cart} label="Mauzo Leo" value={su.salesToday} color="#22C55E"/>
       <Stat icon={IC.store} label="Maduka" value={su.totalBiz} color="#8B5CF6"/>
@@ -2092,10 +2092,10 @@ export function SystemUsagePage(){
           return <div key={name} style={{marginBottom:10}}>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
               <span style={{fontWeight:600}}>{labels[name]||name}</span>
-              <span style={{fontWeight:700,color:'#065F2E'}}>{count}</span>
+              <span style={{fontWeight:700,color:'#0A6E47'}}>{count}</span>
             </div>
             <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}>
-              <div style={{height:'100%',width:`${pct}%`,background:'#065F2E',borderRadius:4}}/>
+              <div style={{height:'100%',width:`${pct}%`,background:'#0A6E47',borderRadius:4}}/>
             </div>
           </div>;
         })}
@@ -2176,14 +2176,14 @@ export function AdminReportsPage(){
     const w=window.open('','_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>Duka Langu Report</title><style>
       body{font-family:Arial,sans-serif;margin:30px;color:#1E293B}
-      h1{color:#065F2E;border-bottom:3px solid #065F2E;padding-bottom:8px}
+      h1{color:#0A6E47;border-bottom:3px solid #0A6E47;padding-bottom:8px}
       h2{color:#1E293B;margin-top:24px}
       table{width:100%;border-collapse:collapse;margin:12px 0}
-      th{background:#065F2E;color:#fff;padding:10px;text-align:left;font-size:13px}
+      th{background:#0A6E47;color:#fff;padding:10px;text-align:left;font-size:13px}
       td{padding:8px 10px;border-bottom:1px solid #E2E8F0;font-size:12px}
       tr:nth-child(even){background:#F8FAFC}
       .stat{display:inline-block;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 20px;margin:6px;text-align:center;min-width:100px}
-      .stat .num{font-size:24px;font-weight:900;color:#065F2E}
+      .stat .num{font-size:24px;font-weight:900;color:#0A6E47}
       .stat .lbl{font-size:11px;color:#64748B}
       .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
       .active{background:#F0FDF4;color:#15803D}
@@ -2219,7 +2219,7 @@ export function AdminReportsPage(){
     <table><tr><th>Mwezi</th><th>Wateja Wapya</th></tr>
     ${monthData.map(d=>`<tr><td>${d.month}</td><td>${d.count}</td></tr>`).join('')}
     </table>
-    <div style="margin-top:30px;border-top:2px solid #065F2E;padding-top:12px;text-align:center;color:#64748B;font-size:11px">
+    <div style="margin-top:30px;border-top:2px solid #0A6E47;padding-top:12px;text-align:center;color:#64748B;font-size:11px">
       PesaFly / Duka Langu — pesafly1@gmail.com | +255 628 986 770<br/>
       Ripoti imetolewa: ${new Date().toLocaleString('sw-TZ')}
     </div>
@@ -2231,10 +2231,10 @@ export function AdminReportsPage(){
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:16,fontWeight:700,margin:0}}>📋 Ripoti Kamili ya Mfumo</h3>
-      <button onClick={exportPDF} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#065F2E',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>📥 Pakua PDF</button>
+      <button onClick={exportPDF} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>📥 Pakua PDF</button>
     </div>
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.store} label="Maduka" value={businesses.length} color="#065F2E" sub={`${active.length} active`}/>
+      <Stat icon={IC.store} label="Maduka" value={businesses.length} color="#0A6E47" sub={`${active.length} active`}/>
       <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F59E0B"/>
       <Stat icon={IC.warn} label="Expired" value={expired.length} color="#EF4444"/>
       <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRev.toLocaleString()}`} color="#3B82F6"/>
@@ -2265,7 +2265,7 @@ export function AdminReportsPage(){
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>💰 Malipo ({approved.length})</h3>
         <div style={{maxHeight:300,overflowY:'auto'}}>{approved.slice(0,20).map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
           <div><b>{p.business_name}</b><br/><span style={{color:'#94A3B8',fontFamily:'monospace'}}>{p.transaction_id}</span></div>
-          <div style={{textAlign:'right',fontWeight:700,color:'#065F2E'}}>TZS {(p.amount||0).toLocaleString()}</div>
+          <div style={{textAlign:'right',fontWeight:700,color:'#0A6E47'}}>TZS {(p.amount||0).toLocaleString()}</div>
         </div>)}</div>
       </div>
     </div>
@@ -2345,7 +2345,7 @@ export function InfoRequestsPage(){
   };
 
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#065F2E'}}>📝 Ombi za Kubadilisha Taarifa</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>📝 Ombi za Kubadilisha Taarifa</h3>
     <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Wateja waliopoteza simu/email wanaomba kubadilisha taarifa</p>
 
     <div className="flex-wrap" style={{marginBottom:14}}>
@@ -2594,7 +2594,7 @@ export function ReferralManagementPage(){
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
       <div>
-        <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🎁 Ofa ya Karibisha Rafiki</h2>
+        <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎁 Ofa ya Karibisha Rafiki</h2>
         <p style={{fontSize:12,color:'#64748B',margin:0}}>Wewe ndio unaamua na kutoa tokens — sio automatic</p>
       </div>
       <button onClick={()=>setShowConfig(true)} style={{padding:'10px 18px',borderRadius:12,border:'2px solid #8B5CF6',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer'}}>
@@ -2623,9 +2623,9 @@ export function ReferralManagementPage(){
         <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>ZILIZOTHIBITISHWA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>{totalConfirmed}</div>
       </div>
-      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #065F2E'}}>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>TOKENS ZIMETOLEWA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#065F2E'}}>{totalTokensIssued}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47'}}>{totalTokensIssued}</div>
       </div>
       <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #8B5CF6'}}>
         <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>WACHANGIAJI</div>
@@ -2686,7 +2686,7 @@ export function ReferralManagementPage(){
       <div style={{maxHeight:400,overflowY:'auto'}}>
         {showDetail.allRefs.map(ref=>{
           const referred=getBiz(ref.referred_business_id);
-          const sColor=ref.status==='confirmed'?'#22C55E':ref.status==='token_issued'?'#065F2E':ref.status==='rejected'?'#EF4444':'#F59E0B';
+          const sColor=ref.status==='confirmed'?'#22C55E':ref.status==='token_issued'?'#0A6E47':ref.status==='rejected'?'#EF4444':'#F59E0B';
           const sLabel=ref.status==='confirmed'?'✅ Imethibitishwa':ref.status==='token_issued'?'🎁 Token Imetolewa':ref.status==='rejected'?'❌ Imekataliwa':'⏳ Inasubiri';
           return <div key={ref.id} style={{padding:12,background:'#F8FAFC',borderRadius:10,marginBottom:8,border:`1px solid ${sColor}30`}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
@@ -2849,7 +2849,7 @@ export function SupervisorVisitsAdminPage(){
   
   return <div>
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🎫 Tiketi za Ufuatiliaji</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎫 Tiketi za Ufuatiliaji</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Taarifa za ziara za masupervaiza kwa wateja - simamia na fanya utekelezaji</p>
     </div>
     
@@ -2864,9 +2864,9 @@ export function SupervisorVisitsAdminPage(){
     
     {/* Stats */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #065F2E'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>JUMLA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#065F2E',marginTop:4}}>{stats.total}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{stats.total}</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B'}}>
         <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>MPYA</div>
@@ -2896,14 +2896,14 @@ export function SupervisorVisitsAdminPage(){
           {id:'in_progress',label:`🔄 Inashughulikiwa (${stats.in_progress})`,color:'#3B82F6'},
           {id:'resolved',label:`✅ Zimetatuliwa (${stats.resolved})`,color:'#22C55E'},
           {id:'closed',label:`🔒 Zimefungwa (${stats.closed})`,color:'#94A3B8'},
-          {id:'all',label:`📚 Zote (${stats.total})`,color:'#065F2E'},
+          {id:'all',label:`📚 Zote (${stats.total})`,color:'#0A6E47'},
         ].map(t=><button key={t.id} onClick={()=>setFilter(t.id)} style={{padding:'7px 12px',borderRadius:8,border:filter===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:filter===t.id?t.color+'15':'#fff',color:filter===t.id?t.color:'#475569',fontWeight:700,fontSize:11,cursor:'pointer'}}>{t.label}</button>)}
       </div>
     </div>
     
     {/* List */}
     <div className="card">
-      <h3 style={{fontSize:14,fontWeight:800,color:'#065F2E',margin:'0 0 14px'}}>📋 Tiketi ({filtered.length})</h3>
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📋 Tiketi ({filtered.length})</h3>
       
       {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
@@ -3014,7 +3014,7 @@ export function SupervisorVisitsAdminPage(){
         
         {/* Admin notes */}
         <div style={{marginBottom:14,marginTop:14}}>
-          <label style={{fontSize:12,fontWeight:800,color:'#065F2E',display:'block',marginBottom:5}}>📌 Maelezo Yako (Admin)</label>
+          <label style={{fontSize:12,fontWeight:800,color:'#0A6E47',display:'block',marginBottom:5}}>📌 Maelezo Yako (Admin)</label>
           <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} rows="3" placeholder="Andika maelezo ya utekelezaji uliofanya..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'2px solid #BBF7D0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical',background:'#F0FDF4'}}/>
         </div>
         
@@ -3236,12 +3236,12 @@ export function SupervisorTargetsPage(){
   return <div>
     {/* Header */}
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🎯 Targets & Performance ya Mawakala</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎯 Targets & Performance ya Mawakala</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za masupervaiza</p>
     </div>
     
     {/* Period Selector */}
-    <div className="card" style={{marginBottom:16,background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none'}}>
+    <div className="card" style={{marginBottom:16,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none'}}>
       <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
         <div style={{fontSize:32}}>📅</div>
         <div style={{flex:1,minWidth:180}}>
@@ -3261,9 +3261,9 @@ export function SupervisorTargetsPage(){
     
     {/* Overall Stats */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #065F2E'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>MASUPERVAIZA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#065F2E',marginTop:4}}>{totalStats.totalAgents}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{totalStats.totalAgents}</div>
         <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.agentsWithTargets} wana target</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #3B82F6'}}>
@@ -3290,14 +3290,14 @@ export function SupervisorTargetsPage(){
     
     {/* Actions */}
     <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
-      <button onClick={exportReport} style={{padding:'10px 16px',background:'#fff',color:'#065F2E',border:'2px solid #BBF7D0',borderRadius:10,fontWeight:700,fontSize:12,cursor:'pointer'}}>
+      <button onClick={exportReport} style={{padding:'10px 16px',background:'#fff',color:'#0A6E47',border:'2px solid #BBF7D0',borderRadius:10,fontWeight:700,fontSize:12,cursor:'pointer'}}>
         📥 Pakua CSV Report
       </button>
     </div>
     
     {/* Supervisors Performance Cards */}
     <div className="card">
-      <h3 style={{fontSize:14,fontWeight:800,color:'#065F2E',margin:'0 0 14px'}}>🏆 Performance ya Mawakala — {monthLabel} {period.year}</h3>
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>🏆 Performance ya Mawakala — {monthLabel} {period.year}</h3>
       
       {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
@@ -3335,8 +3335,8 @@ export function SupervisorTargetsPage(){
                 </div>
               </div>
               <div style={{display:'flex',gap:6}}>
-                <button onClick={()=>setEditTarget({supervisor:p.supervisor,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#065F2E',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
-                <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#065F2E',border:'2px solid #BBF7D0',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
+                <button onClick={()=>setEditTarget({supervisor:p.supervisor,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
+                <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#0A6E47',border:'2px solid #BBF7D0',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
               </div>
             </div>
             
@@ -3402,10 +3402,10 @@ export function SupervisorTargetsPage(){
       <div style={{maxHeight:'70vh',overflowY:'auto'}}>
         <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #BBF7D0'}}>
           <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:4}}>📅 MWEZI</div>
-          <div style={{fontWeight:800,color:'#065F2E'}}>{monthLabel} {period.year}</div>
+          <div style={{fontWeight:800,color:'#0A6E47'}}>{monthLabel} {period.year}</div>
         </div>
         
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'14px 0 8px'}}>🎯 Targets</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'14px 0 8px'}}>🎯 Targets</h4>
         
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
           <div>
@@ -3420,7 +3420,7 @@ export function SupervisorTargetsPage(){
           </div>
         </div>
         
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'14px 0 8px'}}>💰 Bonasi</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'14px 0 8px'}}>💰 Bonasi</h4>
         
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
           <div>
@@ -3454,7 +3454,7 @@ export function SupervisorTargetsPage(){
         
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>setEditTarget(null)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
-          <button onClick={saveTarget} disabled={saving} style={{flex:2,padding:12,background:saving?'#86EFAC':'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:saving?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{saving?'⏳ Inahifadhi...':'💾 Hifadhi Target'}</button>
+          <button onClick={saveTarget} disabled={saving} style={{flex:2,padding:12,background:saving?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:saving?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{saving?'⏳ Inahifadhi...':'💾 Hifadhi Target'}</button>
         </div>
       </div>
     </Modal>}
@@ -3488,7 +3488,7 @@ export function SupervisorTargetsPage(){
         
         {/* New customers list */}
         {viewAgent.newCustomersList.length>0&&<div style={{marginBottom:14}}>
-          <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'0 0 8px'}}>👥 Wateja Wapya ({viewAgent.newCustomers})</h4>
+          <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'0 0 8px'}}>👥 Wateja Wapya ({viewAgent.newCustomers})</h4>
           <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:200,overflowY:'auto'}}>
             {viewAgent.newCustomersList.map(b=><div key={b.id} style={{padding:'8px 12px',background:'#F0FDF4',borderRadius:8,fontSize:12,borderLeft:'3px solid #22C55E'}}>
               <div style={{fontWeight:700,color:'#15803D'}}>{b.name}</div>
@@ -3499,7 +3499,7 @@ export function SupervisorTargetsPage(){
         
         {/* Visits list */}
         {viewAgent.visitsList.length>0&&<div style={{marginBottom:14}}>
-          <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'0 0 8px'}}>📋 Ziara ({viewAgent.totalVisits})</h4>
+          <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'0 0 8px'}}>📋 Ziara ({viewAgent.totalVisits})</h4>
           <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:300,overflowY:'auto'}}>
             {viewAgent.visitsList.map(v=><div key={v.id} style={{padding:'8px 12px',background:v.has_issues?'#FEF2F2':'#F5F3FF',borderRadius:8,fontSize:12,borderLeft:`3px solid ${v.has_issues?'#DC2626':'#8B5CF6'}`}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>

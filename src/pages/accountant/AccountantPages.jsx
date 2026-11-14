@@ -47,12 +47,12 @@ export function AccountantDashboard(){
   useEffect(()=>{supabase?.from('smart_alerts').select('*').eq('is_read',false).order('created_at',{ascending:false}).limit(5).then(({data})=>setAlerts(data||[])).catch(()=>{})},[]);
 
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#065F2E'}}>🧮 MUHASIBU — Dashboard</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>🧮 MUHASIBU — Dashboard</h3>
     <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>{new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
     {/* F6: Smart Alerts */}
     {alerts.length>0&&<div style={{marginBottom:14}}>{alerts.map(a=><div key={a.id} style={{background:a.type==='danger'?'#FEF2F2':a.type==='warning'?'#FFF7ED':'#EFF6FF',borderLeft:`4px solid ${a.type==='danger'?'#EF4444':a.type==='warning'?'#F59E0B':'#3B82F6'}`,borderRadius:10,padding:'10px 14px',marginBottom:6,fontSize:12,color:'#1E293B',display:'flex',justifyContent:'space-between',alignItems:'center'}}><span><b>{a.title}</b> — {a.message}</span><button onClick={async()=>{await supabase.from('smart_alerts').update({is_read:true}).eq('id',a.id);setAlerts(p=>p.filter(x=>x.id!==a.id))}} style={{background:'none',border:'none',color:'#94A3B8',cursor:'pointer',fontSize:10}}>✕</button></div>)}</div>}
     {/* P&L Hero */}
-    <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:20,padding:24,marginBottom:16,color:'#fff',boxShadow:'0 8px 30px rgba(11,122,59,0.3)'}}>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:20,padding:24,marginBottom:16,color:'#fff',boxShadow:'0 8px 30px rgba(11,122,59,0.3)'}}>
       <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',gap:16,textAlign:'center'}}>
         <div><div style={{fontSize:11,opacity:.7,fontWeight:600}}>MAPATO JUMLA</div><div style={{fontSize:26,fontWeight:900}}>{fm(totalRev)}</div></div>
         <div><div style={{fontSize:11,opacity:.7,fontWeight:600}}>MWEZI HUU</div><div style={{fontSize:26,fontWeight:900}}>{fm(monthRev)}</div></div>
@@ -61,13 +61,13 @@ export function AccountantDashboard(){
       </div>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:16}}>
-      {[{l:'Wateja',v:businesses.length,c:'#065F2E'},{l:'Active',v:ac.length,c:'#22C55E'},{l:'Trial',v:tr.length,c:'#F59E0B'},{l:'Suspended',v:su.length,c:'#EF4444'},{l:'Collection',v:colRate+'%',c:colRate>=80?'#22C55E':'#F59E0B'},{l:'Tokens',v:usedTk.length,c:'#8B5CF6'},{l:'Tarajiwa',v:fm(expected),c:'#3B82F6'},{l:'Pending',v:pd.length,c:'#F59E0B'}].map((s,i)=>
+      {[{l:'Wateja',v:businesses.length,c:'#0A6E47'},{l:'Active',v:ac.length,c:'#22C55E'},{l:'Trial',v:tr.length,c:'#F59E0B'},{l:'Suspended',v:su.length,c:'#EF4444'},{l:'Collection',v:colRate+'%',c:colRate>=80?'#22C55E':'#F59E0B'},{l:'Tokens',v:usedTk.length,c:'#8B5CF6'},{l:'Tarajiwa',v:fm(expected),c:'#3B82F6'},{l:'Pending',v:pd.length,c:'#F59E0B'}].map((s,i)=>
       <div key={i} className="card" style={{textAlign:'center',padding:12}}><div style={{fontSize:9,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>{s.l}</div><div style={{fontSize:20,fontWeight:900,color:s.c}}>{s.v}</div></div>)}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
       <HealthScore revenue={monthRev} expenses={monthExp}/>
-      {months.length>0&&<div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📊 Mapato/Mwezi</h3>{months.map(([m,a])=><div key={m} style={{padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{width:50,fontSize:10,fontWeight:600,color:'#64748B'}}>{m}</span><div style={{flex:1,background:'#F1F5F9',borderRadius:6,height:18,overflow:'hidden'}}><div style={{width:(a/maxM*100)+'%',height:'100%',background:'linear-gradient(90deg,#065F2E,#22C55E)',borderRadius:6}}/></div><span style={{fontWeight:700,fontSize:10,color:'#065F2E',minWidth:80,textAlign:'right'}}>{fm(a)}</span></div>)}</div>}
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📋 Chaneli</h3>{Object.entries(pm).filter(([,a])=>a>0).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'5px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{fontWeight:600}}>{n}</span><span style={{fontWeight:800,color:'#065F2E'}}>{fm(a)}</span></div>)}{!Object.keys(pm).length&&<Empty icon="📋" text="Hakuna"/>}</div>
+      {months.length>0&&<div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📊 Mapato/Mwezi</h3>{months.map(([m,a])=><div key={m} style={{padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{width:50,fontSize:10,fontWeight:600,color:'#64748B'}}>{m}</span><div style={{flex:1,background:'#F1F5F9',borderRadius:6,height:18,overflow:'hidden'}}><div style={{width:(a/maxM*100)+'%',height:'100%',background:'linear-gradient(90deg,#0A6E47,#22C55E)',borderRadius:6}}/></div><span style={{fontWeight:700,fontSize:10,color:'#0A6E47',minWidth:80,textAlign:'right'}}>{fm(a)}</span></div>)}</div>}
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📋 Chaneli</h3>{Object.entries(pm).filter(([,a])=>a>0).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'5px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{fontWeight:600}}>{n}</span><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)}</span></div>)}{!Object.keys(pm).length&&<Empty icon="📋" text="Hakuna"/>}</div>
     </div>
   </div>;
 }
@@ -115,14 +115,14 @@ export function AccBudgetPage(){
 
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#065F2E'}}>📋 Bajeti ya Mwezi</h3>
+      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#0A6E47'}}>📋 Bajeti ya Mwezi</h3>
       <div style={{display:'flex',gap:8}}><input type="month" value={month} onChange={e=>setMonth(e.target.value)} style={{padding:'8px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
-      <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#065F2E',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Ongeza Bajeti</button></div>
+      <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Ongeza Bajeti</button></div>
     </div>
     {/* Overview */}
     <div style={{background:pct>=100?'linear-gradient(135deg,#FEF2F2,#FEE2E2)':pct>=80?'linear-gradient(135deg,#FFF7ED,#FFEDD5)':'linear-gradient(135deg,#F0FDF4,#DCFCE7)',borderRadius:16,padding:20,marginBottom:16,border:`2px solid ${pct>=100?'#FECACA':pct>=80?'#FED7AA':'#BBF7D0'}`}}>
       <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',gap:12,textAlign:'center',marginBottom:12}}>
-        <div><div style={{fontSize:10,color:'#64748B',fontWeight:600}}>BAJETI</div><div style={{fontSize:24,fontWeight:900,color:'#065F2E'}}>{fm(totalBudget)}</div></div>
+        <div><div style={{fontSize:10,color:'#64748B',fontWeight:600}}>BAJETI</div><div style={{fontSize:24,fontWeight:900,color:'#0A6E47'}}>{fm(totalBudget)}</div></div>
         <div><div style={{fontSize:10,color:'#64748B',fontWeight:600}}>IMETUMIKA</div><div style={{fontSize:24,fontWeight:900,color:'#EF4444'}}>{fm(totalSpent)}</div></div>
         <div><div style={{fontSize:10,color:'#64748B',fontWeight:600}}>IMEBAKI</div><div style={{fontSize:24,fontWeight:900,color:remaining>=0?'#22C55E':'#EF4444'}}>{fm(remaining)}</div></div>
         <div><div style={{fontSize:10,color:'#64748B',fontWeight:600}}>ASILIMIA</div><div style={{fontSize:24,fontWeight:900,color:pct>=100?'#EF4444':pct>=80?'#F59E0B':'#22C55E'}}>{pct}%</div></div>
@@ -179,9 +179,9 @@ export function AccPayrollPage(){
 
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#065F2E'}}>👥 Payroll</h3>
+      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#0A6E47'}}>👥 Payroll</h3>
       <div style={{display:'flex',gap:8}}><input type="month" value={month} onChange={e=>setMonth(e.target.value)} style={{padding:'8px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
-      <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#065F2E',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Ongeza Mshahara</button></div>
+      <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Ongeza Mshahara</button></div>
     </div>
     <div className="flex-wrap" style={{marginBottom:14}}>
       <Stat icon={IC.dollar} label="Mishahara" value={fm(totalSalary)} color="#8B5CF6" sub={month}/>
@@ -197,7 +197,7 @@ export function AccPayrollPage(){
           <div style={{fontSize:10,color:'#64748B',marginTop:2}}>Mshahara: {fm(p.salary)} {+p.bonus>0?`+ Bonus: ${fm(p.bonus)}`:''} {+p.allowance>0?`+ Allow: ${fm(p.allowance)}`:''} {+p.deductions>0?`- Ded: ${fm(p.deductions)}`:''}</div>
         </div>
         <div style={{textAlign:'right'}}>
-          <div style={{fontWeight:900,fontSize:16,color:'#065F2E'}}>{fm(p.net_pay)}</div>
+          <div style={{fontWeight:900,fontSize:16,color:'#0A6E47'}}>{fm(p.net_pay)}</div>
           {p.status==='paid'?<Badge color="#22C55E">✅ Paid</Badge>:<button onClick={()=>markPaid(p.id)} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #22C55E',background:'#F0FDF4',color:'#22C55E',fontWeight:700,fontSize:11,cursor:'pointer'}}>Lipa</button>}
         </div>
       </div>)}
@@ -214,7 +214,7 @@ export function AccPayrollPage(){
         <Input label="Deductions" type="number" placeholder="0" value={f.deductions} onChange={e=>s('deductions',e.target.value)}/>
         <Sel label="Njia ya Malipo" value={f.method} onChange={e=>s('method',e.target.value)} options={['Bank Transfer','Mobile Money','Cash','Cheque'].map(m=>({value:m,label:m}))}/>
       </div>
-      <div style={{background:'#F0FDF4',borderRadius:10,padding:12,marginTop:8,textAlign:'center'}}><span style={{color:'#64748B',fontSize:12}}>Net Pay: </span><b style={{fontSize:20,color:'#065F2E'}}>{fm((+f.salary||0)+(+f.bonus||0)+(+f.allowance||0)-(+f.deductions||0))}</b></div>
+      <div style={{background:'#F0FDF4',borderRadius:10,padding:12,marginTop:8,textAlign:'center'}}><span style={{color:'#64748B',fontSize:12}}>Net Pay: </span><b style={{fontSize:20,color:'#0A6E47'}}>{fm((+f.salary||0)+(+f.bonus||0)+(+f.allowance||0)-(+f.deductions||0))}</b></div>
       <Btn onClick={handleAdd} style={{marginTop:10,width:'100%'}}>💾 Hifadhi</Btn>
     </Modal>}
   </div>;
@@ -267,7 +267,7 @@ export function AccDebtsPage(){
 
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#065F2E'}}>💳 Madeni ya Marketing</h3>
+      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#0A6E47'}}>💳 Madeni ya Marketing</h3>
       <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#EF4444',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Rekodi Deni</button>
     </div>
     <div className="flex-wrap" style={{marginBottom:14}}>
@@ -325,7 +325,7 @@ export function AccAuditPage(){
   useEffect(()=>{supabase?.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(100).then(({data})=>setLogs(data||[]))},[]);
   const icons={budget_create:'📋',payroll_create:'👥',debt_create:'💳',debt_payment:'💰',expense_create:'💸',flag_payment:'⚠️'};
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#065F2E'}}>📝 Audit Logs</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#0A6E47'}}>📝 Audit Logs</h3>
     <div className="card"><div style={{maxHeight:500,overflowY:'auto'}}>
       {logs.map(l=><div key={l.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',gap:10,alignItems:'center'}}>
         <div style={{width:36,height:36,borderRadius:10,background:'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{icons[l.action]||'📝'}</div>
@@ -356,19 +356,19 @@ export function AccPaymentsPage(){
   const total=filtered.filter(p=>p.status==='approved').reduce((a,p)=>a+(+p.amount||0),0);
   const handleFlag=async(pid)=>{try{await supabase.from('payment_requests').update({flagged:true,flag_reason:flagReason}).eq('id',pid);await supabase.from('smart_alerts').insert({type:'danger',title:'⚠️ Malipo Yanashukiwa!',message:flagReason});await supabase.from('audit_logs').insert({user_role:'accountant',action:'flag_payment',details:flagReason});setFlagging(null);setFlagReason('');alert('Imetumwa kwa Admin!')}catch(e){alert(e.message)}};
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#065F2E'}}>💰 Malipo</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#0A6E47'}}>💰 Malipo</h3>
     <div className="flex-wrap" style={{marginBottom:12}}>
       <Stat icon={IC.ok} label="Kubaliwa" value={paymentRequests.filter(p=>p.status==='approved').length} color="#22C55E"/>
       <Stat icon={IC.clock} label="Subiri" value={paymentRequests.filter(p=>p.status==='pending').length} color="#F59E0B"/>
       <Stat icon={IC.warn} label="Kataliwa" value={paymentRequests.filter(p=>p.status==='rejected').length} color="#EF4444"/>
-      <Stat icon={IC.dollar} label="Kiasi" value={fm(total)} color="#065F2E"/>
+      <Stat icon={IC.dollar} label="Kiasi" value={fm(total)} color="#0A6E47"/>
     </div>
-    <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'}}>{[{id:'all',l:`Yote (${paymentRequests.length})`},{id:'approved',l:'✅ Kubaliwa'},{id:'pending',l:'⏳ Subiri'},{id:'rejected',l:'❌ Kataliwa'},{id:'flagged',l:'⚠️ Shukiwa'}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 12px',borderRadius:8,border:tab===t.id?'2px solid #065F2E':'1px solid #E2E8F0',background:tab===t.id?'#F0FDF4':'#fff',fontWeight:tab===t.id?700:500,fontSize:11,cursor:'pointer',color:tab===t.id?'#065F2E':'#64748B'}}>{t.l}</button>)}</div>
+    <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap'}}>{[{id:'all',l:`Yote (${paymentRequests.length})`},{id:'approved',l:'✅ Kubaliwa'},{id:'pending',l:'⏳ Subiri'},{id:'rejected',l:'❌ Kataliwa'},{id:'flagged',l:'⚠️ Shukiwa'}].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 12px',borderRadius:8,border:tab===t.id?'2px solid #0A6E47':'1px solid #E2E8F0',background:tab===t.id?'#F0FDF4':'#fff',fontWeight:tab===t.id?700:500,fontSize:11,cursor:'pointer',color:tab===t.id?'#0A6E47':'#64748B'}}>{t.l}</button>)}</div>
     <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>{[{id:'all',l:'Yote'},{id:'today',l:'Leo'},{id:'week',l:'Wiki'},{id:'month',l:'Mwezi'}].map(t=><button key={t.id} onClick={()=>setPeriod(t.id)} style={{padding:'4px 10px',borderRadius:6,border:period===t.id?'2px solid #3B82F6':'1px solid #E2E8F0',background:period===t.id?'#EFF6FF':'#fff',fontWeight:period===t.id?700:500,fontSize:10,cursor:'pointer',color:period===t.id?'#3B82F6':'#94A3B8'}}>{t.l}</button>)}</div>
     <div className="card"><div style={{maxHeight:500,overflowY:'auto'}}>{filtered.length?filtered.map(p=>{const tk=tokens.find(t=>t.code===p.token_code);return<div key={p.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
       <div style={{flex:1,minWidth:180}}><div style={{display:'flex',alignItems:'center',gap:6}}><b style={{fontSize:13}}>{p.business_name||'Biashara'}</b><Badge color={p.status==='approved'?'#22C55E':p.status==='pending'?'#F59E0B':'#EF4444'}>{p.status}</Badge>{p.flagged&&<Badge color="#EF4444">⚠️</Badge>}</div><div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{fmtDate(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace'}}>{p.transaction_id||'—'}</span>{tk?.assigned_name?` • 📋 ${tk.assigned_name}`:''}</div></div>
-      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><span style={{fontWeight:800,fontSize:15,color:p.status==='approved'?'#065F2E':'#94A3B8'}}>{fm(p.amount)}</span>
-      {p.status==='pending'&&<><button onClick={()=>{setApproving(p.id);setApproveDays(30);}} style={{padding:'5px 12px',borderRadius:6,border:'none',background:'#065F2E',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>✅ Thibitisha</button><button onClick={()=>{setRejecting(p.id);setRejectReason('');}} style={{padding:'5px 12px',borderRadius:6,border:'1px solid #EF4444',background:'#fff',color:'#EF4444',fontSize:11,fontWeight:700,cursor:'pointer'}}>❌ Kataa</button></>}
+      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}><span style={{fontWeight:800,fontSize:15,color:p.status==='approved'?'#0A6E47':'#94A3B8'}}>{fm(p.amount)}</span>
+      {p.status==='pending'&&<><button onClick={()=>{setApproving(p.id);setApproveDays(30);}} style={{padding:'5px 12px',borderRadius:6,border:'none',background:'#0A6E47',color:'#fff',fontSize:11,fontWeight:700,cursor:'pointer'}}>✅ Thibitisha</button><button onClick={()=>{setRejecting(p.id);setRejectReason('');}} style={{padding:'5px 12px',borderRadius:6,border:'1px solid #EF4444',background:'#fff',color:'#EF4444',fontSize:11,fontWeight:700,cursor:'pointer'}}>❌ Kataa</button></>}
       {!p.flagged&&p.status!=='pending'&&<button onClick={()=>setFlagging(p.id)} style={{padding:'2px 6px',borderRadius:4,border:'1px solid #FCA5A5',background:'#fff',fontSize:9,cursor:'pointer',color:'#EF4444'}}>⚠️</button>}</div>
     </div>}):<Empty icon="💰" text="Hakuna malipo"/>}</div></div>
 
@@ -405,7 +405,7 @@ export function AccExpensesPage(){
     await supabase.from('audit_logs').insert({user_role:'accountant',action:'expense_create',details:`${f.category}: ${fm(+f.amount)}`}).catch(()=>{})}catch(e){alert(e.message)}};
   return <div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#065F2E'}}>💸 Matumizi</h3>
+      <h3 style={{fontSize:20,fontWeight:900,margin:0,color:'#0A6E47'}}>💸 Matumizi</h3>
       <button onClick={()=>setShow(true)} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#EF4444',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer'}}>+ Ongeza</button>
     </div>
     <div className="flex-wrap" style={{marginBottom:14}}>
@@ -430,11 +430,11 @@ export function AccRevenuePage(){
   const pm={};usedTk.forEach(t=>{pm[t.assigned_name||'Admin']=(pm[t.assigned_name||'Admin']||0)+price});
   const byPlan={};usedTk.forEach(t=>{byPlan[t.plan||'basic']=(byPlan[t.plan||'basic']||0)+price});
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#065F2E'}}>📊 Chaneli</h3>
-    <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:20,padding:24,marginBottom:16,color:'#fff',textAlign:'center'}}><div style={{fontSize:12,opacity:.7}}>MAPATO JUMLA</div><div style={{fontSize:36,fontWeight:900}}>{fm(totalRev)}</div><div style={{fontSize:12,opacity:.7}}>Tokens {usedTk.length} • Malipo {ap.length}</div></div>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#0A6E47'}}>📊 Chaneli</h3>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:20,padding:24,marginBottom:16,color:'#fff',textAlign:'center'}}><div style={{fontSize:12,opacity:.7}}>MAPATO JUMLA</div><div style={{fontSize:36,fontWeight:900}}>{fm(totalRev)}</div><div style={{fontSize:12,opacity:.7}}>Tokens {usedTk.length} • Malipo {ap.length}</div></div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📋 Kwa Mshirika</h3>{Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{fontWeight:600}}>{n}</span><span style={{fontWeight:800,color:'#065F2E'}}>{fm(a)} ({totalRev?Math.round(a/totalRev*100):0}%)</span></div>)}{!Object.keys(pm).length&&<Empty icon="📋" text="Hakuna"/>}</div>
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📦 Kwa Plan</h3>{Object.entries(byPlan).map(([p,a])=><div key={p} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between'}}><Badge color={p==='premium'?'#8B5CF6':'#64748B'}>{p.toUpperCase()}</Badge><span style={{fontWeight:800,color:'#065F2E'}}>{fm(a)}</span></div>)}</div>
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📋 Kwa Mshirika</h3>{Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{fontWeight:600}}>{n}</span><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)} ({totalRev?Math.round(a/totalRev*100):0}%)</span></div>)}{!Object.keys(pm).length&&<Empty icon="📋" text="Hakuna"/>}</div>
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>📦 Kwa Plan</h3>{Object.entries(byPlan).map(([p,a])=><div key={p} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between'}}><Badge color={p==='premium'?'#8B5CF6':'#64748B'}>{p.toUpperCase()}</Badge><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)}</span></div>)}</div>
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px'}}>🔑 Tokens ({usedTk.length})</h3><div style={{maxHeight:250,overflowY:'auto'}}>{usedTk.map(t=>{const b=businesses.find(x=>x.id===t.used_by);return<div key={t.id} style={{padding:'5px 0',borderBottom:'1px solid #F1F5F9',fontSize:11}}><span style={{fontFamily:'monospace',fontWeight:700,color:'#92400E',background:'#FFF7ED',padding:'2px 6px',borderRadius:4}}>{t.code}</span> → {b?.name||'—'} • {t.assigned_name||'Admin'} • {fm(price)}</div>})}{!usedTk.length&&<Empty icon="🔑" text="Hakuna"/>}</div></div>
     </div>
   </div>;
@@ -447,7 +447,7 @@ export function AccCustomersPage(){
   const exp=businesses.filter(b=>{const e=b.token_active?b.token_expiry:b.trial_end;return e&&Math.ceil((new Date(e)-new Date())/86400000)<=7&&Math.ceil((new Date(e)-new Date())/86400000)>0});
   const List=({items,color,title})=><div className="card" style={{marginBottom:14}}><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 8px',color}}>{title} ({items.length})</h3><div style={{maxHeight:250,overflowY:'auto'}}>{items.map(b=>{const e=b.token_active?b.token_expiry:b.trial_end;const d=e?Math.ceil((new Date(e)-new Date())/86400000):0;return<div key={b.id} style={{padding:'5px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}><div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div><div style={{textAlign:'right'}}><Badge color={b.plan==='premium'?'#8B5CF6':'#64748B'}>{b.plan||'trial'}</Badge><br/><span style={{color:d<=5?'#EF4444':'#22C55E',fontWeight:700,fontSize:11}}>Siku {d}</span></div></div>})}{!items.length&&<Empty icon="📋" text="Hakuna"/>}</div></div>;
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#065F2E'}}>🏪 Wateja ({businesses.length})</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#0A6E47'}}>🏪 Wateja ({businesses.length})</h3>
     <div className="flex-wrap" style={{marginBottom:14}}><Stat icon={IC.ok} label="Active" value={ac.length} color="#22C55E"/><Stat icon={IC.clock} label="Trial" value={tr.length} color="#F59E0B"/><Stat icon={IC.warn} label="Suspended" value={su.length} color="#EF4444"/><Stat icon={IC.warn} label="Muda" value={exp.length} color="#EF4444" sub="siku 7"/></div>
     {exp.length>0&&<List items={exp} color="#EF4444" title="⚠️ Muda Unaisha"/>}
     <List items={ac} color="#22C55E" title="✅ Active"/><List items={tr} color="#F59E0B" title="⏳ Trial"/><List items={su} color="#EF4444" title="🔒 Suspended"/>
@@ -465,11 +465,11 @@ export function AccReportsPage(){
   useEffect(()=>{supabase?.from('marketing_debts').select('*').then(({data})=>setDebts(data||[]))},[]);
   const totalDebt=debts.reduce((a,d)=>a+(+d.remaining||0),0);
 
-  const pdf=(title,content)=>{const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>body{font-family:Arial;margin:30px;color:#1E293B}h1{color:#065F2E;border-bottom:3px solid #065F2E;padding-bottom:8px}h2{margin-top:20px}table{width:100%;border-collapse:collapse;margin:10px 0}th{background:#065F2E;color:#fff;padding:8px;text-align:left;font-size:12px}td{padding:7px 8px;border-bottom:1px solid #E2E8F0;font-size:12px}tr:nth-child(even){background:#F8FAFC}.big{font-size:24px;font-weight:900;color:#065F2E}@media print{body{margin:15px}}</style></head><body>${content}<div style="margin-top:30px;border-top:2px solid #065F2E;padding-top:10px;text-align:center;color:#64748B;font-size:10px">Duka Langu — ${new Date().toLocaleString('sw-TZ')}</div></body></html>`);w.document.close();setTimeout(()=>w.print(),500)};
+  const pdf=(title,content)=>{const w=window.open('','_blank');w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>body{font-family:Arial;margin:30px;color:#1E293B}h1{color:#0A6E47;border-bottom:3px solid #0A6E47;padding-bottom:8px}h2{margin-top:20px}table{width:100%;border-collapse:collapse;margin:10px 0}th{background:#0A6E47;color:#fff;padding:8px;text-align:left;font-size:12px}td{padding:7px 8px;border-bottom:1px solid #E2E8F0;font-size:12px}tr:nth-child(even){background:#F8FAFC}.big{font-size:24px;font-weight:900;color:#0A6E47}@media print{body{margin:15px}}</style></head><body>${content}<div style="margin-top:30px;border-top:2px solid #0A6E47;padding-top:10px;text-align:center;color:#64748B;font-size:10px">Duka Langu — ${new Date().toLocaleString('sw-TZ')}</div></body></html>`);w.document.close();setTimeout(()=>w.print(),500)};
 
   return <div>
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#065F2E'}}>📋 Ripoti za Fedha</h3>
-    <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:20,padding:24,marginBottom:16,color:'#fff'}}>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 14px',color:'#0A6E47'}}>📋 Ripoti za Fedha</h3>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:20,padding:24,marginBottom:16,color:'#fff'}}>
       <div style={{textAlign:'center',marginBottom:6}}><div style={{fontSize:12,opacity:.7}}>P&L — {ms}</div></div>
       <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',gap:10,textAlign:'center'}}>
         <div><div style={{fontSize:10,opacity:.6}}>MAPATO</div><div style={{fontSize:22,fontWeight:900}}>{fm(monthRev)}</div></div>
@@ -481,7 +481,7 @@ export function AccReportsPage(){
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12}}>
       {[
-        {icon:'📊',title:'P&L Report',desc:'Mapato vs Matumizi',color:'#065F2E',fn:()=>{const byCat={};allExp.filter(e=>(e.date||e.created_at||'').slice(0,7)===ms).forEach(e=>{byCat[e.category||'Nyingine']=(byCat[e.category||'Nyingine']||0)+(+e.amount||0)});pdf('P&L',`<h1>PROFIT & LOSS — ${ms}</h1><h2>MAPATO</h2><table><tr><td><b>Ada ya Wateja</b></td><td style="text-align:right" class="big">${fm(monthRev)}</td></tr></table><h2>MATUMIZI</h2><table>${Object.entries(byCat).map(([c,a])=>`<tr><td>${c}</td><td style="text-align:right;color:#EF4444">${fm(a)}</td></tr>`).join('')}<tr style="background:#FEF2F2"><td><b>JUMLA</b></td><td style="text-align:right;font-weight:900;color:#EF4444">${fm(monthExp)}</td></tr></table><h2>FAIDA</h2><table><tr style="background:${monthRev-monthExp>=0?'#F0FDF4':'#FEF2F2'}"><td><b>NET PROFIT</b></td><td style="text-align:right;font-size:24px;font-weight:900;color:${monthRev-monthExp>=0?'#065F2E':'#EF4444'}">${fm(monthRev-monthExp)}</td></tr></table>`)}},
+        {icon:'📊',title:'P&L Report',desc:'Mapato vs Matumizi',color:'#0A6E47',fn:()=>{const byCat={};allExp.filter(e=>(e.date||e.created_at||'').slice(0,7)===ms).forEach(e=>{byCat[e.category||'Nyingine']=(byCat[e.category||'Nyingine']||0)+(+e.amount||0)});pdf('P&L',`<h1>PROFIT & LOSS — ${ms}</h1><h2>MAPATO</h2><table><tr><td><b>Ada ya Wateja</b></td><td style="text-align:right" class="big">${fm(monthRev)}</td></tr></table><h2>MATUMIZI</h2><table>${Object.entries(byCat).map(([c,a])=>`<tr><td>${c}</td><td style="text-align:right;color:#EF4444">${fm(a)}</td></tr>`).join('')}<tr style="background:#FEF2F2"><td><b>JUMLA</b></td><td style="text-align:right;font-weight:900;color:#EF4444">${fm(monthExp)}</td></tr></table><h2>FAIDA</h2><table><tr style="background:${monthRev-monthExp>=0?'#F0FDF4':'#FEF2F2'}"><td><b>NET PROFIT</b></td><td style="text-align:right;font-size:24px;font-weight:900;color:${monthRev-monthExp>=0?'#0A6E47':'#EF4444'}">${fm(monthRev-monthExp)}</td></tr></table>`)}},
         {icon:'💰',title:'Mapato',desc:'Malipo & Tokens',color:'#3B82F6',fn:()=>{const pm={};usedTk.forEach(t=>{pm[t.assigned_name||'Admin']=(pm[t.assigned_name||'Admin']||0)+price});pdf('Revenue',`<h1>MAPATO</h1><p class="big">${fm(totalRev)}</p><h2>Kwa Mshirika</h2><table><tr><th>Mshirika</th><th>Mapato</th></tr>${Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([n,a])=>`<tr><td>${n}</td><td>${fm(a)}</td></tr>`).join('')}</table>`)}},
         {icon:'💸',title:'Matumizi',desc:'Gharama za mfumo',color:'#EF4444',fn:()=>{const byCat={};allExp.forEach(e=>{byCat[e.category||'Nyingine']=(byCat[e.category||'Nyingine']||0)+(+e.amount||0)});pdf('Expenses',`<h1>MATUMIZI</h1><p class="big">${fm(totalExp)}</p><h2>Kategoria</h2><table><tr><th>Kategoria</th><th>Kiasi</th></tr>${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td>${c}</td><td>${fm(a)}</td></tr>`).join('')}</table>`)}},
         {icon:'📋',title:'Bajeti',desc:'Budget Report',color:'#8B5CF6',fn:()=>{pdf('Budget',`<h1>BAJETI — ${ms}</h1><p>Taarifa za bajeti zinapatikana kwenye mfumo</p>`)}},

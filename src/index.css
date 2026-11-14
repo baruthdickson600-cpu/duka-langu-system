@@ -6,13 +6,13 @@ body{font-family:'Inter',-apple-system,sans-serif;background:#F1F5F9;color:#1E29
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:#94A3B8}
-::selection{background:rgba(11,122,59,.15)}
+::selection{background:rgba(10,110,71,.15)}
 
 /* ===== INPUTS & FORMS ===== */
 input,select,textarea{transition:all 0.3s cubic-bezier(.4,0,.2,1)}
 input:focus,select:focus,textarea:focus{
-  border-color:#065F2E!important;
-  box-shadow:0 0 0 3px rgba(11,122,59,.12),0 2px 8px rgba(11,122,59,.08);
+  border-color:#0A6E47!important;
+  box-shadow:0 0 0 3px rgba(10,110,71,.12),0 2px 8px rgba(10,110,71,.08);
   outline:none;transform:translateY(-1px)
 }
 input::placeholder{transition:all 0.3s}
@@ -48,14 +48,14 @@ button:active::after{transform:scale(0);opacity:.3;transition:0s}
 /* Sidebar menu items */
 .sidebar button,.sidebar a{position:relative;transition:all 0.25s cubic-bezier(.4,0,.2,1)!important}
 .sidebar button:hover,.sidebar a:hover{
-  background:rgba(11,122,59,.08)!important;
+  background:rgba(10,110,71,.08)!important;
   padding-left:20px!important;
-  box-shadow:inset 3px 0 0 #065F2E;
+  box-shadow:inset 3px 0 0 #0A6E47;
 }
 
 /* ===== TABLE ROWS ===== */
 table tr{transition:background 0.2s ease}
-table tr:hover td{background:rgba(11,122,59,.03)}
+table tr:hover td{background:rgba(10,110,71,.03)}
 table th{position:sticky;top:0;z-index:1}
 
 /* ===== ANIMATIONS ===== */
@@ -73,7 +73,7 @@ table th{position:sticky;top:0;z-index:1}
 @keyframes popIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(11,122,59,.2)}50%{box-shadow:0 0 20px rgba(11,122,59,.4)}}
+@keyframes glow{0%,100%{box-shadow:0 0 5px rgba(10,110,71,.2)}50%{box-shadow:0 0 20px rgba(10,110,71,.4)}}
 
 /* Staggered animation for children */
 .card:nth-child(1){animation-delay:0s}
@@ -143,7 +143,7 @@ span[style*="borderRadius"]{transition:all 0.2s ease}
 .page-enter{animation:fadeIn 0.3s cubic-bezier(.4,0,.2,1) both}
 
 /* ===== CHART BARS ===== */
-div[style*="background:linear-gradient(90deg,#065F2E"]{
+div[style*="background:linear-gradient(90deg,#0A6E47"]{
   transition:width 0.8s cubic-bezier(.4,0,.2,1)!important;
 }
 
@@ -242,4 +242,4 @@ html[data-theme="dark"] .modal-content{background:#121A17!important;color:#EAF2E
 /* Gradient za kijani zisibadilike (zibaki brand) — tayari ni rangi maalum */
 html[data-theme="dark"] [style*="linear-gradient"]{color:inherit}
 /* Hakikisha maandishi meupe ndani ya gradient za kijani yanabaki meupe */
-html[data-theme="dark"] [style*="rgb(6, 95, 46)"]{color:#fff}
+html[data-theme="dark"] [style*="rgb(10, 110, 71)"]{color:#fff}

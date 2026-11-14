@@ -80,7 +80,7 @@ export default function FaqManagePage(){
 
     {/* Tabs */}
     <div style={{display:'flex',gap:8,marginBottom:16}}>
-      <button onClick={()=>setTab('faqs')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='faqs'?'#065F2E':'#F1F5F9',color:tab==='faqs'?'#fff':'#64748B'}}>
+      <button onClick={()=>setTab('faqs')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='faqs'?'#0A6E47':'#F1F5F9',color:tab==='faqs'?'#fff':'#64748B'}}>
         Maswali ({faqs.length})
       </button>
       <button onClick={()=>setTab('unanswered')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='unanswered'?'#EF4444':'#F1F5F9',color:tab==='unanswered'?'#fff':'#64748B'}}>
@@ -98,7 +98,7 @@ export default function FaqManagePage(){
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                  <Badge color="#065F2E">{faq.category}</Badge>
+                  <Badge color="#0A6E47">{faq.category}</Badge>
                   {!faq.is_active&&<Badge color="#94A3B8">Imezimwa</Badge>}
                   {faq.views>0&&<span style={{fontSize:11,color:'#94A3B8'}}>👁 {faq.views}</span>}
                 </div>

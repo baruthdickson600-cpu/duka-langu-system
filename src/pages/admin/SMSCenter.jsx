@@ -244,13 +244,13 @@ export default function SMSCenterPage(){
 
   return <div>
     <div style={{marginBottom:16}}>
-      <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>📱 SMS Center</h2>
+      <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>📱 SMS Center</h2>
       <p style={{fontSize:12,color:'#64748B',margin:0}}>Kituo cha mawasiliano — Beem Africa</p>
     </div>
 
     <div style={{display:'flex',gap:6,marginBottom:16,flexWrap:'wrap'}}>
       {TABS.map(([id,label])=>(
-        <button key={id} onClick={()=>{setTab(id);setResult(null)}} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#065F2E':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{label}</button>
+        <button key={id} onClick={()=>{setTab(id);setResult(null)}} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0A6E47':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{label}</button>
       ))}
     </div>
 
@@ -260,7 +260,7 @@ export default function SMSCenterPage(){
     {tab==='dashboard'&&<div>
       {/* ===== HERO: SALIO ===== */}
       <div style={{
-        background:'linear-gradient(135deg,#064E2B 0%,#065F2E 55%,#16A34A 100%)',
+        background:'linear-gradient(135deg,#064E2B 0%,#0A6E47 55%,#16A34A 100%)',
         borderRadius:20,padding:'22px 24px',marginBottom:14,color:'#fff',
         position:'relative',overflow:'hidden',
         boxShadow:'0 8px 24px -8px rgba(11,122,59,0.45)',
@@ -315,7 +315,7 @@ export default function SMSCenterPage(){
         boxShadow:'0 1px 3px rgba(16,24,40,0.04)',
       }}>
         {[
-          {l:'Leo',v:stats.today,c:'#065F2E'},
+          {l:'Leo',v:stats.today,c:'#0A6E47'},
           {l:'Mwezi',v:stats.month,c:'#3B82F6'},
           {l:'Zimefika',v:stats.sent,c:'#16A34A'},
           {l:'Zimeshindwa',v:stats.failed,c:'#EF4444'},
@@ -338,7 +338,7 @@ export default function SMSCenterPage(){
         <div style={{background:'#fff',borderRadius:16,border:'1px solid #EEF2F6',padding:16,boxShadow:'0 1px 3px rgba(16,24,40,0.04)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
             <span style={{fontSize:13,fontWeight:800,color:'#101828'}}>Shughuli za Hivi Karibuni</span>
-            {history.length>0&&<button onClick={()=>setTab('history')} style={{background:'none',border:'none',color:'#065F2E',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>Zote →</button>}
+            {history.length>0&&<button onClick={()=>setTab('history')} style={{background:'none',border:'none',color:'#0A6E47',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>Zote →</button>}
           </div>
           {!history.length?
             <div style={{textAlign:'center',padding:'22px 0',color:'#98A2B3'}}>
@@ -417,7 +417,7 @@ export default function SMSCenterPage(){
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
           {GROUPS.map(g=>{
             const n=getGroupCustomers(g.id).length;
-            return <button key={g.id} onClick={()=>{setGroup(g.id);setSelectedCust([])}} style={{padding:'7px 12px',borderRadius:9,border:group===g.id?'2px solid #065F2E':'1.5px solid #E2E8F0',background:group===g.id?'#F0FDF4':'#fff',color:group===g.id?'#065F2E':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>
+            return <button key={g.id} onClick={()=>{setGroup(g.id);setSelectedCust([])}} style={{padding:'7px 12px',borderRadius:9,border:group===g.id?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:group===g.id?'#F0FDF4':'#fff',color:group===g.id?'#0A6E47':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>
               {g.icon} {g.label} ({n})
             </button>;
           })}
@@ -429,11 +429,11 @@ export default function SMSCenterPage(){
           {searchedCustomers.slice(0,20).map(c=>(
             <div key={c.id} onClick={()=>setSelectedCust(p=>p.includes(c.id)?p.filter(x=>x!==c.id):[...p,c.id])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderBottom:'1px solid #F1F5F9',cursor:'pointer',background:selectedCust.includes(c.id)?'#F0FDF4':'#fff'}}>
               <div><div style={{fontSize:12.5,fontWeight:600}}>{c.name}</div><div style={{fontSize:11,color:'#94A3B8'}}>{c.phone}</div></div>
-              {selectedCust.includes(c.id)&&<span style={{color:'#065F2E',fontWeight:800}}>✓</span>}
+              {selectedCust.includes(c.id)&&<span style={{color:'#0A6E47',fontWeight:800}}>✓</span>}
             </div>
           ))}
         </div>}
-        {selectedCust.length>0&&<div style={{fontSize:12,color:'#065F2E',fontWeight:600}}>✓ Wateja {selectedCust.length} wamechaguliwa <button onClick={()=>setSelectedCust([])} style={{marginLeft:8,background:'none',border:'none',color:'#EF4444',cursor:'pointer',fontSize:11}}>Ondoa</button></div>}
+        {selectedCust.length>0&&<div style={{fontSize:12,color:'#0A6E47',fontWeight:600}}>✓ Wateja {selectedCust.length} wamechaguliwa <button onClick={()=>setSelectedCust([])} style={{marginLeft:8,background:'none',border:'none',color:'#EF4444',cursor:'pointer',fontSize:11}}>Ondoa</button></div>}
       </div>
 
       {/* Message */}
@@ -441,7 +441,7 @@ export default function SMSCenterPage(){
         <Area label="Ujumbe" value={message} onChange={e=>setMessage(e.target.value)} placeholder="Andika ujumbe... Tumia {{jina}} kuweka jina la mteja." rows={5}/>
         <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#94A3B8',marginBottom:10,flexWrap:'wrap',gap:8}}>
           <span>Herufi: {message.length} • SMS: {smsCount}</span>
-          <span>Watapokea: <b style={{color:'#065F2E'}}>{targets.length}</b> • Gharama: <b style={{color:'#EA580C'}}>~TZS {estCost.toLocaleString()}</b></span>
+          <span>Watapokea: <b style={{color:'#0A6E47'}}>{targets.length}</b> • Gharama: <b style={{color:'#EA580C'}}>~TZS {estCost.toLocaleString()}</b></span>
         </div>
 
         {message&&<button onClick={()=>setShowPreview(!showPreview)} style={{marginBottom:10,padding:'6px 12px',background:'#F1F5F9',border:'none',borderRadius:8,fontSize:12,cursor:'pointer',color:'#475569',fontWeight:600}}>
@@ -453,7 +453,7 @@ export default function SMSCenterPage(){
 
         {sending&&progress.total>0&&<div style={{marginBottom:10}}>
           <div style={{fontSize:12,color:'#64748B',marginBottom:4}}>Inatuma... {progress.sent+progress.failed}/{progress.total}</div>
-          <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',background:'#065F2E',width:`${((progress.sent+progress.failed)/progress.total)*100}%`,transition:'width 0.3s'}}/></div>
+          <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',background:'#0A6E47',width:`${((progress.sent+progress.failed)/progress.total)*100}%`,transition:'width 0.3s'}}/></div>
         </div>}
 
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -482,12 +482,12 @@ export default function SMSCenterPage(){
         {filteredTpls.map(t=>(
           <div key={t.id} className="card" style={{padding:14}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-              <b style={{fontSize:13.5,color:'#065F2E'}}>{t.name}</b>
+              <b style={{fontSize:13.5,color:'#0A6E47'}}>{t.name}</b>
               {DEFAULT_TEMPLATES.find(d=>d.id===t.id)&&<Badge color="#94A3B8">Msingi</Badge>}
             </div>
             <div style={{fontSize:11.5,color:'#64748B',lineHeight:1.5,marginBottom:10,minHeight:60,whiteSpace:'pre-wrap',overflow:'hidden',maxHeight:80}}>{t.body}</div>
             <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>useTpl(t)} style={{flex:1,padding:'7px',background:'#065F2E',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>Tumia</button>
+              <button onClick={()=>useTpl(t)} style={{flex:1,padding:'7px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>Tumia</button>
               <button onClick={()=>{setTplForm(t);setTplModal('edit')}} style={{padding:'7px 10px',background:'#F1F5F9',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.gear}</button>
               {!DEFAULT_TEMPLATES.find(d=>d.id===t.id)&&<button onClick={()=>delTpl(t)} style={{padding:'7px 10px',background:'#FEF2F2',color:'#EF4444',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.del}</button>}
             </div>
@@ -503,10 +503,10 @@ export default function SMSCenterPage(){
         <Input type="date" value={histDate} onChange={e=>{setHistDate(e.target.value);setPage(1)}} style={{marginBottom:0,minWidth:130}}/>
         <div style={{display:'flex',gap:6}}>
           {[['all','Zote'],['sent','✅'],['failed','❌']].map(([id,l])=>(
-            <button key={id} onClick={()=>{setHistFilter(id);setPage(1)}} style={{padding:'8px 12px',borderRadius:8,border:histFilter===id?'2px solid #065F2E':'1px solid #E2E8F0',background:histFilter===id?'#F0FDF4':'#fff',color:histFilter===id?'#065F2E':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
+            <button key={id} onClick={()=>{setHistFilter(id);setPage(1)}} style={{padding:'8px 12px',borderRadius:8,border:histFilter===id?'2px solid #0A6E47':'1px solid #E2E8F0',background:histFilter===id?'#F0FDF4':'#fff',color:histFilter===id?'#0A6E47':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
           ))}
         </div>
-        <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #065F2E',background:'#fff',color:'#065F2E',fontWeight:700,fontSize:12,cursor:'pointer'}}>📥 Excel</button>
+        <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #0A6E47',background:'#fff',color:'#0A6E47',fontWeight:700,fontSize:12,cursor:'pointer'}}>📥 Excel</button>
       </div>
 
       <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Jumla: {filteredHist.length} SMS</div>
@@ -525,7 +525,7 @@ export default function SMSCenterPage(){
                 <div style={{textAlign:'right'}}>
                   <Badge color={h.status?.includes('sent')?'#22C55E':'#EF4444'}>{h.status?.includes('sent')?'Imetumwa':'Imeshindwa'}</Badge>
                   <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>{new Date(h.created_at).toLocaleString('sw',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
-                  {h.status?.includes('failed')&&<button onClick={()=>resendFailed(h)} disabled={sending} style={{marginTop:6,padding:'4px 10px',background:'#065F2E',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>🔄 Tuma Tena</button>}
+                  {h.status?.includes('failed')&&<button onClick={()=>resendFailed(h)} disabled={sending} style={{marginTop:6,padding:'4px 10px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>🔄 Tuma Tena</button>}
                 </div>
               </div>
             </div>
@@ -545,10 +545,10 @@ export default function SMSCenterPage(){
       <div className="card" style={{marginBottom:12}}>
         <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>🔌 Hali ya Muunganisho</h3>
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#065F2E'}}>Beem Africa</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#0A6E47'}}>Beem Africa</span></div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Sender ID</span><span style={{fontSize:13,fontWeight:700,color:'#1E293B'}}>Imewekwa (Vercel)</span></div>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Hali ya API</span><Badge color={balError?'#EF4444':'#22C55E'}>{balError?'● Tatizo':'● Imeunganishwa'}</Badge></div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Salio</span><span style={{fontSize:13,fontWeight:800,color:balance!==null&&balance<5000?'#EF4444':'#065F2E'}}>{balance!==null?`TZS ${balance.toLocaleString()}`:'—'}</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Salio</span><span style={{fontSize:13,fontWeight:800,color:balance!==null&&balance<5000?'#EF4444':'#0A6E47'}}>{balance!==null?`TZS ${balance.toLocaleString()}`:'—'}</span></div>
           <div style={{padding:'11px 14px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A3412'}}>🔒 API Key na Secret zimefichwa kwa usalama. Ili kubadilisha Sender ID, nenda Vercel → Environment Variables → BEEM_SENDER_ID.</div>
         </div>
       </div>
@@ -621,7 +621,7 @@ export default function SMSCenterPage(){
         <div style={{fontSize:11,color:'#94A3B8',marginBottom:8}}>Herufi: {tplForm.body.length} • SMS: {Math.max(1,Math.ceil(tplForm.body.length/160))}</div>
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>setTplModal(null)} style={{flex:1,padding:11,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
-          <button onClick={saveTpl} style={{flex:2,padding:11,background:'#065F2E',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:'pointer'}}>Hifadhi</button>
+          <button onClick={saveTpl} style={{flex:2,padding:11,background:'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:'pointer'}}>Hifadhi</button>
         </div>
       </div>
     </div>}

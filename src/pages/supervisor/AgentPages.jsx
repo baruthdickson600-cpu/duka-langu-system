@@ -29,7 +29,7 @@ export function AgentDashboard(){
 
   return <div>
     {/* Welcome */}
-    <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:16,padding:'20px 24px',marginBottom:20,color:'#fff'}}>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:16,padding:'20px 24px',marginBottom:20,color:'#fff'}}>
       <div style={{fontSize:13,opacity:.8}}>Karibu, Supevaiza</div>
       <div style={{fontSize:22,fontWeight:800,marginTop:2}}>{user?.name}</div>
       <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
@@ -50,7 +50,7 @@ export function AgentDashboard(){
 
     {/* Stats */}
     <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.store} label="Wateja Jumla" value={myBiz.length} color="#065F2E"/>
+      <Stat icon={IC.store} label="Wateja Jumla" value={myBiz.length} color="#0A6E47"/>
       <Stat icon={IC.ok} label="Wanaolipa" value={active.length} color="#22C55E"/>
       <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F59E0B"/>
       <Stat icon={IC.dollar} label="Kamisheni" value={fm(commission)} color="#8B5CF6"/>
@@ -96,7 +96,7 @@ export function AgentDashboard(){
         <div style={{background:'#F8FAFC',borderRadius:8,padding:'8px 10px',fontSize:11,marginBottom:8}}>
           🔗 <code>duka-langu-system.vercel.app</code>
         </div>
-        <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app`);alert('Link imecopy! Mtumie mteja akisajili atumie promo code: '+myCode)}} style={{width:'100%',padding:'10px',background:'#065F2E',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>📋 Copy Link</button>
+        <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app`);alert('Link imecopy! Mtumie mteja akisajili atumie promo code: '+myCode)}} style={{width:'100%',padding:'10px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>📋 Copy Link</button>
       </div>
 
       {/* Current Tier Detail */}
@@ -114,7 +114,7 @@ export function AgentDashboard(){
           </div>
           <div style={{background:'#F8FAFC',borderRadius:8,padding:'8px',textAlign:'center'}}>
             <div style={{fontSize:10,color:'#94A3B8'}}>Revenue</div>
-            <div style={{fontWeight:800,fontSize:16,color:'#065F2E'}}>{fm(revenue)}</div>
+            <div style={{fontWeight:800,fontSize:16,color:'#0A6E47'}}>{fm(revenue)}</div>
           </div>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function AgentRegisterPage(){
 
     {result&&<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:14,padding:20,marginBottom:20,textAlign:'center'}}>
       <div style={{fontSize:36,marginBottom:8}}>🎉</div>
-      <div style={{fontSize:18,fontWeight:800,color:'#065F2E',marginBottom:6}}>Mteja Amesajiliwa!</div>
+      <div style={{fontSize:18,fontWeight:800,color:'#0A6E47',marginBottom:6}}>Mteja Amesajiliwa!</div>
       <div style={{background:'#fff',borderRadius:10,padding:14,textAlign:'left',fontSize:13,lineHeight:1.8}}>
         <div><b>Biashara:</b> {result.bizName}</div>
         <div><b>Email:</b> {result.email}</div>
@@ -187,7 +187,7 @@ export function AgentRegisterPage(){
       <Input label="Jina la Mmiliki" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Mf: Fatuma Hassan"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
       <Input label="Simu / WhatsApp" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
-      <button onClick={handleRegister} disabled={loading} style={{width:'100%',padding:14,background:loading?'#86EFAC':'#065F2E',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:loading?'not-allowed':'pointer',marginTop:8,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+      <button onClick={handleRegister} disabled={loading} style={{width:'100%',padding:14,background:loading?'#86EFAC':'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:loading?'not-allowed':'pointer',marginTop:8,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
         {loading?'⏳ Inasajili...':'📝 Sajili Mteja'}
       </button>
     </div>}
@@ -218,7 +218,7 @@ export function AgentCustomersPage(){
 
   return <div>
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.store} label="Jumla" value={all.length} color="#065F2E"/>
+      <Stat icon={IC.store} label="Jumla" value={all.length} color="#0A6E47"/>
       <Stat icon={IC.ok} label="Wanaolipa" value={activeCount} color="#22C55E"/>
       <Stat icon={IC.clock} label="Trial" value={trialCount} color="#F59E0B"/>
     </div>
@@ -230,7 +230,7 @@ export function AgentCustomersPage(){
         <input placeholder="Tafuta kwa jina, email, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 10px 10px 36px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
       </div>
       {[{v:'all',l:`Wote (${all.length})`},{v:'active',l:`Wanaolipa (${activeCount})`},{v:'trial',l:`Trial (${trialCount})`},{v:'expired',l:'Wameisha'}].map(f=>
-        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'8px 14px',borderRadius:8,border:filter===f.v?'2px solid #065F2E':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontWeight:filter===f.v?700:500,fontSize:12,cursor:'pointer',color:filter===f.v?'#065F2E':'#64748B'}}>{f.l}</button>
+        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'8px 14px',borderRadius:8,border:filter===f.v?'2px solid #0A6E47':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontWeight:filter===f.v?700:500,fontSize:12,cursor:'pointer',color:filter===f.v?'#0A6E47':'#64748B'}}>{f.l}</button>
       )}
     </div>
 
@@ -287,7 +287,7 @@ export function AgentTiersPage(){
     <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Kadri unavyosajili wateja wengi zaidi, ndivyo unavyopanda daraja na kupata malipo makubwa zaidi.</p>
 
     {/* Current Status */}
-    <div style={{background:'linear-gradient(135deg,#065F2E,#065F2E)',borderRadius:16,padding:'20px 24px',marginBottom:20,color:'#fff',textAlign:'center'}}>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:16,padding:'20px 24px',marginBottom:20,color:'#fff',textAlign:'center'}}>
       <div style={{fontSize:40}}>{currentTier.emoji}</div>
       <div style={{fontSize:22,fontWeight:900,marginTop:4}}>{currentTier.name}</div>
       <div style={{fontSize:16,opacity:.9,marginTop:4}}>Wateja Active: <b>{active}</b></div>
@@ -363,11 +363,11 @@ export function AgentToolsPage(){
   ];
 
   return <div style={{paddingBottom:20}}>
-    <h2 style={{fontSize:20,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>🧰 Zana & Ripoti</h2>
+    <h2 style={{fontSize:20,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🧰 Zana & Ripoti</h2>
     <p style={{fontSize:12.5,color:'#64748B',margin:'0 0 16px'}}>Pakua ripoti ya wateja wako na jifunze jinsi ya kuwasaidia</p>
 
     {/* Muhtasari + Pakua PDF */}
-    <div style={{background:'linear-gradient(135deg,#065F2E,#043D1E)',borderRadius:18,padding:'20px 22px',marginBottom:16,color:'#fff'}}>
+    <div style={{background:'linear-gradient(135deg,#0A6E47,#06502F)',borderRadius:18,padding:'20px 22px',marginBottom:16,color:'#fff'}}>
       <div style={{fontSize:11,fontWeight:700,opacity:0.8,letterSpacing:1,marginBottom:10}}>📊 MUHTASARI WAKO</div>
       <div style={{display:'flex',gap:18,flexWrap:'wrap',marginBottom:16}}>
         <div><div style={{fontSize:10.5,opacity:0.8}}>Wateja Jumla</div><div style={{fontSize:22,fontWeight:900}}>{myBiz.length}</div></div>
@@ -375,12 +375,12 @@ export function AgentToolsPage(){
         <div><div style={{fontSize:10.5,opacity:0.8}}>Trial</div><div style={{fontSize:22,fontWeight:900}}>{trial.length}</div></div>
         <div><div style={{fontSize:10.5,opacity:0.8}}>Kamisheni</div><div style={{fontSize:22,fontWeight:900}}>{fm(commission)}</div></div>
       </div>
-      <button onClick={downloadReport} style={{width:'100%',padding:13,background:'#fff',color:'#065F2E',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>📄 Pakua Ripoti Kamili (PDF)</button>
+      <button onClick={downloadReport} style={{width:'100%',padding:13,background:'#fff',color:'#0A6E47',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>📄 Pakua Ripoti Kamili (PDF)</button>
     </div>
 
     {/* Mafunzo */}
     <div style={{background:'#fff',borderRadius:16,padding:18,border:'1px solid #ECFDF5',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
-      <h3 style={{fontSize:15,fontWeight:800,color:'#065F2E',margin:'0 0 4px'}}>📚 Jinsi ya Kumsaidia Mteja Afanikiwe</h3>
+      <h3 style={{fontSize:15,fontWeight:800,color:'#0A6E47',margin:'0 0 4px'}}>📚 Jinsi ya Kumsaidia Mteja Afanikiwe</h3>
       <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Mteja akifanikiwa kutumia mfumo, anaendelea kulipa — na wewe unapata kamisheni endelevu.</p>
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
         {steps.map((s,i)=>(
@@ -571,12 +571,12 @@ export function SupervisorVisitsPage(){
     {/* Header */}
     <div style={{marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'start',flexWrap:'wrap',gap:10}}>
       <div>
-        <h2 style={{fontSize:22,fontWeight:900,color:'#065F2E',margin:'0 0 4px'}}>📋 Ufuatiliaji wa Wateja</h2>
+        <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>📋 Ufuatiliaji wa Wateja</h2>
         <p style={{fontSize:12,color:'#64748B',margin:0}}>Jaza taarifa za wateja uliowatembelea — zinaenda kwa Admin moja kwa moja</p>
       </div>
       <button onClick={()=>{setForm(initialForm);setShowForm(true)}} style={{
         padding:'12px 20px',
-        background:'linear-gradient(135deg,#065F2E,#065F2E)',
+        background:'linear-gradient(135deg,#0A6E47,#0A6E47)',
         color:'#fff',border:'none',borderRadius:12,
         fontWeight:800,fontSize:13,cursor:'pointer',
         boxShadow:'0 4px 15px rgba(11,122,59,0.3)',
@@ -588,9 +588,9 @@ export function SupervisorVisitsPage(){
     
     {/* Stats */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #065F2E',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0A6E47',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:10,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>JUMLA YA ZIARA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#065F2E',marginTop:4}}>{totalVisits}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{totalVisits}</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:10,color:'#B45309',fontWeight:700,letterSpacing:0.5}}>MPYA (HAZIJASHUGULIKIWA)</div>
@@ -615,8 +615,8 @@ export function SupervisorVisitsPage(){
       {[{id:'all',label:'🗓️ Vyote'},{id:'today',label:'📅 Leo'},{id:'week',label:'🗓️ Wiki'},{id:'month',label:'📆 Mwezi'}].map(p=>
         <button key={p.id} onClick={()=>setPeriod(p.id)} style={{
           padding:'8px 14px',borderRadius:10,
-          border:period===p.id?'2px solid #065F2E':'1.5px solid #E2E8F0',
-          background:period===p.id?'#065F2E':'#fff',
+          border:period===p.id?'2px solid #0A6E47':'1.5px solid #E2E8F0',
+          background:period===p.id?'#0A6E47':'#fff',
           fontWeight:700,fontSize:12,cursor:'pointer',
           color:period===p.id?'#fff':'#475569',
         }}>{p.label}</button>
@@ -625,7 +625,7 @@ export function SupervisorVisitsPage(){
     
     {/* Visits list */}
     <div className="card">
-      <h3 style={{fontSize:14,fontWeight:800,color:'#065F2E',margin:'0 0 14px'}}>📋 Orodha ya Ziara ({filteredVisits.length})</h3>
+      <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📋 Orodha ya Ziara ({filteredVisits.length})</h3>
       
       {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
@@ -680,7 +680,7 @@ export function SupervisorVisitsPage(){
         
         {/* Searchable customer picker */}
         <div style={{background:'#F0FDF4',padding:'10px 12px',borderRadius:10,marginBottom:12,border:'1.5px solid #BBF7D0',position:'relative'}}>
-          <label style={{fontSize:11,fontWeight:700,color:'#065F2E',display:'block',marginBottom:2}}>🔍 Tafuta &amp; Chagua Mteja</label>
+          <label style={{fontSize:11,fontWeight:700,color:'#0A6E47',display:'block',marginBottom:2}}>🔍 Tafuta &amp; Chagua Mteja</label>
           <div style={{fontSize:10,color:'#15803D',marginBottom:6}}>Andika jina, simu au mahali — taarifa zake zitajaza moja kwa moja</div>
           {/* Selected badge */}
           {form.business_id&&<div style={{background:'#DCFCE7',border:'1.5px solid #16A34A',borderRadius:8,padding:'6px 10px',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -707,14 +707,14 @@ export function SupervisorVisitsPage(){
         </div>
         
         {/* Customer info */}
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'0 0 8px'}}>👤 Taarifa za Mteja</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'0 0 8px'}}>👤 Taarifa za Mteja</h4>
         <Input label="Jina la Mteja *" value={form.customer_name} onChange={e=>setForm({...form,customer_name:e.target.value})} placeholder="Mfano: Mama Grace"/>
         <Input label="Jina la Biashara" value={form.customer_business} onChange={e=>setForm({...form,customer_business:e.target.value})} placeholder="Mfano: Duka la Sukari"/>
         <Input label="Simu" value={form.customer_phone} onChange={e=>setForm({...form,customer_phone:e.target.value})} placeholder="0712345678"/>
         <Input label="Mahali (Mkoa/Wilaya)" value={form.customer_location} onChange={e=>setForm({...form,customer_location:e.target.value})} placeholder="Mfano: Mbeya, Kawetere"/>
         
         {/* Visit details */}
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'14px 0 8px'}}>📅 Taarifa za Ziara</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'14px 0 8px'}}>📅 Taarifa za Ziara</h4>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Tarehe ya Ziara</label>
@@ -739,7 +739,7 @@ export function SupervisorVisitsPage(){
         </div>
         
         {/* Customer status */}
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'14px 0 8px'}}>📊 Hali ya Mteja</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'14px 0 8px'}}>📊 Hali ya Mteja</h4>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kuridhika</label>
@@ -802,7 +802,7 @@ export function SupervisorVisitsPage(){
         </div>
         
         {/* Customer needs & feedback */}
-        <h4 style={{fontSize:13,fontWeight:800,color:'#065F2E',margin:'14px 0 8px'}}>💬 Maoni na Mahitaji</h4>
+        <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'14px 0 8px'}}>💬 Maoni na Mahitaji</h4>
         <div style={{marginBottom:10}}>
           <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Mteja Anahitaji Nini?</label>
           <textarea value={form.customer_needs} onChange={e=>setForm({...form,customer_needs:e.target.value})} rows="2" placeholder="Mfano: Anahitaji mafunzo ya kutumia ripoti..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
@@ -829,7 +829,7 @@ export function SupervisorVisitsPage(){
         {/* Submit */}
         <div style={{display:'flex',gap:8}}>
           <button onClick={()=>setShowForm(false)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
-          <button onClick={submitVisit} style={{flex:2,padding:12,background:'linear-gradient(135deg,#065F2E,#065F2E)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>📤 Tuma kwa Admin</button>
+          <button onClick={submitVisit} style={{flex:2,padding:12,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>📤 Tuma kwa Admin</button>
         </div>
       </div>
     </Modal>}
