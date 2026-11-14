@@ -1756,7 +1756,7 @@ export function AppProvider({children}){
   // Mteja anabonyeza "Lipa Sasa" -> tunatuma ombi -> gateway/webhook inajifungua yenyewe.
   const initiatePayment=useCallback(async({amount,days=30,plan='basic',phone='',channel=''})=>{
     if(!bizId)return{success:false,error:'Biashara haijapatikana.'};
-    const b=biz.find(x=>x.id===bizId)||{};
+    const b=(Array.isArray(biz)?biz.find(x=>x.id===bizId):biz)||{};
     try{
       const r=await fetch('/api/payments?action=initiate',{
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -1778,7 +1778,7 @@ export function AppProvider({children}){
   // JARIBU MALIPO (test) — inaiga malipo yaliyofaulu bila gateway halisi
   const testPayment=useCallback(async({amount=15000,days=30,plan='basic'}={})=>{
     if(!bizId)return{success:false,error:'Biashara haijapatikana.'};
-    const b=biz.find(x=>x.id===bizId)||{};
+    const b=(Array.isArray(biz)?biz.find(x=>x.id===bizId):biz)||{};
     try{
       const r=await fetch('/api/payments?action=test',{
         method:'POST',headers:{'Content-Type':'application/json'},
