@@ -112,7 +112,7 @@ function SubscriptionMiniBar(){
   </>;
 }
 
-export function OfficeDash({onReceipt}){
+export function OfficeDash({onReceipt,onNav}){
   const{user,biz,products,sales,returns,expenses,purchases=[],daysLeft,online,currency,lowStockProducts,lowMarginProducts,autoReorderList,getDailyReport,settings,goalProgress,aiInsights,creditHistory=[],canUseFeature,currentPlan,orders=[],totalDebt=0,overdueTotal=0}=useApp();
   const cur=currency||'TZS';const fm=n=>fmtMoney(n,cur);
   
@@ -238,36 +238,60 @@ export function OfficeDash({onReceipt}){
       <Btn v="warning" style={{padding:'6px 14px',fontSize:12}} onClick={()=>alert('Lipa: HALOPESA - Lipa Namba\n25187616\nJina: DUKALANGU')}>Lipa Sasa</Btn>
     </div>}
 
-    {/* Business Type Badge */}
-    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-      <div style={{display:'inline-flex',alignItems:'center',gap:8,background:`${bizTypeCfg.color}15`,border:`1.5px solid ${bizTypeCfg.color}40`,borderRadius:20,padding:'6px 14px'}}>
-        <span style={{fontSize:18}}>{bizTypeCfg.icon}</span>
-        <div>
-          <span style={{fontSize:12,fontWeight:700,color:bizTypeCfg.color}}>{bizTypeCfg.label}</span>
-          {biz?.name&&<span style={{fontSize:11,color:'#64748B',marginLeft:6}}>• {biz.name}</span>}
-        </div>
-      </div>
-      {user?.role==='office'&&<div style={{fontSize:11,color:'#94A3B8'}}>👤 {user.name||user.email}</div>}
-    </div>
-
     {/* ===== SUBSCRIPTION MINI-BAR ===== */}
     {user?.role==='office'&&<SubscriptionMiniBar/>}
 
-    <div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.cart} label="💵 Mauzo ya Leo" value={fm(tBankAmount)} color="#0A6E47" sub={`${tCashSales.length} cash + ${tCreditPayments.length} malipo ya deni`}/>
-      <Stat icon={IC.chart} label="Wiki Hii" value={fm(wTotal)} color="#3B82F6"/>
-      {isOff&&tCreditSales.length>0&&<Stat icon={IC.warn} label="💳 Mikopo Leo" value={fm(tCreditSales.reduce((a,s)=>a+s.total,0))} color="#F59E0B" sub={`${tCreditSales.length} bidhaa zimekopwa`}/>}
-      {isOff&&<Stat icon={IC.dollar} label="Faida Mwezi" value={fm(mProfit-mExp)} color={mProfit-mExp>=0?'#F59E0B':'#EF4444'}/>}
-      <Stat icon={IC.warn} label="Stock Alert" value={lowStockProducts.length} color="#EF4444" sub={lowMarginProducts.length>0?`${lowMarginProducts.length} margin ndogo`:''}/>
+    {/* ===== HERO: PESA MKONONI (muonekano mpya) ===== */}
+    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'20px 22px',marginBottom:14,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>
+      <div style={{position:'absolute',right:-40,top:-40,width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,.07)'}}/>
+      <div style={{position:'relative'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          <span style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:.5}}>💰 PESA MKONONI — LEO</span>
+          <span style={{marginLeft:'auto',fontSize:10,fontWeight:700,background:'rgba(242,183,5,.25)',color:'#F2B705',padding:'3px 10px',borderRadius:20}}>{bizTypeCfg.icon} {biz?.name||bizTypeCfg.label}</span>
+        </div>
+        <div style={{fontSize:34,fontWeight:900,letterSpacing:'-1px',margin:'2px 0 14px'}}>{fm(tBankAmount)}</div>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
+            <div style={{fontSize:11,opacity:.85}}>📈 Faida Mwezi</div>
+            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{fm(mProfit-mExp)}</div>
+          </div>
+          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
+            <div style={{fontSize:11,opacity:.85}}>📊 Wiki Hii</div>
+            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{fm(wTotal)}</div>
+          </div>
+          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
+            <div style={{fontSize:11,opacity:.85}}>🧾 Mauzo Leo</div>
+            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{tCashSales.length}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    {/* ===== KADI MPYA: KPIs za haraka ===== */}
-    {isOff&&<div className="flex-wrap" style={{marginBottom:20}}>
-      <Stat icon={IC.file} label="📋 Oda Zinazoendelea" value={activeOrders.length} color="#F59E0B" sub={activeOrders.length>0?`Inabaki: ${fm(activeOrdersValue)}`:'Hakuna oda'}/>
-      <Stat icon={IC.warn} label="⏳ Deni Nje (Wateja)" value={fm(outstandingDebt)} color="#EF4444" sub={overdueTotal>0?`${fm(overdueTotal)} limechelewa`:'Hakuna lililochelewa'}/>
-      <Stat icon={IC.cart} label="💰 Wastani wa Mauzo (Leo)" value={fm(avgSaleToday)} color="#3B82F6" sub={`${tCashSales.length} mauzo leo`}/>
-      <Stat icon={IC.box||IC.chart} label="📦 Thamani ya Stock" value={fm(stockValue)} color="#8B5CF6" sub={`${products.length} bidhaa`}/>
-    </div>}
+    {/* ===== VITENDO VYA HARAKA ===== */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+      {[{i:'🛒',t:'Uza',p:'sales'},{i:'📦',t:'Bidhaa',p:'products'},{i:'👥',t:'Wateja',p:'customers'},{i:'📊',t:'Ripoti',p:'reports'}].map(a=>(
+        <button key={a.p} onClick={()=>onNav?.(a.p)} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:16,padding:'14px 6px',textAlign:'center',cursor:'pointer'}}>
+          <div style={{fontSize:22}}>{a.i}</div>
+          <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginTop:6}}>{a.t}</div>
+        </button>
+      ))}
+    </div>
+
+    {/* ===== KPI CARDS za kisasa ===== */}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
+      {[
+        {ic:'🛒',k:'Mauzo Ghafi',v:fm(tSales.reduce((a,s)=>a+s.total,0)),c:'#0A6E47',bg:'#E6F2EC'},
+        {ic:'💳',k:'Deni Nje',v:fm(outstandingDebt),c:'#C2412D',bg:'#FBECE9'},
+        {ic:'📦',k:'Thamani ya Stock',v:fm(stockValue),c:'#F2B705',bg:'rgba(242,183,5,.12)'},
+        {ic:'⚠️',k:'Stock Alert',v:lowStockProducts.length,c:'#C2412D',bg:'#FBECE9'},
+      ].map((s,i)=>(
+        <div key={i} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:18,padding:15,boxShadow:'0 1px 3px rgba(16,26,21,.04)'}}>
+          <div style={{width:38,height:38,borderRadius:11,background:s.bg,display:'grid',placeItems:'center',fontSize:18,marginBottom:10}}>{s.ic}</div>
+          <div style={{fontSize:12,color:'#5C6A62',fontWeight:600}}>{s.k}</div>
+          <div style={{fontSize:19,fontWeight:900,letterSpacing:'-.5px',marginTop:2,color:s.c}}>{s.v}</div>
+        </div>
+      ))}
+    </div>
 
     {/* Credit Sales Info Banner */}
     {isOff&&tCreditSales.length>0&&<div style={{

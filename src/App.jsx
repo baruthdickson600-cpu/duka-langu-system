@@ -331,7 +331,7 @@ export default function App(){
       case'customers':return <CustomersPage/>;
       case'analytics':return <ProductAnalyticsPage/>;
       case'notifications':return <NotifsPage/>;
-      default:return <OfficeDash onReceipt={setReceipt}/>;
+      default:return <OfficeDash onReceipt={setReceipt} onNav={setPage}/>;
     }
   };
 
