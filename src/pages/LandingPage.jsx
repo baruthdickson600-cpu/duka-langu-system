@@ -74,15 +74,15 @@ export default function LandingPage({onLogin,onSignup,onDemo}){
     <div style={{position:'relative',minHeight:'85vh',display:'flex',alignItems:'center',overflow:'hidden'}}>
       <div style={bgStyle(bgIdx,!showB)}/>
       {bgB&&<div style={bgStyle(bgB,showB)}/>}
-      <div style={{position:'absolute',inset:0,zIndex:1,background:'linear-gradient(130deg,rgba(6,78,43,0.92) 0%,rgba(11,122,59,0.82) 45%,rgba(6,95,46,0.78) 100%)'}}/>
-      {/* Mesh-glow ya kisasa */}
-      <div style={{position:'absolute',top:'-10%',left:'-5%',width:420,height:420,zIndex:1,background:'radial-gradient(circle,rgba(74,222,128,0.35),transparent 70%)',filter:'blur(60px)',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',bottom:'-15%',right:'-5%',width:460,height:460,zIndex:1,background:'radial-gradient(circle,rgba(255,255,255,0.14),transparent 70%)',filter:'blur(70px)',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',inset:0,zIndex:1,background:'linear-gradient(130deg,rgba(6,80,47,0.94) 0%,rgba(10,110,71,0.85) 45%,rgba(6,80,47,0.80) 100%)'}}/>
+      {/* Mesh-glow ya kisasa — kijani + dhahabu ya NAYA */}
+      <div style={{position:'absolute',top:'-10%',left:'-5%',width:420,height:420,zIndex:1,background:'radial-gradient(circle,rgba(18,160,100,0.38),transparent 70%)',filter:'blur(60px)',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',bottom:'-15%',right:'-5%',width:480,height:480,zIndex:1,background:'radial-gradient(circle,rgba(242,183,5,0.20),transparent 70%)',filter:'blur(75px)',pointerEvents:'none'}}/>
       <div style={{position:'relative',zIndex:2,maxWidth:1240,margin:'0 auto',padding:'48px 24px',color:'#fff',width:'100%'}}>
         <div style={{display:'flex',alignItems:'center',gap:48,flexWrap:'wrap'}}>
           <div style={{flex:'1 1 440px',minWidth:300}}>
-            <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 16px',background:'rgba(255,255,255,0.12)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:30,fontSize:12.5,fontWeight:600,marginBottom:20,backdropFilter:'blur(10px)',animation:'fadeInUp 0.6s ease both'}}>
-              <span style={{width:7,height:7,borderRadius:'50%',background:'#4ADE80',boxShadow:'0 0 8px #4ADE80'}}/> 🇹🇿 Mfumo Namba 1 wa Biashara Tanzania
+            <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'7px 16px',background:'rgba(242,183,5,0.18)',border:'1px solid rgba(242,183,5,0.4)',borderRadius:30,fontSize:12.5,fontWeight:700,marginBottom:20,backdropFilter:'blur(10px)',animation:'fadeInUp 0.6s ease both',color:'#FDE68A'}}>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'#F2B705',boxShadow:'0 0 8px #F2B705'}}/> 🇹🇿 Mfumo Namba 1 wa Biashara Tanzania
             </div>
             <h1 style={{fontSize:'clamp(34px,4.6vw,56px)',fontWeight:900,lineHeight:1.08,margin:'0 0 20px',letterSpacing:-1.5,textShadow:'0 4px 24px rgba(0,0,0,0.35)',animation:'fadeInUp 0.7s ease 0.1s both'}}>
               Endesha Biashara Yako<br/><span style={{background:'linear-gradient(90deg,#fff,#BBF7D0)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'}}>Kidijitali & Kirahisi</span>
