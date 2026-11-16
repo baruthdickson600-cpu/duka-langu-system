@@ -291,7 +291,7 @@ export default function App(){
         case'emailcamp':return <EmailCampaignPage/>;case'demo':return <DemoPage/>;
         case'reports':return <MktReportsPage/>;case'broadcast':return <MktBroadcastPage/>;
         case'notifications':return <NotifsPage/>;
-        default:return <MarketingDash/>;
+        default:return <MarketingDash onNav={setPage}/>;
       }
     }
     if(role==='accountant'){
