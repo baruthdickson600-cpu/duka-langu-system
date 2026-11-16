@@ -1,5 +1,6 @@
 import React,{useState,useMemo} from 'react';
 import DebtReminder from '../../components/DebtReminder';
+import PhoneNameInput from '../../components/PhoneNameInput';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -626,8 +627,8 @@ export function SalesPage({onDone}){
 
     {/* Quick Add Customer Modal */}
     <Modal open={newCustModal} onClose={()=>setNewCustModal(false)} title="Sajili Mteja Mpya">
+      <PhoneNameInput label="Simu" value={newCustPhone} onChange={e=>setNewCustPhone(e.target.value)} currentName={newCustName} onName={setNewCustName}/>
       <Input label="Jina *" value={newCustName} onChange={e=>setNewCustName(e.target.value)} placeholder="Jina kamili"/>
-      <Input label="Simu" value={newCustPhone} onChange={e=>setNewCustPhone(e.target.value)} placeholder="07XXXXXXXX"/>
       <Btn onClick={async()=>{
         if(!newCustName.trim())return alert('Weka jina!');
         const c=await addCustomer({name:newCustName.trim(),phone:newCustPhone.trim()});
@@ -1907,9 +1908,9 @@ export function EmployeesPage(){
 
     {/* ADD EMPLOYEE MODAL */}
     <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mfanyakazi">
+      <PhoneNameInput label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} currentName={f.name} onName={n=>setF(p=>({...p,name:n}))}/>
       <Input label="Jina *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
-      <Input label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
 
       {/* Branch selector */}
@@ -2188,8 +2189,8 @@ export function CustomersPage(){
 
     {/* ADD CUSTOMER MODAL */}
     <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mteja Mpya">
+      <PhoneNameInput label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} currentName={f.name} onName={n=>setF(p=>({...p,name:n}))}/>
       <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Mf: Mama Fatuma"/>
-      <Input label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <Input label="Email" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
       <Input label="Anwani" value={f.address} onChange={e=>setF({...f,address:e.target.value})} placeholder="Mtaa, Kata"/>
       <Btn onClick={async()=>{

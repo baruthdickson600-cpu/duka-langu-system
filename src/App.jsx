@@ -1,5 +1,6 @@
 import {saveStockSnapshot} from './utils/offlineDB';
 import {minPlanFor} from './config/plans';
+import {useNameLookup,NameHint} from './components/PhoneNameInput';
 import React,{useState,useEffect} from 'react';
 import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus} from './components/UI';
@@ -475,6 +476,12 @@ export default function App(){
 // ============================================================
 function ProfileModal({user, updateUserProfile, onClose}){
   const [form, setForm] = React.useState({name: user?.name||'', phone: user?.phone||''});
+  const nameLookup = useNameLookup(form.phone);
+  // Jaza jina likipatikana na sehemu ya jina ikiwa tupu
+  React.useEffect(()=>{
+    if(nameLookup.state==='found'&&!String(form.name||'').trim())
+      setForm(p=>({...p,name:nameLookup.name}));
+  },[nameLookup.state,nameLookup.name]);
   const [preview, setPreview] = React.useState(user?.avatar_url||null);
   const [avatarFile, setAvatarFile] = React.useState(null);
   const [saving, setSaving] = React.useState(false);
@@ -536,6 +543,7 @@ function ProfileModal({user, updateUserProfile, onClose}){
           <div style={{marginBottom:20}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📱 NAMBARI YA SIMU</label>
             <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #D6E2DB',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0A6E47'} onBlur={e=>e.target.style.borderColor='#D6E2DB'}/>
+            <NameHint state={nameLookup.state} name={nameLookup.name}/>
           </div>
           <button onClick={save} disabled={saving} style={{width:'100%',padding:14,background:saving?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:saving?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(11,122,59,.3)'}}>
             {saving?'⏳ Inahifadhi...':'💾 Hifadhi Mabadiliko'}

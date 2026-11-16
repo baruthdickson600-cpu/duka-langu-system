@@ -1,4 +1,5 @@
 import React,{useState,useMemo} from 'react';
+import PhoneNameInput from '../../components/PhoneNameInput';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Btn,Stat,Modal,Badge,Empty} from '../../components/UI';
 import {fmtMoney,fmtDate,exportToPDF} from '../../utils/helpers';
@@ -200,9 +201,9 @@ export function AgentRegisterPage(){
         Mteja atasajiliwa na promo code yako: <b>{user?.promo_code}</b>. Utapata commission kwa kila mteja anayeelipa.
       </div>
       <Input label="Jina la Biashara *" value={f.bizName} onChange={e=>setF({...f,bizName:e.target.value})} placeholder="Mf: Duka la Mama Fatuma"/>
+      <PhoneNameInput label="Simu / WhatsApp" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} currentName={f.name} onName={n=>setF(p=>({...p,name:n}))}/>
       <Input label="Jina la Mmiliki" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Mf: Fatuma Hassan"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
-      <Input label="Simu / WhatsApp" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <button onClick={handleRegister} disabled={loading} style={{width:'100%',padding:14,background:loading?'#86EFAC':'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:loading?'not-allowed':'pointer',marginTop:8,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
         {loading?'⏳ Inasajili...':'📝 Sajili Mteja'}
       </button>

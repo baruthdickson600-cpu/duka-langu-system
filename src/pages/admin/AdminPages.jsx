@@ -5,6 +5,7 @@ import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../component
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
 import {usePaidTx,sumTx,txAmt,txMonth,CH_LABEL} from '../../hooks/usePaidTx';
 import {PLAN_LIST,getPlan} from '../../config/plans';
+import PhoneNameInput from '../../components/PhoneNameInput';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0A6E47','#3B82F6','#F2B705','#C2412D','#8B5CF6','#EC4899'];
 
@@ -2031,9 +2032,9 @@ export function PartnersPage(){
     </div>
 
     <Modal open={modal} onClose={()=>setModal(false)} title="Ongeza Mshirika wa Masoko">
+      <PhoneNameInput label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} currentName={f.name} onName={n=>setF(p=>({...p,name:n}))}/>
       <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
-      <Input label="Simu" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
       <Input label="Commission %" type="number" value={f.commission} onChange={e=>setF({...f,commission:+e.target.value})}/>
       <Btn onClick={async()=>{

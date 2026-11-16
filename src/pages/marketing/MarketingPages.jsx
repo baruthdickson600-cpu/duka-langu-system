@@ -1,4 +1,5 @@
 import React,{useState,useMemo} from 'react';
+import PhoneNameInput from '../../components/PhoneNameInput';
 import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
@@ -152,9 +153,9 @@ export function MktAgentsPage(){
       <div style={{background:'#EFF6FF',borderRadius:10,padding:'8px 12px',marginBottom:12,fontSize:12,color:'#1E40AF'}}>
         Supevaiza atapata akaunti yake na kuweza kusajili wateja moja kwa moja.
       </div>
+      <PhoneNameInput label="Namba ya WhatsApp" required value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} currentName={f.name} onName={n=>setF(p=>({...p,name:n}))}/>
       <Input label="Jina Kamili *" value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="Jina kamili la supevaiza"/>
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
-      <Input label="Namba ya WhatsApp *" value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="07XXXXXXXX"/>
       <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
       <Input label="Commission %" type="number" value={f.commission} onChange={e=>setF({...f,commission:e.target.value})}/>
       <Btn onClick={async()=>{
