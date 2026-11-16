@@ -1,4 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
+import {PLAN_LIST,getPlan} from '../config/plans';
 import {useApp} from '../context/AppContext';
 import {Input} from '../components/UI';
 
@@ -19,7 +20,10 @@ export default function LockedPage(){
   const myRejected=paymentRequests?.find(p=>p.business_id===biz?.id&&p.status==='rejected');
   const hasPending=!!myPending;
 
-  const price=parseInt(settings?.system_price||'15000');
+  const[planId,setPlanId]=useState('basic');
+  const selPlan=getPlan(planId);
+  // Basic inaheshimu bei ya settings (admin anaweza kuibadilisha); nyingine zinatoka kwenye kifurushi
+  const price=planId==='basic'?parseInt(settings?.system_price||selPlan.price):selPlan.price;
 
   // Crossfade backgrounds
   useEffect(()=>{
@@ -41,7 +45,7 @@ export default function LockedPage(){
     if(!ph||ph.replace(/\D/g,'').length<9)return setErr('Weka namba sahihi ya simu (mf. 0712345678)!');
     setAutoLoading(true);setErr('');setAutoMsg('');
     try{
-      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:ph});
+      const res=await initiatePayment({amount:price,days:30,plan:planId,phone:ph});
       if(!res?.success){setErr(res?.error||'Imeshindwa kuanzisha malipo.');setAutoLoading(false);return}
       const ref=res.reference||'';
       setAutoRef(ref);
@@ -130,14 +134,33 @@ export default function LockedPage(){
               <div style={{position:'absolute',top:-20,right:-20,width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.1)'}}/>
               <div style={{position:'absolute',bottom:-30,left:-30,width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
               <div style={{position:'relative',zIndex:1}}>
-                <div style={{fontSize:11,fontWeight:600,opacity:0.85,letterSpacing:2,marginBottom:4}}>BEI YA MFUMO</div>
+                <div style={{fontSize:11,fontWeight:600,opacity:0.85,letterSpacing:2,marginBottom:4}}>{selPlan.icon} {selPlan.name.toUpperCase()}</div>
                 <div style={{fontSize:38,fontWeight:900,letterSpacing:-1}}>TZS {price.toLocaleString()}</div>
-                <div style={{fontSize:12,opacity:0.85,marginTop:2}}>kwa mwezi mmoja</div>
+                <div style={{fontSize:12,opacity:0.85,marginTop:2}}>kwa mwezi mmoja • {selPlan.tagline}</div>
+              </div>
+            </div>
+
+            {/* Chagua kifurushi */}
+            <div style={{padding:'14px 16px 0'}}>
+              <div style={{fontSize:11,fontWeight:800,color:'#5C6A62',letterSpacing:.5,marginBottom:8}}>CHAGUA KIFURUSHI</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:7}}>
+                {PLAN_LIST.map(pl=>{
+                  const on=pl.id===planId;
+                  const pr=pl.id==='basic'?parseInt(settings?.system_price||pl.price):pl.price;
+                  return <button key={pl.id} onClick={()=>setPlanId(pl.id)} style={{padding:'10px 4px',borderRadius:12,cursor:'pointer',textAlign:'center',border:on?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:on?'#E6F2EC':'#fff'}}>
+                    <div style={{fontSize:17}}>{pl.icon}</div>
+                    <div style={{fontSize:11.5,fontWeight:800,color:on?'#0A6E47':'#17231D'}}>{pl.name}</div>
+                    <div style={{fontSize:10,color:'#5C6A62',marginTop:1}}>{(pr/1000)}k</div>
+                  </button>;
+                })}
+              </div>
+              <div style={{marginTop:10,background:'#F6F8F7',borderRadius:10,padding:'9px 12px',fontSize:11.5,color:'#5C6A62',lineHeight:1.6}}>
+                {selPlan.features.slice(0,4).map((f,i)=><div key={i}>✓ {f}</div>)}
               </div>
             </div>
 
             {/* Content */}
-            <div style={{padding:'18px 22px 22px'}}>
+            <div style={{padding:'14px 22px 22px'}}>
               {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #C2412D',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
 
               {/* ==== MALIPO YA HARAKA (AUTO) — mteja akilipa mfumo unajifungua wenyewe ==== */}

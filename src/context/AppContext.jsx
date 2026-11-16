@@ -1,4 +1,5 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
+import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
@@ -74,6 +75,21 @@ export function AppProvider({children}){
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
 
   const bizId=biz?.id||user?.business_id;
+
+  // ===== VIKWAZO VYA KIFURUSHI =====
+  // Hurudisha Infinity kwa admin na kwa wateja wa legacy (waliokuwepo
+  // kabla ya vikwazo) — hao hawapotezi walichozoea.
+  const limitFor=(what)=>{
+    if(user?.role==='admin')return Infinity;
+    if(biz?.is_legacy===true||biz?.is_legacy==='true')return Infinity;
+    const v=getPlan(biz?.plan)?.limits?.[what];
+    return v==null?Infinity:v;
+  };
+  const limitMsg=(what,max)=>{
+    const names={employees:'wafanyakazi',branches:'matawi',products:'bidhaa',customers:'wateja'};
+    const p=getPlan(biz?.plan);
+    return `Kifurushi cha ${p?.name||'Basic'} kinaruhusu ${names[what]||what} ${max} pekee. Boresha kifurushi ili kuongeza zaidi.`;
+  };
 
   useEffect(()=>{
     const on=()=>{setOnline(true);setTimeout(()=>{getPendingCount().then(c=>{if(c>0)window.dispatchEvent(new Event('trigger-offline-sync'))}).catch(()=>{})},2000)};
@@ -583,6 +599,9 @@ export function AppProvider({children}){
   // ===== PRODUCTS =====
   const addProduct=useCallback(async(p)=>{
     if(!bizId)return{success:false,error:'Hakuna biashara'};
+    const maxP=limitFor('products');
+    if(products.filter(x=>x.business_id===bizId).length>=maxP)
+      return{success:false,error:limitMsg('products',maxP)};
     // Angalia jina linalorudiwa (100% match, case-insensitive)
     const dupName=(p.name||'').trim().toLowerCase();
     const existing=products.find(pr=>
@@ -665,7 +684,7 @@ export function AppProvider({children}){
       if(d){setProds(prev=>sortProducts([...prev,d]));copied++;}
     }
     return{success:true,copied};
-  },[bizId,products]);
+  },[bizId,products,biz,user]);
   const deleteProduct=useCallback(async(pid)=>{await safeDelete('products','id',pid);setProds(prev=>prev.filter(p=>p.id!==pid))},[]);
 
   // ===== SALES =====
@@ -1176,6 +1195,9 @@ export function AppProvider({children}){
   // ===== EMPLOYEES =====
   const addEmployee=useCallback(async(emp)=>{
     if(!bizId)return{error:'Biashara haijapatikana.'};
+    const maxE=limitFor('employees');
+    if(employees.filter(e=>e.business_id===bizId).length>=maxE)
+      return{error:limitMsg('employees',maxE)};
     const email=(emp.email||'').trim().toLowerCase();
     if(!email||!email.includes('@'))return{error:'Weka email sahihi.'};
     if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
@@ -1225,7 +1247,7 @@ export function AppProvider({children}){
     }catch(e){
       return{error:'Tatizo la mtandao. Jaribu tena.'};
     }
-  },[bizId]);
+  },[bizId,employees,biz,user]);
   const updateEmployee=useCallback(async(eid,updates)=>{
     await safeUpdate('users',updates,'id',eid);
     setEmps(prev=>prev.map(e=>e.id===eid?{...e,...updates}:e));
@@ -1241,7 +1263,7 @@ export function AppProvider({children}){
   },[]);
 
   // ===== BRANCHES =====
-  const addBranch=useCallback(async(name,location,extra={})=>{if(!bizId)return null;const branchCode='BR-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('branches',{business_id:bizId,name,location,address:extra.address||null,phone:extra.phone||null,branch_code:branchCode,is_active:extra.is_active!==false});const f=d||{id:genId(),business_id:bizId,name,location,...extra,branch_code:branchCode,is_active:extra.is_active!==false,created_at:nowISO()};setBranches(prev=>[...prev,f]);return f},[bizId]);
+  const addBranch=useCallback(async(name,location,extra={})=>{if(!bizId)return null;const maxB=limitFor('branches');if(branches.filter(b=>b.business_id===bizId).length>=maxB){alert(limitMsg('branches',maxB));return null;}const branchCode='BR-'+Math.random().toString(36).substr(2,6).toUpperCase();const d=await safeInsert('branches',{business_id:bizId,name,location,address:extra.address||null,phone:extra.phone||null,branch_code:branchCode,is_active:extra.is_active!==false});const f=d||{id:genId(),business_id:bizId,name,location,...extra,branch_code:branchCode,is_active:extra.is_active!==false,created_at:nowISO()};setBranches(prev=>[...prev,f]);return f},[bizId,branches,biz,user]);
   const updateBranch=useCallback(async(bid,u)=>{await safeUpdate('branches',u,'id',bid);setBranches(prev=>prev.map(b=>b.id===bid?{...b,...u}:b))},[]);
   const deleteBranch=useCallback(async(bid)=>{await safeDelete('branches','id',bid);setBranches(prev=>prev.filter(b=>b.id!==bid));if(activeBranch===bid)setActiveBranch(null)},[activeBranch]);
   const getBranches=useCallback(()=>bizId?branches.filter(b=>b.business_id===bizId):[],[bizId,branches]);
@@ -1272,7 +1294,7 @@ export function AppProvider({children}){
 
     // Njia nyingine za zamani
     if(branches.some(b=>b.business_id===bizId))return true;
-    if(myBiz?.plan==='premium'||myBiz?.plan==='enterprise')return true;
+    if(['premium','biashara'].includes(resolvePlanId(myBiz?.plan)))return true;
     return false;
   },[user,settings,biz,bizId,businesses,branches]);
 
@@ -1282,43 +1304,35 @@ export function AppProvider({children}){
   // Is employee locked to a branch?
   const isEmployeeLocked=useMemo(()=>user?.role==='employee'&&user?.branch_id,[user]);
   // ===== PLAN DEFINITIONS =====
-  const PLANS={
-    basic:{
-      name:'Basic',price:15000,color:'#3B82F6',icon:'🟦',
-      features:['Mauzo ya POS','Usimamizi wa Stock','Wateja & Madeni','Matumizi','Wafanyakazi 3','Tawi 1','Ripoti za Msingi','Supervisors'],
-      limits:{employees:3,branches:1,products:200,customers:500},
-    },
-    premium:{
-      name:'Premium',price:20000,color:'#8B5CF6',icon:'🟣',
-      features:['Yote ya Basic','Matawi Mengi (hadi 10)','Wafanyakazi Wasio na Kikomo','Ripoti za Kina','AI Uchambuzi','SMS Center','Export CSV/PDF','Priority Support'],
-      limits:{employees:999,branches:10,products:2000,customers:9999},
-    },
-    enterprise:{
-      name:'Enterprise',price:150000,color:'#F2B705',icon:'🟡',
-      features:['Yote ya Premium','Matawi Yasio na Kikomo','API Integration','Custom Reports','Dedicated Support','Training ya Bure','Multi-Admin','EFD/TRA Integration'],
-      limits:{employees:9999,branches:999,products:99999,customers:99999},
-    },
-  };
-  const currentPlan=PLANS[biz?.plan||'basic']||PLANS.basic;
-  const isPremium=(biz?.plan==='premium'||biz?.plan==='enterprise');
-  const isEnterprise=biz?.plan==='enterprise';
-  const isBasic=!isPremium;
+  const currentPlan=getPlan((Array.isArray(biz)?biz.find(b=>b.id===bizId):biz)?.plan);
+  const _planId=resolvePlanId((Array.isArray(biz)?biz.find(b=>b.id===bizId):biz)?.plan);
+  const isPremium=(_planId==='premium'||_planId==='biashara');
+  const isEnterprise=_planId==='biashara';
+  const isBasic=_planId==='basic';
   // Check if feature is available on current plan
   const canUseFeature=useCallback((feature)=>{
     if(user?.role==='admin')return true;
-    const plan=biz?.plan||'basic';
-    const featureMap={
-      branches:['premium','enterprise'],
-      ai_insights:['premium','enterprise'],
-      sms_center:['premium','enterprise'],
-      unlimited_employees:['premium','enterprise'],
-      export:['premium','enterprise'],
-      api:['enterprise'],
-      efd:['enterprise'],
-      multi_admin:['enterprise'],
-    };
-    return featureMap[feature]?featureMap[feature].includes(plan):true;
-  },[user,biz]);
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    // Wateja waliokuwepo kabla ya vikwazo hawapotezi walichozoea.
+    if(myBiz?.is_legacy===true||myBiz?.is_legacy==='true')return true;
+    const plan=resolvePlanId(myBiz?.plan);
+    const allowed=FEATURE_PLANS[feature];
+    return allowed?allowed.includes(plan):true;
+  },[user,biz,bizId]);
+
+  // Kikomo cha plan (wafanyakazi, matawi, bidhaa, wateja).
+  // Hurudisha Infinity kwa admin na kwa wateja wa legacy.
+  const planLimit=useCallback((what)=>{
+    if(user?.role==='admin')return Infinity;
+    const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
+    if(myBiz?.is_legacy===true||myBiz?.is_legacy==='true')return Infinity;
+    const p=getPlan(myBiz?.plan);
+    const v=p?.limits?.[what];
+    return v==null?Infinity:v;
+  },[user,biz,bizId]);
+
+  // Je, kuna nafasi ya kuongeza kitu kimoja zaidi?
+  const canAddMore=useCallback((what,currentCount)=>planLimit(what)>(currentCount||0),[planLimit]);
 
   // ===== WHOLESALE FEATURE =====
   const hasWholesale=useMemo(()=>{
@@ -1338,9 +1352,7 @@ export function AppProvider({children}){
     const myBiz=Array.isArray(biz)?biz.find(b=>b.id===bizId):biz;
     if(myBiz?.max_branches)return parseInt(myBiz.max_branches);
     if(myBiz?.plan&&myBiz.plan.startsWith('branch'))return parseInt(myBiz.plan.replace('branch',''))||2;
-    if(myBiz?.plan==='enterprise')return 999;
-    if(myBiz?.plan==='premium')return 10;
-    return 1;
+    return getPlan(myBiz?.plan)?.limits?.branches||1;
   },[biz,bizId]);
 
   // ===== SUPPORT TICKETS =====
@@ -2831,7 +2843,7 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
-    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,hasWholesale,
+    PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,planLimit,canAddMore,SMS_BUNDLES,hasWholesale,
     saveGoal,getGoal,goalProgress,aiInsights,
   }}>{children}</Ctx.Provider>;
 }

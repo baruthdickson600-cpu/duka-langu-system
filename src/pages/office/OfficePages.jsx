@@ -1,4 +1,5 @@
 import React,{useState,useMemo} from 'react';
+import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,exportStatementPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange,dateRangeList} from '../../utils/helpers';
@@ -16,7 +17,9 @@ function SubscriptionMiniBar(){
   const[done,setDone]=React.useState(false);
   const[msg,setMsg]=React.useState('');
   const[errMsg,setErrMsg]=React.useState('');
-  const price=parseInt(settings?.system_price||'15000');
+  // Kuongeza siku kunabaki kwenye kifurushi cha duka — hakishushi kwenda Basic
+  const myPlan=getPlan(biz?.plan);
+  const price=myPlan.id==='basic'?parseInt(settings?.system_price||myPlan.price):myPlan.price;
 
   // Lipa kwa Snippe (auto) — weka namba -> push -> mfumo unajifungua
   const payNow=async()=>{
@@ -24,7 +27,7 @@ function SubscriptionMiniBar(){
     if(!ph||ph.replace(/\D/g,'').length<9)return setErrMsg('Weka namba sahihi ya simu (mf. 0712345678)!');
     setSubmitting(true);setErrMsg('');setMsg('');
     try{
-      const res=await initiatePayment({amount:price,days:30,plan:'basic',phone:ph});
+      const res=await initiatePayment({amount:price,days:30,plan:myPlan.id,phone:ph});
       if(!res?.success){setErrMsg(res?.error||'Imeshindwa kuanzisha malipo.');setSubmitting(false);return}
       const ref=res.reference||'';
       setMsg(res.message||'📲 Angalia simu yako — weka PIN kuthibitisha malipo. Mfumo utajifungua wenyewe.');

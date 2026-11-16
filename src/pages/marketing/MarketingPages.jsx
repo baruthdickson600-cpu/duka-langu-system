@@ -513,7 +513,7 @@ export function MktTokensPage(){
             <div style={{flex:1,minWidth:180}}>
               <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                 <span style={{fontFamily:'monospace',fontWeight:800,fontSize:15,background:t.used?'#FFF8E6':'#E6F2EC',padding:'4px 12px',borderRadius:8,color:t.used?'#92400E':'#0A6E47',letterSpacing:1}}>{t.code}</span>
-                <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='enterprise'?'#0A6E47':'#5C6A62'}>{(t.plan||'basic').toUpperCase()}</Badge>
+                <Badge color={t.plan==='premium'?'#8B5CF6':t.plan==='biashara'?'#F2B705':'#5C6A62'}>{(t.plan||'basic').toUpperCase()}</Badge>
                 <Badge color={t.used?'#F2B705':'#0A6E47'}>{t.used?'Imetumika':'Inapatikana'}</Badge>
               </div>
               <div style={{fontSize:12,color:'#5C6A62',marginTop:5}}>

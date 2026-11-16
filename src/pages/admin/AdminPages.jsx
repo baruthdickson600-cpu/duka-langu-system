@@ -4,6 +4,7 @@ import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
 import {usePaidTx,sumTx,txAmt,txMonth,CH_LABEL} from '../../hooks/usePaidTx';
+import {PLAN_LIST,getPlan} from '../../config/plans';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 const CL=['#0A6E47','#3B82F6','#F2B705','#C2412D','#8B5CF6','#EC4899'];
 
@@ -605,7 +606,7 @@ export function StoresPage(){
         <div style={{fontSize:12,color:'#7C3AED'}}>Plan ya sasa</div>
         <div style={{fontSize:22,fontWeight:900,color:'#8B5CF6'}}>{(actionModal.biz?.plan||'trial').toUpperCase()}</div>
       </div>
-      <Sel label="Plan Mpya" value={upgradePlan} onChange={e=>setUpgradePlan(e.target.value)} options={[{value:'trial',label:'Trial'},{value:'basic',label:'Basic'},{value:'premium',label:'Premium'},{value:'enterprise',label:'Enterprise'}]}/>
+      <Sel label="Plan Mpya" value={upgradePlan} onChange={e=>setUpgradePlan(e.target.value)} options={[{value:'trial',label:'Trial'},...PLAN_LIST.map(p=>({value:p.id,label:`${p.icon} ${p.name}`}))]}/>
       <Btn onClick={async()=>{await quickUpgrade(actionModal.biz.id,upgradePlan);alert(`${actionModal.biz.name} → ${upgradePlan.toUpperCase()}!`);setActionModal({type:null,biz:null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>⬆️ Badilisha Plan</Btn>
     </Modal>
 
@@ -724,9 +725,10 @@ export function TokensPage(){
   }
 
   // Plan pricing (matches biashara plans)
-  const PLAN_PRICES={basic:15000,branch2:25000,premium:30000,enterprise:60000};
-  const PLAN_COLORS={basic:'#5C6A62',branch2:'#F2B705',premium:'#8B5CF6',enterprise:'#0A6E47'};
-  const PLAN_ICONS={basic:'⚡',branch2:'🏪',premium:'⭐',enterprise:'👑'};
+  // Bei zinatoka kwenye chanzo kimoja (config/plans.js) — zisirudiwe hapa
+  const PLAN_PRICES=Object.fromEntries(PLAN_LIST.map(p=>[p.id,p.price]));
+  const PLAN_COLORS=Object.fromEntries(PLAN_LIST.map(p=>[p.id,p.color]));
+  const PLAN_ICONS=Object.fromEntries(PLAN_LIST.map(p=>[p.id,p.icon]));
 
   // Period filter
   const isInPeriod=(dateStr)=>{
@@ -751,8 +753,8 @@ export function TokensPage(){
   const estimatedRevenue=usedTokens.reduce((sum,t)=>sum+(PLAN_PRICES[t.plan]||PLAN_PRICES.basic),0);
   
   // Revenue per plan
-  const revenueByPlan={basic:0,premium:0,enterprise:0};
-  const tokensByPlan={basic:0,premium:0,enterprise:0};
+  const revenueByPlan={basic:0,premium:0,biashara:0};
+  const tokensByPlan={basic:0,premium:0,biashara:0};
   usedTokens.forEach(t=>{
     const p=t.plan||'basic';
     revenueByPlan[p]=(revenueByPlan[p]||0)+(PLAN_PRICES[p]||0);
@@ -871,7 +873,7 @@ export function TokensPage(){
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📊 Mahesabu kwa Kila Plan</h3>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:14}}>
-        {['basic','premium','enterprise'].map(p=>{
+        {['basic','premium','biashara'].map(p=>{
           const planRevenue=revenueByPlan[p];
           const planCount=tokensByPlan[p];
           const pct=estimatedRevenue>0?(planRevenue/estimatedRevenue*100):0;
@@ -917,12 +919,9 @@ export function TokensPage(){
             {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #0A6E47':'1px solid #D6E2DB',background:days===String(d)?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#5C6A62'}}>{d}</button>)}
           </div>
         </div>
-        <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[
-          {value:'basic',label:`⚡ Basic — TZS ${PLAN_PRICES.basic.toLocaleString()}`},
-          {value:'branch2',label:`🏪 Matawi 2 — TZS ${PLAN_PRICES.branch2.toLocaleString()}`},
-          {value:'premium',label:`⭐ Premium — TZS ${PLAN_PRICES.premium.toLocaleString()}`},
-          {value:'enterprise',label:`👑 Enterprise — TZS ${PLAN_PRICES.enterprise.toLocaleString()}`},
-        ]}/></div>
+        <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={
+          PLAN_LIST.map(p=>({value:p.id,label:`${p.icon} ${p.name} — TZS ${p.price.toLocaleString()}`}))
+        }/></div>
         <div><Input label="Idadi" type="number" value={qty} onChange={e=>setQty(e.target.value)}/></div>
         <div><Sel label="Weka kwa Mshirika (Optional)" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Muhasibu (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
       </div>

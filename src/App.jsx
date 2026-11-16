@@ -1,4 +1,5 @@
 import {saveStockSnapshot} from './utils/offlineDB';
+import {minPlanFor} from './config/plans';
 import React,{useState,useEffect} from 'react';
 import {useApp} from './context/AppContext';
 import {IC,Modal,NotifPopup,Btn,Badge,OnlineStatus} from './components/UI';
@@ -550,8 +551,7 @@ export function PlanGate({feature, children, fallback}){
   const{canUseFeature, currentPlan, PLANS}=useApp();
   if(canUseFeature(feature)) return children;
   if(fallback) return fallback;
-  const needed = feature==='ai_insights'||feature==='sms_center'||feature==='unlimited_employees'||feature==='export' ? 'premium' : 'enterprise';
-  const plan = PLANS[needed];
+  const plan = minPlanFor(feature) || PLANS.premium;
   return (
     <div style={{background:'linear-gradient(135deg,#F6F8F7,#EFF6FF)',border:'2px dashed #BFDBFE',borderRadius:16,padding:32,textAlign:'center',maxWidth:480,margin:'40px auto'}}>
       <div style={{fontSize:48,marginBottom:12}}>{plan?.icon||'🔒'}</div>
