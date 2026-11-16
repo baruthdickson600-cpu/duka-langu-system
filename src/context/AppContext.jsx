@@ -1531,7 +1531,7 @@ export function AppProvider({children}){
         await fetch(API_BASE+'/api/send-sms',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({to:cleanPhone,message:smsMsg})
+          body:JSON.stringify({phone:cleanPhone,message:smsMsg})
         });
       }catch(e){console.warn('Supervisor SMS failed:',e)}
     }
@@ -1581,7 +1581,7 @@ export function AppProvider({children}){
           await fetch(API_BASE+'/api/send-sms',{
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({to:cleanPhone,message:smsMsg})
+            body:JSON.stringify({phone:cleanPhone,message:smsMsg})
           });
         }catch(e){console.warn('Supervisor SMS failed:',e)}
       }
