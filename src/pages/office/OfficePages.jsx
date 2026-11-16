@@ -1,4 +1,5 @@
 import React,{useState,useMemo} from 'react';
+import DebtReminder from '../../components/DebtReminder';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -2003,6 +2004,10 @@ export function CustomersPage(){
   };
 
   return <div className="page-enter">
+    {/* Ukumbusho wa deni kwa SMS */}
+    {debtCount>0&&<div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+      <DebtReminder/>
+    </div>}
     {/* Tabs: Wateja | Deni Dashboard */}
     <div style={{display:'flex',background:'#F6F8F7',borderRadius:12,padding:3,marginBottom:16}}>
       <button onClick={()=>setTab('customers')} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:14,background:tab==='customers'?'#fff':'transparent',color:tab==='customers'?'#0A6E47':'#9AA5A0',boxShadow:tab==='customers'?'0 2px 8px rgba(0,0,0,.08)':'none',cursor:'pointer'}}>👥 Wateja</button>

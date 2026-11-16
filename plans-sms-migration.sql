@@ -18,7 +18,9 @@ ALTER TABLE businesses ADD COLUMN IF NOT EXISTS is_legacy BOOLEAN DEFAULT FALSE;
 UPDATE businesses SET is_legacy = TRUE WHERE is_legacy IS NOT TRUE;
 
 -- ---------- 2) BANDO LA SMS ----------
-ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sms_balance INTEGER DEFAULT 0;
+-- Mifuko miwili: alilonunua (halikwishi) na bando la mwezi (linakwisha)
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sms_balance INTEGER DEFAULT 0;        -- alilonunua
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sms_quota_balance INTEGER DEFAULT 0;  -- bando la mwezi
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS sms_quota_month TEXT;   -- 'YYYY-MM' bando la mwezi lilipowekwa
 
 -- Kumbukumbu ya kila SMS iliyotumwa kwa mteja wa duka

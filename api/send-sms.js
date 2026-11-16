@@ -4,6 +4,35 @@
 // Architecture: stateless, scalable, hakuna cron dependency
 // ============================================================
 
+import { createClient } from '@supabase/supabase-js';
+
+const SB_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY;
+const smsDb = () => (SB_URL && SB_KEY ? createClient(SB_URL, SB_KEY, { auth: { persistSession: false } }) : null);
+
+// Kata SMS moja kwenye salio na andika kumbukumbu
+async function debitAndLog(sb, { business_id, customer_id, phone, message, kind, sent_by, ok, error }) {
+  if (!sb || !business_id) return;
+  try {
+    if (ok) {
+      // Tumia bando la mwezi kwanza (linakwisha), kisha alilonunua (halikwishi)
+      const { data: b } = await sb.from('businesses')
+        .select('sms_balance, sms_quota_balance').eq('id', business_id).maybeSingle();
+      const quota = b?.sms_quota_balance || 0;
+      const bought = b?.sms_balance || 0;
+      const upd = quota > 0
+        ? { sms_quota_balance: quota - 1 }
+        : { sms_balance: Math.max(0, bought - 1) };
+      await sb.from('businesses').update(upd).eq('id', business_id);
+    }
+    await sb.from('sms_log').insert({
+      business_id, customer_id: customer_id || null, phone, message,
+      kind: kind || 'other', status: ok ? 'sent' : 'failed',
+      error: error || null, cost: ok ? 1 : 0, sent_by: sent_by || null,
+    });
+  } catch (e) { console.warn('[SMS] log failed:', e.message); }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -30,7 +59,23 @@ export default async function handler(req, res) {
     });
   }
 
-  const { phone, message, recipient_id = 1 } = req.body || {};
+  const { phone, message, recipient_id = 1, business_id, customer_id, kind, sent_by } = req.body || {};
+
+  // ---- BANDO LA SMS ----
+  // SMS za mfumo (bila business_id) hazipunguzi bando la duka.
+  // Zenye business_id ni za mwenye duka kwenda kwa wateja wake — zinakatwa.
+  const sb = smsDb();
+  if (business_id && sb) {
+    const { data: biz } = await sb.from('businesses')
+      .select('sms_balance, sms_quota_balance').eq('id', business_id).maybeSingle();
+    const bal = (biz?.sms_balance || 0) + (biz?.sms_quota_balance || 0);
+    if (bal <= 0) {
+      return res.status(402).json({
+        success: false, error: 'Salio la SMS limeisha. Nunua bando ili kuendelea.',
+        code: 'NO_SMS_BALANCE', balance: 0,
+      });
+    }
+  }
 
   if (!phone || !message) {
     return res.status(400).json({
@@ -118,6 +163,7 @@ export default async function handler(req, res) {
       // Mafanikio
       if (beemRes.ok && (data?.code === undefined || data.code === 100)) {
         console.log('[SMS] Imetumwa:', dest);
+        await debitAndLog(sb, { business_id, customer_id, phone: dest, message, kind, sent_by, ok: true });
         return res.status(200).json({ success: true, phone: dest, beem: data });
       }
 
@@ -144,6 +190,7 @@ export default async function handler(req, res) {
         await new Promise(r => setTimeout(r, 1000 * attempt));
         continue;
       }
+      await debitAndLog(sb, { business_id, customer_id, phone: dest, message, kind, sent_by, ok: false, error: err.message });
       return res.status(503).json({
         success: false,
         error: isTimeout

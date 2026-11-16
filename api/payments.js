@@ -265,6 +265,49 @@ async function executePayout(supabase, po) {
   return gw;
 }
 
+// ---- BANDO LA SMS ----
+// Bando la mwezi (kutoka kifurushi) + bando alilonunua.
+// Kanuni: bando la mwezi linakwisha mwisho wa mwezi; alilonunua halikwishi.
+const PLAN_SMS_QUOTA = { basic: 50, premium: 100, biashara: 150, enterprise: 150, branch2: 100 };
+
+// Mifuko miwili:
+//   sms_quota_balance = bando la mwezi (LINAKWISHA mwisho wa mwezi)
+//   sms_balance       = alilonunua      (HALIKWISHI)
+// Salio analoona mteja = jumla ya mifuko yote miwili.
+
+// Ongeza SMS alizonunua (hazikwishi)
+async function creditSms(supabase, businessId, count, note) {
+  if (!businessId || !count) return;
+  const { data: b } = await supabase.from('businesses')
+    .select('sms_balance, sms_quota_balance').eq('id', businessId).maybeSingle();
+  const bought = (b?.sms_balance || 0) + count;
+  await supabase.from('businesses').update({ sms_balance: bought }).eq('id', businessId);
+  const total = bought + (b?.sms_quota_balance || 0);
+  if (note) {
+    await supabase.from('notifications').insert({
+      target_type: 'business', target_id: businessId, type: 'success',
+      title: '📨 Bando la SMS', message: `${note} Salio lako sasa ni SMS ${total}.`,
+    }).then(() => {}, () => {});
+  }
+  return total;
+}
+
+// Weka bando la mwezi. Mwezi mpya LINAWEKWA UPYA (si kuongeza) —
+// zisizotumika za mwezi uliopita zinapotea, kama tulivyokubaliana.
+async function grantMonthlyQuota(supabase, businessId) {
+  if (!businessId) return null;
+  const month = new Date().toISOString().slice(0, 7);
+  const { data: b } = await supabase.from('businesses')
+    .select('sms_balance, sms_quota_balance, sms_quota_month, plan').eq('id', businessId).maybeSingle();
+  if (!b) return null;
+  const bought = b.sms_balance || 0;
+  if (b.sms_quota_month === month) return bought + (b.sms_quota_balance || 0);
+  const quota = PLAN_SMS_QUOTA[String(b.plan || 'basic').toLowerCase()] ?? PLAN_SMS_QUOTA.basic;
+  await supabase.from('businesses')
+    .update({ sms_quota_balance: quota, sms_quota_month: month }).eq('id', businessId);
+  return bought + quota;
+}
+
 // ---- Tuma SMS + Email kwa staff wa DukaLangu (admin, marketing, accountant) ----
 async function notifyStaff(supabase, tx) {
   try {
@@ -405,6 +448,22 @@ export default async function handler(req, res) {
       const isPaid = evt === 'payment.completed' || ['completed', 'succeeded', 'success', 'successful', 'paid'].includes(st);
       const isFailed = evt === 'payment.failed' || ['failed', 'voided', 'expired', 'reversed', 'cancelled'].includes(st);
       if (!ref) return res.status(400).json({ success: false, error: 'Hakuna reference.' });
+
+      // Kama ni ununuzi wa BANDO LA SMS (reference inaanza na SMS-)
+      if (String(ref).startsWith('SMS-')) {
+        const { data: buy } = await supabase.from('sms_purchases').select('*').eq('provider_ref', ref).maybeSingle();
+        if (!buy) return res.status(200).json({ success: true, message: 'Ununuzi haujapatikana (imepuuzwa).' });
+        if (buy.status === 'paid') return res.status(200).json({ success: true, message: 'Tayari imethibitishwa.' });
+        if (isPaid) {
+          await supabase.from('sms_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', buy.id);
+          await creditSms(supabase, buy.business_id, buy.sms_count, `Umenunua bando la SMS ${buy.sms_count}.`);
+          return res.status(200).json({ success: true, message: 'Bando la SMS limeongezwa.' });
+        }
+        if (isFailed) {
+          await supabase.from('sms_purchases').update({ status: 'failed' }).eq('id', buy.id);
+        }
+        return res.status(200).json({ success: true, message: 'Imepokewa.' });
+      }
 
       // Kama ni event ya PAYOUT (kutoa pesa), sasisha jedwali la payouts
       if (evt.startsWith('payout')) {
@@ -557,7 +616,60 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, payouts: data || [] });
     }
 
-    return res.status(400).json({ success: false, error: 'Action si sahihi. Tumia initiate | webhook | status | payout_balance | payout_fee | payout_request | payout_approve | payout_reject | payout_list.' });
+    // ===== 10. SMS: SALIO LA DUKA (+ bando la mwezi) =====
+    if (action === 'sms_balance') {
+      const businessId = req.query?.business_id;
+      if (!businessId) return res.status(400).json({ success: false, error: 'business_id inahitajika.' });
+      const balance = await grantMonthlyQuota(supabase, businessId);
+      if (balance == null) return res.status(404).json({ success: false, error: 'Biashara haijapatikana.' });
+      return res.status(200).json({ success: true, balance });
+    }
+
+    // ===== 11. SMS: NUNUA BANDO =====
+    if (action === 'sms_buy' && req.method === 'POST') {
+      if (!SNIPPE_KEY) return res.status(500).json({ success: false, error: 'Snippe API key haijawekwa.' });
+      const body = parseJSON(await readRawBody(req));
+      const { business_id, business_name, phone, bundle_id, sms_count, amount, user_email } = body;
+      if (!business_id || !phone || !sms_count || !amount) {
+        return res.status(400).json({ success: false, error: 'business_id, simu, sms_count na amount zinahitajika.' });
+      }
+      const reference = 'SMS-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
+      const gw = await snippeInitiate({ amount, phone, reference, email: user_email, name: business_name });
+      if (!gw.ok) return res.status(400).json({ success: false, error: gw.error });
+
+      const { data: buy, error } = await supabase.from('sms_purchases').insert({
+        business_id, bundle_id: bundle_id || null, sms_count, amount,
+        provider: 'snippe', provider_ref: gw.snippeRef, status: 'pending',
+      }).select().single();
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+
+      return res.status(200).json({
+        success: true, reference: gw.snippeRef, purchase_id: buy.id,
+        message: '📲 Angalia simu yako — weka PIN kununua bando.',
+      });
+    }
+
+    // ===== 12. SMS: HALI YA UNUNUZI (polling) =====
+    if (action === 'sms_status') {
+      const ref = req.query?.reference;
+      if (!ref) return res.status(400).json({ success: false, error: 'reference inahitajika.' });
+      const { data: buy } = await supabase.from('sms_purchases').select('*').eq('provider_ref', ref).maybeSingle();
+      if (!buy) return res.status(404).json({ success: false, error: 'Ununuzi haujapatikana.' });
+      if (buy.status === 'paid') {
+        const { data: b } = await supabase.from('businesses').select('sms_balance').eq('id', buy.business_id).maybeSingle();
+        return res.status(200).json({ success: true, status: 'paid', balance: b?.sms_balance || 0 });
+      }
+      // Bado pending — uliza Snippe moja kwa moja (webhook inaweza kuchelewa)
+      const gw = await snippeStatus(ref);
+      if (gw.ok && ['completed', 'succeeded', 'success', 'successful', 'paid'].includes(String(gw.status || '').toLowerCase())) {
+        await supabase.from('sms_purchases').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', buy.id);
+        const balance = await creditSms(supabase, buy.business_id, buy.sms_count, `Umenunua bando la SMS ${buy.sms_count}.`);
+        return res.status(200).json({ success: true, status: 'paid', balance });
+      }
+      return res.status(200).json({ success: true, status: buy.status });
+    }
+
+    return res.status(400).json({ success: false, error: 'Action si sahihi. Tumia initiate | webhook | status | payout_* | sms_balance | sms_buy | sms_status.' });
   } catch (err) {
     console.error('[payments]', err?.message);
     return res.status(500).json({ success: false, error: 'Tatizo la mfumo: ' + (err?.message || '') });

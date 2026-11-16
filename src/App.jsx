@@ -24,6 +24,7 @@ import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
 import PayoutApprovals from './pages/shared/PayoutApprovals';
+import SmsBundlePage from './pages/office/SmsBundlePage';
 
 const MENUS={
   admin:[
@@ -104,6 +105,7 @@ const MENUS={
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'employees',icon:IC.users,label:'Wafanyakazi'},
     {id:'customers',icon:IC.people,label:'Wateja'},
+    {id:'sms',icon:IC.send,label:'📨 Bando la SMS'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   employee:[
@@ -335,7 +337,7 @@ export default function App(){
       case'goals':return <GoalsPage/>;
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
-      case'customers':return <CustomersPage/>;
+      case'customers':return <CustomersPage/>;case'sms':return <SmsBundlePage/>;
       case'analytics':return <ProductAnalyticsPage/>;
       case'notifications':return <NotifsPage/>;
       default:return <OfficeDash onReceipt={setReceipt} onNav={setPage}/>;
