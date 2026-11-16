@@ -121,19 +121,42 @@ function verifyWebhook(req, rawBody) {
 // ============================================================
 
 // Salio la akaunti ya Snippe
+// Salio halisi la akaunti ya Snippe (pale pesa za wateja zinapoingia).
+// Tunajaribu njia kadhaa kwa sababu jina la endpoint linaweza kutofautiana.
+function pickBalance(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const d = obj.data || obj;
+  const cands = [
+    d.available_minor, d.balance_minor, d.amount_minor,
+    d.available, d.balance, d.amount, d.current_balance,
+    d.wallet?.balance, d.wallet?.available, d.balance?.available,
+  ];
+  for (let i = 0; i < cands.length; i++) {
+    const v = cands[i];
+    if (v == null) continue;
+    const n = Number(typeof v === 'object' ? (v.amount ?? v.value) : v);
+    if (!Number.isFinite(n)) continue;
+    return i < 3 ? n / 100 : n; // tatu za kwanza ni "minor units" (senti)
+  }
+  return null;
+}
+
 async function snippeBalance() {
-  try {
-    const r = await fetch(`${SNIPPE_BASE}/v1/balance`, {
-      headers: { 'Authorization': `Bearer ${SNIPPE_KEY}`, 'Snippe-Version': SNIPPE_VERSION },
-    });
-    const d = await r.json().catch(() => ({}));
-    const data = d.data || d;
-    // Jaribu kupata kiasi (minor au major)
-    const bal = data.available_minor != null ? Number(data.available_minor) / 100
-      : data.available != null ? Number(data.available)
-      : data.balance != null ? Number(data.balance) : 0;
-    return { ok: r.ok, balance: bal, raw: data };
-  } catch (e) { return { ok: false, error: e.message }; }
+  const paths = ['/v1/balance', '/v1/payouts/balance', '/v1/wallet', '/v1/account/balance'];
+  let lastErr = 'Salio halikupatikana kutoka Snippe.';
+  for (const path of paths) {
+    try {
+      const r = await fetch(`${SNIPPE_BASE}${path}`, {
+        headers: { 'Authorization': `Bearer ${SNIPPE_KEY}`, 'Snippe-Version': SNIPPE_VERSION },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { lastErr = (d && (d.message || d.error)) || `Snippe ${r.status} (${path})`; continue; }
+      const bal = pickBalance(d);
+      if (bal == null) { lastErr = `Snippe: muundo wa salio haujulikani (${path}).`; continue; }
+      return { ok: true, balance: bal, source: path };
+    } catch (e) { lastErr = e.message; }
+  }
+  return { ok: false, error: lastErr };
 }
 
 // Ada ya kutoa (fee)

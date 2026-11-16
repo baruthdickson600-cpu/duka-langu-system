@@ -65,7 +65,6 @@ const MENUS={
     {id:'payments',icon:IC.dollar,label:'Malipo'},
     {id:'payout',icon:IC.dollar,label:'💸 Kutoa Pesa'},
     {id:'revenue',icon:IC.chart,label:'💰 Mapato'},
-    {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
     {id:'budget',icon:IC.chart,label:'Bajeti'},
     {id:'expenses',icon:IC.file,label:'Matumizi'},
     {id:'payroll',icon:IC.people,label:'Payroll'},

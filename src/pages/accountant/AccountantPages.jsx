@@ -11,6 +11,30 @@ const PRICE=15000;
 const CATS=['Umeme','Maji','Internet','Kodi ya Pango','Usafiri','Vifaa vya Ofisi','Mishahara','Matengenezo','Marketing','Chakula','SMS/Beem','Server/Hosting','Domain','Nyingine'];
 const curMonth=()=>new Date().toISOString().slice(0,7);
 
+// Majina rafiki ya chaneli za malipo
+const CH_LABEL={mpesa:'M-Pesa',vodacom:'M-Pesa',tigopesa:'Mixx by Yas',tigo:'Mixx by Yas',airtelmoney:'Airtel Money',airtel:'Airtel Money',halopesa:'HaloPesa',halotel:'HaloPesa'};
+
+// ===== MAPATO HALISI =====
+// Yanasomeka TU kutoka malipo yaliyothibitishwa kuingia kwenye akaunti mpya
+// (jedwali la payment_transactions, status='paid'). Hakuna makadirio ya tokens.
+function usePaidTx(){
+  const{supabase}=useApp();
+  const[tx,setTx]=useState([]);
+  const[loading,setLoading]=useState(true);
+  useEffect(()=>{
+    let on=true;
+    if(!supabase){setLoading(false);return}
+    supabase.from('payment_transactions').select('*').eq('status','paid')
+      .order('created_at',{ascending:false}).limit(2000)
+      .then(({data})=>{if(on){setTx(data||[]);setLoading(false)}},()=>{if(on)setLoading(false)});
+    return()=>{on=false};
+  },[supabase]);
+  return{tx,loading};
+}
+const txAmt=t=>+t.amount||0;
+const txMonth=t=>(t.paid_at||t.created_at||'').slice(0,7);
+const sumTx=list=>list.reduce((a,t)=>a+txAmt(t),0);
+
 // ===== VIPENGELE VYA PAMOJA (muonekano mmoja kurasa zote) =====
 function PageHead({icon,title,sub,children}){
   return <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:10,flexWrap:'wrap',marginBottom:16}}>
@@ -50,24 +74,23 @@ function HealthScore({revenue,expenses}){
 
 // ===== 1. DASHBOARD =====
 export function AccountantDashboard({onNav}){
-  const{paymentRequests=[],businesses=[],tokens=[],partners=[],systemExpenses=[],settings,supabase}=useApp();
+  const{businesses=[],systemExpenses=[],settings,supabase}=useApp();
   const price=parseInt(settings?.system_price||PRICE);
-  const ap=paymentRequests.filter(p=>p.status==='approved');
-  const pd=paymentRequests.filter(p=>p.status==='pending');
-  const usedTk=tokens.filter(t=>t.used);
+  const{tx:paid}=usePaidTx();           // malipo halisi yaliyoingia
   const ac=businesses.filter(b=>b.token_active&&!b.is_suspended);
   const tr=businesses.filter(b=>!b.token_active&&!b.is_suspended);
   const su=businesses.filter(b=>b.is_suspended);
-  const totalRev=ap.reduce((a,p)=>a+(+p.amount||0),0)||(usedTk.length*price);
   const ms=curMonth();
-  const monthRev=ap.filter(p=>p.created_at?.startsWith(ms)).reduce((a,p)=>a+(+p.amount||0),0)||(usedTk.filter(t=>(t.used_at||t.created_at||'').startsWith(ms)).length*price);
+  const totalRev=sumTx(paid);
+  const monthRev=sumTx(paid.filter(t=>txMonth(t)===ms));
   const expected=ac.length*price;
   const colRate=expected>0?Math.round(monthRev/expected*100):0;
   const allExp=(systemExpenses||[]);
   const monthExp=allExp.filter(e=>(e.date||e.created_at||'').slice(0,7)===ms).reduce((a,e)=>a+(+e.amount||0),0);
-  const mm={};if(ap.length)ap.forEach(p=>{const m=p.created_at?.slice(0,7);if(m)mm[m]=(mm[m]||0)+(+p.amount||0)});else usedTk.forEach(t=>{const m=(t.used_at||t.created_at||'').slice(0,7);if(m)mm[m]=(mm[m]||0)+price});
+  const mm={};paid.forEach(t=>{const m=txMonth(t);if(m)mm[m]=(mm[m]||0)+txAmt(t)});
   const months=Object.entries(mm).sort().slice(-6);const maxM=Math.max(...months.map(d=>d[1]),1);
-  const pm={};usedTk.forEach(t=>{pm[t.assigned_name||'Admin']=(pm[t.assigned_name||'Admin']||0)+price});
+  // Mapato kwa chaneli halisi (M-Pesa, Tigo, Airtel...)
+  const pm={};paid.forEach(t=>{const c=CH_LABEL[t.channel]||t.channel||'Nyingine';pm[c]=(pm[c]||0)+txAmt(t)});
   const[alerts,setAlerts]=useState([]);
   useEffect(()=>{supabase?.from('smart_alerts').select('*').eq('is_read',false).order('created_at',{ascending:false}).limit(5).then(({data})=>setAlerts(data||[])).catch(()=>{})},[]);
 
@@ -105,7 +128,7 @@ export function AccountantDashboard({onNav}){
       </button>)}
     </div>
     <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(102px,1fr))',gap:10,marginBottom:16}}>
-      {[{l:'Wateja',v:businesses.length,c:'#0A6E47'},{l:'Active',v:ac.length,c:'#0A6E47'},{l:'Trial',v:tr.length,c:'#F2B705'},{l:'Suspended',v:su.length,c:'#C2412D'},{l:'Collection',v:colRate+'%',c:colRate>=80?'#0A6E47':'#F2B705'},{l:'Tokens',v:usedTk.length,c:'#8B5CF6'},{l:'Tarajiwa',v:fmN(expected),c:'#3B82F6'},{l:'Pending',v:pd.length,c:'#F2B705'}].map((s,i)=>
+      {[{l:'Wateja',v:businesses.length,c:'#0A6E47'},{l:'Active',v:ac.length,c:'#0A6E47'},{l:'Trial',v:tr.length,c:'#F2B705'},{l:'Suspended',v:su.length,c:'#C2412D'},{l:'Collection',v:colRate+'%',c:colRate>=80?'#0A6E47':'#F2B705'},{l:'Malipo',v:paid.length,c:'#8B5CF6'},{l:'Tarajiwa',v:fmN(expected),c:'#3B82F6'},{l:'Mwezi Huu',v:fmN(monthRev),c:'#0A6E47'}].map((s,i)=>
       <SumCard key={i} label={s.l} value={s.v} color={s.c}/>)}
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
@@ -512,22 +535,23 @@ export function AccExpensesPage(){
 
 // ===== CHANELI =====
 export function AccRevenuePage(){
-  const{paymentRequests=[],tokens=[],businesses=[],settings}=useApp();
-  const price=parseInt(settings?.system_price||PRICE);const ap=paymentRequests.filter(p=>p.status==='approved');const usedTk=tokens.filter(t=>t.used);
-  const totalRev=ap.reduce((a,p)=>a+(+p.amount||0),0)||(usedTk.length*price);
-  const pm={};usedTk.forEach(t=>{pm[t.assigned_name||'Admin']=(pm[t.assigned_name||'Admin']||0)+price});
-  const byPlan={};usedTk.forEach(t=>{byPlan[t.plan||'basic']=(byPlan[t.plan||'basic']||0)+price});
+  const{tx:paid,loading}=usePaidTx();
+  const totalRev=sumTx(paid);
+  const ms=curMonth();
+  const monthRev=sumTx(paid.filter(t=>txMonth(t)===ms));
+  const byCh={};paid.forEach(t=>{const c=CH_LABEL[t.channel]||t.channel||'Nyingine';byCh[c]=(byCh[c]||0)+txAmt(t)});
+  const byPlan={};paid.forEach(t=>{byPlan[t.plan||'basic']=(byPlan[t.plan||'basic']||0)+txAmt(t)});
   return <div className="page-enter">
-    <PageHead icon="📊" title="Chaneli" sub="Mapato kwa mshirika na kwa plan"/>
+    <PageHead icon="📊" title="Chaneli" sub="Mapato halisi yaliyoingia kwa chaneli na plan"/>
     <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'24px 22px',marginBottom:16,color:'#fff',textAlign:'center',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>
-      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>MAPATO JUMLA</div>
-      <div style={{fontSize:36,fontWeight:900,letterSpacing:'-1.5px',margin:'2px 0'}}>{fm(totalRev)}</div>
-      <div style={{fontSize:12,opacity:.8}}>Tokens {usedTk.length} • Malipo {ap.length}</div>
+      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>MAPATO JUMLA (YALIYOINGIA)</div>
+      <div style={{fontSize:36,fontWeight:900,letterSpacing:'-1.5px',margin:'2px 0'}}>{loading?'...':fm(totalRev)}</div>
+      <div style={{fontSize:12,opacity:.8}}>Malipo {paid.length} • Mwezi huu {fm(monthRev)}</div>
     </div>
     <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
-      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📋 Kwa Mshirika</h3>{Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12}}><span style={{fontWeight:600}}>{n}</span><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)} ({totalRev?Math.round(a/totalRev*100):0}%)</span></div>)}{!Object.keys(pm).length&&<Empty icon="📋" text="Hakuna"/>}</div>
-      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📦 Kwa Plan</h3>{Object.entries(byPlan).map(([p,a])=><div key={p} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between'}}><Badge color={p==='premium'?'#8B5CF6':'#5C6A62'}>{p.toUpperCase()}</Badge><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)}</span></div>)}</div>
-      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>🔑 Tokens ({usedTk.length})</h3><div style={{maxHeight:250,overflowY:'auto'}}>{usedTk.map(t=>{const b=businesses.find(x=>x.id===t.used_by);return<div key={t.id} style={{padding:'5px 0',borderBottom:'1px solid #F6F8F7',fontSize:11}}><span style={{fontFamily:'monospace',fontWeight:700,color:'#92400E',background:'#FFF8E6',padding:'2px 6px',borderRadius:4}}>{t.code}</span> → {b?.name||'—'} • {t.assigned_name||'Admin'} • {fm(price)}</div>})}{!usedTk.length&&<Empty icon="🔑" text="Hakuna"/>}</div></div>
+      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📱 Kwa Chaneli</h3>{Object.entries(byCh).sort((a,b)=>b[1]-a[1]).map(([n,a])=><div key={n} style={{padding:'7px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12.5}}><span style={{fontWeight:700,color:'#17231D'}}>{n}</span><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)} ({totalRev?Math.round(a/totalRev*100):0}%)</span></div>)}{!Object.keys(byCh).length&&<Empty icon="📱" text="Hakuna malipo bado"/>}</div>
+      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📦 Kwa Plan</h3>{Object.entries(byPlan).map(([p,a])=><div key={p} style={{padding:'7px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center'}}><span style={{fontSize:9,fontWeight:800,padding:'3px 9px',borderRadius:20,background:p==='premium'?'#8B5CF620':'#F6F8F7',color:p==='premium'?'#8B5CF6':'#5C6A62',border:'1px solid #D6E2DB'}}>{p.toUpperCase()}</span><span style={{fontWeight:800,color:'#0A6E47'}}>{fm(a)}</span></div>)}{!Object.keys(byPlan).length&&<Empty icon="📦" text="Hakuna"/>}</div>
+      <div className="card"><h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>🧾 Malipo ya Karibuni</h3><div style={{maxHeight:280,overflowY:'auto',display:'flex',flexDirection:'column',gap:7}}>{paid.slice(0,25).map(t=><div key={t.id} style={{padding:'9px 11px',borderRadius:10,background:'#F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}><div style={{minWidth:0}}><div style={{fontSize:12.5,fontWeight:700,color:'#17231D'}}>{t.business_name||'—'}</div><div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>{fmtDate(t.paid_at||t.created_at)} • {CH_LABEL[t.channel]||t.channel||'—'}</div></div><span style={{fontWeight:800,color:'#0A6E47',fontSize:13,whiteSpace:'nowrap'}}>{fm(t.amount)}</span></div>)}{!paid.length&&<Empty icon="🧾" text="Hakuna malipo bado"/>}</div></div>
     </div>
   </div>;
 }
@@ -553,10 +577,11 @@ export function AccCustomersPage(){
 
 // ===== F5: RIPOTI =====
 export function AccReportsPage(){
-  const{paymentRequests=[],tokens=[],businesses=[],systemExpenses=[],settings,supabase}=useApp();
-  const price=parseInt(settings?.system_price||PRICE);const ap=paymentRequests.filter(p=>p.status==='approved');const usedTk=tokens.filter(t=>t.used);
-  const totalRev=ap.reduce((a,p)=>a+(+p.amount||0),0)||(usedTk.length*price);const ms=curMonth();
-  const monthRev=ap.filter(p=>p.created_at?.startsWith(ms)).reduce((a,p)=>a+(+p.amount||0),0)||(usedTk.filter(t=>(t.used_at||t.created_at||'').startsWith(ms)).length*price);
+  const{systemExpenses=[],supabase}=useApp();
+  const{tx:paid}=usePaidTx();
+  const ms=curMonth();
+  const totalRev=sumTx(paid);
+  const monthRev=sumTx(paid.filter(t=>txMonth(t)===ms));
   const allExp=systemExpenses||[];const monthExp=allExp.filter(e=>(e.date||e.created_at||'').slice(0,7)===ms).reduce((a,e)=>a+(+e.amount||0),0);const totalExp=allExp.reduce((a,e)=>a+(+e.amount||0),0);
   const[debts,setDebts]=useState([]);
   useEffect(()=>{supabase?.from('marketing_debts').select('*').then(({data})=>setDebts(data||[]))},[]);
@@ -582,7 +607,7 @@ export function AccReportsPage(){
     <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:12}}>
       {[
         {icon:'📊',title:'P&L Report',desc:'Mapato vs Matumizi',color:'#0A6E47',fn:()=>{const byCat={};allExp.filter(e=>(e.date||e.created_at||'').slice(0,7)===ms).forEach(e=>{byCat[e.category||'Nyingine']=(byCat[e.category||'Nyingine']||0)+(+e.amount||0)});pdf('P&L',`<h1>PROFIT & LOSS — ${ms}</h1><h2>MAPATO</h2><table><tr><td><b>Ada ya Wateja</b></td><td style="text-align:right" class="big">${fm(monthRev)}</td></tr></table><h2>MATUMIZI</h2><table>${Object.entries(byCat).map(([c,a])=>`<tr><td>${c}</td><td style="text-align:right;color:#C2412D">${fm(a)}</td></tr>`).join('')}<tr style="background:#FBECE9"><td><b>JUMLA</b></td><td style="text-align:right;font-weight:900;color:#C2412D">${fm(monthExp)}</td></tr></table><h2>FAIDA</h2><table><tr style="background:${monthRev-monthExp>=0?'#E6F2EC':'#FBECE9'}"><td><b>NET PROFIT</b></td><td style="text-align:right;font-size:24px;font-weight:900;color:${monthRev-monthExp>=0?'#0A6E47':'#C2412D'}">${fm(monthRev-monthExp)}</td></tr></table>`)}},
-        {icon:'💰',title:'Mapato',desc:'Malipo & Tokens',color:'#3B82F6',fn:()=>{const pm={};usedTk.forEach(t=>{pm[t.assigned_name||'Admin']=(pm[t.assigned_name||'Admin']||0)+price});pdf('Revenue',`<h1>MAPATO</h1><p class="big">${fm(totalRev)}</p><h2>Kwa Mshirika</h2><table><tr><th>Mshirika</th><th>Mapato</th></tr>${Object.entries(pm).sort((a,b)=>b[1]-a[1]).map(([n,a])=>`<tr><td>${n}</td><td>${fm(a)}</td></tr>`).join('')}</table>`)}},
+        {icon:'💰',title:'Mapato',desc:'Malipo yaliyoingia',color:'#3B82F6',fn:()=>{const byCh={};paid.forEach(t=>{const c=CH_LABEL[t.channel]||t.channel||'Nyingine';byCh[c]=(byCh[c]||0)+txAmt(t)});pdf('Revenue',`<h1>MAPATO YALIYOINGIA</h1><p class="big">${fm(totalRev)}</p><h2>Kwa Chaneli</h2><table><tr><th>Chaneli</th><th>Mapato</th></tr>${Object.entries(byCh).sort((a,b)=>b[1]-a[1]).map(([n,a])=>`<tr><td>${n}</td><td>${fm(a)}</td></tr>`).join('')}</table><h2>Malipo (${paid.length})</h2><table><tr><th>Biashara</th><th>Tarehe</th><th>Chaneli</th><th>Kiasi</th></tr>${paid.slice(0,200).map(t=>`<tr><td>${t.business_name||'—'}</td><td>${fmtDate(t.paid_at||t.created_at)}</td><td>${CH_LABEL[t.channel]||t.channel||'—'}</td><td>${fm(t.amount)}</td></tr>`).join('')}</table>`)}},
         {icon:'💸',title:'Matumizi',desc:'Gharama za mfumo',color:'#C2412D',fn:()=>{const byCat={};allExp.forEach(e=>{byCat[e.category||'Nyingine']=(byCat[e.category||'Nyingine']||0)+(+e.amount||0)});pdf('Expenses',`<h1>MATUMIZI</h1><p class="big">${fm(totalExp)}</p><h2>Kategoria</h2><table><tr><th>Kategoria</th><th>Kiasi</th></tr>${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td>${c}</td><td>${fm(a)}</td></tr>`).join('')}</table>`)}},
         {icon:'📋',title:'Bajeti',desc:'Budget Report',color:'#8B5CF6',fn:()=>{pdf('Budget',`<h1>BAJETI — ${ms}</h1><p>Taarifa za bajeti zinapatikana kwenye mfumo</p>`)}},
         {icon:'💳',title:'Madeni',desc:'Marketing Debts',color:'#F2B705',fn:()=>{pdf('Debts',`<h1>MADENI YA MARKETING</h1><p>Jumla: <span class="big">${fm(totalDebt)}</span></p><table><tr><th>Marketer</th><th>Deni</th><th>Amelipa</th><th>Baki</th><th>Hali</th></tr>${debts.map(d=>`<tr><td>${d.marketer_name}</td><td>${fm(d.amount)}</td><td>${fm(d.paid_amount)}</td><td style="color:#C2412D;font-weight:700">${fm(d.remaining)}</td><td>${d.status}</td></tr>`).join('')}</table>`)}},
@@ -600,6 +625,7 @@ export function AccReportsPage(){
 export function AccPayoutPage(){
   const{user}=useApp();
   const[balance,setBalance]=useState(null);
+  const[balErr,setBalErr]=useState('');
   const[loadingBal,setLoadingBal]=useState(true);
   const[method,setMethod]=useState('mobile');
   const[channel,setChannel]=useState('mpesa');
@@ -616,8 +642,13 @@ export function AccPayoutPage(){
   const[confirm,setConfirm]=useState(false);
 
   const loadBalance=async()=>{
-    setLoadingBal(true);
-    try{const r=await fetch(API_BASE+'/api/payments?action=payout_balance');const d=await r.json();setBalance(d.success?d.balance:null);}catch{setBalance(null)}
+    setLoadingBal(true);setBalErr('');
+    try{
+      const r=await fetch(API_BASE+'/api/payments?action=payout_balance');
+      const d=await r.json();
+      if(d.success){setBalance(d.balance);}
+      else{setBalance(null);setBalErr(d.error||'Salio halikupatikana.');}
+    }catch(e){setBalance(null);setBalErr('Mtandao: '+(e.message||''))}
     setLoadingBal(false);
   };
   const loadHistory=async()=>{
@@ -680,9 +711,12 @@ export function AccPayoutPage(){
 
     {/* Salio */}
     <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:20,padding:'22px',marginBottom:16,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>
-      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>💰 SALIO LILILOPO</div>
+      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>💰 SALIO LA AKAUNTI YA MALIPO</div>
       <div style={{fontSize:34,fontWeight:900,letterSpacing:'-1px',margin:'4px 0'}}>
         {loadingBal?'...':balance!=null?fm(balance):'—'}
+      </div>
+      <div style={{fontSize:11,opacity:.8,marginBottom:8}}>
+        {balErr?'⚠️ '+balErr:'Pesa halisi walizolipa wateja (Snippe)'}
       </div>
       <button onClick={loadBalance} style={{background:'rgba(255,255,255,0.16)',border:'none',color:'#fff',padding:'6px 14px',borderRadius:10,fontSize:12,fontWeight:700,cursor:'pointer'}}>🔄 Pakua upya</button>
     </div>
