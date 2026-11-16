@@ -302,3 +302,54 @@ html[data-theme="dark"] .modal-content{background:#121A17!important;color:#EAF2E
 html[data-theme="dark"] [style*="linear-gradient"]{color:inherit}
 /* Hakikisha maandishi meupe ndani ya gradient za kijani yanabaki meupe */
 html[data-theme="dark"] [style*="rgb(10, 110, 71)"]{color:#fff}
+
+/* ============================================================
+   DARK MODE — rangi za NAYA (palette mpya)
+   Kurasa mpya (Kutoa Pesa, Idhini, Mhasibu) hutumia hizi.
+   ============================================================ */
+/* Surfaces hafifu: #F6F8F7 -> surface-2 */
+html[data-theme="dark"] [style*="background: rgb(246, 248, 247)"],
+html[data-theme="dark"] [style*="background-color: rgb(246, 248, 247)"]{
+  background:#0F1714!important;
+}
+/* Brand soft: #E6F2EC -> kijani nyeusi */
+html[data-theme="dark"] [style*="background: rgb(230, 242, 236)"]{
+  background:#11291F!important;
+}
+/* Nyekundu hafifu: #FBECE9 -> nyekundu nyeusi */
+html[data-theme="dark"] [style*="background: rgb(251, 236, 233)"]{
+  background:#2A1512!important;
+}
+/* Dhahabu hafifu: #FFF8E6 -> dhahabu nyeusi */
+html[data-theme="dark"] [style*="background: rgb(255, 248, 230)"]{
+  background:#1E1A0F!important;
+}
+/* Mipaka ya NAYA: #D6E2DB, #F2D98B, #F0D9D4 */
+html[data-theme="dark"] [style*="rgb(214, 226, 219)"],
+html[data-theme="dark"] [style*="rgb(242, 217, 139)"],
+html[data-theme="dark"] [style*="rgb(240, 217, 212)"]{
+  border-color:#1E2A25!important;
+}
+/* Maandishi: #17231D -> meupe */
+html[data-theme="dark"] [style*="color: rgb(23, 35, 29)"]{
+  color:#EAF2EE!important;
+}
+/* Kijivu-kijani cha kati: #5C6A62 -> laini */
+html[data-theme="dark"] [style*="color: rgb(92, 106, 98)"]{
+  color:#9FB3AA!important;
+}
+/* Hafifu zaidi: #9AA5A0 */
+html[data-theme="dark"] [style*="color: rgb(154, 165, 160)"]{
+  color:#6B7D74!important;
+}
+/* Maandishi ya dhahabu: #7A5C00 -> dhahabu angavu */
+html[data-theme="dark"] [style*="color: rgb(122, 92, 0)"]{
+  color:#E8C766!important;
+}
+/* Maandishi ya brand/nyekundu yaangaze (baada ya kanuni ya jumla) */
+html[data-theme="dark"] [style*="color: rgb(10, 110, 71)"]{
+  color:#19C277!important;
+}
+html[data-theme="dark"] [style*="color: rgb(194, 65, 45)"]{
+  color:#FF8A75!important;
+}

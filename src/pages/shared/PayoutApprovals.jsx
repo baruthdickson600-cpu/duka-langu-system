@@ -5,6 +5,8 @@ import {Empty,Modal} from '../../components/UI';
 
 const fm=n=>`TZS ${(+n||0).toLocaleString()}`;
 const fmtDate=d=>d?new Date(d).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+const CH={mpesa:'M-Pesa',tigopesa:'Mixx by Yas',airtelmoney:'Airtel Money',halopesa:'HaloPesa'};
+const chName=c=>CH[c]||c||'—';
 
 // Ukurasa wa idhini ya kutoa pesa — kwa Admin na Marketing
 export default function PayoutApprovals(){
@@ -73,8 +75,8 @@ export default function PayoutApprovals(){
     {msg&&<div style={{background:'#E6F2EC',color:'#0A6E47',padding:'11px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #0A6E47'}}>{msg}</div>}
 
     <div style={{display:'flex',gap:8,marginBottom:16}}>
-      <button onClick={()=>setTab('pending')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='pending'?'#0A6E47':'#F1F5F9',color:tab==='pending'?'#fff':'#5C6A62'}}>⏳ Yanasubiri {pending.length?`(${pending.length})`:''}</button>
-      <button onClick={()=>setTab('done')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='done'?'#0A6E47':'#F1F5F9',color:tab==='done'?'#fff':'#5C6A62'}}>📋 Historia</button>
+      <button onClick={()=>setTab('pending')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='pending'?'#0A6E47':'#F6F8F7',color:tab==='pending'?'#fff':'#5C6A62'}}>⏳ Yanasubiri {pending.length?`(${pending.length})`:''}</button>
+      <button onClick={()=>setTab('done')} style={{flex:1,padding:'10px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='done'?'#0A6E47':'#F6F8F7',color:tab==='done'?'#fff':'#5C6A62'}}>📋 Historia</button>
     </div>
 
     {loading?<Empty icon="⏳" text="Inapakua..."/>:shown.length?<div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -83,7 +85,7 @@ export default function PayoutApprovals(){
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
             <div>
               <div style={{fontSize:20,fontWeight:900,color:'#17231D'}}>{fm(p.amount)}</div>
-              <div style={{fontSize:12,color:'#5C6A62',marginTop:2}}>→ {p.recipient_name||p.recipient_number} ({p.method==='bank'?'Benki':p.channel})</div>
+              <div style={{fontSize:12,color:'#5C6A62',marginTop:2}}>→ {p.recipient_name||p.recipient_number} ({p.method==='bank'?'Benki':chName(p.channel)})</div>
             </div>
             <span style={{fontSize:9.5,fontWeight:800,padding:'4px 10px',borderRadius:20,background:stColor(p.status)+'20',color:stColor(p.status),whiteSpace:'nowrap'}}>{stLabel(p.status)}</span>
           </div>
@@ -96,10 +98,10 @@ export default function PayoutApprovals(){
 
           {/* Hali ya idhini */}
           <div style={{display:'flex',gap:10,marginBottom:p.status==='pending_approval'?12:0,fontSize:12}}>
-            <div style={{flex:1,textAlign:'center',padding:'8px',borderRadius:10,background:p.admin_approved?'#E6F2EC':'#F1F5F9',color:p.admin_approved?'#0A6E47':'#9AA5A0',fontWeight:700}}>
+            <div style={{flex:1,textAlign:'center',padding:'8px',borderRadius:10,background:p.admin_approved?'#E6F2EC':'#F6F8F7',color:p.admin_approved?'#0A6E47':'#9AA5A0',fontWeight:700}}>
               {p.admin_approved?'✓':'○'} Admin{p.admin_approved_by?` · ${p.admin_approved_by}`:''}
             </div>
-            <div style={{flex:1,textAlign:'center',padding:'8px',borderRadius:10,background:p.marketing_approved?'#E6F2EC':'#F1F5F9',color:p.marketing_approved?'#0A6E47':'#9AA5A0',fontWeight:700}}>
+            <div style={{flex:1,textAlign:'center',padding:'8px',borderRadius:10,background:p.marketing_approved?'#E6F2EC':'#F6F8F7',color:p.marketing_approved?'#0A6E47':'#9AA5A0',fontWeight:700}}>
               {p.marketing_approved?'✓':'○'} Marketing{p.marketing_approved_by?` · ${p.marketing_approved_by}`:''}
             </div>
           </div>
@@ -123,7 +125,7 @@ export default function PayoutApprovals(){
         <div style={{fontSize:13,color:'#5C6A62',marginBottom:12}}>Unakataa ombi la <b>{rejectFor?fm(rejectFor.amount):''}</b>. Andika sababu (mhasibu ataiona):</div>
         <textarea value={rejectReason} onChange={e=>setRejectReason(e.target.value)} rows={3} placeholder="Mf: Sababu haijakamilika, hakiki tena..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid #D6E2DB',fontSize:13,fontFamily:'inherit',resize:'vertical',boxSizing:'border-box'}}/>
         <div style={{display:'flex',gap:8,marginTop:14}}>
-          <button onClick={()=>setRejectFor(null)} style={{flex:1,padding:12,background:'#F1F5F9',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={()=>setRejectFor(null)} style={{flex:1,padding:12,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>Ghairi</button>
           <button onClick={doReject} style={{flex:2,padding:12,background:'#C2412D',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>❌ Thibitisha Kukataa</button>
         </div>
       </div>

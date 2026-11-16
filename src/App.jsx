@@ -309,7 +309,7 @@ export default function App(){
         case'reports':return <AccReportsPage/>;
         case'audit':return <AccAuditPage/>;
         case'notifications':return <NotifsPage/>;
-        default:return <AccountantDashboard/>;
+        default:return <AccountantDashboard onNav={setPage}/>;
       }
     }
     if((role==='supervisor'||role==='agent')){
