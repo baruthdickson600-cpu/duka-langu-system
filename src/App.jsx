@@ -138,10 +138,10 @@ function ReceiptModal({sale,bizName,footer,onClose}){
         <thead><tr style={{borderBottom:'1px solid #ddd'}}><th style={{textAlign:'left',padding:'4px 0'}}>Bidhaa</th><th style={{textAlign:'center'}}>Qty</th><th style={{textAlign:'right'}}>Jumla</th></tr></thead>
         <tbody>{sale.items?.map((i,k)=><tr key={k} style={{borderBottom:'1px dotted #eee'}}><td style={{padding:'4px 0'}}>{i.name}</td><td style={{textAlign:'center'}}>{i.qty}</td><td style={{textAlign:'right'}}>{(i.qty*i.price).toLocaleString()}</td></tr>)}</tbody>
       </table>
-      {sale.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#F59E0B',marginTop:8}}><span>Punguzo:</span><span>-TZS {sale.discount?.toLocaleString()}</span></div>}
+      {sale.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#F2B705',marginTop:8}}><span>Punguzo:</span><span>-TZS {sale.discount?.toLocaleString()}</span></div>}
       <div style={{borderTop:'2px dashed #ccc',marginTop:8,paddingTop:8,display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:16}}><span>JUMLA:</span><span>TZS {sale.total?.toLocaleString()}</span></div>
-      <div style={{marginTop:4,fontSize:12,color:'#64748B'}}>Malipo: <Badge color="#3B82F6">{sale.payment_method}</Badge></div>
-      {sale.customer_name&&<div style={{fontSize:12,color:'#64748B'}}>Mteja: {sale.customer_name}</div>}
+      <div style={{marginTop:4,fontSize:12,color:'#5C6A62'}}>Malipo: <Badge color="#3B82F6">{sale.payment_method}</Badge></div>
+      {sale.customer_name&&<div style={{fontSize:12,color:'#5C6A62'}}>Mteja: {sale.customer_name}</div>}
       <div style={{textAlign:'center',marginTop:16,fontSize:11,color:'#999'}}>{footer||'Asante kwa kununua! Karibu tena'}</div>
     </div>
     <div style={{display:'flex',gap:8,marginTop:16,flexWrap:'wrap'}}>
@@ -220,7 +220,7 @@ export default function App(){
 
   // Wakati wa kurudisha session (refresh) — onyesha splash ya logo ya DukaLangu
   if(restoring&&!user){
-    return <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#F8FAFC,#F0FDF4)',gap:10}}>
+    return <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#F6F8F7,#F0FDF4)',gap:10}}>
       <AnimatedLogo size={120} withWordmark={true} loading={true}/>
     </div>;
   }
@@ -243,7 +243,7 @@ export default function App(){
 
   const role=user.role;
   const roleLabel={'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[role]||role;
-  const roleColor={'admin':'#F59E0B','marketing':'#8B5CF6','supervisor':'#10B981','agent':'#10B981','office':'#3B82F6','accountant':'#EC4899'}[role]||'#94A3B8';
+  const roleColor={'admin':'#F2B705','marketing':'#8B5CF6','supervisor':'#10B981','agent':'#10B981','office':'#3B82F6','accountant':'#EC4899'}[role]||'#9AA5A0';
   // Add branches menu ONLY if canUseBranches
   const effectiveRole=(role==='agent')?'supervisor':role;
   let menu=[...MENUS[effectiveRole]||MENUS.employee];
@@ -319,7 +319,7 @@ export default function App(){
         case'tools':return <AgentToolsPage/>;
         case'tiers':return <AgentTiersPage/>;
         case'notifications':return <NotifsPage/>;
-        default:return <AgentDashboard/>;
+        default:return <AgentDashboard onNav={setPage}/>;
       }
     }
     switch(page){
@@ -341,7 +341,7 @@ export default function App(){
     }
   };
 
-  return <div style={{display:'flex',minHeight:'100vh',background:'#F1F5F9',fontFamily:"'Inter',system-ui,sans-serif"}}>
+  return <div style={{display:'flex',minHeight:'100vh',background:'#F6F8F7',fontFamily:"'Inter',system-ui,sans-serif"}}>
     <NotifPopup items={popups} onDismiss={id=>setPopups(p=>p.filter(n=>n.id!==id))} onClear={()=>setPopups([])}/>
     {receipt&&<ThermalReceipt sale={receipt} onClose={()=>setReceipt(null)}/>}
     <PWAInstallPrompt/>
@@ -362,8 +362,8 @@ export default function App(){
       {role==='office'&&canUseBranches&&myBranches.length>0&&<div style={{padding:'10px',borderBottom:'1px solid rgba(255,255,255,.1)',background:'rgba(0,0,0,.1)'}}>
         <div style={{fontSize:9,color:'rgba(255,255,255,.5)',fontWeight:700,marginBottom:4,letterSpacing:0.5}}>🏪 TAWI LINALOTUMIKA</div>
         <select value={activeBranch||''} onChange={e=>setActiveBranch(e.target.value||null)} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'none',background:activeBranch?'rgba(34,197,94,.25)':'rgba(255,255,255,.15)',color:'#fff',fontSize:12,fontWeight:600,outline:'none',cursor:'pointer'}}>
-          <option value="" style={{color:'#1E293B'}}>📊 Matawi Yote (Pamoja)</option>
-          {myBranches.map(b=><option key={b.id} value={b.id} style={{color:'#1E293B'}}>🏪 {b.name}</option>)}
+          <option value="" style={{color:'#17231D'}}>📊 Matawi Yote (Pamoja)</option>
+          {myBranches.map(b=><option key={b.id} value={b.id} style={{color:'#17231D'}}>🏪 {b.name}</option>)}
         </select>
         {activeBranch&&<div style={{fontSize:9,color:'rgba(255,255,255,.6)',marginTop:4}}>Unaona data ya tawi hili pekee</div>}
       </div>}
@@ -388,14 +388,14 @@ export default function App(){
             return <div key={m.group} style={{marginBottom:4}}>
               <button onClick={()=>setOpenGroups(p=>({...p,[m.group]:!groupOpen}))} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'10px 12px',background:groupOpen?'rgba(255,255,255,.1)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:700,letterSpacing:0.3,cursor:'pointer',transition:'all 0.2s'}}>
                 <span style={{flex:1,textAlign:'left'}}>{m.label}</span>
-                {grpUnread&&!groupOpen&&<span style={{width:6,height:6,borderRadius:'50%',background:'#EF4444'}}/>}
+                {grpUnread&&!groupOpen&&<span style={{width:6,height:6,borderRadius:'50%',background:'#C2412D'}}/>}
                 <span style={{fontSize:11,opacity:0.7,transition:'transform 0.25s',transform:groupOpen?'rotate(90deg)':'rotate(0deg)',display:'inline-block'}}>▶</span>
               </button>
               {groupOpen&&<div style={{marginLeft:8,paddingLeft:10,borderLeft:'1.5px solid rgba(255,255,255,.15)',marginTop:2,marginBottom:6}}>
                 {m.items.map(item=><button key={item.id} onClick={()=>{setPage(item.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'8px 12px',background:page===item.id?'rgba(255,255,255,.22)':'transparent',border:'none',borderRadius:8,color:'#fff',fontSize:12.5,fontWeight:page===item.id?700:500,marginBottom:2,cursor:'pointer',transition:'background 0.15s',textAlign:'left'}}>
                   {item.icon}<span style={{flex:1,textAlign:'left'}}>{item.label}</span>
-                  {item.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
-                  {item.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
+                  {item.id==='notifications'&&unread>0&&<span style={{background:'#C2412D',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
+                  {item.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#C2412D',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
                   {item.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unreadMsgs}</span>}
                 </button>)}
               </div>}
@@ -405,8 +405,8 @@ export default function App(){
           // SINGLE item (no group)
           return <button key={m.id} onClick={()=>{setPage(m.id);setSidebar(false)}} style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'9px 12px',background:page===m.id?'rgba(255,255,255,.2)':'transparent',border:'none',borderRadius:10,color:'#fff',fontSize:13,fontWeight:page===m.id?700:500,marginBottom:2,cursor:'pointer',textAlign:'left'}}>
             {m.icon}<span style={{flex:1,textAlign:'left'}}>{m.label}</span>
-            {m.id==='notifications'&&unread>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
-            {m.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#EF4444',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
+            {m.id==='notifications'&&unread>0&&<span style={{background:'#C2412D',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unread}</span>}
+            {m.id==='payments'&&pendingPayments?.length>0&&<span style={{background:'#C2412D',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700,animation:'pulse 2s infinite'}}>{pendingPayments.length}</span>}
             {m.id==='messaging'&&unreadMsgs>0&&<span style={{background:'#3B82F6',fontSize:10,padding:'1px 6px',borderRadius:8,fontWeight:700}}>{unreadMsgs}</span>}
           </button>;
         })}
@@ -442,20 +442,20 @@ export default function App(){
     <div className="main-content" style={{flex:1,marginLeft:240,minHeight:'100vh'}}>
       <div style={{background:'#fff',padding:'10px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 1px 3px rgba(0,0,0,.05)',position:'sticky',top:0,zIndex:4000}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <button className="mobile-btn" onClick={()=>setSidebar(true)} style={{background:'none',border:'none',color:'#1E293B',padding:4}}>{IC.menu}</button>
-          <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#1E293B'}}>{menu.find(m=>m.id===page)?.label||'Dashboard'}</h2>
+          <button className="mobile-btn" onClick={()=>setSidebar(true)} style={{background:'none',border:'none',color:'#17231D',padding:4}}>{IC.menu}</button>
+          <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#17231D'}}>{menu.find(m=>m.id===page)?.label||'Dashboard'}</h2>
           {activeBranch&&role==='office'&&<Badge color="#0A6E47">{myBranches.find(b=>b.id===activeBranch)?.name}</Badge>}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
-          {!online&&<Badge color="#F59E0B">📡 Offline</Badge>}
-          {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F59E0B',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+          {!online&&<Badge color="#F2B705">📡 Offline</Badge>}
+          {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F2B705',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⏳ {pendingSyncCount} pending
           </button>}
           <button className="theme-toggle" onClick={toggleTheme} title={theme==='dark'?'Washa mwanga':'Washa giza'} style={{background:'none',border:'none',fontSize:18,padding:4,cursor:'pointer',lineHeight:1}}>
             {theme==='dark'?'☀️':'🌙'}
           </button>
-          {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#64748B',padding:4}}>
-            {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#EF4444',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
+          {role!=='admin'&&<button onClick={()=>setPage('notifications')} style={{position:'relative',background:'none',border:'none',color:'#5C6A62',padding:4}}>
+            {IC.bell}{unread>0&&<span style={{position:'absolute',top:-4,right:-4,background:'#C2412D',color:'#fff',fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{unread}</span>}
           </button>}
           <div style={{width:32,height:32,borderRadius:'50%',background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700}}>{user.name?.[0]?.toUpperCase()}</div>
         </div>
@@ -521,18 +521,18 @@ function ProfileModal({user, updateUserProfile, onClose}){
         {/* Badge */}
         <div style={{textAlign:'center',marginBottom:20}}>
           <span style={{background:'#DCFCE7',color:'#15803D',fontSize:11,fontWeight:700,padding:'3px 12px',borderRadius:20,border:'1px solid #BBF7D0'}}>{roleLabel}</span>
-          <div style={{fontSize:11,color:'#94A3B8',marginTop:6}}>{user?.email}</div>
+          <div style={{fontSize:11,color:'#9AA5A0',marginTop:6}}>{user?.email}</div>
         </div>
         {/* Form */}
         <div style={{padding:'0 20px 20px'}}>
           {msg&&<div style={{background:msg.startsWith('✅')?'#F0FDF4':'#FEF2F2',color:msg.startsWith('✅')?'#15803D':'#B91C1C',padding:'8px 12px',borderRadius:10,fontSize:13,marginBottom:12,textAlign:'center',fontWeight:600}}>{msg}</div>}
           <div style={{marginBottom:14}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>👤 JINA KAMILI</label>
-            <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Jina lako kamili" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0A6E47'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+            <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Jina lako kamili" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #D6E2DB',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0A6E47'} onBlur={e=>e.target.style.borderColor='#D6E2DB'}/>
           </div>
           <div style={{marginBottom:20}}>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📱 NAMBARI YA SIMU</label>
-            <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0A6E47'} onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+            <input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="0712 345 678" type="tel" style={{width:'100%',padding:'11px 14px',border:'1.5px solid #D6E2DB',borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none'}} onFocus={e=>e.target.style.borderColor='#0A6E47'} onBlur={e=>e.target.style.borderColor='#D6E2DB'}/>
           </div>
           <button onClick={save} disabled={saving} style={{width:'100%',padding:14,background:saving?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:saving?'not-allowed':'pointer',boxShadow:'0 4px 16px rgba(11,122,59,.3)'}}>
             {saving?'⏳ Inahifadhi...':'💾 Hifadhi Mabadiliko'}
@@ -553,15 +553,15 @@ export function PlanGate({feature, children, fallback}){
   const needed = feature==='ai_insights'||feature==='sms_center'||feature==='unlimited_employees'||feature==='export' ? 'premium' : 'enterprise';
   const plan = PLANS[needed];
   return (
-    <div style={{background:'linear-gradient(135deg,#F8FAFC,#EFF6FF)',border:'2px dashed #BFDBFE',borderRadius:16,padding:32,textAlign:'center',maxWidth:480,margin:'40px auto'}}>
+    <div style={{background:'linear-gradient(135deg,#F6F8F7,#EFF6FF)',border:'2px dashed #BFDBFE',borderRadius:16,padding:32,textAlign:'center',maxWidth:480,margin:'40px auto'}}>
       <div style={{fontSize:48,marginBottom:12}}>{plan?.icon||'🔒'}</div>
-      <h3 style={{fontSize:20,fontWeight:900,color:'#1E293B',margin:'0 0 8px'}}>Inahitaji {plan?.name} au zaidi</h3>
-      <p style={{fontSize:14,color:'#64748B',margin:'0 0 20px',lineHeight:1.6}}>
+      <h3 style={{fontSize:20,fontWeight:900,color:'#17231D',margin:'0 0 8px'}}>Inahitaji {plan?.name} au zaidi</h3>
+      <p style={{fontSize:14,color:'#5C6A62',margin:'0 0 20px',lineHeight:1.6}}>
         Kipengele hiki kinahitaji kifurushi cha <strong>{plan?.name}</strong> (TSH {(plan?.price||0).toLocaleString()}/mwezi).<br/>
         Pia unapata: {plan?.features?.slice(1,4).join(', ')}.
       </p>
-      <div style={{background:'#fff',borderRadius:12,padding:'12px 16px',marginBottom:20,border:'1px solid #E2E8F0',textAlign:'left'}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:8}}>KIFURUSHI CHAKO SASA: {currentPlan?.name?.toUpperCase()}</div>
+      <div style={{background:'#fff',borderRadius:12,padding:'12px 16px',marginBottom:20,border:'1px solid #D6E2DB',textAlign:'left'}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginBottom:8}}>KIFURUSHI CHAKO SASA: {currentPlan?.name?.toUpperCase()}</div>
         {plan?.features?.map((f,i)=><div key={i} style={{fontSize:12,color:'#374151',padding:'3px 0',display:'flex',alignItems:'center',gap:6}}><span style={{color:'#0A6E47'}}>✓</span>{f}</div>)}
       </div>
       <button onClick={()=>alert('Wasiliana nasi kuboresha:\n📞 +255 628 986 770 (WhatsApp)\n📧 dukalangusalesmanagement@gmail.com')}
@@ -595,19 +595,19 @@ function GoogleOnboarding({info,onComplete,onCancel}){
       <div style={{textAlign:'center',marginBottom:20}}>
         <div style={{fontSize:32,marginBottom:6}}>🎉</div>
         <h2 style={{fontSize:20,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>Karibu DukaLangu!</h2>
-        <p style={{fontSize:13,color:'#64748B',margin:0}}>Umeingia kama <b>{info?.email}</b>. Kamilisha taarifa za biashara yako.</p>
+        <p style={{fontSize:13,color:'#5C6A62',margin:0}}>Umeingia kama <b>{info?.email}</b>. Kamilisha taarifa za biashara yako.</p>
       </div>
-      {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444'}}>⚠️ {err}</div>}
+      {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #C2412D'}}>⚠️ {err}</div>}
       <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Jina la Biashara *</label>
-      <input value={business} onChange={e=>setBusiness(e.target.value)} placeholder="Mf: Duka la Rehema" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
+      <input value={business} onChange={e=>setBusiness(e.target.value)} placeholder="Mf: Duka la Rehema" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
       <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Simu / WhatsApp</label>
-      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXX" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
+      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XXXXXXXX" style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,boxSizing:'border-box',outline:'none',marginBottom:14}}/>
       <label style={{fontSize:12.5,fontWeight:700,color:'#475569',display:'block',marginBottom:6}}>Aina ya Biashara</label>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:18}}>
-        {TYPES.map(t=><button key={t.v} onClick={()=>setType(t.v)} style={{padding:'9px 4px',borderRadius:9,border:type===t.v?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:type===t.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:type===t.v?'#0A6E47':'#64748B',cursor:'pointer'}}>{t.l}</button>)}
+        {TYPES.map(t=><button key={t.v} onClick={()=>setType(t.v)} style={{padding:'9px 4px',borderRadius:9,border:type===t.v?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:type===t.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:type===t.v?'#0A6E47':'#5C6A62',cursor:'pointer'}}>{t.l}</button>)}
       </div>
       <button onClick={submit} disabled={busy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:busy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',fontWeight:800,fontSize:15,cursor:busy?'wait':'pointer'}}>{busy?'⏳ Inaunda...':'✅ Anza Kutumia DukaLangu'}</button>
-      <button onClick={onCancel} style={{width:'100%',marginTop:10,padding:10,background:'none',border:'none',color:'#94A3B8',fontSize:13,fontWeight:600,cursor:'pointer'}}>Ghairi / Toka</button>
+      <button onClick={onCancel} style={{width:'100%',marginTop:10,padding:10,background:'none',border:'none',color:'#9AA5A0',fontSize:13,fontWeight:600,cursor:'pointer'}}>Ghairi / Toka</button>
     </div>
   </div>;
 }

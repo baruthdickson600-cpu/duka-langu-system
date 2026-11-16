@@ -39,7 +39,7 @@ export const IC = {
 
 // ===== INPUT =====
 export function Input({label,style,...p}){
-  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:5,transition:'color 0.2s'}}>{label}</label>}<input {...p} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,outline:'none',background:'#FAFBFC',boxSizing:'border-box',transition:'all 0.3s cubic-bezier(.4,0,.2,1)',...style}}/></div>;
+  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:5,transition:'color 0.2s'}}>{label}</label>}<input {...p} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,outline:'none',background:'#FAFBFC',boxSizing:'border-box',transition:'all 0.3s cubic-bezier(.4,0,.2,1)',...style}}/></div>;
 }
 
 // ===== PASSWORD INPUT (na kitufe cha jicho) =====
@@ -48,7 +48,7 @@ export function PasswordInput({label,style,...p}){
   return <div style={{marginBottom:12}}>
     {label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:5}}>{label}</label>}
     <div style={{position:'relative'}}>
-      <input {...p} type={show?'text':'password'} style={{width:'100%',padding:'11px 44px 11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,outline:'none',background:'#FAFBFC',boxSizing:'border-box',transition:'all 0.3s cubic-bezier(.4,0,.2,1)',...style}}/>
+      <input {...p} type={show?'text':'password'} style={{width:'100%',padding:'11px 44px 11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,outline:'none',background:'#FAFBFC',boxSizing:'border-box',transition:'all 0.3s cubic-bezier(.4,0,.2,1)',...style}}/>
       <button type="button" onClick={()=>setShow(s=>!s)} tabIndex={-1} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,padding:6,lineHeight:1,opacity:0.6}} title={show?'Ficha password':'Onyesha password'}>
         {show?'🙈':'👁️'}
       </button>
@@ -58,16 +58,16 @@ export function PasswordInput({label,style,...p}){
 
 // ===== SELECT =====
 export function Sel({label,options=[],...p}){
-  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>{label}</label>}<select {...p} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,outline:'none',background:'#F8FAFC',boxSizing:'border-box'}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>;
+  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>{label}</label>}<select {...p} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:14,outline:'none',background:'#F6F8F7',boxSizing:'border-box'}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>;
 }
 
 // ===== TEXTAREA =====
 export function Area({label,...p}){
-  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>{label}</label>}<textarea {...p} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:14,outline:'none',background:'#F8FAFC',boxSizing:'border-box',minHeight:80,resize:'vertical'}}/></div>;
+  return <div style={{marginBottom:12}}>{label&&<label style={{display:'block',fontSize:12,fontWeight:600,color:'#475569',marginBottom:4}}>{label}</label>}<textarea {...p} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:14,outline:'none',background:'#F6F8F7',boxSizing:'border-box',minHeight:80,resize:'vertical'}}/></div>;
 }
 
 // ===== BUTTON =====
-const BV={primary:{background:'#0A6E47',color:'#fff'},danger:{background:'#EF4444',color:'#fff'},ghost:{background:'#F1F5F9',color:'#475569'},outline:{background:'transparent',color:'#0A6E47',border:'1.5px solid #0A6E47'},warning:{background:'#F59E0B',color:'#fff'},blue:{background:'#3B82F6',color:'#fff'}};
+const BV={primary:{background:'#0A6E47',color:'#fff'},danger:{background:'#C2412D',color:'#fff'},ghost:{background:'#F6F8F7',color:'#475569'},outline:{background:'transparent',color:'#0A6E47',border:'1.5px solid #0A6E47'},warning:{background:'#F2B705',color:'#fff'},blue:{background:'#3B82F6',color:'#fff'}};
 export function Btn({children,v='primary',style:s,disabled,...p}){
   return <button {...p} disabled={disabled} style={{padding:'10px 20px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,display:'inline-flex',alignItems:'center',gap:6,opacity:disabled?.5:1,...BV[v],...s}}>{children}</button>;
 }
@@ -77,9 +77,9 @@ export function Modal({open,onClose,title,children,wide}){
   if(!open) return null;
   return <div className="modal-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:8000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={onClose}>
     <div className="modal-content" onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:wide?780:460,maxHeight:'88vh',overflow:'auto',boxShadow:'0 25px 60px rgba(0,0,0,0.25)'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 22px',borderBottom:'1px solid #F1F5F9',position:'sticky',top:0,background:'#fff',borderRadius:'20px 20px 0 0',zIndex:1}}>
-        <h3 style={{margin:0,fontSize:17,fontWeight:800,color:'#1E293B'}}>{title}</h3>
-        <button onClick={onClose} style={{background:'#F1F5F9',border:'none',borderRadius:10,padding:'6px 8px',color:'#64748B',transition:'all 0.2s'}}>{IC.x}</button>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 22px',borderBottom:'1px solid #F6F8F7',position:'sticky',top:0,background:'#fff',borderRadius:'20px 20px 0 0',zIndex:1}}>
+        <h3 style={{margin:0,fontSize:17,fontWeight:800,color:'#17231D'}}>{title}</h3>
+        <button onClick={onClose} style={{background:'#F6F8F7',border:'none',borderRadius:10,padding:'6px 8px',color:'#5C6A62',transition:'all 0.2s'}}>{IC.x}</button>
       </div>
       <div style={{padding:22}}>{children}</div>
     </div>
@@ -91,25 +91,25 @@ export function Stat({icon,label,value,color='#0A6E47',sub,trend}){
   return <div style={{background:'#fff',borderRadius:16,padding:'16px 18px',flex:'1 1 160px',minWidth:140,boxShadow:'0 1px 3px rgba(0,0,0,.04)',borderLeft:`4px solid ${color}`,transition:'all 0.3s cubic-bezier(.4,0,.2,1)',cursor:'default'}} onMouseOver={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 25px rgba(0,0,0,.1)'}} onMouseOut={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,.04)'}}>
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
       <span style={{color,transition:'transform 0.3s'}}>{icon}</span>
-      <span style={{fontSize:11,color:'#94A3B8',fontWeight:600,textTransform:'uppercase',letterSpacing:.5}}>{label}</span>
-      {trend!==undefined&&<span style={{marginLeft:'auto',fontSize:11,fontWeight:700,color:trend>=0?'#22C55E':'#EF4444',animation:'countUp 0.5s ease both'}}>{trend>=0?'↑':'↓'}{Math.abs(trend)}%</span>}
+      <span style={{fontSize:11,color:'#9AA5A0',fontWeight:600,textTransform:'uppercase',letterSpacing:.5}}>{label}</span>
+      {trend!==undefined&&<span style={{marginLeft:'auto',fontSize:11,fontWeight:700,color:trend>=0?'#0A6E47':'#C2412D',animation:'countUp 0.5s ease both'}}>{trend>=0?'↑':'↓'}{Math.abs(trend)}%</span>}
     </div>
-    <div className="stat-value" style={{fontSize:22,fontWeight:800,color:'#1E293B'}}>{value}</div>
-    {sub&&<div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{sub}</div>}
+    <div className="stat-value" style={{fontSize:22,fontWeight:800,color:'#17231D'}}>{value}</div>
+    {sub&&<div style={{fontSize:11,color:'#9AA5A0',marginTop:2}}>{sub}</div>}
   </div>;
 }
 
 // ===== NOTIFICATION POPUP =====
 export function NotifPopup({items,onDismiss,onClear}){
   if(!items?.length) return null;
-  const c=(t)=>({bg:t==='danger'?'#FEF2F2':t==='warning'?'#FFF7ED':'#F0FDF4',bd:t==='danger'?'#FECACA':t==='warning'?'#FED7AA':'#BBF7D0',ac:t==='danger'?'#EF4444':t==='warning'?'#F59E0B':'#22C55E',em:t==='danger'?'🚨':t==='warning'?'⚠️':'✅'});
+  const c=(t)=>({bg:t==='danger'?'#FBECE9':t==='warning'?'#FFF8E6':'#E6F2EC',bd:t==='danger'?'#F0D9D4':t==='warning'?'#F2D98B':'#C2DED1',ac:t==='danger'?'#C2412D':t==='warning'?'#F2B705':'#0A6E47',em:t==='danger'?'🚨':t==='warning'?'⚠️':'✅'});
   return <div style={{position:'fixed',top:12,right:12,zIndex:9999,display:'flex',flexDirection:'column',gap:8,maxWidth:380,width:'calc(100% - 24px)'}}>
     {items.slice(0,4).map((n,i)=>{const s=c(n.type);return <div key={n.id} className="toast-enter" style={{background:s.bg,border:`1px solid ${s.bd}`,borderLeft:`4px solid ${s.ac}`,borderRadius:14,padding:'14px 16px',display:'flex',alignItems:'flex-start',gap:10,boxShadow:'0 8px 30px rgba(0,0,0,0.12)',animationDelay:`${i*0.08}s`}}>
       <span style={{fontSize:22,lineHeight:1}}>{s.em}</span>
-      <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:'#1E293B',marginBottom:3}}>{n.title}</div><div style={{fontSize:12,color:'#64748B',lineHeight:1.5}}>{n.message}</div></div>
-      <button onClick={()=>onDismiss(n.id)} style={{background:'none',border:'none',color:'#94A3B8',padding:4,borderRadius:6}}>{IC.x}</button>
+      <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:'#17231D',marginBottom:3}}>{n.title}</div><div style={{fontSize:12,color:'#5C6A62',lineHeight:1.5}}>{n.message}</div></div>
+      <button onClick={()=>onDismiss(n.id)} style={{background:'none',border:'none',color:'#9AA5A0',padding:4,borderRadius:6}}>{IC.x}</button>
     </div>})}
-    {items.length>1&&<button onClick={onClear} style={{background:'#1E293B',color:'#fff',border:'none',borderRadius:10,padding:'10px 18px',fontSize:12,alignSelf:'flex-end',fontWeight:700,boxShadow:'0 4px 12px rgba(0,0,0,0.15)'}}>Ondoa Zote ({items.length})</button>}
+    {items.length>1&&<button onClick={onClear} style={{background:'#17231D',color:'#fff',border:'none',borderRadius:10,padding:'10px 18px',fontSize:12,alignSelf:'flex-end',fontWeight:700,boxShadow:'0 4px 12px rgba(0,0,0,0.15)'}}>Ondoa Zote ({items.length})</button>}
   </div>;
 }
 
@@ -120,22 +120,22 @@ export function Badge({children,color='#0A6E47',bg}){
 
 // ===== TABS =====
 export function Tabs({tabs,active,onChange}){
-  return <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:16}}>
-    {tabs.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:'9px 12px',borderRadius:11,border:'none',fontWeight:700,fontSize:13,background:active===t.id?'#fff':'transparent',color:active===t.id?'#0A6E47':'#94A3B8',boxShadow:active===t.id?'0 2px 10px rgba(0,0,0,.06)':'none',transition:'all 0.25s cubic-bezier(.4,0,.2,1)'}}>{t.label}</button>)}
+  return <div style={{display:'flex',background:'#F6F8F7',borderRadius:14,padding:4,marginBottom:16}}>
+    {tabs.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{flex:1,padding:'9px 12px',borderRadius:11,border:'none',fontWeight:700,fontSize:13,background:active===t.id?'#fff':'transparent',color:active===t.id?'#0A6E47':'#9AA5A0',boxShadow:active===t.id?'0 2px 10px rgba(0,0,0,.06)':'none',transition:'all 0.25s cubic-bezier(.4,0,.2,1)'}}>{t.label}</button>)}
   </div>;
 }
 
 // ===== ONLINE STATUS =====
 export function OnlineStatus({isOnline}){
-  return <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:isOnline?'#22C55E':'#F59E0B',fontWeight:600}}>
-    <div style={{width:8,height:8,borderRadius:'50%',background:isOnline?'#22C55E':'#F59E0B',animation:isOnline?'glow 3s infinite':'pulse 2s infinite',transition:'background 0.3s'}}/>
+  return <div style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:isOnline?'#0A6E47':'#F2B705',fontWeight:600}}>
+    <div style={{width:8,height:8,borderRadius:'50%',background:isOnline?'#0A6E47':'#F2B705',animation:isOnline?'glow 3s infinite':'pulse 2s infinite',transition:'background 0.3s'}}/>
     {isOnline?'Online':'Offline'}
   </div>;
 }
 
 // ===== EMPTY STATE =====
 export function Empty({icon='📭',text='Hakuna data'}){
-  return <div style={{textAlign:'center',padding:40,color:'#94A3B8',animation:'fadeIn 0.5s ease both'}}><div style={{fontSize:48,marginBottom:12,animation:'popIn 0.4s cubic-bezier(.4,0,.2,1) both'}}>{icon}</div><div style={{fontSize:14,fontWeight:500}}>{text}</div></div>;
+  return <div style={{textAlign:'center',padding:40,color:'#9AA5A0',animation:'fadeIn 0.5s ease both'}}><div style={{fontSize:48,marginBottom:12,animation:'popIn 0.4s cubic-bezier(.4,0,.2,1) both'}}>{icon}</div><div style={{fontSize:14,fontWeight:500}}>{text}</div></div>;
 }
 
 export const EMOJIS=['📦','🍬','🍚','🫗','🧼','🌾','🥛','🥤','🍞','🧴','🥫','🫘','🧈','🍺','🧹','💊','🔋','📱','🥚','🧃','🍕','🍎','🥬','🧀','🍗','🐟'];

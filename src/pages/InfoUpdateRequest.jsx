@@ -87,92 +87,92 @@ export default function InfoUpdateRequest({onBack}){
     setBusy(false);
   };
 
-  return <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',padding:'20px 16px'}}>
+  return <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#E6F2EC,#D6EADF)',padding:'20px 16px'}}>
     <div style={{maxWidth:600,margin:'0 auto'}}>
       {/* Header */}
       <div style={{textAlign:'center',marginBottom:24}}>
-        <div style={{width:70,height:70,margin:'0 auto 10px',background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:18,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,boxShadow:'0 8px 24px rgba(11,122,59,.3)'}}>📝</div>
+        <div style={{width:70,height:70,margin:'0 auto 10px',background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:18,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,boxShadow:'0 8px 24px rgba(11,122,59,.3)'}}>📝</div>
         <h1 style={{fontSize:24,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>Ombi la Kubadilisha Taarifa</h1>
-        <p style={{fontSize:13,color:'#64748B',margin:0}}>Duka Langu — Together for the better</p>
+        <p style={{fontSize:13,color:'#5C6A62',margin:0}}>Duka Langu — Together for the better</p>
       </div>
 
       {/* Progress */}
       <div style={{display:'flex',gap:6,marginBottom:20}}>
-        {[1,2,3].map(n=><div key={n} style={{flex:1,height:6,borderRadius:6,background:step>=n?'#0A6E47':'#E2E8F0',transition:'all 0.3s'}}/>)}
+        {[1,2,3].map(n=><div key={n} style={{flex:1,height:6,borderRadius:6,background:step>=n?'#0A6E47':'#D6E2DB',transition:'all 0.3s'}}/>)}
       </div>
 
       {step===1&&<div style={{background:'#fff',borderRadius:16,padding:24,boxShadow:'0 4px 20px rgba(0,0,0,.05)'}}>
-        <h2 style={{fontSize:18,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Hatua 1: Tutafute</h2>
-        <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Jaza moja kati ya hizi kukutambua kwenye mfumo wetu</p>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#17231D',margin:'0 0 6px'}}>Hatua 1: Tutafute</h2>
+        <p style={{fontSize:13,color:'#5C6A62',marginBottom:16}}>Jaza moja kati ya hizi kukutambua kwenye mfumo wetu</p>
         
-        {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{err}</div>}
+        {err&&<div style={{background:'#FBECE9',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #C2412D'}}>{err}</div>}
         
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>Email yako (ya kale)</label>
-        <input type="email" placeholder="email@mfano.com" value={oldEmail} onChange={e=>setOldEmail(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:12,boxSizing:'border-box'}}/>
+        <input type="email" placeholder="email@mfano.com" value={oldEmail} onChange={e=>setOldEmail(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,marginBottom:12,boxSizing:'border-box'}}/>
         
-        <div style={{textAlign:'center',color:'#94A3B8',fontSize:12,margin:'4px 0'}}>— AU —</div>
+        <div style={{textAlign:'center',color:'#9AA5A0',fontSize:12,margin:'4px 0'}}>— AU —</div>
         
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>Simu yako (ya kale)</label>
-        <input type="tel" placeholder="07XXXXXXXX" value={oldPhone} onChange={e=>setOldPhone(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:12,boxSizing:'border-box'}}/>
+        <input type="tel" placeholder="07XXXXXXXX" value={oldPhone} onChange={e=>setOldPhone(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,marginBottom:12,boxSizing:'border-box'}}/>
         
-        <div style={{textAlign:'center',color:'#94A3B8',fontSize:12,margin:'4px 0'}}>— AU —</div>
+        <div style={{textAlign:'center',color:'#9AA5A0',fontSize:12,margin:'4px 0'}}>— AU —</div>
         
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>Jina la Biashara</label>
-        <input placeholder="Mf: Duka la Rehema" value={bizName} onChange={e=>setBizName(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,marginBottom:16,boxSizing:'border-box'}}/>
+        <input placeholder="Mf: Duka la Rehema" value={bizName} onChange={e=>setBizName(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,marginBottom:16,boxSizing:'border-box'}}/>
         
-        <button onClick={findCustomer} disabled={busy} style={{width:'100%',padding:14,background:busy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
+        <button onClick={findCustomer} disabled={busy} style={{width:'100%',padding:14,background:busy?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
           {busy?'⏳ Inatafuta...':'🔍 Endelea →'}
         </button>
         
-        {onBack&&<button onClick={onBack} style={{width:'100%',marginTop:8,padding:12,background:'transparent',color:'#64748B',border:'none',fontWeight:600,fontSize:13,cursor:'pointer'}}>← Rudi</button>}
+        {onBack&&<button onClick={onBack} style={{width:'100%',marginTop:8,padding:12,background:'transparent',color:'#5C6A62',border:'none',fontWeight:600,fontSize:13,cursor:'pointer'}}>← Rudi</button>}
       </div>}
 
       {step===2&&<div style={{background:'#fff',borderRadius:16,padding:24,boxShadow:'0 4px 20px rgba(0,0,0,.05)'}}>
-        <h2 style={{fontSize:18,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Hatua 2: Mabadiliko</h2>
+        <h2 style={{fontSize:18,fontWeight:800,color:'#17231D',margin:'0 0 6px'}}>Hatua 2: Mabadiliko</h2>
         
         {/* Found business */}
-        <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:14,marginBottom:16}}>
+        <div style={{background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:12,padding:14,marginBottom:16}}>
           <div style={{fontSize:11,color:'#15803D',fontWeight:600,marginBottom:4}}>✅ TUMEKUPATA:</div>
           <div style={{fontWeight:700,fontSize:15}}>{foundBiz.name}</div>
-          <div style={{fontSize:12,color:'#64748B'}}>📧 {foundBiz.email||'—'}<br/>📱 {foundBiz.phone||'—'}</div>
+          <div style={{fontSize:12,color:'#5C6A62'}}>📧 {foundBiz.email||'—'}<br/>📱 {foundBiz.phone||'—'}</div>
         </div>
 
-        {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #EF4444'}}>{err}</div>}
+        {err&&<div style={{background:'#FBECE9',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #C2412D'}}>{err}</div>}
 
-        <p style={{fontSize:13,color:'#64748B',marginBottom:14}}><b>Andika ZILE TU unazotaka kubadilisha</b> — acha tupu zile zinazobaki vivyo hivyo</p>
+        <p style={{fontSize:13,color:'#5C6A62',marginBottom:14}}><b>Andika ZILE TU unazotaka kubadilisha</b> — acha tupu zile zinazobaki vivyo hivyo</p>
 
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>📧 Email Mpya</label>
-        <input type="email" placeholder="email_mpya@mfano.com" value={form.new_email} onChange={e=>s('new_email',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
+        <input type="email" placeholder="email_mpya@mfano.com" value={form.new_email} onChange={e=>s('new_email',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
 
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>📱 Namba Mpya ya Simu</label>
-        <input type="tel" placeholder="07XXXXXXXX" value={form.new_phone} onChange={e=>s('new_phone',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
+        <input type="tel" placeholder="07XXXXXXXX" value={form.new_phone} onChange={e=>s('new_phone',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
 
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>🏪 Jina Jipya la Biashara</label>
-        <input placeholder="Mf: Duka la Rehema Jipya" value={form.new_name} onChange={e=>s('new_name',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
+        <input placeholder="Mf: Duka la Rehema Jipya" value={form.new_name} onChange={e=>s('new_name',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
 
         <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>👤 Jina la Mmiliki</label>
-        <input placeholder="Jina kamili" value={form.new_owner_name} onChange={e=>s('new_owner_name',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:14,boxSizing:'border-box'}}/>
+        <input placeholder="Jina kamili" value={form.new_owner_name} onChange={e=>s('new_owner_name',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:14,boxSizing:'border-box'}}/>
 
-        <div style={{borderTop:'1px solid #E2E8F0',paddingTop:14,marginTop:6}}>
+        <div style={{borderTop:'1px solid #D6E2DB',paddingTop:14,marginTop:6}}>
           <h3 style={{fontSize:14,fontWeight:700,color:'#0A6E47',margin:'0 0 10px'}}>🔐 Uthibitisho (Lazima)</h3>
           
           <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>Sababu ya Kubadilisha *</label>
-          <textarea placeholder="Mf: Nimepoteza simu yangu, ninataka kubadilisha namba" value={form.reason} onChange={e=>s('reason',e.target.value)} rows={3} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:10,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+          <textarea placeholder="Mf: Nimepoteza simu yangu, ninataka kubadilisha namba" value={form.reason} onChange={e=>s('reason',e.target.value)} rows={3} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:10,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
 
           <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>Namba ya Kitambulisho (NIDA/Voter)</label>
-          <input placeholder="Mf: 19850101-12345-67890-12" value={form.id_number} onChange={e=>s('id_number',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
+          <input placeholder="Mf: 19850101-12345-67890-12" value={form.id_number} onChange={e=>s('id_number',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:10,boxSizing:'border-box'}}/>
 
           <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:5}}>WhatsApp ya Kuwasiliana</label>
-          <input type="tel" placeholder="07XXXXXXXX (tutakupigia kuthibitisha)" value={form.whatsapp} onChange={e=>s('whatsapp',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:14,boxSizing:'border-box'}}/>
+          <input type="tel" placeholder="07XXXXXXXX (tutakupigia kuthibitisha)" value={form.whatsapp} onChange={e=>s('whatsapp',e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:14,boxSizing:'border-box'}}/>
         </div>
 
-        <div style={{background:'#FFF7ED',borderLeft:'4px solid #F59E0B',borderRadius:10,padding:'10px 14px',fontSize:11,color:'#92400E',marginBottom:14}}>
+        <div style={{background:'#FFF8E6',borderLeft:'4px solid #F2B705',borderRadius:10,padding:'10px 14px',fontSize:11,color:'#92400E',marginBottom:14}}>
           ⚠️ <b>Onyo:</b> Admin atakagua ombi lako kwa makini. Tutawasiliana nawe kupitia WhatsApp/Simu kuthibitisha ni wewe kabla ya kubadilisha taarifa. Ombi linachukua masaa 24-48.
         </div>
 
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>setStep(1)} style={{flex:1,padding:13,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:13,cursor:'pointer'}}>← Rudi</button>
-          <button onClick={submitRequest} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
+          <button onClick={()=>setStep(1)} style={{flex:1,padding:13,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:13,cursor:'pointer'}}>← Rudi</button>
+          <button onClick={submitRequest} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>
             {busy?'⏳ Inatuma...':'📨 Tuma Ombi'}
           </button>
         </div>
@@ -181,11 +181,11 @@ export default function InfoUpdateRequest({onBack}){
       {step===3&&<div style={{background:'#fff',borderRadius:16,padding:32,boxShadow:'0 4px 20px rgba(0,0,0,.05)',textAlign:'center'}}>
         <div style={{fontSize:64,marginBottom:12}}>✅</div>
         <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 8px'}}>Ombi Limetumwa!</h2>
-        <p style={{fontSize:14,color:'#64748B',marginBottom:16}}>Ombi lako limetumwa kwa Admin. Tutawasiliana nawe ndani ya masaa 24-48.</p>
+        <p style={{fontSize:14,color:'#5C6A62',marginBottom:16}}>Ombi lako limetumwa kwa Admin. Tutawasiliana nawe ndani ya masaa 24-48.</p>
         
-        <div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,padding:14,textAlign:'left',marginBottom:16}}>
+        <div style={{background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:12,padding:14,textAlign:'left',marginBottom:16}}>
           <div style={{fontSize:12,color:'#15803D',fontWeight:600,marginBottom:6}}>📋 Hatua zinazofuata:</div>
-          <ol style={{fontSize:12,color:'#1E293B',margin:0,paddingLeft:18,lineHeight:1.7}}>
+          <ol style={{fontSize:12,color:'#17231D',margin:0,paddingLeft:18,lineHeight:1.7}}>
             <li>Admin atakagua ombi lako</li>
             <li>Tutakupigia simu/WhatsApp kuthibitisha ni wewe</li>
             <li>Mabadiliko yatafanyika</li>
@@ -193,7 +193,7 @@ export default function InfoUpdateRequest({onBack}){
           </ol>
         </div>
 
-        <div style={{fontSize:12,color:'#64748B',marginBottom:14}}>
+        <div style={{fontSize:12,color:'#5C6A62',marginBottom:14}}>
           <b>Msaada:</b><br/>
           📞 0617 288 752<br/>
           💬 WhatsApp: +255 628 319 789
@@ -202,7 +202,7 @@ export default function InfoUpdateRequest({onBack}){
         {onBack&&<button onClick={onBack} style={{padding:'12px 24px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Rudi Mwanzo</button>}
       </div>}
 
-      <div style={{textAlign:'center',marginTop:20,fontSize:11,color:'#64748B'}}>
+      <div style={{textAlign:'center',marginTop:20,fontSize:11,color:'#5C6A62'}}>
         🔒 Taarifa zako ziko salama. Hatuwasiliani na watu wengine kuhusu wewe.
       </div>
     </div>

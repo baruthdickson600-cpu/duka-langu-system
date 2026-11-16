@@ -1,11 +1,11 @@
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',-apple-system,sans-serif;background:#F1F5F9;color:#1E293B;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Inter',-apple-system,sans-serif;background:#F6F8F7;color:#17231D;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
 /* Scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px}
-::-webkit-scrollbar-thumb:hover{background:#94A3B8}
+::-webkit-scrollbar-thumb:hover{background:#9AA5A0}
 ::selection{background:rgba(10,110,71,.15)}
 
 /* ===== INPUTS & FORMS ===== */
@@ -111,7 +111,7 @@ span[style*="borderRadius"]{transition:all 0.2s ease}
 
 /* ===== SKELETON LOADER ===== */
 .skeleton{
-  background:linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%);
+  background:linear-gradient(90deg,#F6F8F7 25%,#D6E2DB 50%,#F6F8F7 75%);
   background-size:200% 100%;
   animation:shimmer 1.5s ease-in-out infinite;
   border-radius:8px;

@@ -230,7 +230,7 @@ export default function AskMe(){
           background:'#fff',borderRadius:20,
           boxShadow:'0 20px 60px rgba(0,0,0,0.3)',
           display:'flex',flexDirection:'column',overflow:'hidden',
-          border:'1px solid #E2E8F0',
+          border:'1px solid #D6E2DB',
         }}>
           {/* Header */}
           <div style={{
@@ -252,7 +252,7 @@ export default function AskMe(){
           </div>
 
           {/* Messages */}
-          <div style={{flex:1,overflowY:'auto',padding:'16px',background:'#F8FAFC'}}>
+          <div style={{flex:1,overflowY:'auto',padding:'16px',background:'#F6F8F7'}}>
             {messages.map(m=>(
               <div key={m.id} style={{
                 display:'flex',
@@ -263,8 +263,8 @@ export default function AskMe(){
                   <div style={{
                     padding:'10px 14px',borderRadius:14,fontSize:13.5,lineHeight:1.5,
                     background:m.sender==='user'?'linear-gradient(135deg,#0A6E47,#0A6E47)':'#fff',
-                    color:m.sender==='user'?'#fff':'#1E293B',
-                    border:m.sender==='user'?'none':'1px solid #E2E8F0',
+                    color:m.sender==='user'?'#fff':'#17231D',
+                    border:m.sender==='user'?'none':'1px solid #D6E2DB',
                     borderBottomRightRadius:m.sender==='user'?4:14,
                     borderBottomLeftRadius:m.sender==='user'?14:4,
                     boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
@@ -296,7 +296,7 @@ export default function AskMe(){
                     )}
                   </div>
                   <div style={{
-                    fontSize:10,color:'#94A3B8',marginTop:3,
+                    fontSize:10,color:'#9AA5A0',marginTop:3,
                     textAlign:m.sender==='user'?'right':'left',
                   }}>{fmtTime(m.time)}</div>
                 </div>
@@ -308,11 +308,11 @@ export default function AskMe(){
               <div style={{display:'flex',justifyContent:'flex-start',marginBottom:12}}>
                 <div style={{
                   padding:'12px 16px',borderRadius:14,background:'#fff',
-                  border:'1px solid #E2E8F0',display:'flex',gap:4,
+                  border:'1px solid #D6E2DB',display:'flex',gap:4,
                 }}>
                   {[0,1,2].map(i=>(
                     <span key={i} style={{
-                      width:7,height:7,borderRadius:'50%',background:'#94A3B8',
+                      width:7,height:7,borderRadius:'50%',background:'#9AA5A0',
                       animation:`askmebounce 1.2s ${i*0.2}s infinite`,
                     }}/>
                   ))}
@@ -323,7 +323,7 @@ export default function AskMe(){
           </div>
 
           {/* Input */}
-          <div style={{padding:'12px 14px',borderTop:'1px solid #E2E8F0',background:'#fff',display:'flex',gap:8}}>
+          <div style={{padding:'12px 14px',borderTop:'1px solid #D6E2DB',background:'#fff',display:'flex',gap:8}}>
             <input
               value={input}
               onChange={e=>setInput(e.target.value)}
@@ -331,7 +331,7 @@ export default function AskMe(){
               placeholder="Andika swali lako..."
               style={{
                 flex:1,padding:'11px 14px',borderRadius:12,
-                border:'1.5px solid #E2E8F0',fontSize:13.5,outline:'none',
+                border:'1.5px solid #D6E2DB',fontSize:13.5,outline:'none',
               }}
             />
             <button onClick={send} disabled={!input.trim()} style={{

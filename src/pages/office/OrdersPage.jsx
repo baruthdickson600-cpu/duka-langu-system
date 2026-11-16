@@ -8,10 +8,10 @@ import {fmtMoney,payLabel} from '../../utils/helpers';
 // ============================================================
 
 const STATUS={
-  pending:{l:'Inasubiri',c:'#F59E0B',bg:'#FFF7ED'},
+  pending:{l:'Inasubiri',c:'#F2B705',bg:'#FFF8E6'},
   partial:{l:'Sehemu',c:'#3B82F6',bg:'#EFF6FF'},
-  completed:{l:'Imekamilika',c:'#16A34A',bg:'#F0FDF4'},
-  cancelled:{l:'Imeghairiwa',c:'#94A3B8',bg:'#F1F5F9'},
+  completed:{l:'Imekamilika',c:'#16A34A',bg:'#E6F2EC'},
+  cancelled:{l:'Imeghairiwa',c:'#9AA5A0',bg:'#F6F8F7'},
 };
 
 const PAY_OPTS=[
@@ -75,22 +75,22 @@ export default function OrdersPage(){
 
   const TABS=[['active',`Zinazoendelea (${stats.count})`],['completed','Zilizokamilika'],['cancelled','Zilizoghairiwa']];
 
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:14}}>
       <h2 style={{fontSize:21,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>📋 Oda (Pending Orders)</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Oda za wateja kabla ya malipo kamili. Hazihesabiki kama mauzo hadi zikamilike.</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Oda za wateja kabla ya malipo kamili. Hazihesabiki kama mauzo hadi zikamilike.</p>
     </div>
 
     {/* Stats */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:16}}>
       {[
-        {l:'Oda Zinazoendelea',v:stats.count,c:'#F59E0B',icon:'📋'},
+        {l:'Oda Zinazoendelea',v:stats.count,c:'#F2B705',icon:'📋'},
         {l:'Thamani Jumla',v:fm(stats.value),c:'#3B82F6',icon:'💰'},
         {l:'Imelipwa',v:fm(stats.collected),c:'#16A34A',icon:'✅'},
-        {l:'Imebaki',v:fm(stats.remaining),c:'#EF4444',icon:'⏳'},
+        {l:'Imebaki',v:fm(stats.remaining),c:'#C2412D',icon:'⏳'},
       ].map((s,i)=>(
         <div key={i} className="card" style={{padding:14}}>
-          <div style={{fontSize:11,color:'#94A3B8',fontWeight:700,marginBottom:5}}>{s.icon} {s.l}</div>
+          <div style={{fontSize:11,color:'#9AA5A0',fontWeight:700,marginBottom:5}}>{s.icon} {s.l}</div>
           <div style={{fontSize:19,fontWeight:900,color:s.c}}>{s.v}</div>
         </div>
       ))}
@@ -99,14 +99,14 @@ export default function OrdersPage(){
     {/* Tabs */}
     <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
       {TABS.map(([id,l])=>(
-        <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0A6E47':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{l}</button>
+        <button key={id} onClick={()=>setTab(id)} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0A6E47':'#F6F8F7',color:tab===id?'#fff':'#5C6A62'}}>{l}</button>
       ))}
     </div>
 
-    <input placeholder="🔍 Tafuta oda, mteja, au simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:13,marginBottom:14,boxSizing:'border-box',outline:'none'}}/>
+    <input placeholder="🔍 Tafuta oda, mteja, au simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,marginBottom:14,boxSizing:'border-box',outline:'none'}}/>
 
     {/* Orders list */}
-    {!filtered.length?<div className="card" style={{textAlign:'center',padding:36,color:'#94A3B8'}}>
+    {!filtered.length?<div className="card" style={{textAlign:'center',padding:36,color:'#9AA5A0'}}>
       <div style={{fontSize:40,marginBottom:8}}>📋</div>Hakuna oda hapa
     </div>:
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -116,31 +116,31 @@ export default function OrdersPage(){
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:150}}>
               <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginBottom:3}}>
-                <b style={{fontSize:14,color:'#101828'}}>{o.customer_name||'Mteja'}</b>
+                <b style={{fontSize:14,color:'#17231D'}}>{o.customer_name||'Mteja'}</b>
                 <span style={{fontSize:9.5,padding:'2px 8px',borderRadius:6,background:st.bg,color:st.c,fontWeight:800}}>{st.l}</span>
               </div>
               <div style={{fontSize:11.5,color:'#98A2B3'}}>{o.order_number} • {(o.items||[]).length} bidhaa {o.customer_phone?`• ${o.customer_phone}`:''}</div>
-              <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{new Date(o.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+              <div style={{fontSize:11,color:'#9AA5A0',marginTop:2}}>{new Date(o.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
             <div style={{textAlign:'right'}}>
               <div style={{fontSize:16,fontWeight:900,color:'#0A6E47'}}>{fm(o.total)}</div>
-              {o.status==='partial'&&<div style={{fontSize:11,color:'#EF4444',fontWeight:600}}>Imebaki: {fm(o.remaining_amount)}</div>}
+              {o.status==='partial'&&<div style={{fontSize:11,color:'#C2412D',fontWeight:600}}>Imebaki: {fm(o.remaining_amount)}</div>}
               {o.status==='partial'&&<div style={{fontSize:10.5,color:'#16A34A'}}>Imelipwa: {fm(o.paid_amount)}</div>}
             </div>
           </div>
 
           {/* Progress bar (partial) */}
-          {o.status==='partial'&&<div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden',margin:'8px 0'}}>
+          {o.status==='partial'&&<div style={{height:6,background:'#F6F8F7',borderRadius:3,overflow:'hidden',margin:'8px 0'}}>
             <div style={{height:'100%',width:`${Math.min(100,(o.paid_amount/o.total)*100)}%`,background:'linear-gradient(90deg,#3B82F6,#16A34A)',borderRadius:3}}/>
           </div>}
 
           {/* Actions */}
           {(o.status==='pending'||o.status==='partial')&&<div style={{display:'flex',gap:6,marginTop:9,flexWrap:'wrap'}}>
             <button onClick={()=>{setPayModal(o);setPayAmt(String(o.remaining_amount||o.total));}} style={{flex:1,padding:'8px 0',borderRadius:8,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>💰 Lipa</button>
-            <button onClick={()=>openHistory(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>Historia</button>
-            <button onClick={()=>doCancel(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#DC2626',fontWeight:600,fontSize:12,cursor:'pointer'}}>Ghairi</button>
+            <button onClick={()=>openHistory(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',color:'#5C6A62',fontWeight:600,fontSize:12,cursor:'pointer'}}>Historia</button>
+            <button onClick={()=>doCancel(o)} style={{padding:'8px 12px',borderRadius:8,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#DC2626',fontWeight:600,fontSize:12,cursor:'pointer'}}>Ghairi</button>
           </div>}
-          {o.status==='completed'&&<div style={{marginTop:8}}><button onClick={()=>openHistory(o)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer'}}>Ona Historia ya Malipo</button></div>}
+          {o.status==='completed'&&<div style={{marginTop:8}}><button onClick={()=>openHistory(o)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',color:'#5C6A62',fontWeight:600,fontSize:11.5,cursor:'pointer'}}>Ona Historia ya Malipo</button></div>}
         </div>;
       })}
     </div>}
@@ -149,24 +149,24 @@ export default function OrdersPage(){
     {payModal&&<div onClick={()=>setPayModal(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:18,padding:22,maxWidth:400,width:'100%'}}>
         <h3 style={{fontSize:17,fontWeight:800,margin:'0 0 4px'}}>💰 Lipa Oda</h3>
-        <p style={{fontSize:12.5,color:'#64748B',margin:'0 0 16px'}}>{payModal.customer_name} • {payModal.order_number}</p>
-        <div style={{background:'#F8FAFC',borderRadius:10,padding:12,marginBottom:14,fontSize:13}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#64748B'}}>Jumla</span><b>{fm(payModal.total)}</b></div>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#64748B'}}>Imelipwa</span><b style={{color:'#16A34A'}}>{fm(payModal.paid_amount)}</b></div>
-          <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#64748B'}}>Inabaki</span><b style={{color:'#EF4444'}}>{fm(payModal.remaining_amount)}</b></div>
+        <p style={{fontSize:12.5,color:'#5C6A62',margin:'0 0 16px'}}>{payModal.customer_name} • {payModal.order_number}</p>
+        <div style={{background:'#F6F8F7',borderRadius:10,padding:12,marginBottom:14,fontSize:13}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#5C6A62'}}>Jumla</span><b>{fm(payModal.total)}</b></div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#5C6A62'}}>Imelipwa</span><b style={{color:'#16A34A'}}>{fm(payModal.paid_amount)}</b></div>
+          <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#5C6A62'}}>Inabaki</span><b style={{color:'#C2412D'}}>{fm(payModal.remaining_amount)}</b></div>
         </div>
         <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Kiasi cha kulipa</label>
-        <input type="number" value={payAmt} onChange={e=>setPayAmt(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:16,fontWeight:700,boxSizing:'border-box',marginBottom:12,outline:'none'}}/>
+        <input type="number" value={payAmt} onChange={e=>setPayAmt(e.target.value)} style={{width:'100%',padding:'12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:16,fontWeight:700,boxSizing:'border-box',marginBottom:12,outline:'none'}}/>
         <div style={{display:'flex',gap:5,marginBottom:12}}>
-          <button onClick={()=>setPayAmt(String(payModal.remaining_amount))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#0A6E47',fontWeight:700,fontSize:11.5,cursor:'pointer'}}>Lipa Yote</button>
-          <button onClick={()=>setPayAmt(String(Math.round(payModal.remaining_amount/2)))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer'}}>Nusu</button>
+          <button onClick={()=>setPayAmt(String(payModal.remaining_amount))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #C2DED1',background:'#E6F2EC',color:'#0A6E47',fontWeight:700,fontSize:11.5,cursor:'pointer'}}>Lipa Yote</button>
+          <button onClick={()=>setPayAmt(String(Math.round(payModal.remaining_amount/2)))} style={{flex:1,padding:'7px 0',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',color:'#5C6A62',fontWeight:600,fontSize:11.5,cursor:'pointer'}}>Nusu</button>
         </div>
         <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Njia ya malipo</label>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5,marginBottom:16}}>
-          {PAY_OPTS.map(m=><button key={m.v} onClick={()=>setPayMethod(m.v)} style={{padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:payMethod===m.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:700,color:payMethod===m.v?'#0A6E47':'#64748B',cursor:'pointer'}}>{m.l}</button>)}
+          {PAY_OPTS.map(m=><button key={m.v} onClick={()=>setPayMethod(m.v)} style={{padding:'8px 4px',borderRadius:8,border:payMethod===m.v?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:payMethod===m.v?'#E6F2EC':'#fff',fontSize:11,fontWeight:700,color:payMethod===m.v?'#0A6E47':'#5C6A62',cursor:'pointer'}}>{m.l}</button>)}
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>setPayModal(null)} style={{flex:1,padding:12,borderRadius:12,border:'none',background:'#F1F5F9',color:'#64748B',fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={()=>setPayModal(null)} style={{flex:1,padding:12,borderRadius:12,border:'none',background:'#F6F8F7',color:'#5C6A62',fontWeight:700,cursor:'pointer'}}>Ghairi</button>
           <button onClick={doPay} disabled={busy} style={{flex:2,padding:12,borderRadius:12,border:'none',background:'#0A6E47',color:'#fff',fontWeight:800,cursor:'pointer'}}>{busy?'Inatuma...':'✅ Pokea Malipo'}</button>
         </div>
       </div>
@@ -176,20 +176,20 @@ export default function OrdersPage(){
     {histModal&&<div onClick={()=>setHistModal(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}}>
       <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:18,padding:22,maxWidth:400,width:'100%',maxHeight:'80vh',overflow:'auto'}}>
         <h3 style={{fontSize:17,fontWeight:800,margin:'0 0 4px'}}>Historia ya Malipo</h3>
-        <p style={{fontSize:12.5,color:'#64748B',margin:'0 0 16px'}}>{histModal.order_number}</p>
-        {!history.length?<p style={{color:'#94A3B8',fontSize:13}}>Hakuna malipo bado.</p>:
+        <p style={{fontSize:12.5,color:'#5C6A62',margin:'0 0 16px'}}>{histModal.order_number}</p>
+        {!history.length?<p style={{color:'#9AA5A0',fontSize:13}}>Hakuna malipo bado.</p>:
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {history.map((p,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'#F8FAFC',borderRadius:10}}>
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:'#F6F8F7',borderRadius:10}}>
               <div>
                 <div style={{fontWeight:700,fontSize:13.5,color:'#0A6E47'}}>{fm(p.amount)}</div>
-                <div style={{fontSize:11,color:'#94A3B8'}}>{payLabel(p.payment_method)} • {new Date(p.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                <div style={{fontSize:11,color:'#9AA5A0'}}>{payLabel(p.payment_method)} • {new Date(p.created_at).toLocaleString('sw-TZ',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
               </div>
               <span style={{fontSize:16}}>✅</span>
             </div>
           ))}
         </div>}
-        <button onClick={()=>setHistModal(null)} style={{width:'100%',marginTop:16,padding:12,borderRadius:12,border:'none',background:'#F1F5F9',color:'#64748B',fontWeight:700,cursor:'pointer'}}>Funga</button>
+        <button onClick={()=>setHistModal(null)} style={{width:'100%',marginTop:16,padding:12,borderRadius:12,border:'none',background:'#F6F8F7',color:'#5C6A62',fontWeight:700,cursor:'pointer'}}>Funga</button>
       </div>
     </div>}
   </div>;

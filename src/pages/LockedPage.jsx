@@ -97,12 +97,12 @@ export default function LockedPage(){
           </div>
 
           {/* Pending Status */}
-          {hasPending&&<div style={{background:'#fff',borderRadius:18,padding:'18px 20px',marginBottom:14,boxShadow:'0 10px 30px rgba(0,0,0,0.15)',borderLeft:'5px solid #F59E0B'}}>
+          {hasPending&&<div style={{background:'#fff',borderRadius:18,padding:'18px 20px',marginBottom:14,boxShadow:'0 10px 30px rgba(0,0,0,0.15)',borderLeft:'5px solid #F2B705'}}>
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
               <div style={{width:42,height:42,borderRadius:12,background:'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>⏳</div>
               <div>
-                <div style={{fontSize:14,fontWeight:800,color:'#1E293B'}}>Ombi Linasubiri</div>
-                <div style={{fontSize:11,color:'#94A3B8'}}>Admin atathibitisha hivi karibuni</div>
+                <div style={{fontSize:14,fontWeight:800,color:'#17231D'}}>Ombi Linasubiri</div>
+                <div style={{fontSize:11,color:'#9AA5A0'}}>Admin atathibitisha hivi karibuni</div>
               </div>
             </div>
             <div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',marginBottom:8}}>
@@ -117,7 +117,7 @@ export default function LockedPage(){
           </div>}
 
           {/* Rejected Notice */}
-          {!hasPending&&myRejected&&<div style={{background:'#FEF2F2',borderRadius:14,padding:'12px 16px',marginBottom:14,borderLeft:'4px solid #EF4444',boxShadow:'0 4px 15px rgba(239,68,68,0.15)'}}>
+          {!hasPending&&myRejected&&<div style={{background:'#FEF2F2',borderRadius:14,padding:'12px 16px',marginBottom:14,borderLeft:'4px solid #C2412D',boxShadow:'0 4px 15px rgba(239,68,68,0.15)'}}>
             <div style={{fontSize:12,fontWeight:800,color:'#B91C1C',marginBottom:4}}>❌ Ombi la awali lilikataliwa</div>
             <div style={{fontSize:11,color:'#7F1D1D'}}>Sababu: {myRejected.reject_reason||'Transaction ID si sahihi'}</div>
           </div>}
@@ -138,7 +138,7 @@ export default function LockedPage(){
 
             {/* Content */}
             <div style={{padding:'18px 22px 22px'}}>
-              {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
+              {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'12px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #C2412D',display:'flex',alignItems:'center',gap:8}}><span style={{fontSize:18}}>⚠️</span><span>{err}</span></div>}
 
               {/* ==== MALIPO YA HARAKA (AUTO) — mteja akilipa mfumo unajifungua wenyewe ==== */}
               <div style={{background:'linear-gradient(135deg,#0A6E47,#06502F)',borderRadius:16,padding:'20px',marginBottom:14,color:'#fff',boxShadow:'0 10px 28px rgba(10,110,71,0.3)'}}>
@@ -164,7 +164,7 @@ export default function LockedPage(){
                   </button>}
               </div>
 
-              <div style={{textAlign:'center',fontSize:11.5,color:'#94A3B8',lineHeight:1.5}}>
+              <div style={{textAlign:'center',fontSize:11.5,color:'#9AA5A0',lineHeight:1.5}}>
                 Malipo yanashughulikiwa kwa usalama. Ukikwama, wasiliana nasi kupitia namba zilizo chini.
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function LockedPage(){
           {submitted&&!hasPending&&<div style={{background:'#fff',borderRadius:20,padding:32,textAlign:'center',boxShadow:'0 25px 60px rgba(0,0,0,0.3)'}}>
             <div style={{fontSize:64,marginBottom:14,animation:'popIn 0.5s ease both'}}>✅</div>
             <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 6px'}}>Ombi Limetumwa!</h2>
-            <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Admin atathibitisha malipo yako ndani ya dakika chache</p>
+            <p style={{fontSize:13,color:'#5C6A62',marginBottom:16}}>Admin atathibitisha malipo yako ndani ya dakika chache</p>
 
             <div style={{background:'#F0FDF4',borderRadius:12,padding:'14px 16px',textAlign:'left',marginBottom:14,border:'1px solid #BBF7D0'}}>
               <div style={{fontSize:11,fontWeight:700,color:'#15803D',marginBottom:6}}>📋 HATUA ZIJAZO:</div>

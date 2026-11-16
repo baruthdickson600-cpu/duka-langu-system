@@ -126,7 +126,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
       {[1,2,3].map(n=>(
         <div key={n} style={{
           width:n===step?28:8,height:8,borderRadius:4,
-          background:n===step?'#0A6E47':n<step?'#22C55E':'#CBD5E1',
+          background:n===step?'#0A6E47':n<step?'#0A6E47':'#CBD5E1',
           transition:'all 0.3s ease',
         }}/>
       ))}
@@ -167,10 +167,10 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
             /* ===== FORGOT PASSWORD ===== */
             showForgot?(
               <>
-                <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 8px'}}>Umesahau Password?</h3>
-                <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Weka email yako na tutakutumia code ya tarakimu 6.</p>
+                <h3 style={{fontSize:20,fontWeight:800,color:'#17231D',margin:'0 0 8px'}}>Umesahau Password?</h3>
+                <p style={{fontSize:13,color:'#5C6A62',marginBottom:16}}>Weka email yako na tutakutumia code ya tarakimu 6.</p>
                 {err&&<ErrBox msg={err}/>}
-                {msg&&<div style={{background:'#F0FDF4',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #22C55E'}}>{msg}</div>}
+                {msg&&<div style={{background:'#E6F2EC',color:'#15803D',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:'4px solid #0A6E47'}}>{msg}</div>}
                 <Input label="Email" type="email" placeholder="email@mfano.com" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleForgot()}/>
                 <Btn label={busy?'Inatuma...':'Tuma Code'} onClick={handleForgot} disabled={busy}/>
                 <p onClick={()=>{setShowForgot(false);setErr('');setMsg('');}} style={{textAlign:'center',marginTop:14,color:'#0A6E47',cursor:'pointer',fontWeight:700,fontSize:13}}>← Rudi kwenye Login</p>
@@ -178,9 +178,9 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
             ):(
               <>
                 {/* ===== TABS ===== */}
-                <div style={{display:'flex',background:'#F1F5F9',borderRadius:14,padding:4,marginBottom:20}}>
+                <div style={{display:'flex',background:'#F6F8F7',borderRadius:14,padding:4,marginBottom:20}}>
                   {['login','signup'].map(t=>(
-                    <button key={t} onClick={()=>{setTab(t);setErr('');setStep(1);}} style={{flex:1,padding:'11px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#0A6E47':'#94A3B8',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>
+                    <button key={t} onClick={()=>{setTab(t);setErr('');setStep(1);}} style={{flex:1,padding:'11px 0',borderRadius:11,border:'none',fontWeight:800,fontSize:15,background:tab===t?'#fff':'transparent',color:tab===t?'#0A6E47':'#9AA5A0',boxShadow:tab===t?'0 2px 12px rgba(0,0,0,.08)':'none',cursor:'pointer',transition:'all 0.25s'}}>
                       {t==='login'?'Ingia':'Jisajili'}
                     </button>
                   ))}
@@ -194,16 +194,16 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     <Input label="Email" type="email" placeholder="email@mfano.com" value={f.email} onChange={e=>s('email',e.target.value)} onKeyDown={e=>e.key==='Enter'&&submitLogin()}/>
                     <PasswordInput label="Password" placeholder="••••••••" value={f.password} onChange={e=>s('password',e.target.value)} onKeyDown={e=>e.key==='Enter'&&submitLogin()}/>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:-4,marginBottom:10,gap:10}}>
-                      <p onClick={()=>setShowInfoRequest(true)} style={{fontSize:11,color:'#64748B',cursor:'pointer',fontWeight:600,margin:0,textDecoration:'underline'}}>📝 Badilisha taarifa?</p>
+                      <p onClick={()=>setShowInfoRequest(true)} style={{fontSize:11,color:'#5C6A62',cursor:'pointer',fontWeight:600,margin:0,textDecoration:'underline'}}>📝 Badilisha taarifa?</p>
                       <p onClick={()=>{setShowForgot(true);setErr('');setForgotEmail(f.email);}} style={{fontSize:12,color:'#0A6E47',cursor:'pointer',fontWeight:600,margin:0}}>Umesahau password?</p>
                     </div>
                     <Btn label={busy?'⏳ Subiri...':'Ingia'} onClick={submitLogin} disabled={busy}/>
                     <div style={{display:'flex',alignItems:'center',gap:10,margin:'16px 0'}}>
-                      <div style={{flex:1,height:1,background:'#E2E8F0'}}></div>
-                      <span style={{fontSize:11,color:'#94A3B8',fontWeight:600}}>AU</span>
-                      <div style={{flex:1,height:1,background:'#E2E8F0'}}></div>
+                      <div style={{flex:1,height:1,background:'#D6E2DB'}}></div>
+                      <span style={{fontSize:11,color:'#9AA5A0',fontWeight:600}}>AU</span>
+                      <div style={{flex:1,height:1,background:'#D6E2DB'}}></div>
                     </div>
-                    <button onClick={doGoogle} disabled={googleBusy} style={{width:'100%',padding:'12px',borderRadius:12,border:'1.5px solid #E2E8F0',background:'#fff',color:'#344054',fontWeight:700,fontSize:14,cursor:googleBusy?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
+                    <button onClick={doGoogle} disabled={googleBusy} style={{width:'100%',padding:'12px',borderRadius:12,border:'1.5px solid #D6E2DB',background:'#fff',color:'#344054',fontWeight:700,fontSize:14,cursor:googleBusy?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
                       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.5-2.1 14.3-5.5l-6.6-5.6C29.6 34.5 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.6 5.6C41.4 36 44 30.5 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>
                       {googleBusy?'Inaunganisha...':'Endelea na Google'}
                     </button>
@@ -218,19 +218,19 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     {/* STEP 1: Taarifa za Msingi */}
                     {step===1&&(
                       <>
-                        <h3 style={{fontSize:17,fontWeight:800,color:'#1E293B',margin:'0 0 4px'}}>Hatua 1 ya 3</h3>
-                        <p style={{fontSize:13,color:'#64748B',margin:'0 0 16px'}}>Taarifa za msingi za akaunti yako</p>
+                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>Hatua 1 ya 3</h3>
+                        <p style={{fontSize:13,color:'#5C6A62',margin:'0 0 16px'}}>Taarifa za msingi za akaunti yako</p>
                         <Input label="Jina Lako Kamili" placeholder="Mfano: Rehema Juma" value={f.name} onChange={e=>s('name',e.target.value)}/>
                         <Input label="Jina la Biashara" placeholder="Mfano: Duka la Rehema" value={f.business} onChange={e=>s('business',e.target.value)}/>
                         <Input label="Email" type="email" placeholder="email@mfano.com" value={f.email} onChange={e=>s('email',e.target.value)}/>
                         <Input label="Simu / WhatsApp" placeholder="07XXXXXXXX" value={f.phone} onChange={e=>s('phone',e.target.value)}/>
                         <Btn label="Endelea →" onClick={goStep2}/>
                         <div style={{display:'flex',alignItems:'center',gap:10,margin:'16px 0'}}>
-                          <div style={{flex:1,height:1,background:'#E2E8F0'}}></div>
-                          <span style={{fontSize:11,color:'#94A3B8',fontWeight:600}}>AU JISAJILI HARAKA</span>
-                          <div style={{flex:1,height:1,background:'#E2E8F0'}}></div>
+                          <div style={{flex:1,height:1,background:'#D6E2DB'}}></div>
+                          <span style={{fontSize:11,color:'#9AA5A0',fontWeight:600}}>AU JISAJILI HARAKA</span>
+                          <div style={{flex:1,height:1,background:'#D6E2DB'}}></div>
                         </div>
-                        <button onClick={doGoogle} disabled={googleBusy} style={{width:'100%',padding:'12px',borderRadius:12,border:'1.5px solid #E2E8F0',background:'#fff',color:'#344054',fontWeight:700,fontSize:14,cursor:googleBusy?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
+                        <button onClick={doGoogle} disabled={googleBusy} style={{width:'100%',padding:'12px',borderRadius:12,border:'1.5px solid #D6E2DB',background:'#fff',color:'#344054',fontWeight:700,fontSize:14,cursor:googleBusy?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10}}>
                           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.5-2.1 14.3-5.5l-6.6-5.6C29.6 34.5 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.6 5.6C41.4 36 44 30.5 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>
                           {googleBusy?'Inaunganisha...':'Jisajili na Google'}
                         </button>
@@ -240,26 +240,26 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     {/* STEP 2: Chagua Aina ya Biashara */}
                     {step===2&&(
                       <>
-                        <h3 style={{fontSize:17,fontWeight:800,color:'#1E293B',margin:'0 0 4px'}}>Hatua 2 ya 3</h3>
-                        <p style={{fontSize:13,color:'#64748B',margin:'0 0 16px'}}>Biashara yako ni ya aina gani?</p>
+                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>Hatua 2 ya 3</h3>
+                        <p style={{fontSize:13,color:'#5C6A62',margin:'0 0 16px'}}>Biashara yako ni ya aina gani?</p>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
                           {BUSINESS_TYPES.map(bt=>(
                             <div key={bt.value} onClick={()=>s('businessType',bt.value)} style={{
                               padding:'14px 12px',borderRadius:14,cursor:'pointer',textAlign:'center',
-                              border:f.businessType===bt.value?'2.5px solid #0A6E47':'2px solid #E2E8F0',
-                              background:f.businessType===bt.value?'#F0FDF4':'#FAFAFA',
+                              border:f.businessType===bt.value?'2.5px solid #0A6E47':'2px solid #D6E2DB',
+                              background:f.businessType===bt.value?'#E6F2EC':'#FAFAFA',
                               transform:f.businessType===bt.value?'scale(1.02)':'scale(1)',
                               transition:'all 0.18s',boxShadow:f.businessType===bt.value?'0 4px 16px rgba(11,122,59,0.15)':'none',
                             }}>
                               <div style={{fontSize:26,marginBottom:4}}>{bt.icon}</div>
-                              <div style={{fontSize:12,fontWeight:700,color:f.businessType===bt.value?'#0A6E47':'#1E293B',lineHeight:1.2}}>{bt.label}</div>
-                              <div style={{fontSize:10,color:'#94A3B8',marginTop:2,lineHeight:1.3}}>{bt.desc}</div>
+                              <div style={{fontSize:12,fontWeight:700,color:f.businessType===bt.value?'#0A6E47':'#17231D',lineHeight:1.2}}>{bt.label}</div>
+                              <div style={{fontSize:10,color:'#9AA5A0',marginTop:2,lineHeight:1.3}}>{bt.desc}</div>
                             </div>
                           ))}
                         </div>
                         <div style={{display:'flex',gap:10}}>
-                          <button onClick={goStep1} style={{flex:1,padding:13,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
-                          <button onClick={goStep3} style={{flex:2,padding:13,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>Endelea →</button>
+                          <button onClick={goStep1} style={{flex:1,padding:13,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
+                          <button onClick={goStep3} style={{flex:2,padding:13,background:'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>Endelea →</button>
                         </div>
                       </>
                     )}
@@ -267,18 +267,18 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     {/* STEP 3: Password + Promo + Terms */}
                     {step===3&&(
                       <>
-                        <h3 style={{fontSize:17,fontWeight:800,color:'#1E293B',margin:'0 0 4px'}}>Hatua 3 ya 3</h3>
-                        <p style={{fontSize:13,color:'#64748B',margin:'0 0 16px'}}>Weka password na ukamilishe usajili</p>
+                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>Hatua 3 ya 3</h3>
+                        <p style={{fontSize:13,color:'#5C6A62',margin:'0 0 16px'}}>Weka password na ukamilishe usajili</p>
 
                         {/* Summary ya biashara */}
                         {f.businessType&&(()=>{
                           const bt=BUSINESS_TYPES.find(b=>b.value===f.businessType);
                           return bt?(
-                            <div style={{background:'#F0FDF4',border:'1.5px solid #BBF7D0',borderRadius:12,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
+                            <div style={{background:'#E6F2EC',border:'1.5px solid #C2DED1',borderRadius:12,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
                               <span style={{fontSize:22}}>{bt.icon}</span>
                               <div>
                                 <div style={{fontSize:12,color:'#15803D',fontWeight:700}}>{f.business}</div>
-                                <div style={{fontSize:11,color:'#64748B'}}>{bt.label}</div>
+                                <div style={{fontSize:11,color:'#5C6A62'}}>{bt.label}</div>
                               </div>
                               <button onClick={()=>setStep(2)} style={{marginLeft:'auto',fontSize:11,color:'#0A6E47',background:'none',border:'none',cursor:'pointer',fontWeight:700,textDecoration:'underline'}}>Badilisha</button>
                             </div>
@@ -297,21 +297,21 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                           </label>
                         </div>
                         <div style={{display:'flex',gap:10}}>
-                          <button onClick={()=>setStep(2)} style={{flex:1,padding:13,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
-                          <button onClick={submitSignup} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>
+                          <button onClick={()=>setStep(2)} style={{flex:1,padding:13,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
+                          <button onClick={submitSignup} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>
                             {busy?'⏳ Subiri...':'🎉 Jisajili Sasa'}
                           </button>
                         </div>
-                        <div style={{textAlign:'center',fontSize:12,color:'#22C55E',marginTop:10,fontWeight:600}}>🎁 Siku 5 za majaribio BURE!</div>
+                        <div style={{textAlign:'center',fontSize:12,color:'#0A6E47',marginTop:10,fontWeight:600}}>🎁 Siku 5 za majaribio BURE!</div>
                       </>
                     )}
                   </>
                 )}
 
-                <div style={{textAlign:'center',marginTop:14,fontSize:11,color:'#94A3B8'}}>
-                  <span onClick={()=>setLegalPage('terms')} style={{color:'#64748B',cursor:'pointer'}}>Masharti</span>
+                <div style={{textAlign:'center',marginTop:14,fontSize:11,color:'#9AA5A0'}}>
+                  <span onClick={()=>setLegalPage('terms')} style={{color:'#5C6A62',cursor:'pointer'}}>Masharti</span>
                   {' • '}
-                  <span onClick={()=>setLegalPage('privacy')} style={{color:'#64748B',cursor:'pointer'}}>Faragha</span>
+                  <span onClick={()=>setLegalPage('privacy')} style={{color:'#5C6A62',cursor:'pointer'}}>Faragha</span>
                 </div>
               </>
             )}
@@ -330,13 +330,13 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
 
 // ===== HELPERS =====
 const ErrBox=({msg})=>(
-  <div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444',display:'flex',alignItems:'center',gap:8}}>
+  <div style={{background:'#FBECE9',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #C2412D',display:'flex',alignItems:'center',gap:8}}>
     <span>⚠️</span>{msg}
   </div>
 );
 
 const Btn=({label,onClick,disabled})=>(
-  <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:15,background:disabled?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,marginTop:6,cursor:'pointer',opacity:disabled?.7:1,boxShadow:'0 4px 20px rgba(11,122,59,0.35)',transition:'all 0.2s'}}>
+  <button onClick={onClick} disabled={disabled} style={{width:'100%',padding:15,background:disabled?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:14,fontWeight:800,fontSize:15,marginTop:6,cursor:'pointer',opacity:disabled?.7:1,boxShadow:'0 4px 20px rgba(11,122,59,0.35)',transition:'all 0.2s'}}>
     {label}
   </button>
 );

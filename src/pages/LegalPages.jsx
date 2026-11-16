@@ -2,12 +2,12 @@ import React from 'react';
 import {IC} from '../components/UI';
 
 export function TermsPage({onBack}){
-  return <div style={{minHeight:'100vh',background:'#F8FAFC',padding:16}}>
+  return <div style={{minHeight:'100vh',background:'#F6F8F7',padding:16}}>
     <div style={{maxWidth:700,margin:'0 auto'}}>
       <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#0A6E47',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
       <div style={{background:'#fff',borderRadius:16,padding:'28px 24px',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
-        <h1 style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:4}}>📄 TERMS OF SERVICE</h1>
-        <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Masharti ya Huduma — Duka Langu Platform | Effective: 04/04/2026</p>
+        <h1 style={{fontSize:22,fontWeight:800,color:'#17231D',marginBottom:4}}>📄 TERMS OF SERVICE</h1>
+        <p style={{fontSize:13,color:'#5C6A62',marginBottom:20}}>Masharti ya Huduma — Duka Langu Platform | Effective: 04/04/2026</p>
 
         <Section t="1. Utangulizi" c="Karibu kwenye mfumo wa Duka Langu. Masharti haya yanaelezea sheria na taratibu za matumizi ya mfumo wetu wa POS, usimamizi wa biashara, na huduma zinazohusiana. Kwa kutumia huduma hii, unakubali masharti haya kikamilifu."/>
         <Section t="2. Maelezo ya Huduma" c="Duka Langu inatoa: Mfumo wa POS (Point of Sale), Usimamizi wa biashara na mauzo, Uhifadhi wa data kupitia Supabase, SMS notifications (receipts, alerts, reports)."/>
@@ -29,12 +29,12 @@ export function TermsPage({onBack}){
 }
 
 export function PrivacyPage({onBack}){
-  return <div style={{minHeight:'100vh',background:'#F8FAFC',padding:16}}>
+  return <div style={{minHeight:'100vh',background:'#F6F8F7',padding:16}}>
     <div style={{maxWidth:700,margin:'0 auto'}}>
       <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',color:'#0A6E47',fontWeight:600,fontSize:14,marginBottom:16,cursor:'pointer'}}>← Rudi</button>
       <div style={{background:'#fff',borderRadius:16,padding:'28px 24px',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
-        <h1 style={{fontSize:22,fontWeight:800,color:'#1E293B',marginBottom:4}}>🔒 SERA YA FARAGHA</h1>
-        <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Privacy Policy — Duka Langu Platform | Effective: 04/04/2026</p>
+        <h1 style={{fontSize:22,fontWeight:800,color:'#17231D',marginBottom:4}}>🔒 SERA YA FARAGHA</h1>
+        <p style={{fontSize:13,color:'#5C6A62',marginBottom:20}}>Privacy Policy — Duka Langu Platform | Effective: 04/04/2026</p>
 
         <Section t="1. Utangulizi" c="Duka Langu inalinda faragha ya watumiaji wake kwa viwango vya juu vya usalama wa taarifa."/>
         <Section t="2. Taarifa Tunazokusanya" c="Tunakusanya: Jina kamili, Namba ya simu, Barua pepe, Taarifa za biashara, Data za mauzo (POS transactions), Device & usage data."/>
@@ -55,7 +55,7 @@ export function PrivacyPage({onBack}){
 
 function Section({t,c}){
   return <div style={{marginBottom:16}}>
-    <h3 style={{fontSize:14,fontWeight:700,color:'#1E293B',marginBottom:4}}>{t}</h3>
+    <h3 style={{fontSize:14,fontWeight:700,color:'#17231D',marginBottom:4}}>{t}</h3>
     <p style={{fontSize:13,color:'#475569',lineHeight:1.7}}>{c}</p>
   </div>;
 }

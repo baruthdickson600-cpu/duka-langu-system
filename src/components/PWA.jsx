@@ -86,7 +86,7 @@ export function PWAInstallPrompt(){
         <div style={{textAlign:'center',marginBottom:16}}>
           <div style={{fontSize:48,marginBottom:8}}>📱</div>
           <h3 style={{margin:0,fontSize:20,fontWeight:900,color:'#0A6E47'}}>Sakinisha App ya iOS</h3>
-          <p style={{margin:'8px 0',fontSize:13,color:'#64748B'}}>Fuata hatua hizi 3:</p>
+          <p style={{margin:'8px 0',fontSize:13,color:'#5C6A62'}}>Fuata hatua hizi 3:</p>
         </div>
         
         <div style={{display:'flex',flexDirection:'column',gap:14}}>
@@ -133,7 +133,7 @@ export function PWAInstallPrompt(){
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontWeight:900,fontSize:14,color:'#0A6E47',marginBottom:2}}>📱 Sakinisha App!</div>
-        <div style={{fontSize:11,color:'#64748B'}}>Pata uzoefu wa simu, fanya kazi popote</div>
+        <div style={{fontSize:11,color:'#5C6A62'}}>Pata uzoefu wa simu, fanya kazi popote</div>
       </div>
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         <button onClick={handleInstall} style={{
@@ -142,7 +142,7 @@ export function PWAInstallPrompt(){
           whiteSpace:'nowrap',boxShadow:'0 4px 12px rgba(11,122,59,0.3)'
         }}>{isIOS?'📥 Sakinisha':'📥 Sakinisha'}</button>
         <button onClick={handleDismiss} style={{
-          padding:'4px',background:'transparent',color:'#94A3B8',
+          padding:'4px',background:'transparent',color:'#9AA5A0',
           border:'none',fontSize:11,cursor:'pointer'
         }}>Si sasa</button>
       </div>
@@ -188,7 +188,7 @@ export function OnlineStatusBar(){
   return <div style={{
     position:'fixed',top:0,left:0,right:0,zIndex:9997,
     padding:'10px 16px',textAlign:'center',
-    background:isOnline?'linear-gradient(135deg,#22C55E,#16A34A)':'linear-gradient(135deg,#EF4444,#DC2626)',
+    background:isOnline?'linear-gradient(135deg,#0A6E47,#16A34A)':'linear-gradient(135deg,#C2412D,#DC2626)',
     color:'#fff',fontWeight:700,fontSize:13,
     boxShadow:'0 4px 12px rgba(0,0,0,0.15)',
     animation:'slideDown 0.3s ease-out',

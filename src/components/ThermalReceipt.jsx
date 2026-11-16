@@ -52,7 +52,7 @@ export default function ThermalReceipt({sale,onClose}){
     setTimeout(()=>{window.print();},50);
   };
 
-  const statusColor=data.status==='PAID'?'#16A34A':data.status==='PARTIAL'?'#3B82F6':'#EF4444';
+  const statusColor=data.status==='PAID'?'#16A34A':data.status==='PARTIAL'?'#3B82F6':'#C2412D';
 
   return <div id="dl-receipt-overlay" style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2147483000,padding:'12px'}} onClick={onClose}>
     <style>{PRINT_CSS}</style>
@@ -60,16 +60,16 @@ export default function ThermalReceipt({sale,onClose}){
 
       {/* Controls (hazichapishwi) */}
       <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #EEF2F6',flexShrink:0}}>
-        <b style={{fontSize:14,color:'#101828',flex:1}}>🧾 Risiti</b>
-        <div style={{display:'flex',gap:4,background:'#F1F5F9',borderRadius:8,padding:3}}>
-          <button onClick={()=>setWidth('58')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='58'?'#0A6E47':'transparent',color:width==='58'?'#fff':'#64748B'}}>58mm</button>
-          <button onClick={()=>setWidth('80')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='80'?'#0A6E47':'transparent',color:width==='80'?'#fff':'#64748B'}}>80mm</button>
+        <b style={{fontSize:14,color:'#17231D',flex:1}}>🧾 Risiti</b>
+        <div style={{display:'flex',gap:4,background:'#F6F8F7',borderRadius:8,padding:3}}>
+          <button onClick={()=>setWidth('58')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='58'?'#0A6E47':'transparent',color:width==='58'?'#fff':'#5C6A62'}}>58mm</button>
+          <button onClick={()=>setWidth('80')} style={{padding:'5px 12px',borderRadius:6,border:'none',fontSize:11.5,fontWeight:700,cursor:'pointer',background:width==='80'?'#0A6E47':'transparent',color:width==='80'?'#fff':'#5C6A62'}}>80mm</button>
         </div>
-        <button onClick={onClose} style={{background:'#F1F5F9',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',fontSize:16,color:'#64748B'}}>×</button>
+        <button onClick={onClose} style={{background:'#F6F8F7',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',fontSize:16,color:'#5C6A62'}}>×</button>
       </div>
 
       {/* RECEIPT (inachapishwa) */}
-      <div className="receipt-scroll" style={{background:'#F8FAFC',padding:'18px 12px',flex:1,minHeight:0,overflowY:'auto'}}>
+      <div className="receipt-scroll" style={{background:'#F6F8F7',padding:'18px 12px',flex:1,minHeight:0,overflowY:'auto'}}>
         <div ref={printRef} id="thermal-receipt" className={`receipt receipt-${width}`}>
           {duplicate&&<div className="dup-watermark">NAKALA</div>}
 
@@ -170,7 +170,7 @@ export default function ThermalReceipt({sale,onClose}){
       {/* ACTIONS (hazichapishwi) */}
       <div className="no-print" style={{background:'#fff',padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,borderTop:'1px solid #EEF2F6',flexShrink:0}}>
         <button onClick={doPrint} style={btnStyle('#0A6E47','#fff')}>🖨️ Chapisha</button>
-        <button onClick={doReprint} style={btnStyle('#F1F5F9','#475569')}>🔁 Chapisha Nakala</button>
+        <button onClick={doReprint} style={btnStyle('#F6F8F7','#475569')}>🔁 Chapisha Nakala</button>
         <button onClick={()=>exportReceiptPDF(sale,biz?.name,biz?.receipt_footer)} style={btnStyle('#EFF6FF','#2563EB')}>📄 Pakua PDF</button>
         <button onClick={()=>shareWhatsApp(sale,biz?.name)} style={btnStyle('#F0FDF4','#16A34A')}>💬 WhatsApp</button>
       </div>

@@ -423,8 +423,8 @@ export function AppProvider({children}){
             const staffHTML=`
               <p style="margin:0 0 14px;font-size:15px;"><b>Mteja mpya amejisajili!</b></p>
               <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Biashara</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${businessName}</td></tr>
-                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Jina</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${name||'—'}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Biashara</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${businessName}</td></tr>
+                <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Jina</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${name||'—'}</td></tr>
                 <tr><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Simu</td><td style="padding:9px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#0A6E47;font-size:13.5px;">${phone||'—'}</td></tr>
                 <tr><td style="padding:9px 0;color:#667085;font-size:13px;">Email</td><td style="padding:9px 0;text-align:right;font-weight:600;color:#344054;font-size:12.5px;">${email}</td></tr>
               </table>
@@ -1294,7 +1294,7 @@ export function AppProvider({children}){
       limits:{employees:999,branches:10,products:2000,customers:9999},
     },
     enterprise:{
-      name:'Enterprise',price:150000,color:'#F59E0B',icon:'🟡',
+      name:'Enterprise',price:150000,color:'#F2B705',icon:'🟡',
       features:['Yote ya Premium','Matawi Yasio na Kikomo','API Integration','Custom Reports','Dedicated Support','Training ya Bure','Multi-Admin','EFD/TRA Integration'],
       limits:{employees:9999,branches:999,products:99999,customers:99999},
     },
@@ -1499,7 +1499,7 @@ export function AppProvider({children}){
       <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
         <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kifurushi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0A6E47;font-size:14px;">${planName}</td></tr>
         <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0A6E47;font-size:14px;">${tk.days}</td></tr>
-        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${endDate}</td></tr>
         <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0A6E47;font-size:15px;">${daysLeft}</td></tr>
       </table>
       <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
@@ -2226,8 +2226,8 @@ export function AppProvider({children}){
   // Inatuma kwa makundi (batches) ili isilemeze SMTP/function.
   const buildUpdateEmailHTML=(title,body,bizName)=>{
     const safe=(s)=>String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const paras=safe(body).split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:0 0 12px;font-size:15px;line-height:1.65;color:#334155;">${l}</p>`).join('');
-    return `<div style="max-width:600px;margin:0 auto;font-family:Segoe UI,Arial,sans-serif;background:#F8FAFC;padding:0 0 24px;">
+    const paras=safe(body).split('\n').filter(l=>l.trim()).map(l=>`<p style="margin:0 0 12px;font-size:15px;line-height:1.65;color:#3A4A42;">${l}</p>`).join('');
+    return `<div style="max-width:600px;margin:0 auto;font-family:Segoe UI,Arial,sans-serif;background:#F6F8F7;padding:0 0 24px;">
       <div style="background:linear-gradient(135deg,#0A6E47,#0A6E47);padding:28px 24px;text-align:center;border-radius:0 0 18px 18px;">
         <div style="font-size:22px;font-weight:800;color:#fff;">🏪 DukaLangu Smart POS</div>
         <div style="font-size:13px;color:#BBF7D0;margin-top:4px;">Simamia Biashara Yako Kidijitali</div>
@@ -2235,13 +2235,13 @@ export function AppProvider({children}){
       <div style="background:#fff;margin:18px;border-radius:16px;padding:26px;box-shadow:0 2px 10px rgba(0,0,0,.05);">
         <div style="display:inline-block;background:#F0FDF4;color:#15803D;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;">✨ TAARIFA MPYA / UPDATE</div>
         <h1 style="font-size:20px;color:#0A6E47;margin:0 0 14px;">${safe(title)}</h1>
-        ${bizName?`<p style="font-size:14px;color:#64748B;margin:0 0 16px;">Habari <b>${safe(bizName)}</b>,</p>`:''}
+        ${bizName?`<p style="font-size:14px;color:#5C6A62;margin:0 0 16px;">Habari <b>${safe(bizName)}</b>,</p>`:''}
         ${paras}
         <div style="margin-top:22px;text-align:center;">
           <a href="https://dukalangu.com" style="display:inline-block;background:#0A6E47;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;">Fungua Mfumo →</a>
         </div>
       </div>
-      <div style="text-align:center;font-size:12px;color:#94A3B8;padding:0 24px;">
+      <div style="text-align:center;font-size:12px;color:#9AA5A0;padding:0 24px;">
         <p style="margin:4px 0;">Asante kwa kuendelea kutumia DukaLangu.</p>
         <p style="margin:4px 0;">Msaada: +255 617 288 752 • dukalangu.com</p>
       </div>
@@ -2404,7 +2404,7 @@ export function AppProvider({children}){
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#7C3AED;font-size:14px;">${days}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${endDate}</td></tr>
           <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0A6E47;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuwa mteja wetu mwaminifu.</p>`;
@@ -2420,7 +2420,7 @@ export function AppProvider({children}){
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku za fidia</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#EA580C;font-size:14px;">${days}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${endDate}</td></tr>
           <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0A6E47;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Tunathamini uvumilivu wako.</p>`;
@@ -2439,7 +2439,7 @@ export function AppProvider({children}){
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Kiasi ulicholipa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0A6E47;font-size:15px;">TZS ${(+amount||0).toLocaleString()}</td></tr>
           ${method?`<tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Njia ya malipo</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#344054;font-size:13.5px;">${method}</td></tr>`:''}
           <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Siku zilizoongezwa</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:800;color:#0A6E47;font-size:14px;">${days}</td></tr>
-          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#101828;font-size:13.5px;">${endDate}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;color:#667085;font-size:13px;">Mfumo utaendelea hadi</td><td style="padding:10px 0;border-bottom:1px solid #F2F4F7;text-align:right;font-weight:700;color:#17231D;font-size:13.5px;">${endDate}</td></tr>
           <tr><td style="padding:10px 0;color:#667085;font-size:13px;">Siku zilizobaki</td><td style="padding:10px 0;text-align:right;font-weight:800;color:#0A6E47;font-size:15px;">${daysLeft}</td></tr>
         </table>
         <p style="margin:18px 0 0;font-size:14px;color:#475569;">Asante kwa kuendelea kutumia DukaLangu.</p>`;
@@ -2510,7 +2510,7 @@ export function AppProvider({children}){
     });
     // Recent sales (last 24h)
     sales.filter(s=>new Date(s.created_at)>new Date(day)).forEach(s=>{
-      feed.push({type:'sale',icon:'🛒',title:`Mauzo: TZS ${(s.total||0).toLocaleString()} — ${s.seller_name||''}`,time:s.created_at,color:'#22C55E',biz:businesses.find(b=>b.id===s.business_id)?.name});
+      feed.push({type:'sale',icon:'🛒',title:`Mauzo: TZS ${(s.total||0).toLocaleString()} — ${s.seller_name||''}`,time:s.created_at,color:'#0A6E47',biz:businesses.find(b=>b.id===s.business_id)?.name});
     });
     // Recent signups (last 7 days)
     businesses.filter(b=>new Date(b.created_at)>new Date(Date.now()-7*86400000)).forEach(b=>{
@@ -2518,7 +2518,7 @@ export function AppProvider({children}){
     });
     // Recent payments
     paymentRequests.filter(p=>new Date(p.created_at)>new Date(day)).forEach(p=>{
-      feed.push({type:'payment',icon:p.status==='approved'?'✅':p.status==='pending'?'⏳':'❌',title:`Malipo: ${p.business_name} — TZS ${(p.amount||0).toLocaleString()}`,time:p.created_at,color:p.status==='approved'?'#22C55E':p.status==='pending'?'#F59E0B':'#EF4444'});
+      feed.push({type:'payment',icon:p.status==='approved'?'✅':p.status==='pending'?'⏳':'❌',title:`Malipo: ${p.business_name} — TZS ${(p.amount||0).toLocaleString()}`,time:p.created_at,color:p.status==='approved'?'#0A6E47':p.status==='pending'?'#F2B705':'#C2412D'});
     });
     // Sort by time (newest first)
     return feed.sort((a,b)=>new Date(b.time)-new Date(a.time)).slice(0,50);
@@ -2683,12 +2683,12 @@ export function AppProvider({children}){
   // ===== AGENT LEADERBOARD =====
   // Supervisor tier definitions
   const AGENT_TIERS=[
-    {min:51,name:'Shujaa',emoji:'👑',color:'#F59E0B',bonus:650000},
+    {min:51,name:'Shujaa',emoji:'👑',color:'#F2B705',bonus:650000},
     {min:36,name:'Bingwa',emoji:'💎',color:'#8B5CF6',bonus:400000},
     {min:21,name:'Hodari',emoji:'🥇',color:'#0A6E47',bonus:250000},
     {min:11,name:'Wastani',emoji:'🥈',color:'#3B82F6',bonus:130000},
-    {min:5,name:'Mwanzo',emoji:'🥉',color:'#64748B',bonus:50000},
-    {min:0,name:'Bado',emoji:'⏳',color:'#94A3B8',bonus:0},
+    {min:5,name:'Mwanzo',emoji:'🥉',color:'#5C6A62',bonus:50000},
+    {min:0,name:'Bado',emoji:'⏳',color:'#9AA5A0',bonus:0},
   ];
   const getAgentTier=(activeCount)=>AGENT_TIERS.find(t=>activeCount>=t.min)||AGENT_TIERS[AGENT_TIERS.length-1];
 

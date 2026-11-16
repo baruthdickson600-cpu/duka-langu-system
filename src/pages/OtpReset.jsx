@@ -140,8 +140,8 @@ export default function OtpReset({email,onDone,onBack}){
     <style>{OTP_CSS}</style>
 
     {phase!=='password'&&<>
-      <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Thibitisha Code</h3>
-      <p style={{fontSize:13,color:'#64748B',marginBottom:20,lineHeight:1.5}}>
+      <h3 style={{fontSize:20,fontWeight:800,color:'#17231D',margin:'0 0 6px'}}>Thibitisha Code</h3>
+      <p style={{fontSize:13,color:'#5C6A62',marginBottom:20,lineHeight:1.5}}>
         Tumetuma code ya tarakimu 8 kwa<br/><b style={{color:GREEN}}>{email}</b>
       </p>
 
@@ -209,7 +209,7 @@ export default function OtpReset({email,onDone,onBack}){
 
       {/* Makosa */}
       {phase==='otp'&&err&&(
-        <div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginTop:16,borderLeft:'4px solid #EF4444',textAlign:'center'}}>
+        <div style={{background:'#FBECE9',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginTop:16,borderLeft:'4px solid #C2412D',textAlign:'center'}}>
           {err}
         </div>
       )}
@@ -218,13 +218,13 @@ export default function OtpReset({email,onDone,onBack}){
       {phase==='otp'&&(
         <div style={{textAlign:'center',marginTop:20}}>
           {expired||err?(
-            <button onClick={resend} disabled={cooldown>0||resending} style={{background:cooldown>0?'#E2E8F0':GREEN,color:cooldown>0?'#94A3B8':'#fff',border:'none',borderRadius:10,padding:'10px 20px',fontWeight:700,fontSize:13,cursor:cooldown>0?'default':'pointer'}}>
+            <button onClick={resend} disabled={cooldown>0||resending} style={{background:cooldown>0?'#D6E2DB':GREEN,color:cooldown>0?'#9AA5A0':'#fff',border:'none',borderRadius:10,padding:'10px 20px',fontWeight:700,fontSize:13,cursor:cooldown>0?'default':'pointer'}}>
               {resending?'Inatuma...':cooldown>0?`Subiri ${cooldown}s`:'Tuma Code Mpya'}
             </button>
           ):(
-            <p style={{fontSize:12.5,color:'#64748B',margin:0}}>
+            <p style={{fontSize:12.5,color:'#5C6A62',margin:0}}>
               Hujapokea code?{' '}
-              <span onClick={resend} style={{color:cooldown>0?'#94A3B8':GREEN,fontWeight:700,cursor:cooldown>0?'default':'pointer'}}>
+              <span onClick={resend} style={{color:cooldown>0?'#9AA5A0':GREEN,fontWeight:700,cursor:cooldown>0?'default':'pointer'}}>
                 {cooldown>0?`Subiri ${cooldown}s`:'Tuma tena'}
               </span>
             </p>
@@ -263,7 +263,7 @@ function NewPasswordForm({setNewPassword,onDone}){
   const passed=rules.filter(r=>r.ok).length;
   const strength=passed===0?0:passed===1?1:passed===2?2:passed===3?3:4;
   const strengthLabel=['','Dhaifu','Wastani','Nzuri','Imara'][strength];
-  const strengthColor=['#E2E8F0','#EF4444','#F59E0B','#3B82F6','#16A34A'][strength];
+  const strengthColor=['#D6E2DB','#C2412D','#F2B705','#3B82F6','#16A34A'][strength];
   const allOk=rules.every(r=>r.ok);
 
   const submit=async()=>{
@@ -285,14 +285,14 @@ function NewPasswordForm({setNewPassword,onDone}){
   );
 
   const inpWrap={position:'relative',marginBottom:14};
-  const inp={width:'100%',padding:'12px 44px 12px 14px',borderRadius:12,border:'1.5px solid #E2E8F0',fontSize:14,outline:'none',boxSizing:'border-box'};
-  const eyeBtn={position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'#94A3B8',cursor:'pointer',padding:0,display:'flex'};
+  const inp={width:'100%',padding:'12px 44px 12px 14px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:14,outline:'none',boxSizing:'border-box'};
+  const eyeBtn={position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'#9AA5A0',cursor:'pointer',padding:0,display:'flex'};
 
   return <div>
-    <h3 style={{fontSize:20,fontWeight:800,color:'#1E293B',margin:'0 0 6px'}}>Unda Password Mpya</h3>
-    <p style={{fontSize:13,color:'#64748B',marginBottom:20}}>Chagua password imara ili kulinda akaunti yako.</p>
+    <h3 style={{fontSize:20,fontWeight:800,color:'#17231D',margin:'0 0 6px'}}>Unda Password Mpya</h3>
+    <p style={{fontSize:13,color:'#5C6A62',marginBottom:20}}>Chagua password imara ili kulinda akaunti yako.</p>
 
-    {err&&<div style={{background:'#FEF2F2',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #EF4444'}}>{err}</div>}
+    {err&&<div style={{background:'#FBECE9',color:'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:14,borderLeft:'4px solid #C2412D'}}>{err}</div>}
 
     <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Password Mpya</label>
     <div style={inpWrap}>
@@ -304,13 +304,13 @@ function NewPasswordForm({setNewPassword,onDone}){
     {pw&&<div style={{marginTop:-6,marginBottom:14}}>
       <div style={{display:'flex',gap:5,marginBottom:8}}>
         {[1,2,3,4].map(n=>(
-          <div key={n} style={{flex:1,height:5,borderRadius:3,background:n<=strength?strengthColor:'#E2E8F0',transition:'all 0.3s'}}/>
+          <div key={n} style={{flex:1,height:5,borderRadius:3,background:n<=strength?strengthColor:'#D6E2DB',transition:'all 0.3s'}}/>
         ))}
       </div>
       <div style={{fontSize:11.5,fontWeight:700,color:strengthColor,marginBottom:8}}>{strengthLabel}</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 10px'}}>
         {rules.map((r,i)=>(
-          <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:r.ok?'#16A34A':'#94A3B8'}}>
+          <div key={i} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,color:r.ok?'#16A34A':'#9AA5A0'}}>
             <span style={{fontSize:12}}>{r.ok?'✓':'○'}</span>{r.label}
           </div>
         ))}
@@ -319,10 +319,10 @@ function NewPasswordForm({setNewPassword,onDone}){
 
     <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Rudia Password</label>
     <div style={inpWrap}>
-      <input type={show2?'text':'password'} value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...inp,borderColor:pw2&&pw!==pw2?'#EF4444':'#E2E8F0'}} onKeyDown={e=>e.key==='Enter'&&submit()}/>
+      <input type={show2?'text':'password'} value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...inp,borderColor:pw2&&pw!==pw2?'#C2412D':'#D6E2DB'}} onKeyDown={e=>e.key==='Enter'&&submit()}/>
       <button type="button" onClick={()=>setShow2(s=>!s)} style={eyeBtn}>{eye(show2)}</button>
     </div>
-    {pw2&&pw!==pw2&&<div style={{fontSize:11,color:'#EF4444',marginTop:-8,marginBottom:12}}>Password hazifanani</div>}
+    {pw2&&pw!==pw2&&<div style={{fontSize:11,color:'#C2412D',marginTop:-8,marginBottom:12}}>Password hazifanani</div>}
 
     <button onClick={submit} disabled={busy||!allOk||pw!==pw2} style={{width:'100%',padding:'13px 0',borderRadius:12,border:'none',fontWeight:800,fontSize:15,cursor:busy||!allOk?'default':'pointer',background:(!allOk||pw!==pw2)?'#CBD5E1':GREEN,color:'#fff',transition:'all 0.2s'}}>
       {busy?'Inahifadhi...':'Hifadhi Password Mpya'}
@@ -336,11 +336,11 @@ function NewPasswordForm({setNewPassword,onDone}){
 const OTP_CSS=`
 .otp-stage{position:relative;min-height:76px;display:flex;align-items:center;justify-content:center;}
 .otp-boxes{display:flex;gap:6px;justify-content:center;transition:opacity .2s ease;}
-.otp-box{width:38px;height:50px;border:1.5px solid #E2E8F0;border-radius:11px;text-align:center;font-size:21px;font-weight:800;color:#0A6E47;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
+.otp-box{width:38px;height:50px;border:1.5px solid #D6E2DB;border-radius:11px;text-align:center;font-size:21px;font-weight:800;color:#0A6E47;outline:none;background:#fff;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;-moz-appearance:textfield;}
 .otp-box::-webkit-outer-spin-button,.otp-box::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .otp-box:focus{border-color:#0A6E47;box-shadow:0 0 0 3px rgba(11,122,59,.14);transform:translateY(-2px);}
-.otp-box-filled{border-color:#0A6E47;background:#F0FDF4;}
-.otp-box-err{border-color:#EF4444 !important;background:#FEF2F2 !important;}
+.otp-box-filled{border-color:#0A6E47;background:#E6F2EC;}
+.otp-box-err{border-color:#C2412D !important;background:#FBECE9 !important;}
 
 @media (max-width:400px){.otp-box{width:32px;height:44px;font-size:18px;border-radius:9px;}.otp-boxes{gap:4px;}}
 @media (max-width:320px){.otp-box{width:28px;height:40px;font-size:16px;}.otp-boxes{gap:3px;}}
@@ -383,7 +383,7 @@ const OTP_CSS=`
 /* Success text */
 .success-text{text-align:center;margin-top:18px;}
 .st-1{font-size:18px;font-weight:800;color:#0A6E47;opacity:0;animation:fadeUp .4s ease 1.3s forwards;}
-.st-2{font-size:13px;color:#64748B;margin-top:4px;opacity:0;animation:fadeUp .4s ease 1.55s forwards;}
+.st-2{font-size:13px;color:#5C6A62;margin-top:4px;opacity:0;animation:fadeUp .4s ease 1.55s forwards;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
 /* Shake ya kosa */
