@@ -23,8 +23,30 @@ export default function RevenuePage(){
     (async()=>{
       setLoading(true);
       try{
-        const{data}=await supabase.from('payment_requests').select('*').eq('status','approved').order('approved_at',{ascending:false});
-        setPayments(data||[]);
+        // Vyanzo viwili:
+        // 1) payment_transactions — malipo halisi ya wateja kupitia gateway (Snippe)
+        // 2) payment_requests — siku ulizoongeza wewe (admin extend) na malipo ya zamani
+        const[txRes,reqRes]=await Promise.all([
+          supabase.from('payment_transactions').select('*').eq('status','paid').order('created_at',{ascending:false}),
+          supabase.from('payment_requests').select('*').eq('status','approved').order('approved_at',{ascending:false}),
+        ]);
+        const tx=(txRes?.data||[]).map(t=>({
+          id:'tx-'+t.id,
+          amount:t.amount,
+          approved_at:t.paid_at||t.created_at,
+          created_at:t.created_at,
+          business_name:t.business_name,
+          phone:t.phone||t.payer_phone,
+          payer_name:t.payer_name,
+          payer_phone:t.payer_phone||t.phone,
+          payment_method:t.channel||'gateway',
+          transaction_id:t.reference||t.provider_ref||t.id,
+          days_given:t.days,
+          revenue_type:'sale',
+          source:'gateway',
+        }));
+        setPayments([...tx,...(reqRes?.data||[])].sort((a,b)=>
+          new Date(b.approved_at||b.created_at||0)-new Date(a.approved_at||a.created_at||0)));
       }catch(e){console.warn('[revenue]',e?.message);}
       setLoading(false);
     })();
@@ -149,16 +171,16 @@ export default function RevenuePage(){
 
   const PERIODS=[['today','Leo'],['week','Wiki'],['month','Mwezi'],['year','Mwaka'],['all','Zote']];
 
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>💰 Ripoti ya Mapato</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Mapato yote — malipo ya wateja + siku ulizoongeza</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Mapato yote — malipo ya wateja + siku ulizoongeza</p>
     </div>
 
     {/* Muda */}
     <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
       {PERIODS.map(([id,l])=>(
-        <button key={id} onClick={()=>setPeriod(id)} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:period===id?'#0A6E47':'#F1F5F9',color:period===id?'#fff':'#64748B'}}>{l}</button>
+        <button key={id} onClick={()=>setPeriod(id)} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:period===id?'#0A6E47':'#F6F8F7',color:period===id?'#fff':'#5C6A62'}}>{l}</button>
       ))}
     </div>
 
@@ -189,33 +211,33 @@ export default function RevenuePage(){
     {/* Chanzo cha mapato */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginBottom:14}}>
       <div className="card" style={{padding:16}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:6}}>👑 ULIZOONGEZA WEWE</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:6}}>👑 ULIZOONGEZA WEWE</div>
         <div style={{fontSize:22,fontWeight:900,color:'#0A6E47'}}>{fm(stats.adminRevenue)}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Malipo {stats.adminCount}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:2}}>Malipo {stats.adminCount}</div>
       </div>
       <div className="card" style={{padding:16}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:6}}>🏪 MTEJA ALIYETUMA</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:6}}>🏪 MTEJA ALIYETUMA</div>
         <div style={{fontSize:22,fontWeight:900,color:'#3B82F6'}}>{fm(stats.custRevenue)}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>Malipo {stats.custCount}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:2}}>Malipo {stats.custCount}</div>
       </div>
       {stats.methods.slice(0,2).map(([m,amt],i)=>(
         <div key={i} className="card" style={{padding:16}}>
-          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:6}}>💳 {m.toUpperCase()}</div>
+          <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:6}}>💳 {m.toUpperCase()}</div>
           <div style={{fontSize:22,fontWeight:900,color:'#8B5CF6'}}>{fm(amt)}</div>
-          <div style={{fontSize:11,color:'#94A3B8',marginTop:2}}>{Math.round((amt/stats.total)*100)||0}% ya jumla</div>
+          <div style={{fontSize:11,color:'#9AA5A0',marginTop:2}}>{Math.round((amt/stats.total)*100)||0}% ya jumla</div>
         </div>
       ))}
     </div>
 
     {/* Chart */}
     {chartData.some(d=>d.value>0)&&<div className="card" style={{marginBottom:14,padding:18}}>
-      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#101828'}}>📈 Mwenendo wa Mapato</h3>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 14px',color:'#17231D'}}>📈 Mwenendo wa Mapato</h3>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9"/>
-          <XAxis dataKey="name" tick={{fontSize:10,fill:'#94A3B8'}} interval="preserveStartEnd"/>
-          <YAxis tick={{fontSize:10,fill:'#94A3B8'}} tickFormatter={v=>v>=1000?`${v/1000}K`:v}/>
-          <Tooltip formatter={v=>fm(v)} contentStyle={{borderRadius:10,border:'1px solid #E2E8F0',fontSize:12}}/>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F6F8F7"/>
+          <XAxis dataKey="name" tick={{fontSize:10,fill:'#9AA5A0'}} interval="preserveStartEnd"/>
+          <YAxis tick={{fontSize:10,fill:'#9AA5A0'}} tickFormatter={v=>v>=1000?`${v/1000}K`:v}/>
+          <Tooltip formatter={v=>fm(v)} contentStyle={{borderRadius:10,border:'1px solid #D6E2DB',fontSize:12}}/>
           <Bar dataKey="value" fill="#0A6E47" radius={[6,6,0,0]}/>
         </BarChart>
       </ResponsiveContainer>
@@ -223,14 +245,14 @@ export default function RevenuePage(){
 
     {/* Wateja waliolipa zaidi */}
     {topPayers.length>0&&<div className="card" style={{marginBottom:14}}>
-      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#101828'}}>🏆 Wateja Waliolipa Zaidi</h3>
+      <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#17231D'}}>🏆 Wateja Waliolipa Zaidi</h3>
       <div style={{display:'flex',flexDirection:'column',gap:2}}>
         {topPayers.map((p,i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:i<topPayers.length-1?'1px solid #F9FAFB':'none'}}>
             <span style={{
               width:24,height:24,borderRadius:'50%',flexShrink:0,fontSize:11,fontWeight:800,
               display:'flex',alignItems:'center',justifyContent:'center',
-              background:i<3?'#F0FDF4':'#F8FAFC',color:i<3?'#0A6E47':'#94A3B8',
+              background:i<3?'#E6F2EC':'#F6F8F7',color:i<3?'#0A6E47':'#9AA5A0',
             }}>{i+1}</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:700,color:'#344054'}}>{p.name}</div>
@@ -247,15 +269,15 @@ export default function RevenuePage(){
       <Input placeholder="🔍 Tafuta biashara, simu, au namba..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:0,flex:1,minWidth:180}}/>
       <div style={{display:'flex',gap:6}}>
         {[['all','Zote'],['sale','💰 Mauzo'],['gift','🎁 Zawadi'],['compensation','🔧 Fidia']].map(([id,l])=>(
-          <button key={id} onClick={()=>setTypeFilter(id)} style={{padding:'8px 12px',borderRadius:8,border:typeFilter===id?'2px solid #0A6E47':'1px solid #E2E8F0',background:typeFilter===id?'#F0FDF4':'#fff',color:typeFilter===id?'#0A6E47':'#64748B',fontWeight:600,fontSize:11.5,cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
+          <button key={id} onClick={()=>setTypeFilter(id)} style={{padding:'8px 12px',borderRadius:8,border:typeFilter===id?'2px solid #0A6E47':'1px solid #D6E2DB',background:typeFilter===id?'#E6F2EC':'#fff',color:typeFilter===id?'#0A6E47':'#5C6A62',fontWeight:600,fontSize:11.5,cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
         ))}
       </div>
       <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #0A6E47',background:'#fff',color:'#0A6E47',fontWeight:700,fontSize:12,cursor:'pointer',whiteSpace:'nowrap'}}>📥 Excel</button>
     </div>
 
-    <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Malipo {filtered.length}</div>
+    <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>Malipo {filtered.length}</div>
 
-    {loading?<div className="card"><div style={{height:60,background:'#F1F5F9',borderRadius:8}}/></div>:
+    {loading?<div className="card"><div style={{height:60,background:'#F6F8F7',borderRadius:8}}/></div>:
      !filtered.length?<div className="card"><Empty icon="💰" text="Hakuna mapato kwa muda huu"/></div>:
      <div style={{display:'flex',flexDirection:'column',gap:8}}>
       {filtered.map(p=>{
@@ -265,7 +287,7 @@ export default function RevenuePage(){
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:150}}>
               <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginBottom:3}}>
-                <b style={{fontSize:13.5,color:'#101828'}}>{p.payer_name||p.business_name||'—'}</b>
+                <b style={{fontSize:13.5,color:'#17231D'}}>{p.payer_name||p.business_name||'—'}</b>
                 {isAdmin&&<Badge color="#0A6E47">👑 Admin</Badge>}
                 {type==='gift'&&<Badge color="#8B5CF6">🎁 Zawadi</Badge>}
                 {type==='compensation'&&<Badge color="#EA580C">🔧 Fidia</Badge>}
@@ -274,10 +296,10 @@ export default function RevenuePage(){
                 {p.payer_phone||'—'} • {p.payment_method||'—'}
                 {p.days_given&&` • Siku ${p.days_given}`}
               </div>
-              {p.notes&&<div style={{fontSize:11,color:'#94A3B8',marginTop:3,fontStyle:'italic'}}>{p.notes}</div>}
+              {p.notes&&<div style={{fontSize:11,color:'#9AA5A0',marginTop:3,fontStyle:'italic'}}>{p.notes}</div>}
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontSize:16,fontWeight:900,color:type==='sale'?'#0A6E47':'#94A3B8'}}>
+              <div style={{fontSize:16,fontWeight:900,color:type==='sale'?'#0A6E47':'#9AA5A0'}}>
                 {type==='sale'?fm(p.amount):'—'}
               </div>
               <div style={{fontSize:10,color:'#98A2B3',marginTop:2}}>

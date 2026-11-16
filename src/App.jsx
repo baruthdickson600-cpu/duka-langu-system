@@ -279,7 +279,7 @@ export default function App(){
         case'comms_center':return <CommsCenterPage/>;
         case'cleanup':return <AccountCleanupPage/>;
         case'revenue':return <RevenuePage/>;
-        default:return <AdminDashboard/>;
+        default:return <AdminDashboard onNav={setPage}/>;
       }
     }
     if(role==='marketing'){

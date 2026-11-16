@@ -1,6 +1,8 @@
 import React,{useState,useEffect,useMemo} from 'react';
 import { API_BASE } from '../../config/api';
-import {useApp} from '../../context/AppContext';
+import {useApp} from '../../context/AppContext'
+import {usePaidTx,sumTx,txAmt,txMonth,CH_LABEL} from '../../hooks/usePaidTx'
+import {PageHead,GBtn,MonthIn,SumCard} from '../../components/Page';
 import {IC,Stat,Badge,Empty,Input,Sel,Btn,Modal} from '../../components/UI';
 
 const fmtDate=d=>d?new Date(d).toLocaleDateString('sw-TZ',{day:'numeric',month:'short',year:'numeric'}):'—';
@@ -10,53 +12,6 @@ const fmN=n=>(+n||0).toLocaleString();
 const PRICE=15000;
 const CATS=['Umeme','Maji','Internet','Kodi ya Pango','Usafiri','Vifaa vya Ofisi','Mishahara','Matengenezo','Marketing','Chakula','SMS/Beem','Server/Hosting','Domain','Nyingine'];
 const curMonth=()=>new Date().toISOString().slice(0,7);
-
-// Majina rafiki ya chaneli za malipo
-const CH_LABEL={mpesa:'M-Pesa',vodacom:'M-Pesa',tigopesa:'Mixx by Yas',tigo:'Mixx by Yas',airtelmoney:'Airtel Money',airtel:'Airtel Money',halopesa:'HaloPesa',halotel:'HaloPesa'};
-
-// ===== MAPATO HALISI =====
-// Yanasomeka TU kutoka malipo yaliyothibitishwa kuingia kwenye akaunti mpya
-// (jedwali la payment_transactions, status='paid'). Hakuna makadirio ya tokens.
-function usePaidTx(){
-  const{supabase}=useApp();
-  const[tx,setTx]=useState([]);
-  const[loading,setLoading]=useState(true);
-  useEffect(()=>{
-    let on=true;
-    if(!supabase){setLoading(false);return}
-    supabase.from('payment_transactions').select('*').eq('status','paid')
-      .order('created_at',{ascending:false}).limit(2000)
-      .then(({data})=>{if(on){setTx(data||[]);setLoading(false)}},()=>{if(on)setLoading(false)});
-    return()=>{on=false};
-  },[supabase]);
-  return{tx,loading};
-}
-const txAmt=t=>+t.amount||0;
-const txMonth=t=>(t.paid_at||t.created_at||'').slice(0,7);
-const sumTx=list=>list.reduce((a,t)=>a+txAmt(t),0);
-
-// ===== VIPENGELE VYA PAMOJA (muonekano mmoja kurasa zote) =====
-function PageHead({icon,title,sub,children}){
-  return <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:10,flexWrap:'wrap',marginBottom:16}}>
-    <div>
-      <h2 style={{fontSize:20,fontWeight:900,margin:'0 0 3px',color:'#0A6E47'}}>{icon} {title}</h2>
-      {sub&&<p style={{fontSize:12.5,color:'#5C6A62',margin:0}}>{sub}</p>}
-    </div>
-    {children&&<div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>{children}</div>}
-  </div>;
-}
-const GBtn=({children,...p})=><button className="ripple" {...p} style={{padding:'9px 18px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#0A6E47,#06502F)',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer',boxShadow:'0 6px 16px rgba(10,110,71,.25)',...(p.style||{})}}>{children}</button>;
-const MonthIn=p=><input type="month" {...p} style={{padding:'9px 12px',borderRadius:12,border:'1.5px solid #D6E2DB',fontSize:13,background:'#fff',color:'#17231D'}}/>;
-// Kadi ya muhtasari (KPI) ya kisasa
-function SumCard({label,value,color='#0A6E47',hint}){
-  const s=String(value??'');
-  const fs=s.length>13?12.5:s.length>10?14.5:s.length>7?17:21; // namba ndefu zisikatike mstari
-  return <div className="card" style={{padding:'14px 10px',textAlign:'center'}}>
-    <div style={{fontSize:9.5,color:'#5C6A62',fontWeight:700,textTransform:'uppercase',letterSpacing:.5}}>{label}</div>
-    <div style={{fontSize:fs,fontWeight:900,color,marginTop:3,letterSpacing:'-.5px',whiteSpace:'nowrap'}}>{value}</div>
-    {hint&&<div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>{hint}</div>}
-  </div>;
-}
 
 // ===== F8: FINANCIAL HEALTH SCORE =====
 function HealthScore({revenue,expenses}){

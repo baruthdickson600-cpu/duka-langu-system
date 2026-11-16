@@ -72,7 +72,7 @@ export default function FaqManagePage(){
 
   const filtered=faqs.filter(f=>!search||f.question.toLowerCase().includes(search.toLowerCase())||f.answer.toLowerCase().includes(search.toLowerCase()));
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h2 style={{fontSize:20,fontWeight:800,margin:0}}>❓ Maswali na Majibu (FAQ)</h2>
       <Btn onClick={()=>{setEdit(null);setF({question:'',answer:'',category:'general',keywords:''});setModal(true)}}>{IC.plus} Swali Jipya</Btn>
@@ -80,15 +80,15 @@ export default function FaqManagePage(){
 
     {/* Tabs */}
     <div style={{display:'flex',gap:8,marginBottom:16}}>
-      <button onClick={()=>setTab('faqs')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='faqs'?'#0A6E47':'#F1F5F9',color:tab==='faqs'?'#fff':'#64748B'}}>
+      <button onClick={()=>setTab('faqs')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='faqs'?'#0A6E47':'#F6F8F7',color:tab==='faqs'?'#fff':'#5C6A62'}}>
         Maswali ({faqs.length})
       </button>
-      <button onClick={()=>setTab('unanswered')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='unanswered'?'#EF4444':'#F1F5F9',color:tab==='unanswered'?'#fff':'#64748B'}}>
+      <button onClick={()=>setTab('unanswered')} style={{padding:'8px 16px',borderRadius:10,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',background:tab==='unanswered'?'#C2412D':'#F6F8F7',color:tab==='unanswered'?'#fff':'#5C6A62'}}>
         Yasiyojibika ({unanswered.length})
       </button>
     </div>
 
-    {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>Inapakia...</div>:
+    {loading?<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>Inapakia...</div>:
      tab==='faqs'?<>
       <Input placeholder="🔍 Tafuta swali..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:14}}/>
       {!filtered.length?<div className="card"><Empty icon="❓" text="Hakuna maswali bado. Ongeza la kwanza!"/></div>:
@@ -99,17 +99,17 @@ export default function FaqManagePage(){
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                   <Badge color="#0A6E47">{faq.category}</Badge>
-                  {!faq.is_active&&<Badge color="#94A3B8">Imezimwa</Badge>}
-                  {faq.views>0&&<span style={{fontSize:11,color:'#94A3B8'}}>👁 {faq.views}</span>}
+                  {!faq.is_active&&<Badge color="#9AA5A0">Imezimwa</Badge>}
+                  {faq.views>0&&<span style={{fontSize:11,color:'#9AA5A0'}}>👁 {faq.views}</span>}
                 </div>
-                <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'#1E293B'}}>{faq.question}</div>
-                <div style={{fontSize:13,color:'#64748B',lineHeight:1.5}}>{faq.answer}</div>
-                {faq.keywords&&<div style={{fontSize:11,color:'#94A3B8',marginTop:6}}>🔑 {faq.keywords}</div>}
+                <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'#17231D'}}>{faq.question}</div>
+                <div style={{fontSize:13,color:'#5C6A62',lineHeight:1.5}}>{faq.answer}</div>
+                {faq.keywords&&<div style={{fontSize:11,color:'#9AA5A0',marginTop:6}}>🔑 {faq.keywords}</div>}
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                <button onClick={()=>openEdit(faq)} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'6px 8px',cursor:'pointer',fontSize:13}} title="Hariri">{IC.gear}</button>
-                <button onClick={()=>toggleActive(faq)} style={{background:faq.is_active?'#FEF3C7':'#DCFCE7',border:'none',borderRadius:6,padding:'6px 8px',cursor:'pointer',fontSize:12}} title={faq.is_active?'Zima':'Washa'}>{faq.is_active?'⏸':'▶'}</button>
-                <button onClick={()=>del(faq.id)} style={{background:'#FEF2F2',border:'none',borderRadius:6,padding:'6px 8px',color:'#EF4444',cursor:'pointer',fontSize:13}} title="Futa">{IC.del}</button>
+                <button onClick={()=>openEdit(faq)} style={{background:'#F6F8F7',border:'none',borderRadius:6,padding:'6px 8px',cursor:'pointer',fontSize:13}} title="Hariri">{IC.gear}</button>
+                <button onClick={()=>toggleActive(faq)} style={{background:faq.is_active?'#FFF8E6':'#D6EADF',border:'none',borderRadius:6,padding:'6px 8px',cursor:'pointer',fontSize:12}} title={faq.is_active?'Zima':'Washa'}>{faq.is_active?'⏸':'▶'}</button>
+                <button onClick={()=>del(faq.id)} style={{background:'#FBECE9',border:'none',borderRadius:6,padding:'6px 8px',color:'#C2412D',cursor:'pointer',fontSize:13}} title="Futa">{IC.del}</button>
               </div>
             </div>
           </div>
@@ -120,17 +120,17 @@ export default function FaqManagePage(){
       {!unanswered.length?<div className="card"><Empty icon="✅" text="Hakuna maswali yasiyojibika!"/></div>:
        <div style={{display:'flex',flexDirection:'column',gap:10}}>
         {unanswered.map(u=>(
-          <div key={u.id} className="card" style={{borderLeft:'4px solid #EF4444'}}>
+          <div key={u.id} className="card" style={{borderLeft:'4px solid #C2412D'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{u.question}</div>
-                <div style={{fontSize:11,color:'#94A3B8'}}>
+                <div style={{fontSize:11,color:'#9AA5A0'}}>
                   {u.user_email||'Mteja'} • {new Date(u.created_at).toLocaleDateString('sw')}
                 </div>
               </div>
               <div style={{display:'flex',gap:4}}>
-                <button onClick={()=>{setEdit(null);setF({question:u.question,answer:'',category:'general',keywords:''});setModal(true);resolveUnanswered(u.id)}} style={{background:'#DCFCE7',border:'none',borderRadius:6,padding:'6px 10px',color:'#15803D',cursor:'pointer',fontSize:12,fontWeight:600}}>+ Jibu</button>
-                <button onClick={()=>resolveUnanswered(u.id)} style={{background:'#F1F5F9',border:'none',borderRadius:6,padding:'6px 10px',cursor:'pointer',fontSize:12}}>✓ Funga</button>
+                <button onClick={()=>{setEdit(null);setF({question:u.question,answer:'',category:'general',keywords:''});setModal(true);resolveUnanswered(u.id)}} style={{background:'#D6EADF',border:'none',borderRadius:6,padding:'6px 10px',color:'#15803D',cursor:'pointer',fontSize:12,fontWeight:600}}>+ Jibu</button>
+                <button onClick={()=>resolveUnanswered(u.id)} style={{background:'#F6F8F7',border:'none',borderRadius:6,padding:'6px 10px',cursor:'pointer',fontSize:12}}>✓ Funga</button>
               </div>
             </div>
           </div>
@@ -143,8 +143,8 @@ export default function FaqManagePage(){
       <Input label="Swali *" value={f.question} onChange={e=>setF({...f,question:e.target.value})} placeholder="Mfano: Nawezaje kuongeza bidhaa?"/>
       <Area label="Jibu *" value={f.answer} onChange={e=>setF({...f,answer:e.target.value})} placeholder="Andika jibu kamili..." rows={5}/>
       <div style={{marginBottom:12}}>
-        <label style={{fontSize:12,fontWeight:600,color:'#64748B',display:'block',marginBottom:4}}>Aina (Category)</label>
-        <select value={f.category} onChange={e=>setF({...f,category:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}>
+        <label style={{fontSize:12,fontWeight:600,color:'#5C6A62',display:'block',marginBottom:4}}>Aina (Category)</label>
+        <select value={f.category} onChange={e=>setF({...f,category:e.target.value})} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13}}>
           {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
         </select>
       </div>

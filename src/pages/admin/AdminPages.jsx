@@ -3,11 +3,12 @@ import { API_BASE } from '../../config/api';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
+import {usePaidTx,sumTx,txAmt,txMonth,CH_LABEL} from '../../hooks/usePaidTx';
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
-const CL=['#0A6E47','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#EC4899'];
+const CL=['#0A6E47','#3B82F6','#F2B705','#C2412D','#8B5CF6','#EC4899'];
 
 // ===== ADMIN DASHBOARD =====
-export function AdminDashboard(){
+export function AdminDashboard({onNav}){
   const{businesses,tokens,promoCodes,notifications,loginLogs,settings,churnRisk,expiringBiz,agentLeaderboard,sales,paymentRequests}=useApp();
   
   // Comprehensive stats
@@ -18,16 +19,13 @@ export function AdminDashboard(){
   const weekBiz=businesses.filter(b=>isThisWeek(b.created_at));
   const monthBiz=businesses.filter(b=>isThisMonth(b.created_at));
   
-  // Revenue calculation (multiple sources)
-  const usedTokens=tokens.filter(t=>t.used);
-  const approvedPayments=(paymentRequests||[]).filter(p=>p.status==='approved');
-  const tokenRevenue=usedTokens.length*parseInt(settings.system_price||15000);
-  const paymentRevenue=approvedPayments.reduce((s,p)=>s+(p.amount||0),0);
-  const totalRevenue=Math.max(tokenRevenue,paymentRevenue,activeBiz.length*parseInt(settings.system_price||15000));
-  
-  // Monthly revenue
+  // MAPATO HALISI — pesa zilizoingia kwenye akaunti ya malipo pekee.
+  // (Hapo awali ilikuwa Math.max ya tokens/makadirio — ilionyesha pesa isiyopo.)
+  const{tx:paidTx}=usePaidTx();
+  const totalRevenue=sumTx(paidTx);
   const thisMonth=new Date().toISOString().slice(0,7);
-  const monthRevenue=approvedPayments.filter(p=>p.approved_at?.slice(0,7)===thisMonth).reduce((s,p)=>s+(p.amount||0),0);
+  const monthRevenue=sumTx(paidTx.filter(t=>txMonth(t)===thisMonth));
+  const expectedRevenue=activeBiz.length*parseInt(settings.system_price||15000); // tarajiwa, si halisi
   
   // Pending items
   const pendingPayments=(paymentRequests||[]).filter(p=>p.status==='pending').length;
@@ -38,101 +36,107 @@ export function AdminDashboard(){
   
   // Pie chart - business status
   const statusData=[
-    {name:'Active',value:activeBiz.length,color:'#22C55E'},
-    {name:'Trial',value:trialBiz.length,color:'#F59E0B'},
-    {name:'Suspended',value:suspendedBiz.length,color:'#EF4444'},
+    {name:'Active',value:activeBiz.length,color:'#0A6E47'},
+    {name:'Trial',value:trialBiz.length,color:'#F2B705'},
+    {name:'Suspended',value:suspendedBiz.length,color:'#C2412D'},
   ].filter(s=>s.value>0);
   
   // Conversion rate
   const totalEverSignedUp=businesses.length;
   const convRate=totalEverSignedUp>0?Math.round(activeBiz.length/totalEverSignedUp*100):0;
 
-  return <div>
+  const hour=new Date().getHours();
+  const greet=hour<12?'Habari za asubuhi':hour<16?'Habari za mchana':hour<19?'Habari za jioni':'Habari za usiku';
+  const QA=[{p:'stores',i:'🏪',l:'Maduka'},{p:'payments',i:'💰',l:'Malipo'},{p:'payout_approvals',i:'✅',l:'Idhini'},{p:'reports',i:'📊',l:'Ripoti'}];
+
+  return <div className="page-enter">
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>🛡️ ADMIN — Dashboard</h3>
+    <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>{greet} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+
     {/* Announcement Banner */}
-    {settings.announcement&&<div style={{background:settings.announcement_type==='warning'?'#FFF7ED':settings.announcement_type==='danger'?'#FEF2F2':'#F0FDF4',border:`1px solid ${settings.announcement_type==='warning'?'#FED7AA':settings.announcement_type==='danger'?'#FECACA':'#BBF7D0'}`,borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:13,fontWeight:600,color:settings.announcement_type==='warning'?'#92400E':settings.announcement_type==='danger'?'#B91C1C':'#15803D'}}>📢 {settings.announcement}</div>}
+    {settings.announcement&&<div style={{background:settings.announcement_type==='warning'?'#FFF8E6':settings.announcement_type==='danger'?'#FBECE9':'#E6F2EC',border:`1px solid ${settings.announcement_type==='warning'?'#F2D98B':settings.announcement_type==='danger'?'#F0D9D4':'#C2DED1'}`,borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:13,fontWeight:600,color:settings.announcement_type==='warning'?'#92400E':settings.announcement_type==='danger'?'#B91C1C':'#15803D'}}>📢 {settings.announcement}</div>}
 
     {/* HERO REVENUE CARD */}
-    <div style={{background:'linear-gradient(135deg,#0A6E47 0%,#0A6E47 100%)',borderRadius:20,padding:24,marginBottom:18,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 12px 40px rgba(11,122,59,0.25)'}}>
+    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:20,padding:24,marginBottom:18,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 12px 40px rgba(11,122,59,0.25)'}}>
       <div style={{position:'absolute',top:-40,right:-40,width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,0.08)'}}/>
       <div style={{position:'absolute',bottom:-50,left:-50,width:180,height:180,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
-      <div style={{position:'relative',zIndex:1,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:16}}>
-        <div>
-          <div style={{fontSize:11,fontWeight:700,opacity:0.85,letterSpacing:1.5,marginBottom:6}}>💰 MAPATO JUMLA</div>
-          <div style={{fontSize:42,fontWeight:900,letterSpacing:-1,marginBottom:4}}>{fmtMoney(totalRevenue)}</div>
-          <div style={{fontSize:12,opacity:0.9}}>Mwezi huu: <b>{fmtMoney(monthRevenue)}</b> • Tokens: <b>{usedTokens.length}</b></div>
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
-          <div style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(10px)',padding:'12px 16px',borderRadius:12,minWidth:100}}>
-            <div style={{fontSize:11,opacity:0.85}}>📈 Conversion</div>
-            <div style={{fontSize:24,fontWeight:900}}>{convRate}%</div>
-            <div style={{fontSize:10,opacity:0.7}}>trial → paid</div>
-          </div>
-          <div style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(10px)',padding:'12px 16px',borderRadius:12,minWidth:100}}>
-            <div style={{fontSize:11,opacity:0.85}}>⏳ Pending</div>
-            <div style={{fontSize:24,fontWeight:900}}>{pendingPayments}</div>
-            <div style={{fontSize:10,opacity:0.7}}>malipo</div>
-          </div>
+      <div style={{position:'relative',zIndex:1}}>
+        <div style={{fontSize:11,fontWeight:700,opacity:0.85,letterSpacing:1.5}}>💰 MAPATO JUMLA (YALIYOINGIA)</div>
+        <div style={{fontSize:38,fontWeight:900,letterSpacing:-1.5,lineHeight:1.1,margin:'2px 0 4px'}}>{fmtMoney(totalRevenue)}</div>
+        <div style={{fontSize:12,opacity:0.9}}>Mwezi huu: <b>{fmtMoney(monthRevenue)}</b> • Malipo: <b>{paidTx.length}</b></div>
+        <div style={{display:'flex',gap:10,marginTop:18,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.18)'}}>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>CONVERSION</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap'}}>{convRate}%</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>TARAJIWA</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap',color:'#FDE68A'}}>{(expectedRevenue||0).toLocaleString()}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>PENDING</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap',color:pendingPayments?'#FDE68A':'#86EFAC'}}>{pendingPayments}</div></div>
         </div>
       </div>
     </div>
 
+    {/* Vitendo vya haraka */}
+    <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+      {QA.map(a=><button key={a.p} className="qbtn ripple" onClick={()=>onNav?.(a.p)} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:16,padding:'13px 4px',textAlign:'center',cursor:'pointer'}}>
+        <div style={{fontSize:21}}>{a.i}</div>
+        <div style={{fontSize:10.5,fontWeight:700,color:'#17231D',marginTop:3}}>{a.l}</div>
+      </button>)}
+    </div>
+
     {/* PRIMARY STATS — 4 BIG CARDS */}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:14,marginBottom:16}}>
+    <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(155px,1fr))',gap:12,marginBottom:16}}>
       <div className="card" style={{padding:18,borderTop:'4px solid #0A6E47',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
           <div style={{fontSize:32}}>🏪</div>
           <Badge color="#0A6E47">+{todayBiz.length} leo</Badge>
         </div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>MADUKA JUMLA</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>MADUKA JUMLA</div>
         <div style={{fontSize:32,fontWeight:900,color:'#0A6E47',lineHeight:1}}>{businesses.length}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>+{weekBiz.length} wiki • +{monthBiz.length} mwezi</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:4}}>+{weekBiz.length} wiki • +{monthBiz.length} mwezi</div>
       </div>
       
-      <div className="card" style={{padding:18,borderTop:'4px solid #22C55E',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+      <div className="card" style={{padding:18,borderTop:'4px solid #0A6E47',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
           <div style={{fontSize:32}}>✅</div>
-          <Badge color="#22C55E">{convRate}%</Badge>
+          <Badge color="#0A6E47">{convRate}%</Badge>
         </div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>ACTIVE</div>
-        <div style={{fontSize:32,fontWeight:900,color:'#22C55E',lineHeight:1}}>{activeBiz.length}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>wanaolipa</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>ACTIVE</div>
+        <div style={{fontSize:32,fontWeight:900,color:'#0A6E47',lineHeight:1}}>{activeBiz.length}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:4}}>wanaolipa</div>
       </div>
       
-      <div className="card" style={{padding:18,borderTop:'4px solid #F59E0B',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+      <div className="card" style={{padding:18,borderTop:'4px solid #F2B705',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
           <div style={{fontSize:32}}>⏳</div>
         </div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>TRIAL</div>
-        <div style={{fontSize:32,fontWeight:900,color:'#F59E0B',lineHeight:1}}>{trialBiz.length}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>wanaojaribu</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>TRIAL</div>
+        <div style={{fontSize:32,fontWeight:900,color:'#F2B705',lineHeight:1}}>{trialBiz.length}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:4}}>wanaojaribu</div>
       </div>
       
-      <div className="card" style={{padding:18,borderTop:'4px solid #EF4444',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
+      <div className="card" style={{padding:18,borderTop:'4px solid #C2412D',transition:'transform 0.2s'}} onMouseOver={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
           <div style={{fontSize:32}}>⚠️</div>
         </div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>CHURN RISK</div>
-        <div style={{fontSize:32,fontWeight:900,color:'#EF4444',lineHeight:1}}>{churnRisk.length}</div>
-        <div style={{fontSize:11,color:'#94A3B8',marginTop:4}}>hawatumii</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600,textTransform:'uppercase',letterSpacing:0.5}}>CHURN RISK</div>
+        <div style={{fontSize:32,fontWeight:900,color:'#C2412D',lineHeight:1}}>{churnRisk.length}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginTop:4}}>hawatumii</div>
       </div>
     </div>
 
     {/* SECONDARY STATS — 4 SMALL */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:16}}>
       <div className="card" style={{padding:14,borderLeft:'4px solid #8B5CF6'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>SUSPENDED</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>SUSPENDED</div>
         <div style={{fontSize:22,fontWeight:900,color:'#8B5CF6'}}>{suspendedBiz.length}</div>
       </div>
       <div className="card" style={{padding:14,borderLeft:'4px solid #3B82F6'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>EXPIRING (5 SIKU)</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>EXPIRING (5 SIKU)</div>
         <div style={{fontSize:22,fontWeight:900,color:'#3B82F6'}}>{expiringBiz.length}</div>
       </div>
       <div className="card" style={{padding:14,borderLeft:'4px solid #EC4899'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>MASUPERVAIZA</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>MASUPERVAIZA</div>
         <div style={{fontSize:22,fontWeight:900,color:'#EC4899'}}>{agentLeaderboard.length}</div>
       </div>
       <div className="card" style={{padding:14,borderLeft:'4px solid #06B6D4'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>NOTIFICATIONS</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>NOTIFICATIONS</div>
         <div style={{fontSize:22,fontWeight:900,color:'#06B6D4'}}>{notifications.length}</div>
       </div>
     </div>
@@ -146,7 +150,7 @@ export function AdminDashboard(){
           <BarChart data={chartData}>
             <XAxis dataKey="month" tick={{fontSize:11}}/>
             <YAxis tick={{fontSize:11}}/>
-            <Tooltip contentStyle={{borderRadius:10,border:'1px solid #E2E8F0',fontSize:12}}/>
+            <Tooltip contentStyle={{borderRadius:10,border:'1px solid #D6E2DB',fontSize:12}}/>
             <Bar dataKey="count" fill="#0A6E47" radius={[8,8,0,0]}/>
           </BarChart>
         </ResponsiveContainer>:<Empty icon="📊" text="Hakuna data ya kutosha"/>}
@@ -166,17 +170,17 @@ export function AdminDashboard(){
       </div>
 
       {/* Pending Payments — IMPORTANT */}
-      {pendingPayments>0&&<div className="card" style={{border:'2px solid #F59E0B',background:'linear-gradient(135deg,#FFF7ED,#FFFFFF)'}}>
+      {pendingPayments>0&&<div className="card" style={{border:'2px solid #F2B705',background:'linear-gradient(135deg,#FFF8E6,#FFFFFF)'}}>
         <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#92400E',display:'flex',alignItems:'center',gap:6}}>
           💰 Malipo Yanayosubiri ({pendingPayments})
         </h3>
-        {(paymentRequests||[]).filter(p=>p.status==='pending').slice(0,5).map(p=><div key={p.id} style={{padding:'10px 0',borderBottom:'1px solid #FED7AA',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        {(paymentRequests||[]).filter(p=>p.status==='pending').slice(0,5).map(p=><div key={p.id} style={{padding:'10px 0',borderBottom:'1px solid #F2D98B',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div>
             <div style={{fontWeight:700,fontSize:13}}>{p.business_name||'Mteja'}</div>
             <div style={{fontSize:11,color:'#92400E'}}>{fmtDate(p.created_at)}</div>
           </div>
           <div style={{textAlign:'right'}}>
-            <div style={{fontWeight:900,color:'#F59E0B'}}>{fmtMoney(p.amount||15000)}</div>
+            <div style={{fontWeight:900,color:'#F2B705'}}>{fmtMoney(p.amount||15000)}</div>
             <div style={{fontSize:10,color:'#92400E'}}>{p.payment_method||'HALOPESA'}</div>
           </div>
         </div>)}
@@ -185,26 +189,26 @@ export function AdminDashboard(){
 
       {/* Churn Risk */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#EF4444',display:'flex',alignItems:'center',gap:6}}>⚠️ Churn Risk ({churnRisk.length})</h3>
-        {churnRisk.slice(0,5).map(b=><div key={b.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#C2412D',display:'flex',alignItems:'center',gap:6}}>⚠️ Churn Risk ({churnRisk.length})</h3>
+        {churnRisk.slice(0,5).map(b=><div key={b.id} style={{padding:'8px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div>
             <div style={{fontWeight:700,fontSize:13}}>{b.name}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>{b.email}</div>
+            <div style={{fontSize:11,color:'#9AA5A0'}}>{b.email}</div>
           </div>
-          <Badge color={b.risk==='high'?'#EF4444':b.risk==='medium'?'#F59E0B':'#3B82F6'}>{b.daysSince} siku</Badge>
+          <Badge color={b.risk==='high'?'#C2412D':b.risk==='medium'?'#F2B705':'#3B82F6'}>{b.daysSince} siku</Badge>
         </div>)}
         {!churnRisk.length&&<Empty icon="✅" text="Wateja wote wako active!"/>}
       </div>
 
       {/* Expiring Soon */}
       <div className="card">
-        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#F59E0B'}}>⏳ Zinaisha Hivi Karibuni ({expiringBiz.length})</h3>
-        {expiringBiz.slice(0,5).map(b=><div key={b.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#F2B705'}}>⏳ Zinaisha Hivi Karibuni ({expiringBiz.length})</h3>
+        {expiringBiz.slice(0,5).map(b=><div key={b.id} style={{padding:'8px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div>
             <div style={{fontWeight:700,fontSize:13}}>{b.name}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>{b.phone||b.email}</div>
+            <div style={{fontSize:11,color:'#9AA5A0'}}>{b.phone||b.email}</div>
           </div>
-          <Badge color={b.daysRemaining<=2?'#EF4444':'#F59E0B'}>Siku {b.daysRemaining}</Badge>
+          <Badge color={b.daysRemaining<=2?'#C2412D':'#F2B705'}>Siku {b.daysRemaining}</Badge>
         </div>)}
         {!expiringBiz.length&&<Empty icon="✅" text="Hakuna zinazoisha"/>}
       </div>
@@ -212,15 +216,15 @@ export function AdminDashboard(){
       {/* Supervisor Leaderboard with Tiers */}
       <div className="card">
         <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>🏆 Mawakala — Madaraja</h3>
-        {agentLeaderboard.slice(0,6).map((a,i)=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',alignItems:'center',gap:8}}>
+        {agentLeaderboard.slice(0,6).map((a,i)=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F6F8F7',display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:22}}>{a.tier?.emoji||'⏳'}</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:700,fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.agent_name}</div>
-            <div style={{fontSize:11,color:'#64748B'}}>{a.activeClients} active / {a.clients} jumla</div>
+            <div style={{fontSize:11,color:'#5C6A62'}}>{a.activeClients} active / {a.clients} jumla</div>
           </div>
           <div style={{textAlign:'right'}}>
-            <Badge color={a.tier?.color||'#94A3B8'}>{a.tier?.name||'Bado'}</Badge>
-            <div style={{fontSize:10,color:'#64748B',marginTop:2}}>{fmtMoney(a.tier?.bonus||0)}</div>
+            <Badge color={a.tier?.color||'#9AA5A0'}>{a.tier?.name||'Bado'}</Badge>
+            <div style={{fontSize:10,color:'#5C6A62',marginTop:2}}>{fmtMoney(a.tier?.bonus||0)}</div>
           </div>
         </div>)}
         {!agentLeaderboard.length&&<Empty icon="👥" text="Hakuna masupervaiza"/>}
@@ -229,13 +233,13 @@ export function AdminDashboard(){
       {/* Recent Activity */}
       <div className="card">
         <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#3B82F6'}}>🔐 Login za Hivi Karibuni</h3>
-        {loginLogs.slice(0,8).map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',fontSize:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        {loginLogs.slice(0,8).map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',fontSize:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>
             <span style={{fontWeight:600}}>{l.email?.slice(0,25)}</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
-            <Badge color={l.action==='login'?'#22C55E':'#94A3B8'}>{l.action}</Badge>
-            <span style={{color:'#94A3B8',fontSize:10}}>{fmtDate(l.created_at)}</span>
+            <Badge color={l.action==='login'?'#0A6E47':'#9AA5A0'}>{l.action}</Badge>
+            <span style={{color:'#9AA5A0',fontSize:10}}>{fmtDate(l.created_at)}</span>
           </div>
         </div>)}
         {!loginLogs.length&&<Empty icon="🔐" text="Hakuna login bado"/>}
@@ -244,11 +248,11 @@ export function AdminDashboard(){
       {/* Notifications */}
       <div className="card">
         <h3 style={{fontSize:14,fontWeight:800,margin:'0 0 12px',color:'#8B5CF6'}}>📢 Arifa za Mfumo ({notifications.length})</h3>
-        {notifications.slice(0,6).map(n=><div key={n.id} style={{padding:'8px 0',borderBottom:'1px solid #F1F5F9',display:'flex',gap:8}}>
+        {notifications.slice(0,6).map(n=><div key={n.id} style={{padding:'8px 0',borderBottom:'1px solid #F6F8F7',display:'flex',gap:8}}>
           <span style={{fontSize:18}}>{n.type==='danger'?'🚨':n.type==='warning'?'⚠️':n.type==='success'?'✅':'🏪'}</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:700,fontSize:12,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.title}</div>
-            <div style={{fontSize:11,color:'#94A3B8'}}>{fmtDate(n.created_at)}</div>
+            <div style={{fontSize:11,color:'#9AA5A0'}}>{fmtDate(n.created_at)}</div>
           </div>
         </div>)}
         {!notifications.length&&<Empty icon="📢" text="Hakuna arifa"/>}
@@ -349,29 +353,29 @@ export function StoresPage(){
     return{products:p,sales:s.length,revenue:rev,employees:emp,branches:br,lastLogin:lastLogin?.created_at};
   };
 
-  return <div>
+  return <div className="page-enter">
     {/* HEADER */}
     <div style={{marginBottom:14}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>👥 Usimamizi wa Akaunti za Wateja</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Tatua changamoto zote za akaunti — siku, plan, email, password, na zaidi — mahali pamoja.</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Tatua changamoto zote za akaunti — siku, plan, email, password, na zaidi — mahali pamoja.</p>
     </div>
 
     {/* MUHTASARI (KPIs) */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:14}}>
       {[
         {l:'👥 Wateja Wote',v:summary.total,c:'#0A6E47',f:'all'},
-        {l:'✅ Active',v:summary.active,c:'#22C55E',f:'active'},
-        {l:'🕒 Trial',v:summary.trial,c:'#F59E0B',f:'trial'},
-        {l:'⛔ Suspended',v:summary.suspended,c:'#EF4444',f:'suspended'},
+        {l:'✅ Active',v:summary.active,c:'#0A6E47',f:'active'},
+        {l:'🕒 Trial',v:summary.trial,c:'#F2B705',f:'trial'},
+        {l:'⛔ Suspended',v:summary.suspended,c:'#C2412D',f:'suspended'},
         {l:'⏳ Zinaisha (≤5)',v:summary.expiring,c:'#EA580C',f:'expiring'},
       ].map(k=>(
-        <button key={k.l} onClick={()=>setFilter(k.f)} className="card" style={{padding:13,textAlign:'left',cursor:'pointer',border:filter===k.f?`2px solid ${k.c}`:'1px solid #E2E8F0',background:filter===k.f?`${k.c}0A`:'#fff'}}>
-          <div style={{fontSize:10.5,color:'#94A3B8',fontWeight:700,marginBottom:4}}>{k.l}</div>
+        <button key={k.l} onClick={()=>setFilter(k.f)} className="card" style={{padding:13,textAlign:'left',cursor:'pointer',border:filter===k.f?`2px solid ${k.c}`:'1px solid #D6E2DB',background:filter===k.f?`${k.c}0A`:'#fff'}}>
+          <div style={{fontSize:10.5,color:'#9AA5A0',fontWeight:700,marginBottom:4}}>{k.l}</div>
           <div style={{fontSize:20,fontWeight:900,color:k.c}}>{k.v}</div>
         </button>
       ))}
       <div className="card" style={{padding:13}}>
-        <div style={{fontSize:10.5,color:'#94A3B8',fontWeight:700,marginBottom:4}}>💰 Mapato ya Wateja</div>
+        <div style={{fontSize:10.5,color:'#9AA5A0',fontWeight:700,marginBottom:4}}>💰 Mapato ya Wateja</div>
         <div style={{fontSize:15,fontWeight:900,color:'#3B82F6'}}>TZS {summary.revenue.toLocaleString()}</div>
       </div>
     </div>
@@ -381,8 +385,8 @@ export function StoresPage(){
       <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
         <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Orodha ({filtered.length})</h3>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <div style={{position:'relative'}}><span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#94A3B8'}}>{IC.find}</span>
-            <input placeholder="Tafuta jina, email, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{padding:'8px 8px 8px 34px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,outline:'none',width:200}}/></div>
+          <div style={{position:'relative'}}><span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#9AA5A0'}}>{IC.find}</span>
+            <input placeholder="Tafuta jina, email, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{padding:'8px 8px 8px 34px',borderRadius:8,border:'1px solid #D6E2DB',fontSize:13,outline:'none',width:200}}/></div>
           <Sel options={[{value:'all',label:'Zote'},{value:'active',label:'Active'},{value:'trial',label:'Trial'},{value:'suspended',label:'Suspended'},{value:'expiring',label:'Zinaisha'}]} value={filter} onChange={e=>setFilter(e.target.value)}/>
           <Sel options={[{value:'recent',label:'📅 Mpya'},{value:'expiring',label:'⏳ Zinaisha'},{value:'revenue',label:'💰 Mapato'},{value:'name',label:'🔤 Jina'}]} value={sortBy} onChange={e=>setSortBy(e.target.value)}/>
         </div>
@@ -392,38 +396,38 @@ export function StoresPage(){
     {/* Customer Cards */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
       {filtered.map(b=>{const dl=getDaysLeft(b);const st=getBizStats(b.id);
-        return <div key={b.id} className="card" style={{border:b.is_suspended?'2px solid #FECACA':b.token_active?'1px solid #BBF7D0':'1px solid #FED7AA',cursor:'pointer'}} onClick={()=>setDetail(b)}>
+        return <div key={b.id} className="card" style={{border:b.is_suspended?'2px solid #F0D9D4':b.token_active?'1px solid #C2DED1':'1px solid #F2D98B',cursor:'pointer'}} onClick={()=>setDetail(b)}>
           {/* Header */}
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <div style={{width:44,height:44,borderRadius:12,background:b.token_active?'#F0FDF4':b.is_suspended?'#FEF2F2':'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🏪</div>
+              <div style={{width:44,height:44,borderRadius:12,background:b.token_active?'#E6F2EC':b.is_suspended?'#FBECE9':'#FFF8E6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🏪</div>
               <div>
                 <div style={{fontWeight:800,fontSize:15}}>{b.name}</div>
-                <div style={{fontSize:12,color:'#64748B'}}>{b.email}</div>
-                {b.phone&&<div style={{fontSize:11,color:'#94A3B8'}}>{b.phone}</div>}
+                <div style={{fontSize:12,color:'#5C6A62'}}>{b.email}</div>
+                {b.phone&&<div style={{fontSize:11,color:'#9AA5A0'}}>{b.phone}</div>}
               </div>
             </div>
-            <Badge color={b.token_active?'#22C55E':b.is_suspended?'#EF4444':'#F59E0B'}>{b.token_active?'Active':b.is_suspended?'Suspended':'Trial'}</Badge>
+            <Badge color={b.token_active?'#0A6E47':b.is_suspended?'#C2412D':'#F2B705'}>{b.token_active?'Active':b.is_suspended?'Suspended':'Trial'}</Badge>
           </div>
 
           {/* Stats Grid */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
-            <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Plan</div>
+            <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Plan</div>
               <div style={{fontWeight:700,fontSize:13,color:'#8B5CF6'}}>{(b.plan||'trial').toUpperCase()}</div>
             </div>
-            <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Siku</div>
-              <div style={{fontWeight:700,fontSize:13,color:dl<=3?'#EF4444':dl<=7?'#F59E0B':'#22C55E'}}>{dl}</div>
+            <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Siku</div>
+              <div style={{fontWeight:700,fontSize:13,color:dl<=3?'#C2412D':dl<=7?'#F2B705':'#0A6E47'}}>{dl}</div>
             </div>
-            <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Mauzo</div>
+            <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px 8px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Mauzo</div>
               <div style={{fontWeight:700,fontSize:13}}>{st.sales}</div>
             </div>
           </div>
 
           {/* Quick Info */}
-          <div style={{fontSize:11,color:'#64748B',display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
+          <div style={{fontSize:11,color:'#5C6A62',display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
             <span>📅 {fmtDate(b.created_at)}</span>
             <span>📦 {st.products} bidhaa</span>
             <span>👥 {st.employees} staff</span>
@@ -431,13 +435,13 @@ export function StoresPage(){
 
           {/* Quick Actions */}
           <div style={{display:'flex',gap:4,marginTop:10,flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-            <button onClick={(e)=>{e.stopPropagation();setActionModal({type:'extend',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
-            <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
+            <button onClick={(e)=>{e.stopPropagation();setActionModal({type:'extend',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C2DED1',background:'#E6F2EC',color:'#15803D',fontWeight:700,cursor:'pointer'}}>+Siku</button>
+            <button onClick={(e)=>{e.stopPropagation();setEditForm({name:b.name||'',email:b.email||'',phone:b.phone||'',owner_name:b.owner_name||''});setActionModal({type:'edit',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #F2D98B',background:'#FFF8E6',color:'#B45309',fontWeight:700,cursor:'pointer'}}>✏️Edit</button>
             <button onClick={()=>{setUpgradePlan(b.plan||'basic');setActionModal({type:'upgrade',biz:b})}} style={{padding:'5px 8px',fontSize:10,borderRadius:6,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,cursor:'pointer'}}>⬆Plan</button>
-            <button onClick={(e)=>{e.stopPropagation();toggleBranch(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isBranchOn(b.id)?'1.5px solid #0A6E47':'1.5px solid #E2E8F0',background:isBranchOn(b.id)?'#F0FDF4':'#fff',color:isBranchOn(b.id)?'#0A6E47':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
+            <button onClick={(e)=>{e.stopPropagation();toggleBranch(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isBranchOn(b.id)?'1.5px solid #0A6E47':'1.5px solid #D6E2DB',background:isBranchOn(b.id)?'#E6F2EC':'#fff',color:isBranchOn(b.id)?'#0A6E47':'#9AA5A0',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isBranchOn(b.id)?<>🏪 Matawi: <span style={{color:'#16A34A'}}>ON</span></>:<>🏪 Matawi: <span>OFF</span></>}
             </button>
-            <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',background:isWholesaleOn(b.id)?'#FFF7ED':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#94A3B8',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
+            <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #D6E2DB',background:isWholesaleOn(b.id)?'#FFF8E6':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#9AA5A0',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isWholesaleOn(b.id)?<>🏷️ Jumla: <span style={{color:'#16A34A'}}>ON</span></>:<>🏷️ Jumla: <span>OFF</span></>}
             </button>
             <Btn v={b.is_suspended?'primary':'warning'} style={{padding:'5px 8px',fontSize:10}} onClick={()=>suspendBiz(b.id,!b.is_suspended)}>{b.is_suspended?'Fungua':'Funga'}</Btn>
@@ -452,25 +456,25 @@ export function StoresPage(){
       {detail&&(()=>{const dl=getDaysLeft(detail);const st=getBizStats(detail.id);const supervisor=promoCodes.find(p=>p.code===detail.promo_code);
         return <>
           {/* Status Banner */}
-          <div style={{background:detail.token_active?'#F0FDF4':detail.is_suspended?'#FEF2F2':'#FFF7ED',borderRadius:12,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{background:detail.token_active?'#E6F2EC':detail.is_suspended?'#FBECE9':'#FFF8E6',borderRadius:12,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
-              <Badge color={detail.token_active?'#22C55E':detail.is_suspended?'#EF4444':'#F59E0B'}>{detail.token_active?'ACTIVE':detail.is_suspended?'SUSPENDED':'TRIAL'}</Badge>
-              <span style={{marginLeft:8,fontWeight:700,color:dl<=3?'#EF4444':'#1E293B'}}>Siku {dl} zimebaki</span>
+              <Badge color={detail.token_active?'#0A6E47':detail.is_suspended?'#C2412D':'#F2B705'}>{detail.token_active?'ACTIVE':detail.is_suspended?'SUSPENDED':'TRIAL'}</Badge>
+              <span style={{marginLeft:8,fontWeight:700,color:dl<=3?'#C2412D':'#17231D'}}>Siku {dl} zimebaki</span>
             </div>
             <span style={{fontWeight:800,color:'#8B5CF6',fontSize:16}}>{(detail.plan||'trial').toUpperCase()}</span>
           </div>
 
           {/* Contact Info */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
-            <div style={{background:'#F8FAFC',borderRadius:10,padding:12}}>
-              <div style={{fontSize:11,color:'#94A3B8',fontWeight:600,marginBottom:6}}>TAARIFA</div>
+            <div style={{background:'#F6F8F7',borderRadius:10,padding:12}}>
+              <div style={{fontSize:11,color:'#9AA5A0',fontWeight:600,marginBottom:6}}>TAARIFA</div>
               <div style={{fontSize:13,marginBottom:4}}>📧 {detail.email}</div>
               {detail.phone&&<div style={{fontSize:13,marginBottom:4}}>📱 {detail.phone}</div>}
               <div style={{fontSize:13,marginBottom:4}}>📅 Alisajili: {fmtDate(detail.created_at)}</div>
               {supervisor&&<div style={{fontSize:13}}>👤 Supervisor: {supervisor.agent_name} ({supervisor.code})</div>}
             </div>
-            <div style={{background:'#F8FAFC',borderRadius:10,padding:12}}>
-              <div style={{fontSize:11,color:'#94A3B8',fontWeight:600,marginBottom:6}}>TAKWIMU</div>
+            <div style={{background:'#F6F8F7',borderRadius:10,padding:12}}>
+              <div style={{fontSize:11,color:'#9AA5A0',fontWeight:600,marginBottom:6}}>TAKWIMU</div>
               <div style={{fontSize:13,marginBottom:4}}>📦 Bidhaa: <b>{st.products}</b></div>
               <div style={{fontSize:13,marginBottom:4}}>🛒 Mauzo: <b>{st.sales}</b></div>
               <div style={{fontSize:13,marginBottom:4}}>💰 Mapato: <b>TZS {st.revenue.toLocaleString()}</b></div>
@@ -484,18 +488,18 @@ export function StoresPage(){
             <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>⚙️ Features Maalum</div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               {/* Wholesale Toggle */}
-              <div style={{background:isWholesaleOn(detail.id)?'#FFF7ED':'#F8FAFC',border:isWholesaleOn(detail.id)?'1.5px solid #C2410C':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏷️ BEI YA JUMLA</div>
-                <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kuuza kwa bei ya jumla na rejareja</div>
+              <div style={{background:isWholesaleOn(detail.id)?'#FFF8E6':'#F6F8F7',border:isWholesaleOn(detail.id)?'1.5px solid #C2410C':'1.5px solid #D6E2DB',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginBottom:4}}>🏷️ BEI YA JUMLA</div>
+                <div style={{fontSize:12,color:'#5C6A62',marginBottom:10}}>Mteja aweze kuuza kwa bei ya jumla na rejareja</div>
                 <button onClick={()=>toggleWholesale(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isWholesaleOn(detail.id)?'#C2410C':'#0A6E47',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                   {isWholesaleOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
                 </button>
               </div>
               {/* Branch Toggle */}
-              <div style={{background:isBranchOn(detail.id)?'#F0FDF4':'#F8FAFC',border:isBranchOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #E2E8F0',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#64748B',marginBottom:4}}>🏪 MATAWI</div>
-                <div style={{fontSize:12,color:'#64748B',marginBottom:10}}>Mteja aweze kusimamia matawi mengi</div>
-                <button onClick={()=>toggleBranch(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isBranchOn(detail.id)?'#0A6E47':'#64748B',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+              <div style={{background:isBranchOn(detail.id)?'#E6F2EC':'#F6F8F7',border:isBranchOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #D6E2DB',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginBottom:4}}>🏪 MATAWI</div>
+                <div style={{fontSize:12,color:'#5C6A62',marginBottom:10}}>Mteja aweze kusimamia matawi mengi</div>
+                <button onClick={()=>toggleBranch(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isBranchOn(detail.id)?'#0A6E47':'#5C6A62',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                   {isBranchOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
                 </button>
               </div>
@@ -505,14 +509,14 @@ export function StoresPage(){
           {/* Quick Actions */}
           <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Vitendo vya Haraka</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,marginBottom:16}}>
-            <button onClick={()=>{setDetail(null);setActionModal({type:'extend',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⏳ Ongeza Siku</button>
-            <button onClick={()=>{setEditForm({name:detail.name||'',email:detail.email||'',phone:detail.phone||'',owner_name:detail.owner_name||''});setDetail(null);setActionModal({type:'edit',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#B45309',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>✏️ Hariri Taarifa</button>
+            <button onClick={()=>{setDetail(null);setActionModal({type:'extend',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #C2DED1',background:'#E6F2EC',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⏳ Ongeza Siku</button>
+            <button onClick={()=>{setEditForm({name:detail.name||'',email:detail.email||'',phone:detail.phone||'',owner_name:detail.owner_name||''});setDetail(null);setActionModal({type:'edit',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #F2D98B',background:'#FFF8E6',color:'#B45309',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>✏️ Hariri Taarifa</button>
             <button onClick={()=>{setResetPass('');setResetMsg(null);setDetail(null);setActionModal({type:'reset',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #FBCFE8',background:'#FDF2F8',color:'#BE185D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔑 Reset Password</button>
             <button onClick={()=>{setUpgradePlan(detail.plan||'basic');setDetail(null);setActionModal({type:'upgrade',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #C4B5FD',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>⬆️ Upgrade Plan</button>
             <button onClick={()=>{setDetail(null);setActionModal({type:'transfer',biz:detail})}} style={{padding:'12px',borderRadius:10,border:'1px solid #93C5FD',background:'#EFF6FF',color:'#2563EB',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🔄 Hamisha Supervisor</button>
-            <button onClick={()=>suspendBiz(detail.id,!detail.is_suspended)} style={{padding:'12px',borderRadius:10,border:'1px solid #FED7AA',background:'#FFF7ED',color:'#92400E',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>{detail.is_suspended?'✅ Fungua':'⛔ Suspend'}</button>
-            {detail.phone&&<a href={`https://wa.me/${detail.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'12px',borderRadius:10,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center',textDecoration:'none'}}>💬 WhatsApp</a>}
-            <button onClick={()=>{if(window.confirm(`⚠️ HATARI! Futa data ZOTE za "${detail.name}"? Hii haiwezi kurudishwa!`)){deleteAllCustomerData(detail.id);setDetail(null)}}} style={{padding:'12px',borderRadius:10,border:'1px solid #FECACA',background:'#FEF2F2',color:'#B91C1C',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🗑️ Futa Data (GDPR)</button>
+            <button onClick={()=>suspendBiz(detail.id,!detail.is_suspended)} style={{padding:'12px',borderRadius:10,border:'1px solid #F2D98B',background:'#FFF8E6',color:'#92400E',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>{detail.is_suspended?'✅ Fungua':'⛔ Suspend'}</button>
+            {detail.phone&&<a href={`https://wa.me/${detail.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'12px',borderRadius:10,border:'1px solid #C2DED1',background:'#E6F2EC',color:'#15803D',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center',textDecoration:'none'}}>💬 WhatsApp</a>}
+            <button onClick={()=>{if(window.confirm(`⚠️ HATARI! Futa data ZOTE za "${detail.name}"? Hii haiwezi kurudishwa!`)){deleteAllCustomerData(detail.id);setDetail(null)}}} style={{padding:'12px',borderRadius:10,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#B91C1C',fontWeight:700,fontSize:13,cursor:'pointer',textAlign:'center'}}>🗑️ Futa Data (GDPR)</button>
           </div>
         </>;
       })()}
@@ -520,15 +524,15 @@ export function StoresPage(){
 
     {/* ===== EXTEND MODAL ===== */}
     <Modal open={actionModal.type==='extend'} onClose={()=>setActionModal({type:null,biz:null})} title={`⏳ Ongeza Siku — ${actionModal.biz?.name||''}`}>
-      <div style={{background:'#F0FDF4',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
+      <div style={{background:'#E6F2EC',borderRadius:10,padding:12,marginBottom:14,textAlign:'center'}}>
         <div style={{fontSize:12,color:'#15803D'}}>Siku zilizobaki sasa</div>
         <div style={{fontSize:28,fontWeight:900,color:'#0A6E47'}}>{actionModal.biz?getDaysLeft(actionModal.biz):0}</div>
-        <div style={{fontSize:11,color:'#64748B',marginTop:2}}>Baada ya kuongeza: <b style={{color:'#0A6E47'}}>{(actionModal.biz?getDaysLeft(actionModal.biz):0)+(+extendDays||0)} siku</b></div>
+        <div style={{fontSize:11,color:'#5C6A62',marginTop:2}}>Baada ya kuongeza: <b style={{color:'#0A6E47'}}>{(actionModal.biz?getDaysLeft(actionModal.biz):0)+(+extendDays||0)} siku</b></div>
       </div>
 
       <Input label="Ongeza siku ngapi?" type="number" value={extendDays} onChange={e=>setExtendDays(e.target.value)}/>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-        {[7,14,30,60,90,365].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:extendDays===String(d)?'#F0FDF4':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#0A6E47':'#64748B'}}>{d}</button>)}
+        {[7,14,30,60,90,365].map(d=><button key={d} onClick={()=>setExtendDays(String(d))} style={{padding:'6px 14px',borderRadius:8,border:extendDays===String(d)?'2px solid #0A6E47':'1px solid #D6E2DB',background:extendDays===String(d)?'#E6F2EC':'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:extendDays===String(d)?'#0A6E47':'#5C6A62'}}>{d}</button>)}
       </div>
 
       {/* AINA YA MUAMALA */}
@@ -541,11 +545,11 @@ export function StoresPage(){
         ].map(t=>(
           <button key={t.v} onClick={()=>{setExtendType(t.v);if(t.v!=='sale')setExtendAmount('0');else setExtendAmount('15000')}} style={{
             flex:1,minWidth:95,padding:'9px 8px',borderRadius:9,cursor:'pointer',
-            border:extendType===t.v?`2px solid ${t.c}`:'1.5px solid #E2E8F0',
+            border:extendType===t.v?`2px solid ${t.c}`:'1.5px solid #D6E2DB',
             background:extendType===t.v?`${t.c}0A`:'#fff',
           }}>
-            <div style={{fontSize:12,fontWeight:700,color:extendType===t.v?t.c:'#64748B'}}>{t.l}</div>
-            <div style={{fontSize:9.5,color:'#94A3B8',marginTop:1}}>{t.d}</div>
+            <div style={{fontSize:12,fontWeight:700,color:extendType===t.v?t.c:'#5C6A62'}}>{t.l}</div>
+            <div style={{fontSize:9.5,color:'#9AA5A0',marginTop:1}}>{t.d}</div>
           </button>
         ))}
       </div>
@@ -554,7 +558,7 @@ export function StoresPage(){
       {extendType==='sale'&&<>
         <Input label="Kiasi alicholipa (TZS)" type="number" value={extendAmount} onChange={e=>setExtendAmount(e.target.value)}/>
         <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-          {[15000,25000,30000,50000,75000].map(a=><button key={a} onClick={()=>setExtendAmount(String(a))} style={{padding:'6px 12px',borderRadius:8,border:extendAmount===String(a)?'2px solid #0A6E47':'1px solid #E2E8F0',background:extendAmount===String(a)?'#F0FDF4':'#fff',fontWeight:600,fontSize:11.5,cursor:'pointer',color:extendAmount===String(a)?'#0A6E47':'#64748B'}}>{a.toLocaleString()}</button>)}
+          {[15000,25000,30000,50000,75000].map(a=><button key={a} onClick={()=>setExtendAmount(String(a))} style={{padding:'6px 12px',borderRadius:8,border:extendAmount===String(a)?'2px solid #0A6E47':'1px solid #D6E2DB',background:extendAmount===String(a)?'#E6F2EC':'#fff',fontWeight:600,fontSize:11.5,cursor:'pointer',color:extendAmount===String(a)?'#0A6E47':'#5C6A62'}}>{a.toLocaleString()}</button>)}
         </div>
 
         <Sel label="Njia ya Malipo" value={extendMethod} onChange={e=>setExtendMethod(e.target.value)} options={[
@@ -570,7 +574,7 @@ export function StoresPage(){
       <Input label="Maelezo (si lazima)" value={extendNote} onChange={e=>setExtendNote(e.target.value)} placeholder="Mfano: Namba ya risiti..."/>
 
       {/* Muhtasari */}
-      <div style={{padding:'11px 13px',background:extendType==='sale'?'#F0FDF4':'#F8FAFC',border:`1px solid ${extendType==='sale'?'#BBF7D0':'#E2E8F0'}`,borderRadius:10,marginBottom:12,fontSize:12.5}}>
+      <div style={{padding:'11px 13px',background:extendType==='sale'?'#E6F2EC':'#F6F8F7',border:`1px solid ${extendType==='sale'?'#C2DED1':'#D6E2DB'}`,borderRadius:10,marginBottom:12,fontSize:12.5}}>
         {extendType==='sale'
           ? <span style={{color:'#15803D'}}>💰 Mapato: <b>TZS {(+extendAmount||0).toLocaleString()}</b> • Siku {extendDays} • {extendMethod}</span>
           : extendType==='gift'
@@ -607,7 +611,7 @@ export function StoresPage(){
 
     {/* ===== TRANSFER MODAL ===== */}
     <Modal open={actionModal.type==='transfer'} onClose={()=>setActionModal({type:null,biz:null})} title={`🔄 Hamisha — ${actionModal.biz?.name||''}`}>
-      <div style={{fontSize:13,color:'#64748B',marginBottom:12}}>Supervisor wa sasa: <b>{actionModal.biz?.promo_code||'Hakuna'}</b></div>
+      <div style={{fontSize:13,color:'#5C6A62',marginBottom:12}}>Supervisor wa sasa: <b>{actionModal.biz?.promo_code||'Hakuna'}</b></div>
       <Sel label="Supervisor Mpya" value={transferCode} onChange={e=>setTransferCode(e.target.value)} options={[{value:'',label:'— Ondoa Supervisor —'},...promoCodes.map(p=>({value:p.code,label:`${p.agent_name} (${p.code})`}))]}/>
       <Btn onClick={async()=>{await quickTransfer(actionModal.biz.id,transferCode);alert('Imehamishwa!');setActionModal({type:null,biz:null})}} style={{width:'100%',justifyContent:'center',marginTop:8}}>🔄 Hamisha</Btn>
     </Modal>
@@ -618,7 +622,7 @@ export function StoresPage(){
         💡 Tumia kipengele hiki kubadilisha taarifa za mteja akipoteza simu, kubadilisha email, au kurekebisha jina la biashara.
       </div>
       
-      {editMsg&&<div style={{background:editMsg.ok?'#F0FDF4':'#FEF2F2',color:editMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${editMsg.ok?'#22C55E':'#EF4444'}`}}>{editMsg.msg}</div>}
+      {editMsg&&<div style={{background:editMsg.ok?'#E6F2EC':'#FBECE9',color:editMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${editMsg.ok?'#0A6E47':'#C2412D'}`}}>{editMsg.msg}</div>}
       
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
         <Input label="Jina la Biashara" placeholder="Mf: Duka la Rehema" value={editForm.name} onChange={e=>setEditForm(p=>({...p,name:e.target.value}))}/>
@@ -627,7 +631,7 @@ export function StoresPage(){
         <Input label="📱 Namba ya Simu" placeholder="07XXXXXXXX" value={editForm.phone} onChange={e=>setEditForm(p=>({...p,phone:e.target.value}))}/>
       </div>
       
-      <div style={{background:'#FFF7ED',borderRadius:10,padding:'10px 14px',marginTop:8,fontSize:11,color:'#92400E',borderLeft:'4px solid #F59E0B'}}>
+      <div style={{background:'#FFF8E6',borderRadius:10,padding:'10px 14px',marginTop:8,fontSize:11,color:'#92400E',borderLeft:'4px solid #F2B705'}}>
         ⚠️ <b>Onyo:</b> Ukibadilisha email, mteja ataweza kuingia kwa email mpya mara moja. Hakikisha email ni sahihi kabla ya kuhifadhi.
       </div>
       
@@ -670,7 +674,7 @@ export function StoresPage(){
           setEditMsg({ok:false,msg:'❌ Tatizo: '+result.error});
         }
         setEditBusy(false);
-      }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+      }} disabled={editBusy} style={{width:'100%',marginTop:14,padding:14,background:editBusy?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:editBusy?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
         {editBusy?'⏳ Inahifadhi...':'✅ Hifadhi Mabadiliko'}
       </button>
     </Modal>
@@ -680,14 +684,14 @@ export function StoresPage(){
       <div style={{background:'#FDF2F8',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12.5,color:'#9D174D'}}>
         💡 Tumia hii mteja akisahau password. Weka password mpya ya muda, mpe mteja aingie nayo, kisha aibadilishe mwenyewe.
       </div>
-      <div style={{fontSize:13,color:'#64748B',marginBottom:10}}>📧 Email ya mteja: <b>{actionModal.biz?.email}</b></div>
+      <div style={{fontSize:13,color:'#5C6A62',marginBottom:10}}>📧 Email ya mteja: <b>{actionModal.biz?.email}</b></div>
 
-      {resetMsg&&<div style={{background:resetMsg.ok?'#F0FDF4':'#FEF2F2',color:resetMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${resetMsg.ok?'#22C55E':'#EF4444'}`}}>{resetMsg.msg}</div>}
+      {resetMsg&&<div style={{background:resetMsg.ok?'#E6F2EC':'#FBECE9',color:resetMsg.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${resetMsg.ok?'#0A6E47':'#C2412D'}`}}>{resetMsg.msg}</div>}
 
       <Input label="Password Mpya (herufi 6+)" value={resetPass} onChange={e=>setResetPass(e.target.value)} placeholder="Mf: Duka2026"/>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-        {['Duka1234','Pesa2026','Mteja123'].map(p=><button key={p} onClick={()=>setResetPass(p)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:'#64748B'}}>{p}</button>)}
-        <button onClick={()=>setResetPass('DL'+Math.random().toString(36).slice(2,8))} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0A6E47'}}>🎲 Tengeneza</button>
+        {['Duka1234','Pesa2026','Mteja123'].map(p=><button key={p} onClick={()=>setResetPass(p)} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',fontWeight:600,fontSize:12,cursor:'pointer',color:'#5C6A62'}}>{p}</button>)}
+        <button onClick={()=>setResetPass('DL'+Math.random().toString(36).slice(2,8))} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #C2DED1',background:'#E6F2EC',fontWeight:700,fontSize:12,cursor:'pointer',color:'#0A6E47'}}>🎲 Tengeneza</button>
       </div>
 
       <button onClick={()=>doResetPassword(actionModal.biz)} disabled={resetBusy} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:resetBusy?'#F9A8D4':'#BE185D',color:'#fff',fontWeight:800,fontSize:14,cursor:resetBusy?'wait':'pointer'}}>
@@ -708,7 +712,7 @@ export function TokensPage(){
 
   // SECURITY: Only accountant can access this page
   if(user?.role!=='accountant'){
-    return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+    return <div style={{padding:40,textAlign:'center',background:'#FFF8E6',borderRadius:16,border:'2px solid #F2B705'}}>
       <div style={{fontSize:60,marginBottom:14}}>🔒</div>
       <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA MUHASIBU TU</h2>
       <p style={{fontSize:14,color:'#78350F',lineHeight:1.6,maxWidth:500,margin:'0 auto'}}>
@@ -721,7 +725,7 @@ export function TokensPage(){
 
   // Plan pricing (matches biashara plans)
   const PLAN_PRICES={basic:15000,branch2:25000,premium:30000,enterprise:60000};
-  const PLAN_COLORS={basic:'#64748B',branch2:'#F59E0B',premium:'#8B5CF6',enterprise:'#0A6E47'};
+  const PLAN_COLORS={basic:'#5C6A62',branch2:'#F2B705',premium:'#8B5CF6',enterprise:'#0A6E47'};
   const PLAN_ICONS={basic:'⚡',branch2:'🏪',premium:'⭐',enterprise:'👑'};
 
   // Period filter
@@ -793,11 +797,11 @@ export function TokensPage(){
            date.toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'});
   };
 
-  return <div>
+  return <div className="page-enter">
     {/* HEADER */}
     <div style={{marginBottom:18}}>
       <h2 style={{fontSize:24,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🔑 Tokens & Mahesabu</h2>
-      <p style={{fontSize:13,color:'#64748B',margin:0}}>Simamia tokens za wateja na uone mapato ya biashara</p>
+      <p style={{fontSize:13,color:'#5C6A62',margin:0}}>Simamia tokens za wateja na uone mapato ya biashara</p>
     </div>
 
     {/* PERIOD FILTER */}
@@ -808,12 +812,12 @@ export function TokensPage(){
         {id:'week',label:'🗓️ Wiki Hii'},
         {id:'month',label:'📆 Mwezi Huu'},
         {id:'year',label:'🎯 Mwaka Huu'},
-      ].map(p=><button key={p.id} onClick={()=>setPeriod(p.id)} style={{padding:'8px 14px',borderRadius:10,border:period===p.id?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:period===p.id?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:period===p.id?'#fff':'#475569'}}>{p.label}</button>)}
+      ].map(p=><button key={p.id} onClick={()=>setPeriod(p.id)} style={{padding:'8px 14px',borderRadius:10,border:period===p.id?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:period===p.id?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:period===p.id?'#fff':'#475569'}}>{p.label}</button>)}
     </div>
 
     {/* HERO REVENUE CARD */}
     <div style={{
-      background:'linear-gradient(135deg,#0A6E47,#0A6E47)',
+      background:'linear-gradient(140deg,#06502F,#0A6E47)',
       borderRadius:16,
       padding:'24px 28px',
       marginBottom:16,
@@ -841,25 +845,25 @@ export function TokensPage(){
 
     {/* QUICK STATS */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #22C55E',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #0A6E47',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>ZINAPATIKANA</div>
-        <div style={{fontSize:28,fontWeight:900,color:'#22C55E',marginTop:4}}>{freeTokens.length}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>tayari kutolewa</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#0A6E47',marginTop:4}}>{freeTokens.length}</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>tayari kutolewa</div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #F59E0B',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #F2B705',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:11,color:'#B45309',fontWeight:700,letterSpacing:0.5}}>ZIMETUMIKA</div>
-        <div style={{fontSize:28,fontWeight:900,color:'#F59E0B',marginTop:4}}>{usedTokens.length}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>na wateja</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#F2B705',marginTop:4}}>{usedTokens.length}</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>na wateja</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #3B82F6',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:11,color:'#1D4ED8',fontWeight:700,letterSpacing:0.5}}>MAPATO YA TOKENS</div>
         <div style={{fontSize:20,fontWeight:900,color:'#3B82F6',marginTop:4}}>TZS {estimatedRevenue.toLocaleString()}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>kulingana na plans</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>kulingana na plans</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #8B5CF6',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
         <div style={{fontSize:11,color:'#6D28D9',fontWeight:700,letterSpacing:0.5}}>WATEJA WAPYA</div>
         <div style={{fontSize:28,fontWeight:900,color:'#8B5CF6',marginTop:4}}>{new Set(usedTokens.map(t=>t.used_by)).size}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>biashara zilizofunguliwa</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>biashara zilizofunguliwa</div>
       </div>
     </div>
 
@@ -881,15 +885,15 @@ export function TokensPage(){
               <span style={{fontSize:22}}>{PLAN_ICONS[p]}</span>
               <div style={{flex:1}}>
                 <div style={{fontWeight:800,fontSize:14,color:PLAN_COLORS[p],textTransform:'capitalize'}}>{p}</div>
-                <div style={{fontSize:10,color:'#94A3B8'}}>TZS {PLAN_PRICES[p].toLocaleString()}/mwezi</div>
+                <div style={{fontSize:10,color:'#9AA5A0'}}>TZS {PLAN_PRICES[p].toLocaleString()}/mwezi</div>
               </div>
             </div>
             <div style={{fontSize:24,fontWeight:900,color:PLAN_COLORS[p]}}>TZS {planRevenue.toLocaleString()}</div>
-            <div style={{fontSize:11,color:'#64748B',marginTop:4}}>
+            <div style={{fontSize:11,color:'#5C6A62',marginTop:4}}>
               <b>{planCount}</b> token{planCount!==1?'s':''} zimetumika ({pct.toFixed(0)}%)
             </div>
             {/* Progress bar */}
-            <div style={{height:5,background:'#F1F5F9',borderRadius:5,marginTop:8,overflow:'hidden'}}>
+            <div style={{height:5,background:'#F6F8F7',borderRadius:5,marginTop:8,overflow:'hidden'}}>
               <div style={{height:'100%',width:`${pct}%`,background:PLAN_COLORS[p],borderRadius:5,transition:'width 0.5s'}}/>
             </div>
           </div>;
@@ -898,19 +902,19 @@ export function TokensPage(){
     </div>
 
     {/* GENERATE TOKEN — Accountant Only */}
-    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
+    <div className="card" style={{marginBottom:16,border:'2px solid #C2DED1',background:'linear-gradient(135deg,#E6F2EC,#fff)'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
         <div style={{width:42,height:42,borderRadius:10,background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🔑</div>
         <div>
           <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0A6E47'}}>Tengeneza Token Mpya</h3>
-          <div style={{fontSize:11,color:'#64748B'}}>Token itamruhusu mteja kufungua mfumo</div>
+          <div style={{fontSize:11,color:'#5C6A62'}}>Token itamruhusu mteja kufungua mfumo</div>
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:14}}>
         <div>
           <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Muda (Siku)</label>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:days===String(d)?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#64748B'}}>{d}</button>)}
+            {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'7px 12px',borderRadius:8,border:days===String(d)?'2px solid #0A6E47':'1px solid #D6E2DB',background:days===String(d)?'#0A6E47':'#fff',fontWeight:700,fontSize:12,cursor:'pointer',color:days===String(d)?'#fff':'#5C6A62'}}>{d}</button>)}
           </div>
         </div>
         <div><Sel label="Plan" value={plan} onChange={e=>setPlan(e.target.value)} options={[
@@ -922,7 +926,7 @@ export function TokensPage(){
         <div><Input label="Idadi" type="number" value={qty} onChange={e=>setQty(e.target.value)}/></div>
         <div><Sel label="Weka kwa Mshirika (Optional)" value={assignTo} onChange={e=>{setAssignTo(e.target.value);const p=partners.find(x=>x.id===e.target.value);if(p)setAssignName(p.name)}} options={[{value:'',label:'— Muhasibu (Mimi) —'},...partners.map(p=>({value:p.id,label:p.name||p.email}))]}/></div>
       </div>
-      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:generating?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
+      <button onClick={handleGenerate} disabled={generating} style={{width:'100%',padding:14,background:generating?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:generating?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>
         {generating?'⏳ Inatengeneza...':`🔑 Tengeneza Token ${qty>1?qty+' ':''}— Siku ${days} (${plan})`}
       </button>
     </div>
@@ -937,7 +941,7 @@ export function TokensPage(){
         style={{
           width:'100%',
           padding:'10px 14px',
-          border:'1.5px solid #E2E8F0',
+          border:'1.5px solid #D6E2DB',
           borderRadius:10,
           fontSize:13,
           outline:'none',
@@ -948,9 +952,9 @@ export function TokensPage(){
       <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
         {[
           {id:'all',label:`📚 Zote (${periodTokens.length})`,color:'#0A6E47'},
-          {id:'free',label:`✅ Zinapatikana (${freeTokens.length})`,color:'#22C55E'},
-          {id:'used',label:`🎯 Zimetumika (${usedTokens.length})`,color:'#F59E0B'},
-        ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 14px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:tab===t.id?t.color+'12':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
+          {id:'free',label:`✅ Zinapatikana (${freeTokens.length})`,color:'#0A6E47'},
+          {id:'used',label:`🎯 Zimetumika (${usedTokens.length})`,color:'#F2B705'},
+        ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 14px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #D6E2DB',background:tab===t.id?t.color+'12':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#5C6A62'}}>{t.label}</button>)}
       </div>
     </div>
 
@@ -963,9 +967,9 @@ export function TokensPage(){
           const biz=getBizInfo(t);
           return <div key={t.id} style={{
             padding:'14px 16px',
-            background:t.used?'#FFFBEB':'#F0FDF4',
+            background:t.used?'#FFFBEB':'#E6F2EC',
             borderRadius:12,
-            border:`1px solid ${t.used?'#FDE68A':'#BBF7D0'}`,
+            border:`1px solid ${t.used?'#FDF0CC':'#C2DED1'}`,
             display:'grid',
             gridTemplateColumns:'auto 1fr auto',
             gap:14,
@@ -975,41 +979,41 @@ export function TokensPage(){
               width:46,
               height:46,
               borderRadius:12,
-              background:t.used?'#F59E0B':'#22C55E',
+              background:t.used?'#F2B705':'#0A6E47',
               display:'flex',
               alignItems:'center',
               justifyContent:'center',
               color:'#fff',
               fontSize:22,
               fontWeight:900,
-              boxShadow:`0 4px 12px ${t.used?'#F59E0B':'#22C55E'}40`,
+              boxShadow:`0 4px 12px ${t.used?'#F2B705':'#0A6E47'}40`,
             }}>{t.used?'✓':'🔑'}</div>
             
             <div style={{minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
                 <span style={{fontFamily:'monospace',fontWeight:900,fontSize:15,background:'#fff',padding:'4px 10px',borderRadius:6,color:t.used?'#92400E':'#0A6E47',border:`1px solid ${t.used?'#FCD34D':'#86EFAC'}`}}>{t.code}</span>
                 <span style={{padding:'2px 10px',borderRadius:6,background:PLAN_COLORS[t.plan||'basic'],color:'#fff',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:0.5}}>{PLAN_ICONS[t.plan||'basic']} {t.plan||'basic'}</span>
-                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#64748B',fontWeight:700,fontSize:10,border:'1px solid #E2E8F0'}}>📅 Siku {t.days}</span>
-                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#0A6E47',fontWeight:800,fontSize:10,border:'1px solid #BBF7D0'}}>💰 TZS {(PLAN_PRICES[t.plan]||PLAN_PRICES.basic).toLocaleString()}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#5C6A62',fontWeight:700,fontSize:10,border:'1px solid #D6E2DB'}}>📅 Siku {t.days}</span>
+                <span style={{padding:'2px 10px',borderRadius:6,background:'#fff',color:'#0A6E47',fontWeight:800,fontSize:10,border:'1px solid #C2DED1'}}>💰 TZS {(PLAN_PRICES[t.plan]||PLAN_PRICES.basic).toLocaleString()}</span>
               </div>
-              <div style={{fontSize:11,color:'#64748B',display:'flex',gap:8,flexWrap:'wrap'}}>
+              <div style={{fontSize:11,color:'#5C6A62',display:'flex',gap:8,flexWrap:'wrap'}}>
                 <span>🕒 Imetolewa: {fmtTime(t.created_at)}</span>
                 {t.assigned_name&&<span style={{color:'#8B5CF6',fontWeight:600}}>• 👤 Mshirika: {t.assigned_name}</span>}
               </div>
-              {t.used&&biz&&<div style={{marginTop:8,padding:'8px 12px',background:'#fff',borderRadius:8,border:'1px solid #FDE68A'}}>
+              {t.used&&biz&&<div style={{marginTop:8,padding:'8px 12px',background:'#fff',borderRadius:8,border:'1px solid #FDF0CC'}}>
                 <div style={{fontSize:11,color:'#92400E',fontWeight:700,marginBottom:2}}>🏪 ALIYETUMIA TOKEN HII:</div>
-                <div style={{fontWeight:700,fontSize:13,color:'#1E293B'}}>{biz.name}</div>
-                <div style={{fontSize:11,color:'#64748B'}}>📞 {biz.phone} • 📧 {biz.email}</div>
-                {t.used_at&&<div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>Alitumia: {fmtTime(t.used_at)}</div>}
+                <div style={{fontWeight:700,fontSize:13,color:'#17231D'}}>{biz.name}</div>
+                <div style={{fontSize:11,color:'#5C6A62'}}>📞 {biz.phone} • 📧 {biz.email}</div>
+                {t.used_at&&<div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>Alitumia: {fmtTime(t.used_at)}</div>}
               </div>}
             </div>
             
             {!t.used&&<button onClick={()=>{navigator.clipboard.writeText(t.code);alert('Token imecopy:\n\n'+t.code)}} style={{padding:'8px 14px',borderRadius:8,border:'2px solid #0A6E47',background:'#fff',fontSize:11,fontWeight:700,cursor:'pointer',color:'#0A6E47'}}>📋 Copy</button>}
           </div>;
         })}
-      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      </div>:<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:50,marginBottom:10}}>🔑</div>
-        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna tokens</div>
+        <div style={{fontWeight:700,color:'#5C6A62'}}>Hakuna tokens</div>
         <div style={{fontSize:12,marginTop:4}}>Tengeneza token mpya juu</div>
       </div>}
     </div>
@@ -1018,10 +1022,10 @@ export function TokensPage(){
     {approvedPay.length>0&&<div className="card" style={{marginTop:16}}>
       <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>💰 Mapato Halisi — Malipo Yaliyothibitishwa</h3>
       <div style={{maxHeight:400,overflowY:'auto'}}>
-        {approvedPay.map(p=><div key={p.id} style={{padding:'12px 14px',background:'#F8FAFC',borderRadius:10,marginBottom:6,display:'grid',gridTemplateColumns:'1fr auto',gap:10,alignItems:'center'}}>
+        {approvedPay.map(p=><div key={p.id} style={{padding:'12px 14px',background:'#F6F8F7',borderRadius:10,marginBottom:6,display:'grid',gridTemplateColumns:'1fr auto',gap:10,alignItems:'center'}}>
           <div>
-            <div style={{fontWeight:800,fontSize:13,color:'#1E293B'}}>{p.business_name}</div>
-            <div style={{fontSize:11,color:'#64748B',marginTop:2}}>
+            <div style={{fontWeight:800,fontSize:13,color:'#17231D'}}>{p.business_name}</div>
+            <div style={{fontSize:11,color:'#5C6A62',marginTop:2}}>
               📅 {fmtTime(p.created_at)} • {p.payment_method||'HALOPESA'} • <span style={{fontFamily:'monospace',background:'#fff',padding:'1px 6px',borderRadius:4}}>{p.transaction_id}</span>
             </div>
             {p.token_code&&<div style={{fontSize:11,color:'#8B5CF6',marginTop:3,fontWeight:600}}>🔑 Token: {p.token_code} • Siku: {p.days_given}</div>}
@@ -1029,7 +1033,7 @@ export function TokensPage(){
           <div style={{fontWeight:900,fontSize:16,color:'#0A6E47'}}>TZS {(p.amount||0).toLocaleString()}</div>
         </div>)}
       </div>
-      <div style={{background:'linear-gradient(135deg,#0A6E47,#0A6E47)',borderRadius:12,padding:'14px 18px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center',color:'#fff'}}>
+      <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:12,padding:'14px 18px',marginTop:12,display:'flex',justifyContent:'space-between',alignItems:'center',color:'#fff'}}>
         <span style={{fontWeight:800,fontSize:14}}>JUMLA YA MAPATO HALISI</span>
         <span style={{fontWeight:900,fontSize:24}}>TZS {totalRevenue.toLocaleString()}</span>
       </div>
@@ -1043,7 +1047,7 @@ export function PromoPage(){
   const{promoCodes,deletePromo,agentLeaderboard,businesses,AGENT_TIERS}=useApp();
   const[detail,setDetail]=useState(null);
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:16,fontWeight:700,margin:0}}>👥 Mawakala ({promoCodes.length})</h3>
       <div style={{background:'#EFF6FF',borderRadius:8,padding:'6px 14px',fontSize:12,color:'#1E40AF',fontWeight:600}}>Supevaiza anasajiliwa na Mshirika wa Masoko</div>
@@ -1057,7 +1061,7 @@ export function PromoPage(){
           <div key={t.name} style={{background:t.color+'15',border:`1.5px solid ${t.color}33`,borderRadius:10,padding:'6px 12px',textAlign:'center',minWidth:90}}>
             <div style={{fontSize:16}}>{t.emoji}</div>
             <div style={{fontWeight:700,fontSize:12,color:t.color}}>{t.name}</div>
-            <div style={{fontSize:10,color:'#64748B'}}>{t.min}+ wateja</div>
+            <div style={{fontSize:10,color:'#5C6A62'}}>{t.min}+ wateja</div>
             <div style={{fontSize:11,fontWeight:700,color:t.color}}>TZS {(t.bonus||0).toLocaleString()}</div>
           </div>
         ))}
@@ -1070,70 +1074,70 @@ export function PromoPage(){
         const agentBiz=businesses.filter(b=>b.promo_code===a.code);
         const activeBiz=agentBiz.filter(b=>b.token_active);
         const trialBiz=agentBiz.filter(b=>!b.token_active&&!b.is_suspended);
-        return <div key={a.id} className="card" style={{border:`1.5px solid ${a.tier?.color||'#E2E8F0'}33`}}>
+        return <div key={a.id} className="card" style={{border:`1.5px solid ${a.tier?.color||'#D6E2DB'}33`}}>
           {/* Tier Badge */}
           <div style={{background:a.tier?.color+'15',borderRadius:10,padding:'8px 12px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:22}}>{a.tier?.emoji||'⏳'}</span>
               <div>
-                <div style={{fontWeight:800,fontSize:14,color:a.tier?.color||'#94A3B8'}}>{a.tier?.name||'Bado'}</div>
-                <div style={{fontSize:10,color:'#64748B'}}>Bonus: TZS {(a.tier?.bonus||0).toLocaleString()}</div>
+                <div style={{fontWeight:800,fontSize:14,color:a.tier?.color||'#9AA5A0'}}>{a.tier?.name||'Bado'}</div>
+                <div style={{fontSize:10,color:'#5C6A62'}}>Bonus: TZS {(a.tier?.bonus||0).toLocaleString()}</div>
               </div>
             </div>
             {a.toNextTier>0&&a.nextTier&&<div style={{textAlign:'right'}}>
-              <div style={{fontSize:10,color:'#64748B'}}>Daraja linalofuata: {a.nextTier.emoji}</div>
+              <div style={{fontSize:10,color:'#5C6A62'}}>Daraja linalofuata: {a.nextTier.emoji}</div>
               <div style={{fontSize:12,fontWeight:700,color:a.nextTier.color}}>Wateja {a.toNextTier} zaidi</div>
             </div>}
           </div>
 
           {/* Supervisor Info */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-            <div style={{width:44,height:44,borderRadius:'50%',background:a.tier?.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:a.tier?.color||'#64748B'}}>{a.agent_name?.[0]?.toUpperCase()}</div>
+            <div style={{width:44,height:44,borderRadius:'50%',background:a.tier?.color+'20',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:a.tier?.color||'#5C6A62'}}>{a.agent_name?.[0]?.toUpperCase()}</div>
             <div style={{flex:1}}>
               <div style={{fontWeight:800,fontSize:16}}>{a.agent_name}</div>
-              <div style={{fontSize:12,color:'#64748B'}}>{a.agent_phone||'Hakuna simu'}</div>
+              <div style={{fontSize:12,color:'#5C6A62'}}>{a.agent_phone||'Hakuna simu'}</div>
               <div style={{fontSize:11,fontFamily:'monospace',color:'#8B5CF6',background:'#F5F3FF',padding:'1px 8px',borderRadius:4,display:'inline-block',marginTop:2}}>{a.code}</div>
             </div>
           </div>
 
           {/* Stats */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:10}}>
-            <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Jumla</div>
-              <div style={{fontWeight:800,fontSize:16,color:'#1E293B'}}>{a.clients}</div>
+            <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Jumla</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#17231D'}}>{a.clients}</div>
             </div>
-            <div style={{background:'#F0FDF4',borderRadius:8,padding:'6px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Active</div>
-              <div style={{fontWeight:800,fontSize:16,color:'#22C55E'}}>{a.activeClients}</div>
+            <div style={{background:'#E6F2EC',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Active</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#0A6E47'}}>{a.activeClients}</div>
             </div>
-            <div style={{background:'#FFF7ED',borderRadius:8,padding:'6px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Trial</div>
-              <div style={{fontWeight:800,fontSize:16,color:'#F59E0B'}}>{trialBiz.length}</div>
+            <div style={{background:'#FFF8E6',borderRadius:8,padding:'6px',textAlign:'center'}}>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Trial</div>
+              <div style={{fontWeight:800,fontSize:16,color:'#F2B705'}}>{trialBiz.length}</div>
             </div>
             <div style={{background:'#F5F3FF',borderRadius:8,padding:'6px',textAlign:'center'}}>
-              <div style={{fontSize:9,color:'#94A3B8'}}>Kamisheni</div>
+              <div style={{fontSize:9,color:'#9AA5A0'}}>Kamisheni</div>
               <div style={{fontWeight:800,fontSize:13,color:'#8B5CF6'}}>{fmtMoney(a.commission)}</div>
             </div>
           </div>
 
           {/* Progress Bar to next tier */}
           {a.nextTier&&<div style={{marginBottom:10}}>
-            <div style={{height:6,background:'#F1F5F9',borderRadius:3,overflow:'hidden'}}>
-              <div style={{height:'100%',width:`${Math.min(100,Math.round(a.activeClients/(a.nextTier.min||1)*100))}%`,background:a.tier?.color||'#94A3B8',borderRadius:3}}/>
+            <div style={{height:6,background:'#F6F8F7',borderRadius:3,overflow:'hidden'}}>
+              <div style={{height:'100%',width:`${Math.min(100,Math.round(a.activeClients/(a.nextTier.min||1)*100))}%`,background:a.tier?.color||'#9AA5A0',borderRadius:3}}/>
             </div>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94A3B8',marginTop:2}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#9AA5A0',marginTop:2}}>
               <span>{a.activeClients} sasa</span><span>{a.nextTier.min} kwa {a.nextTier.name}</span>
             </div>
           </div>}
 
           {/* Commission Rate */}
-          <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Commission Rate: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fmtMoney(a.revenue)}</b></div>
+          <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>Commission Rate: <b>{a.commission_rate||10}%</b> • Revenue: <b>{fmtMoney(a.revenue)}</b></div>
 
           {/* Actions */}
           <div style={{display:'flex',gap:6}}>
-            <button onClick={()=>setDetail(a)} style={{flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',color:'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>📋 Wateja Wake</button>
-            {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'7px 10px',borderRadius:8,border:'1px solid #BBF7D0',background:'#F0FDF4',color:'#15803D',fontWeight:600,fontSize:12,cursor:'pointer',textDecoration:'none'}}>WhatsApp</a>}
-            <button onClick={()=>window.confirm(`Futa supevaiza "${a.agent_name}" na promo code ${a.code}?`)&&deletePromo(a.id)} style={{padding:'7px 10px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>🗑️</button>
+            <button onClick={()=>setDetail(a)} style={{flex:1,padding:'7px 10px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',color:'#475569',fontWeight:600,fontSize:12,cursor:'pointer'}}>📋 Wateja Wake</button>
+            {a.agent_phone&&<a href={`https://wa.me/${a.agent_phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{padding:'7px 10px',borderRadius:8,border:'1px solid #C2DED1',background:'#E6F2EC',color:'#15803D',fontWeight:600,fontSize:12,cursor:'pointer',textDecoration:'none'}}>WhatsApp</a>}
+            <button onClick={()=>window.confirm(`Futa supevaiza "${a.agent_name}" na promo code ${a.code}?`)&&deletePromo(a.id)} style={{padding:'7px 10px',borderRadius:8,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#C2412D',fontWeight:700,fontSize:12,cursor:'pointer'}}>🗑️</button>
           </div>
         </div>;
       })}
@@ -1146,29 +1150,29 @@ export function PromoPage(){
         const agentBiz=businesses.filter(b=>b.promo_code===detail.code);
         return <>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:14}}>
-            <div style={{background:'#F0FDF4',borderRadius:10,padding:'8px',textAlign:'center'}}>
-              <div style={{fontSize:10,color:'#94A3B8'}}>Jumla</div>
+            <div style={{background:'#E6F2EC',borderRadius:10,padding:'8px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#9AA5A0'}}>Jumla</div>
               <div style={{fontWeight:800,fontSize:20,color:'#0A6E47'}}>{agentBiz.length}</div>
             </div>
             <div style={{background:'#F5F3FF',borderRadius:10,padding:'8px',textAlign:'center'}}>
-              <div style={{fontSize:10,color:'#94A3B8'}}>Active</div>
+              <div style={{fontSize:10,color:'#9AA5A0'}}>Active</div>
               <div style={{fontWeight:800,fontSize:20,color:'#8B5CF6'}}>{agentBiz.filter(b=>b.token_active).length}</div>
             </div>
-            <div style={{background:'#FFF7ED',borderRadius:10,padding:'8px',textAlign:'center'}}>
-              <div style={{fontSize:10,color:'#94A3B8'}}>Trial</div>
-              <div style={{fontWeight:800,fontSize:20,color:'#F59E0B'}}>{agentBiz.filter(b=>!b.token_active&&!b.is_suspended).length}</div>
+            <div style={{background:'#FFF8E6',borderRadius:10,padding:'8px',textAlign:'center'}}>
+              <div style={{fontSize:10,color:'#9AA5A0'}}>Trial</div>
+              <div style={{fontWeight:800,fontSize:20,color:'#F2B705'}}>{agentBiz.filter(b=>!b.token_active&&!b.is_suspended).length}</div>
             </div>
           </div>
           <div style={{maxHeight:350,overflowY:'auto'}}>
             {agentBiz.length?agentBiz.map(b=>(
-              <div key={b.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
+              <div key={b.id} style={{padding:'10px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
                 <div>
                   <div style={{fontWeight:700,fontSize:13}}>{b.name}</div>
-                  <div style={{fontSize:11,color:'#64748B'}}>{b.email} • {fmtDate(b.created_at)}</div>
+                  <div style={{fontSize:11,color:'#5C6A62'}}>{b.email} • {fmtDate(b.created_at)}</div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <Badge color={b.plan==='premium'?'#8B5CF6':'#64748B'}>{b.plan||'trial'}</Badge>
-                  <Badge color={b.token_active?'#22C55E':b.is_suspended?'#EF4444':'#F59E0B'}>{b.token_active?'Active':b.is_suspended?'Suspended':'Trial'}</Badge>
+                  <Badge color={b.plan==='premium'?'#8B5CF6':'#5C6A62'}>{b.plan||'trial'}</Badge>
+                  <Badge color={b.token_active?'#0A6E47':b.is_suspended?'#C2412D':'#F2B705'}>{b.token_active?'Active':b.is_suspended?'Suspended':'Trial'}</Badge>
                 </div>
               </div>
             )):<Empty icon="🏪" text="Hakuna wateja bado"/>}
@@ -1231,22 +1235,22 @@ function AccountantSection(){
     {/* Existing Accountants */}
     {accountants.length>0&&<div style={{marginBottom:16}}>
       <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>Wahasibu Waliopo ({accountants.length})</div>
-      {accountants.map(a=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
+      {accountants.map(a=><div key={a.id} style={{padding:'10px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
         <div>
           <div style={{fontWeight:700,fontSize:14}}>{a.name}</div>
-          <div style={{fontSize:12,color:'#64748B'}}>{a.email} • {a.phone||'—'}</div>
-          <div style={{fontSize:10,color:'#94A3B8'}}>Ametengenezwa: {fmtDate(a.created_at)} • Login: {fmtDate(a.last_login)}</div>
+          <div style={{fontSize:12,color:'#5C6A62'}}>{a.email} • {a.phone||'—'}</div>
+          <div style={{fontSize:10,color:'#9AA5A0'}}>Ametengenezwa: {fmtDate(a.created_at)} • Login: {fmtDate(a.last_login)}</div>
         </div>
         <div style={{display:'flex',gap:6}}>
-          <button onClick={()=>toggleAccountant(a.id,a.is_active)} style={{padding:'5px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:a.is_active?'#22C55E':'#EF4444',color:'#fff'}}>{a.is_active?'✅ Active':'🔒 Disabled'}</button>
-          <button onClick={()=>deleteAccountant(a.id,a.email)} style={{padding:'5px 12px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️</button>
+          <button onClick={()=>toggleAccountant(a.id,a.is_active)} style={{padding:'5px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:a.is_active?'#0A6E47':'#C2412D',color:'#fff'}}>{a.is_active?'✅ Active':'🔒 Disabled'}</button>
+          <button onClick={()=>deleteAccountant(a.id,a.email)} style={{padding:'5px 12px',borderRadius:8,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#C2412D',fontWeight:700,fontSize:11,cursor:'pointer'}}>🗑️</button>
         </div>
       </div>)}
     </div>}
     
     {/* Create New */}
     <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:8}}>+ Ongeza Muhasibu Mpya</div>
-    {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.msg}</div>}
+    {result&&<div style={{background:result.ok?'#E6F2EC':'#FBECE9',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#0A6E47':'#C2412D'}`}}>{result.msg}</div>}
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
       <Input label="Jina" placeholder="Jina la Muhasibu" value={accName} onChange={e=>setAccName(e.target.value)}/>
       <Input label="Email" type="email" placeholder="muhasibu@email.com" value={accEmail} onChange={e=>setAccEmail(e.target.value)}/>
@@ -1277,18 +1281,18 @@ function DataCleanupSection(){
   };
 
   const tables=[
-    {key:'payment_requests',label:'Malipo (Payment Requests)',icon:'💰',color:'#F59E0B',desc:'Malipo yote — approved, pending, rejected'},
-    {key:'system_expenses',label:'Matumizi ya Mfumo',icon:'💸',color:'#EF4444',desc:'Matumizi yote yaliyorekodiwa na muhasibu'},
+    {key:'payment_requests',label:'Malipo (Payment Requests)',icon:'💰',color:'#F2B705',desc:'Malipo yote — approved, pending, rejected'},
+    {key:'system_expenses',label:'Matumizi ya Mfumo',icon:'💸',color:'#C2412D',desc:'Matumizi yote yaliyorekodiwa na muhasibu'},
     {key:'budgets',label:'Bajeti',icon:'📋',color:'#8B5CF6',desc:'Bajeti zote za kila mwezi'},
     {key:'payroll',label:'Payroll / Mishahara',icon:'👥',color:'#3B82F6',desc:'Rekodi za mishahara zote'},
-    {key:'marketing_debts',label:'Madeni ya Marketing',icon:'💳',color:'#EF4444',desc:'Madeni yote ya washirika'},
-    {key:'debt_payments',label:'Malipo ya Madeni',icon:'💰',color:'#22C55E',desc:'Rekodi za malipo ya madeni'},
-    {key:'audit_logs',label:'Audit Logs',icon:'📝',color:'#64748B',desc:'Historia ya shughuli za muhasibu'},
-    {key:'smart_alerts',label:'Smart Alerts',icon:'⚠️',color:'#F59E0B',desc:'Arifa za mfumo'},
+    {key:'marketing_debts',label:'Madeni ya Marketing',icon:'💳',color:'#C2412D',desc:'Madeni yote ya washirika'},
+    {key:'debt_payments',label:'Malipo ya Madeni',icon:'💰',color:'#0A6E47',desc:'Rekodi za malipo ya madeni'},
+    {key:'audit_logs',label:'Audit Logs',icon:'📝',color:'#5C6A62',desc:'Historia ya shughuli za muhasibu'},
+    {key:'smart_alerts',label:'Smart Alerts',icon:'⚠️',color:'#F2B705',desc:'Arifa za mfumo'},
     {key:'notifications',label:'Notifications',icon:'🔔',color:'#3B82F6',desc:'Arifa zote za mfumo'},
-    {key:'login_logs',label:'Login Logs',icon:'🔑',color:'#64748B',desc:'Historia ya kuingia mfumo'},
-    {key:'otp_codes',label:'OTP Codes',icon:'🔐',color:'#64748B',desc:'OTP codes zilizomalizika'},
-    {key:'support_tickets',label:'Support Tickets',icon:'🎫',color:'#F59E0B',desc:'Tickets za msaada'},
+    {key:'login_logs',label:'Login Logs',icon:'🔑',color:'#5C6A62',desc:'Historia ya kuingia mfumo'},
+    {key:'otp_codes',label:'OTP Codes',icon:'🔐',color:'#5C6A62',desc:'OTP codes zilizomalizika'},
+    {key:'support_tickets',label:'Support Tickets',icon:'🎫',color:'#F2B705',desc:'Tickets za msaada'},
   ];
 
   const cleanAll=async()=>{
@@ -1302,26 +1306,26 @@ function DataCleanupSection(){
     setDeleting('');
   };
 
-  return <div className="card" style={{marginBottom:16,border:'2px solid #EF4444'}}>
-    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 6px',color:'#EF4444'}}>🗑️ Futa Data za Majaribio</h3>
-    <p style={{fontSize:12,color:'#64748B',marginBottom:14}}>Futa data za test/majaribio kabla ya kuanza kutumia mfumo kwa uzalishaji. ⚠️ Data zilizofutwa HAZIWEZI kurudishwa!</p>
+  return <div className="card" style={{marginBottom:16,border:'2px solid #C2412D'}}>
+    <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 6px',color:'#C2412D'}}>🗑️ Futa Data za Majaribio</h3>
+    <p style={{fontSize:12,color:'#5C6A62',marginBottom:14}}>Futa data za test/majaribio kabla ya kuanza kutumia mfumo kwa uzalishaji. ⚠️ Data zilizofutwa HAZIWEZI kurudishwa!</p>
     
-    {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.msg}</div>}
+    {result&&<div style={{background:result.ok?'#E6F2EC':'#FBECE9',color:result.ok?'#15803D':'#B91C1C',padding:'10px 14px',borderRadius:10,fontSize:13,marginBottom:12,borderLeft:`4px solid ${result.ok?'#0A6E47':'#C2412D'}`}}>{result.msg}</div>}
     
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:8,marginBottom:14}}>
-      {tables.map(t=><div key={t.key} style={{background:'#FAFBFC',borderRadius:10,padding:'10px 12px',border:'1px solid #E2E8F0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      {tables.map(t=><div key={t.key} style={{background:'#FAFBFC',borderRadius:10,padding:'10px 12px',border:'1px solid #D6E2DB',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div>
           <div style={{fontSize:12,fontWeight:700}}>{t.icon} {t.label}</div>
-          <div style={{fontSize:10,color:'#94A3B8'}}>{t.desc}</div>
+          <div style={{fontSize:10,color:'#9AA5A0'}}>{t.desc}</div>
         </div>
-        <button onClick={()=>cleanTable(t.key,t.label)} disabled={!!deleting} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:10,cursor:'pointer',whiteSpace:'nowrap'}}>
+        <button onClick={()=>cleanTable(t.key,t.label)} disabled={!!deleting} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#C2412D',fontWeight:700,fontSize:10,cursor:'pointer',whiteSpace:'nowrap'}}>
           {deleting===t.key?'⏳...':'🗑️ Futa'}
         </button>
       </div>)}
     </div>
     
     {/* Nuclear button */}
-    <button onClick={cleanAll} disabled={!!deleting} style={{width:'100%',padding:14,background:deleting==='all'?'#FCA5A5':'linear-gradient(135deg,#EF4444,#B91C1C)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 15px rgba(239,68,68,0.3)'}}>
+    <button onClick={cleanAll} disabled={!!deleting} style={{width:'100%',padding:14,background:deleting==='all'?'#FCA5A5':'linear-gradient(135deg,#C2412D,#9B3322)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 15px rgba(239,68,68,0.3)'}}>
       {deleting==='all'?'⏳ Inafuta...':'💣 FUTA DATA ZOTE ZA MAJARIBIO'}
     </button>
   </div>;
@@ -1347,8 +1351,8 @@ function SystemStatusSection(){
   return <div className="card" style={{marginBottom:16,border:'2px solid #0A6E47'}}>
     <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 12px',color:'#0A6E47'}}>📊 System Status</h3>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:8}}>
-      {Object.entries(dbStats).map(([t,c])=><div key={t} style={{background:'#F8FAFC',borderRadius:8,padding:'8px 10px',border:'1px solid #E2E8F0',textAlign:'center'}}>
-        <div style={{fontSize:9,color:'#64748B',fontWeight:600,textTransform:'uppercase'}}>{t.replace(/_/g,' ')}</div>
+      {Object.entries(dbStats).map(([t,c])=><div key={t} style={{background:'#F6F8F7',borderRadius:8,padding:'8px 10px',border:'1px solid #D6E2DB',textAlign:'center'}}>
+        <div style={{fontSize:9,color:'#5C6A62',fontWeight:600,textTransform:'uppercase'}}>{t.replace(/_/g,' ')}</div>
         <div style={{fontSize:18,fontWeight:900,color:'#0A6E47'}}>{c}</div>
       </div>)}
     </div>
@@ -1383,20 +1387,20 @@ function EmailTestSection(){
         {testing?'⏳ Inatuma...':'📧 Test Email'}
       </button>
     </div>
-    {testResult&&<div style={{background:testResult.success?'#F0FDF4':'#FEF2F2',border:`1px solid ${testResult.success?'#BBF7D0':'#FECACA'}`,borderRadius:10,padding:12,fontSize:12,marginBottom:8}}>
+    {testResult&&<div style={{background:testResult.success?'#E6F2EC':'#FBECE9',border:`1px solid ${testResult.success?'#C2DED1':'#F0D9D4'}`,borderRadius:10,padding:12,fontSize:12,marginBottom:8}}>
       {testResult.success?<>
         <div style={{color:'#15803D',fontWeight:700,fontSize:14,marginBottom:4}}>✅ Email Imetumwa!</div>
         <div style={{color:'#15803D'}}>ID: {testResult.id}</div>
-        <div style={{color:'#64748B',marginTop:4}}>Angalia inbox ya <b>{testEmail}</b> (na spam folder).</div>
-        {testResult.note&&<div style={{color:'#92400E',marginTop:6,background:'#FFF7ED',borderRadius:6,padding:8}}>{testResult.note}</div>}
+        <div style={{color:'#5C6A62',marginTop:4}}>Angalia inbox ya <b>{testEmail}</b> (na spam folder).</div>
+        {testResult.note&&<div style={{color:'#92400E',marginTop:6,background:'#FFF8E6',borderRadius:6,padding:8}}>{testResult.note}</div>}
       </>:<>
         <div style={{color:'#B91C1C',fontWeight:700,fontSize:14,marginBottom:4}}>❌ Imeshindwa!</div>
         <div style={{color:'#B91C1C'}}>{testResult.error}</div>
-        {testResult.hint&&<div style={{color:'#92400E',marginTop:6,background:'#FFF7ED',borderRadius:6,padding:8}}><b>Suluhisho:</b> {testResult.hint}</div>}
+        {testResult.hint&&<div style={{color:'#92400E',marginTop:6,background:'#FFF8E6',borderRadius:6,padding:8}}><b>Suluhisho:</b> {testResult.hint}</div>}
         {testResult.fix&&<div style={{color:'#1E40AF',marginTop:6,background:'#EFF6FF',borderRadius:6,padding:8}}>{testResult.fix}</div>}
       </>}
     </div>}
-    <div style={{fontSize:11,color:'#94A3B8',lineHeight:1.6}}>
+    <div style={{fontSize:11,color:'#9AA5A0',lineHeight:1.6}}>
       <b>Email zinazotumwa:</b> Welcome (mteja mpya), Daily/Weekly/Monthly Reports, Low Stock, Overdue Debt, Payment Received, Subscription Expiry, Admin Payment Alert, Promotional
     </div>
   </div>;
@@ -1432,42 +1436,42 @@ export function SettingsPage(){
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🏪 Branch System</h3>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
         <span style={{fontSize:13,fontWeight:600}}>Multi-Branch Enabled:</span>
-        <button onClick={()=>updateSetting('branch_enabled',settings.branch_enabled==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.branch_enabled==='true'?'#22C55E':'#94A3B8',color:'#fff',cursor:'pointer'}}>{settings.branch_enabled==='true'?'ON — Wote':'OFF — Imezimwa'}</button>
+        <button onClick={()=>updateSetting('branch_enabled',settings.branch_enabled==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.branch_enabled==='true'?'#0A6E47':'#9AA5A0',color:'#fff',cursor:'pointer'}}>{settings.branch_enabled==='true'?'ON — Wote':'OFF — Imezimwa'}</button>
       </div>
-      <div style={{fontSize:12,color:'#64748B',lineHeight:1.5}}>Ukizima, wateja wote hawataona sehemu ya matawi. Ukiwasha, wateja wote wanaweza kuongeza matawi.</div>
+      <div style={{fontSize:12,color:'#5C6A62',lineHeight:1.5}}>Ukizima, wateja wote hawataona sehemu ya matawi. Ukiwasha, wateja wote wanaweza kuongeza matawi.</div>
     </div>
     {/* ANNOUNCEMENT BANNER */}
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>📢 System Announcement</h3>
       <Sel label="Aina" value={settings.announcement_type||'info'} onChange={e=>updateSetting('announcement_type',e.target.value)} options={[{value:'info',label:'Taarifa (Kijani)'},{value:'warning',label:'Onyo (Njano)'},{value:'danger',label:'Muhimu (Nyekundu)'}]}/>
       <Input label="Ujumbe (weka tupu kuondoa)" value={settings.announcement||''} onChange={e=>updateSetting('announcement',e.target.value)} placeholder="Mf: Mfumo utafanyiwa matengenezo Jumamosi..."/>
-      {settings.announcement&&<div style={{background:'#F0FDF4',borderRadius:8,padding:8,fontSize:12,color:'#15803D'}}>Preview: 📢 {settings.announcement}</div>}
+      {settings.announcement&&<div style={{background:'#E6F2EC',borderRadius:8,padding:8,fontSize:12,color:'#15803D'}}>Preview: 📢 {settings.announcement}</div>}
     </div>
 
     {/* ===== TUMA EMAIL YA UPDATE KWA WATEJA WOTE ===== */}
-    <div className="card" style={{marginBottom:16,border:'1.5px solid #BBF7D0'}}>
+    <div className="card" style={{marginBottom:16,border:'1.5px solid #C2DED1'}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 4px',color:'#0A6E47'}}>✉️ Tuma Update kwa Wateja Wote</h3>
-      <p style={{fontSize:12,color:'#64748B',margin:'0 0 14px'}}>Andika taarifa ya feature mpya. Email nzuri itatumwa kwa wateja <b>{emailCount}</b> wenye email.</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 14px'}}>Andika taarifa ya feature mpya. Email nzuri itatumwa kwa wateja <b>{emailCount}</b> wenye email.</p>
       <Input label="Kichwa cha Update *" value={updTitle} onChange={e=>setUpdTitle(e.target.value)} placeholder="Mf: Risiti Mpya ya Kitaalamu Imezinduliwa!"/>
       <label style={{fontSize:12.5,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Maelezo *</label>
-      <textarea value={updBody} onChange={e=>setUpdBody(e.target.value)} rows={6} placeholder={"Andika kilichoongezwa na jinsi kinavyofanya kazi.\n\nMf:\nSasa unaweza kuchapisha risiti ya kitaalamu ya 58mm/80mm.\nInaonyesha QR code, njia ya malipo, na hali ya deni.\nNenda Mauzo, uze, kisha bonyeza Chapisha."} style={{width:'100%',padding:'11px 13px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13.5,lineHeight:1.5,boxSizing:'border-box',outline:'none',fontFamily:'inherit',resize:'vertical',marginBottom:12}}/>
+      <textarea value={updBody} onChange={e=>setUpdBody(e.target.value)} rows={6} placeholder={"Andika kilichoongezwa na jinsi kinavyofanya kazi.\n\nMf:\nSasa unaweza kuchapisha risiti ya kitaalamu ya 58mm/80mm.\nInaonyesha QR code, njia ya malipo, na hali ya deni.\nNenda Mauzo, uze, kisha bonyeza Chapisha."} style={{width:'100%',padding:'11px 13px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13.5,lineHeight:1.5,boxSizing:'border-box',outline:'none',fontFamily:'inherit',resize:'vertical',marginBottom:12}}/>
 
-      {(updTitle||updBody)&&<div style={{background:'#F8FAFC',border:'1px dashed #CBD5E1',borderRadius:10,padding:14,marginBottom:12}}>
-        <div style={{fontSize:10,color:'#94A3B8',fontWeight:700,marginBottom:8,letterSpacing:1}}>PREVIEW YA EMAIL</div>
-        <div style={{display:'inline-block',background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:16,marginBottom:8}}>✨ TAARIFA MPYA</div>
+      {(updTitle||updBody)&&<div style={{background:'#F6F8F7',border:'1px dashed #CBD5E1',borderRadius:10,padding:14,marginBottom:12}}>
+        <div style={{fontSize:10,color:'#9AA5A0',fontWeight:700,marginBottom:8,letterSpacing:1}}>PREVIEW YA EMAIL</div>
+        <div style={{display:'inline-block',background:'#E6F2EC',color:'#15803D',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:16,marginBottom:8}}>✨ TAARIFA MPYA</div>
         <div style={{fontSize:16,fontWeight:800,color:'#0A6E47',marginBottom:6}}>{updTitle||'(Kichwa)'}</div>
         <div style={{fontSize:13,color:'#475569',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{updBody||'(Maelezo)'}</div>
       </div>}
 
       {updResult&&(updResult.error
-        ?<div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,padding:10,fontSize:12.5,color:'#B91C1C',marginBottom:12}}>⚠️ {updResult.error}</div>
-        :<div style={{background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:8,padding:10,fontSize:12.5,color:'#15803D',marginBottom:12}}>✅ Imetumwa kwa {updResult.sent}/{updResult.total} wateja.{updResult.failed>0?` (${updResult.failed} zimeshindwa)`:''}</div>
+        ?<div style={{background:'#FBECE9',border:'1px solid #F0D9D4',borderRadius:8,padding:10,fontSize:12.5,color:'#B91C1C',marginBottom:12}}>⚠️ {updResult.error}</div>
+        :<div style={{background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:8,padding:10,fontSize:12.5,color:'#15803D',marginBottom:12}}>✅ Imetumwa kwa {updResult.sent}/{updResult.total} wateja.{updResult.failed>0?` (${updResult.failed} zimeshindwa)`:''}</div>
       )}
 
       <button onClick={sendUpdate} disabled={updSending||emailCount===0} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:updSending?'#86EFAC':'#0A6E47',color:'#fff',fontWeight:800,fontSize:15,cursor:updSending?'not-allowed':'pointer',opacity:emailCount===0?0.6:1}}>
         {updSending?'⏳ Inatuma email...':`✉️ Tuma kwa Wateja ${emailCount}`}
       </button>
-      <div style={{fontSize:11,color:'#94A3B8',marginTop:8,textAlign:'center'}}>💡 Email zinatumwa kwa makundi ili zisilemewe. Subiri hadi ikamilike.</div>
+      <div style={{fontSize:11,color:'#9AA5A0',marginTop:8,textAlign:'center'}}>💡 Email zinatumwa kwa makundi ili zisilemewe. Subiri hadi ikamilike.</div>
     </div>
 
     {/* WHITE LABEL */}
@@ -1475,14 +1479,14 @@ export function SettingsPage(){
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🏷️ White Label</h3>
       <Input label="Jina la Brand (Default: Duka Langu)" value={settings.white_label_name||''} onChange={e=>updateSetting('white_label_name',e.target.value)} placeholder="Duka Langu"/>
       <Input label="Tagline" value={settings.white_label_tagline||''} onChange={e=>updateSetting('white_label_tagline',e.target.value)} placeholder="Together for the better"/>
-      <div style={{fontSize:12,color:'#64748B'}}>Wateja wa Premium wanaweza kubadilisha jina na logo ya mfumo.</div>
+      <div style={{fontSize:12,color:'#5C6A62'}}>Wateja wa Premium wanaweza kubadilisha jina na logo ya mfumo.</div>
     </div>
     {/* SMS */}
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>📱 SMS</h3>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
         <span style={{fontSize:13}}>SMS Enabled:</span>
-        <button onClick={()=>updateSetting('sms_enabled',settings.sms_enabled==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.sms_enabled==='true'?'#22C55E':'#94A3B8',color:'#fff',cursor:'pointer'}}>{settings.sms_enabled==='true'?'ON':'OFF'}</button>
+        <button onClick={()=>updateSetting('sms_enabled',settings.sms_enabled==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.sms_enabled==='true'?'#0A6E47':'#9AA5A0',color:'#fff',cursor:'pointer'}}>{settings.sms_enabled==='true'?'ON':'OFF'}</button>
       </div>
       <Input label="SMS API Key" value={settings.sms_api_key||''} onChange={e=>updateSetting('sms_api_key',e.target.value)}/>
     </div>
@@ -1491,7 +1495,7 @@ export function SettingsPage(){
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🔒 System Control</h3>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <span style={{fontSize:13}}>Maintenance Mode:</span>
-        <button onClick={()=>updateSetting('maintenance_mode',settings.maintenance_mode==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.maintenance_mode==='true'?'#EF4444':'#22C55E',color:'#fff',cursor:'pointer'}}>{settings.maintenance_mode==='true'?'ON':'OFF'}</button>
+        <button onClick={()=>updateSetting('maintenance_mode',settings.maintenance_mode==='true'?'false':'true')} style={{padding:'6px 16px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,background:settings.maintenance_mode==='true'?'#C2412D':'#0A6E47',color:'#fff',cursor:'pointer'}}>{settings.maintenance_mode==='true'?'ON':'OFF'}</button>
       </div>
     </div>
     {/* EMAIL TEST */}
@@ -1522,24 +1526,24 @@ export function TicketsPage(){
   const{tickets,replyTicket,closeTicket}=useApp();
   const[sel,setSel]=useState(null);const[reply,setReply]=useState('');
   const open=tickets.filter(t=>t.status==='open');const replied=tickets.filter(t=>t.status==='replied');const closed=tickets.filter(t=>t.status==='closed');
-  return <div>
+  return <div className="page-enter">
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.bell} label="Open" value={open.length} color="#EF4444"/>
+      <Stat icon={IC.bell} label="Open" value={open.length} color="#C2412D"/>
       <Stat icon={IC.ok} label="Replied" value={replied.length} color="#3B82F6"/>
-      <Stat icon={IC.ok} label="Closed" value={closed.length} color="#22C55E"/>
+      <Stat icon={IC.ok} label="Closed" value={closed.length} color="#0A6E47"/>
     </div>
     <div className="card">
       <h3 style={{fontSize:15,fontWeight:700,margin:'0 0 12px'}}>🎫 Support Tickets</h3>
-      {tickets.map(t=><div key={t.id} style={{padding:'10px 0',borderBottom:'1px solid #F1F5F9'}}>
+      {tickets.map(t=><div key={t.id} style={{padding:'10px 0',borderBottom:'1px solid #F6F8F7'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:6}}>
-          <div><div style={{fontWeight:700,fontSize:13}}>{t.subject}</div><div style={{fontSize:11,color:'#64748B'}}>{t.business_name||t.user_email} • {fmtDate(t.created_at)}</div></div>
+          <div><div style={{fontWeight:700,fontSize:13}}>{t.subject}</div><div style={{fontSize:11,color:'#5C6A62'}}>{t.business_name||t.user_email} • {fmtDate(t.created_at)}</div></div>
           <div style={{display:'flex',gap:4}}>
-            <Badge color={t.status==='open'?'#EF4444':t.status==='replied'?'#3B82F6':'#22C55E'}>{t.status}</Badge>
-            <Badge color={t.priority==='urgent'?'#EF4444':'#64748B'}>{t.priority}</Badge>
+            <Badge color={t.status==='open'?'#C2412D':t.status==='replied'?'#3B82F6':'#0A6E47'}>{t.status}</Badge>
+            <Badge color={t.priority==='urgent'?'#C2412D':'#5C6A62'}>{t.priority}</Badge>
           </div>
         </div>
-        <div style={{fontSize:12,color:'#475569',marginTop:4,background:'#F8FAFC',padding:8,borderRadius:6}}>{t.message}</div>
-        {t.reply&&<div style={{fontSize:12,color:'#0A6E47',marginTop:4,background:'#F0FDF4',padding:8,borderRadius:6}}>Jibu: {t.reply}</div>}
+        <div style={{fontSize:12,color:'#475569',marginTop:4,background:'#F6F8F7',padding:8,borderRadius:6}}>{t.message}</div>
+        {t.reply&&<div style={{fontSize:12,color:'#0A6E47',marginTop:4,background:'#E6F2EC',padding:8,borderRadius:6}}>Jibu: {t.reply}</div>}
         {t.status!=='closed'&&<div style={{display:'flex',gap:6,marginTop:6}}>
           <Btn v="ghost" style={{padding:'4px 10px',fontSize:11}} onClick={()=>setSel(t.id===sel?null:t.id)}>Jibu</Btn>
           <Btn v="ghost" style={{padding:'4px 10px',fontSize:11}} onClick={()=>closeTicket(t.id)}>Funga</Btn>
@@ -1563,15 +1567,15 @@ export function SecurityPage(){
       <Btn v="outline" style={{padding:'6px 12px',fontSize:11}} onClick={exportAllData}>{IC.dl} Export Data</Btn>
     </div>
     {tab==='login'&&<div style={{maxHeight:500,overflowY:'auto'}}>
-      {loginLogs.map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',fontSize:12,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
-        <div><span style={{fontWeight:600}}>{l.email}</span> <Badge color={l.action==='login'?'#22C55E':'#94A3B8'}>{l.action}</Badge></div>
-        <span style={{color:'#94A3B8',fontSize:11}}>{fmtDate(l.created_at)}</span>
+      {loginLogs.map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',fontSize:12,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
+        <div><span style={{fontWeight:600}}>{l.email}</span> <Badge color={l.action==='login'?'#0A6E47':'#9AA5A0'}>{l.action}</Badge></div>
+        <span style={{color:'#9AA5A0',fontSize:11}}>{fmtDate(l.created_at)}</span>
       </div>)}{!loginLogs.length&&<Empty text="Hakuna"/>}
     </div>}
     {tab==='system'&&<div style={{maxHeight:500,overflowY:'auto'}}>
-      {systemLogs.map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',fontSize:12}}>
-        <span style={{fontWeight:600}}>{l.action}</span> <span style={{color:'#64748B'}}>{l.details?.text||''}</span>
-        <div style={{fontSize:11,color:'#94A3B8'}}>{l.user_email} • {fmtDate(l.created_at)}</div>
+      {systemLogs.map((l,i)=><div key={i} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',fontSize:12}}>
+        <span style={{fontWeight:600}}>{l.action}</span> <span style={{color:'#5C6A62'}}>{l.details?.text||''}</span>
+        <div style={{fontSize:11,color:'#9AA5A0'}}>{l.user_email} • {fmtDate(l.created_at)}</div>
       </div>)}{!systemLogs.length&&<Empty text="Hakuna"/>}
     </div>}
   </div>;
@@ -1604,7 +1608,7 @@ export function BackupPage(){
   },[user?.role]);
   
   // Security: Admin only
-  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FFF8E6',borderRadius:16,border:'2px solid #F2B705'}}>
     <div style={{fontSize:60,marginBottom:14}}>🔒</div>
     <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
     <p style={{fontSize:14,color:'#78350F'}}>Ukurasa wa backup unasimamiwa na Admin pekee.</p>
@@ -1649,14 +1653,14 @@ export function BackupPage(){
   const hoursAgo=lastBackupDate?Math.floor((Date.now()-lastBackupDate.getTime())/(1000*60*60)):null;
   const isHealthy=hoursAgo!==null&&hoursAgo<26;
   
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>💾 Backup ya Database</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Hifadhi na simamia backups za mfumo</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Hifadhi na simamia backups za mfumo</p>
     </div>
     
     <div style={{
-      background: isHealthy?'linear-gradient(135deg,#0A6E47,#0A6E47)':'linear-gradient(135deg,#DC2626,#991B1B)',
+      background: isHealthy?'linear-gradient(140deg,#06502F,#0A6E47)':'linear-gradient(135deg,#DC2626,#991B1B)',
       borderRadius:16,padding:'24px 28px',marginBottom:16,color:'#fff',
       boxShadow:'0 8px 30px rgba(0,0,0,0.15)',
     }}>
@@ -1696,35 +1700,35 @@ export function BackupPage(){
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>BACKUPS ZOTE</div>
         <div style={{fontSize:28,fontWeight:900,color:'#0A6E47',marginTop:4}}>{backups.length}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>siku 30 zilizopita</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>siku 30 zilizopita</div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #22C55E'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:11,color:'#15803D',fontWeight:700,letterSpacing:0.5}}>ZILIZOFANIKIWA</div>
-        <div style={{fontSize:28,fontWeight:900,color:'#22C55E',marginTop:4}}>{successCount}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>{backups.length>0?Math.round(successCount/backups.length*100):0}%</div>
+        <div style={{fontSize:28,fontWeight:900,color:'#0A6E47',marginTop:4}}>{successCount}</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>{backups.length>0?Math.round(successCount/backups.length*100):0}%</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #3B82F6'}}>
         <div style={{fontSize:11,color:'#1D4ED8',fontWeight:700,letterSpacing:0.5}}>JUMLA YA DATA</div>
         <div style={{fontSize:18,fontWeight:900,color:'#3B82F6',marginTop:4}}>{fmtSize(totalSize)}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>hifadhiwa</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>hifadhiwa</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:16,borderLeft:'4px solid #8B5CF6'}}>
         <div style={{fontSize:11,color:'#6D28D9',fontWeight:700,letterSpacing:0.5}}>RATIBA</div>
         <div style={{fontSize:14,fontWeight:900,color:'#8B5CF6',marginTop:4}}>Saa 2:00</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>kila usiku</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>kila usiku</div>
       </div>
     </div>
     
-    <div className="card" style={{marginBottom:16,border:'2px solid #BBF7D0',background:'linear-gradient(135deg,#F0FDF4,#fff)'}}>
+    <div className="card" style={{marginBottom:16,border:'2px solid #C2DED1',background:'linear-gradient(135deg,#E6F2EC,#fff)'}}>
       <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
         <div style={{width:54,height:54,borderRadius:14,background:'#0A6E47',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>⚡</div>
         <div style={{flex:1,minWidth:200}}>
           <h3 style={{fontSize:16,fontWeight:800,margin:0,color:'#0A6E47'}}>Backup ya Haraka</h3>
-          <p style={{fontSize:12,color:'#64748B',margin:'4px 0 0'}}>Anza backup mara moja — itahifadhiwa kwenye email yako</p>
+          <p style={{fontSize:12,color:'#5C6A62',margin:'4px 0 0'}}>Anza backup mara moja — itahifadhiwa kwenye email yako</p>
         </div>
         <button onClick={triggerBackup} disabled={triggering} style={{
           padding:'14px 28px',
-          background:triggering?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',
+          background:triggering?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',
           color:'#fff',border:'none',borderRadius:12,
           fontWeight:800,fontSize:14,cursor:triggering?'wait':'pointer',
           boxShadow:'0 4px 15px rgba(11,122,59,0.3)',
@@ -1747,43 +1751,43 @@ export function BackupPage(){
     <div className="card">
       <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📋 Historia ya Backups (Siku 30)</h3>
       
-      {loading?<div style={{textAlign:'center',padding:30,color:'#94A3B8'}}>
+      {loading?<div style={{textAlign:'center',padding:30,color:'#9AA5A0'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
         <div style={{fontSize:13}}>Inaleta backups...</div>
       </div>:backups.length>0?<div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:520,overflowY:'auto'}}>
         {backups.map(b=><div key={b.id} style={{
-          padding:'14px 16px',background:'#F8FAFC',borderRadius:10,
-          borderLeft:`4px solid ${b.status==='completed'?'#22C55E':b.status==='partial'?'#F59E0B':'#EF4444'}`,
+          padding:'14px 16px',background:'#F6F8F7',borderRadius:10,
+          borderLeft:`4px solid ${b.status==='completed'?'#0A6E47':b.status==='partial'?'#F2B705':'#C2412D'}`,
           display:'grid',gridTemplateColumns:'auto 1fr auto',gap:12,alignItems:'center',
         }}>
           <div style={{
             width:46,height:46,borderRadius:12,
-            background:b.status==='completed'?'#DCFCE7':b.status==='partial'?'#FEF3C7':'#FEE2E2',
+            background:b.status==='completed'?'#D6EADF':b.status==='partial'?'#FFF8E6':'#F6DED8',
             display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,
           }}>{b.status==='completed'?'✅':b.status==='partial'?'⚠️':'❌'}</div>
           
           <div style={{minWidth:0}}>
-            <div style={{fontWeight:800,fontSize:13,color:'#1E293B',marginBottom:3}}>
+            <div style={{fontWeight:800,fontSize:13,color:'#17231D',marginBottom:3}}>
               {new Date(b.created_at).toLocaleString('sw-TZ',{dateStyle:'full',timeStyle:'short'})}
             </div>
-            <div style={{fontSize:11,color:'#64748B',display:'flex',gap:10,flexWrap:'wrap'}}>
+            <div style={{fontSize:11,color:'#5C6A62',display:'flex',gap:10,flexWrap:'wrap'}}>
               <span>📊 {(b.total_rows||0).toLocaleString()} rows</span>
               <span>📁 {b.total_tables||0} tables</span>
               <span>💾 {fmtSize(b.size_bytes)}</span>
               <span>⏱️ {fmtDuration(b.duration_ms)}</span>
-              {b.errors&&b.errors.length>0&&<span style={{color:'#EF4444'}}>⚠️ {b.errors.length} errors</span>}
+              {b.errors&&b.errors.length>0&&<span style={{color:'#C2412D'}}>⚠️ {b.errors.length} errors</span>}
             </div>
           </div>
           
           <div style={{
             padding:'4px 12px',borderRadius:8,
-            background:b.status==='completed'?'#22C55E':b.status==='partial'?'#F59E0B':'#EF4444',
+            background:b.status==='completed'?'#0A6E47':b.status==='partial'?'#F2B705':'#C2412D',
             color:'#fff',fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:0.5,
           }}>{b.status||'unknown'}</div>
         </div>)}
-      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      </div>:<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:50,marginBottom:10}}>💾</div>
-        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna backup bado</div>
+        <div style={{fontWeight:700,color:'#5C6A62'}}>Hakuna backup bado</div>
         <div style={{fontSize:12,marginTop:4}}>Bonyeza "Anza Backup" juu kuanza ya kwanza</div>
       </div>}
     </div>
@@ -1847,11 +1851,11 @@ export function PaymentsPage(){
 
   const totalRevenue=paymentRequests.filter(p=>p.status==='approved').reduce((a,p)=>a+(p.amount||0),0);
 
-  return <div>
+  return <div className="page-enter">
     {/* Security Notice for Admin */}
     {user?.role==='admin'&&<div style={{
-      background:'linear-gradient(135deg,#FEF3C7,#FDE68A)',
-      border:'2px solid #F59E0B',
+      background:'linear-gradient(135deg,#FFF8E6,#FDF0CC)',
+      border:'2px solid #F2B705',
       borderRadius:12,
       padding:'14px 18px',
       marginBottom:16,
@@ -1870,9 +1874,9 @@ export function PaymentsPage(){
     
     {/* Stats */}
     <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.bell} label="Inasubiri" value={pendingPayments.length} color="#F59E0B"/>
-      <Stat icon={IC.ok} label="Zimethibitishwa" value={paymentRequests.filter(p=>p.status==='approved').length} color="#22C55E"/>
-      <Stat icon={IC.warn} label="Zimekataliwa" value={paymentRequests.filter(p=>p.status==='rejected').length} color="#EF4444"/>
+      <Stat icon={IC.bell} label="Inasubiri" value={pendingPayments.length} color="#F2B705"/>
+      <Stat icon={IC.ok} label="Zimethibitishwa" value={paymentRequests.filter(p=>p.status==='approved').length} color="#0A6E47"/>
+      <Stat icon={IC.warn} label="Zimekataliwa" value={paymentRequests.filter(p=>p.status==='rejected').length} color="#C2412D"/>
       <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRevenue.toLocaleString()}`} color="#0A6E47"/>
     </div>
 
@@ -1881,9 +1885,9 @@ export function PaymentsPage(){
       <span style={{fontSize:13,fontWeight:600}}>Siku za Token:</span>
       <div style={{width:80}}><Input type="number" value={days} onChange={e=>setDays(e.target.value)}/></div>
       <div style={{display:'flex',gap:4}}>
-        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #0A6E47':'1px solid #E2E8F0',background:days===String(d)?'#F0FDF4':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#0A6E47':'#64748B'}}>{d}</button>)}
+        {[7,14,30,60,90].map(d=><button key={d} onClick={()=>setDays(String(d))} style={{padding:'5px 10px',borderRadius:6,border:days===String(d)?'2px solid #0A6E47':'1px solid #D6E2DB',background:days===String(d)?'#E6F2EC':'#fff',fontSize:11,fontWeight:600,cursor:'pointer',color:days===String(d)?'#0A6E47':'#5C6A62'}}>{d}</button>)}
       </div>
-      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #E2E8F0',background:refreshing?'#F0FDF4':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#0A6E47',display:'flex',alignItems:'center',gap:4}}>
+      <button onClick={handleRefresh} disabled={refreshing} style={{marginLeft:'auto',padding:'6px 14px',borderRadius:8,border:'1px solid #D6E2DB',background:refreshing?'#E6F2EC':'#fff',fontSize:12,fontWeight:600,cursor:'pointer',color:'#0A6E47',display:'flex',alignItems:'center',gap:4}}>
         {refreshing?'⏳ Inapakia...':'🔄 Refresh'}
       </button>
     </div>
@@ -1891,82 +1895,86 @@ export function PaymentsPage(){
     {/* Tabs */}
     <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
       {[
-        {id:'pending',label:`⏳ Inasubiri (${pendingPayments.length})`,color:'#F59E0B'},
-        {id:'approved',label:`✅ Zimethibitishwa (${paymentRequests.filter(p=>p.status==='approved').length})`,color:'#22C55E'},
-        {id:'rejected',label:`❌ Zimekataliwa (${paymentRequests.filter(p=>p.status==='rejected').length})`,color:'#EF4444'},
-        {id:'all',label:`📋 Zote (${paymentRequests.length})`,color:'#64748B'},
-      ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#64748B'}}>{t.label}</button>)}
+        {id:'pending',label:`⏳ Inasubiri (${pendingPayments.length})`,color:'#F2B705'},
+        {id:'approved',label:`✅ Zimethibitishwa (${paymentRequests.filter(p=>p.status==='approved').length})`,color:'#0A6E47'},
+        {id:'rejected',label:`❌ Zimekataliwa (${paymentRequests.filter(p=>p.status==='rejected').length})`,color:'#C2412D'},
+        {id:'all',label:`📋 Zote (${paymentRequests.length})`,color:'#5C6A62'},
+      ].map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.color}`:'1.5px solid #D6E2DB',background:tab===t.id?t.color+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.color:'#5C6A62'}}>{t.label}</button>)}
     </div>
 
     {/* Pending Alert */}
-    {pendingPayments.length>0&&tab!=='pending'&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'10px 16px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setTab('pending')}>
+    {pendingPayments.length>0&&tab!=='pending'&&<div style={{background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:12,padding:'10px 16px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setTab('pending')}>
       <span style={{fontSize:13,color:'#92400E',fontWeight:700}}>💰 Malipo {pendingPayments.length} yanasubiri kuthibitishwa!</span>
-      <span style={{fontSize:12,color:'#F59E0B',fontWeight:600}}>Bonyeza kuona →</span>
+      <span style={{fontSize:12,color:'#F2B705',fontWeight:600}}>Bonyeza kuona →</span>
     </div>}
 
     {/* Payment Cards */}
     <div className="card">
-      {filtered.length?filtered.map(p=><div key={p.id} style={{padding:'16px 0',borderBottom:'1px solid #F1F5F9'}}>
+      {filtered.length?filtered.map(p=><div key={p.id} style={{padding:'16px 0',borderBottom:'1px solid #F6F8F7'}}>
         {/* Header */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8,marginBottom:10}}>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <div style={{width:42,height:42,borderRadius:10,background:p.status==='pending'?'#FFF7ED':p.status==='approved'?'#F0FDF4':'#FEF2F2',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>
+            <div style={{width:42,height:42,borderRadius:10,background:p.status==='pending'?'#FFF8E6':p.status==='approved'?'#E6F2EC':'#FBECE9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>
               {p.status==='pending'?'⏳':p.status==='approved'?'✅':'❌'}
             </div>
             <div>
               <div style={{fontWeight:700,fontSize:15}}>{p.business_name||'—'}</div>
-              <div style={{fontSize:12,color:'#64748B'}}>{p.user_email}</div>
-              <div style={{fontSize:11,color:'#94A3B8'}}>{new Date(p.created_at).toLocaleString('sw-TZ')}</div>
+              <div style={{fontSize:12,color:'#5C6A62'}}>{p.user_email}</div>
+              <div style={{fontSize:11,color:'#9AA5A0'}}>{new Date(p.created_at).toLocaleString('sw-TZ')}</div>
             </div>
           </div>
-          <Badge color={p.status==='pending'?'#F59E0B':p.status==='approved'?'#22C55E':'#EF4444'}>
+          <Badge color={p.status==='pending'?'#F2B705':p.status==='approved'?'#0A6E47':'#C2412D'}>
             {p.status==='pending'?'INASUBIRI':p.status==='approved'?'IMETHIBITISHWA':'IMEKATALIWA'}
           </Badge>
         </div>
 
         {/* Payment Details */}
-        <div style={{background:'#F8FAFC',borderRadius:12,padding:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <div style={{background:'#F6F8F7',borderRadius:12,padding:12,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           <div>
-            <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>TRANSACTION ID</div>
-            <div style={{fontWeight:700,fontFamily:'monospace',fontSize:14,color:'#1E293B',marginTop:2}}>{p.transaction_id}</div>
+            <div style={{fontSize:10,color:'#9AA5A0',fontWeight:600}}>TRANSACTION ID</div>
+            <div style={{fontWeight:700,fontFamily:'monospace',fontSize:14,color:'#17231D',marginTop:2}}>{p.transaction_id}</div>
           </div>
           <div>
-            <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>KIASI</div>
+            <div style={{fontSize:10,color:'#9AA5A0',fontWeight:600}}>KIASI</div>
             <div style={{fontWeight:800,fontSize:18,color:'#0A6E47',marginTop:2}}>TZS {(p.amount||0).toLocaleString()}</div>
           </div>
           <div>
-            <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>NJIA</div>
+            <div style={{fontSize:10,color:'#9AA5A0',fontWeight:600}}>NJIA</div>
             <div style={{fontWeight:600,fontSize:13,marginTop:2}}>{p.payment_method||'HALOPESA'}</div>
           </div>
           <div>
-            <div style={{fontSize:10,color:'#94A3B8',fontWeight:600}}>SIMU</div>
+            <div style={{fontSize:10,color:'#9AA5A0',fontWeight:600}}>SIMU</div>
             <div style={{fontWeight:600,fontSize:13,marginTop:2}}>{p.phone||'—'}</div>
           </div>
         </div>
 
         {/* Approved info */}
-        {p.status==='approved'&&p.token_code&&<div style={{background:'#F0FDF4',borderRadius:10,padding:'8px 12px',marginTop:8,display:'flex',justifyContent:'space-between',alignItems:'center',border:'1px solid #BBF7D0'}}>
+        {p.status==='approved'&&p.token_code&&<div style={{background:'#E6F2EC',borderRadius:10,padding:'8px 12px',marginTop:8,display:'flex',justifyContent:'space-between',alignItems:'center',border:'1px solid #C2DED1'}}>
           <div style={{fontSize:12,color:'#15803D'}}>🔑 Token: <b style={{fontFamily:'monospace'}}>{p.token_code}</b></div>
           <div style={{fontSize:12,color:'#15803D'}}>📅 Siku: <b>{p.days_given}</b></div>
         </div>}
 
         {/* Rejected info */}
-        {p.status==='rejected'&&<div style={{background:'#FEF2F2',borderRadius:10,padding:'8px 12px',marginTop:8,fontSize:12,color:'#B91C1C',border:'1px solid #FECACA'}}>
+        {p.status==='rejected'&&<div style={{background:'#FBECE9',borderRadius:10,padding:'8px 12px',marginTop:8,fontSize:12,color:'#B91C1C',border:'1px solid #F0D9D4'}}>
           ❌ Sababu: {p.reject_reason||'Transaction ID si sahihi'}
         </div>}
 
-        {/* Action Buttons — PENDING ONLY */}
-        {p.status==='pending'&&<div style={{display:'flex',gap:8,marginTop:12}}>
-          <button onClick={()=>handleApprove(p.id)} disabled={!!processing} style={{flex:1,padding:'12px 0',background:processing===p.id?'#86EFAC':'#22C55E',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:processing?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all 0.2s'}}>
-            {processing===p.id?'⏳ Inathibitisha...':'✅ Thibitisha (Siku '+days+')'}
-          </button>
-          <button onClick={()=>handleReject(p.id)} disabled={!!processing} style={{padding:'12px 20px',background:'#FEF2F2',color:'#EF4444',border:'1.5px solid #FECACA',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>❌</button>
-        </div>}
+        {/* Vitendo — kwa Muhasibu PEKEE (wengine wanaona tu) */}
+        {p.status==='pending'&&(user?.role==='accountant'
+          ?<div style={{display:'flex',gap:8,marginTop:12}}>
+            <button onClick={()=>handleApprove(p.id)} disabled={!!processing} style={{flex:1,padding:'12px 0',background:processing===p.id?'#86EFAC':'#0A6E47',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:processing?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'all 0.2s'}}>
+              {processing===p.id?'⏳ Inathibitisha...':'✅ Thibitisha (Siku '+days+')'}
+            </button>
+            <button onClick={()=>handleReject(p.id)} disabled={!!processing} style={{padding:'12px 20px',background:'#FBECE9',color:'#C2412D',border:'1.5px solid #F0D9D4',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>❌</button>
+          </div>
+          :<div style={{marginTop:12,padding:'10px 12px',background:'#F6F8F7',borderRadius:10,fontSize:12,color:'#5C6A62',textAlign:'center',fontWeight:600}}>
+            🔒 Muhasibu pekee ndiye anaweza kuthibitisha au kukataa
+          </div>)}
       </div>):<div style={{textAlign:'center',padding:40}}>
         <div style={{fontSize:40,marginBottom:12}}>{tab==='pending'?'✅':'📋'}</div>
-        <div style={{fontSize:16,fontWeight:700,color:'#1E293B',marginBottom:6}}>{tab==='pending'?'Hakuna Malipo Yanasubiri':'Hakuna Malipo'}</div>
-        <div style={{fontSize:13,color:'#64748B'}}>{tab==='pending'?'Mteja akilipa na kutuma ombi, litaonekana hapa.':'Badilisha tab kuona malipo mengine.'}</div>
-        <button onClick={handleRefresh} style={{marginTop:16,padding:'8px 20px',borderRadius:10,border:'1px solid #E2E8F0',background:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',color:'#0A6E47'}}>🔄 Refresh</button>
+        <div style={{fontSize:16,fontWeight:700,color:'#17231D',marginBottom:6}}>{tab==='pending'?'Hakuna Malipo Yanasubiri':'Hakuna Malipo'}</div>
+        <div style={{fontSize:13,color:'#5C6A62'}}>{tab==='pending'?'Mteja akilipa na kutuma ombi, litaonekana hapa.':'Badilisha tab kuona malipo mengine.'}</div>
+        <button onClick={handleRefresh} style={{marginTop:16,padding:'8px 20px',borderRadius:10,border:'1px solid #D6E2DB',background:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',color:'#0A6E47'}}>🔄 Refresh</button>
       </div>}
     </div>
 
@@ -1976,8 +1984,8 @@ export function PaymentsPage(){
         <h3 style={{margin:'0 0 12px',fontSize:16,fontWeight:700}}>❌ Sababu ya Kukataa</h3>
         <Input label="Sababu" value={rejectReason} onChange={e=>setRejectReason(e.target.value)} placeholder="Mf: Transaction ID si sahihi"/>
         <div style={{display:'flex',gap:8,marginTop:12}}>
-          <button onClick={confirmReject} disabled={!!processing} style={{flex:1,padding:12,background:'#EF4444',color:'#fff',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Kataa</button>
-          <button onClick={()=>setRejectId(null)} style={{flex:1,padding:12,background:'#F1F5F9',color:'#475569',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={confirmReject} disabled={!!processing} style={{flex:1,padding:12,background:'#C2412D',color:'#fff',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Kataa</button>
+          <button onClick={()=>setRejectId(null)} style={{flex:1,padding:12,background:'#F6F8F7',color:'#475569',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
         </div>
       </div>
     </div>}
@@ -1990,7 +1998,7 @@ export function PartnersPage(){
   const[modal,setModal]=useState(false);
   const[f,setF]=useState({name:'',email:'',phone:'',password:'partner123',commission:10});
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:15,fontWeight:700,margin:0}}>Washirika wa Masoko ({partners.length})</h3>
       <Btn onClick={()=>setModal(true)}>{IC.plus} Ongeza Mshirika</Btn>
@@ -2002,14 +2010,14 @@ export function PartnersPage(){
           <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#8B5CF6,#6D28D9)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:18,fontWeight:700}}>{p.name?.[0]?.toUpperCase()}</div>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,fontSize:15}}>{p.name}</div>
-            <div style={{fontSize:12,color:'#64748B'}}>{p.email}</div>
-            {p.phone&&<div style={{fontSize:11,color:'#94A3B8'}}>{p.phone}</div>}
+            <div style={{fontSize:12,color:'#5C6A62'}}>{p.email}</div>
+            {p.phone&&<div style={{fontSize:11,color:'#9AA5A0'}}>{p.phone}</div>}
           </div>
-          <Badge color={p.status==='active'?'#22C55E':'#EF4444'}>{p.status==='active'?'Active':'Disabled'}</Badge>
+          <Badge color={p.status==='active'?'#0A6E47':'#C2412D'}>{p.status==='active'?'Active':'Disabled'}</Badge>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
-          <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#94A3B8'}}>Commission</div><div style={{fontWeight:700,fontSize:16,color:'#8B5CF6'}}>{p.commission_rate||10}%</div></div>
-          <div style={{background:'#F8FAFC',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#94A3B8'}}>Tangu</div><div style={{fontWeight:600,fontSize:12}}>{fmtDate(p.created_at)}</div></div>
+          <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#9AA5A0'}}>Commission</div><div style={{fontWeight:700,fontSize:16,color:'#8B5CF6'}}>{p.commission_rate||10}%</div></div>
+          <div style={{background:'#F6F8F7',borderRadius:8,padding:'6px 10px'}}><div style={{fontSize:10,color:'#9AA5A0'}}>Tangu</div><div style={{fontWeight:600,fontSize:12}}>{fmtDate(p.created_at)}</div></div>
         </div>
         <div style={{display:'flex',gap:6}}>
           <Btn v={p.status==='active'?'warning':'primary'} style={{flex:1,justifyContent:'center',padding:'6px 10px',fontSize:11}} onClick={()=>updatePartner(p.id,{status:p.status==='active'?'disabled':'active'})}>{p.status==='active'?'Zima':'Washa'}</Btn>
@@ -2044,14 +2052,14 @@ export function ActivityFeedPage(){
   const[filter,setFilter]=useState('all');
   const filtered=filter==='all'?activityFeed:activityFeed.filter(a=>a.type===filter);
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:16,fontWeight:700,margin:0}}>⚡ Activity Feed (Live)</h3>
-      <div style={{fontSize:12,color:'#64748B'}}>Masaa 24 yaliyopita</div>
+      <div style={{fontSize:12,color:'#5C6A62'}}>Masaa 24 yaliyopita</div>
     </div>
     <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
       {[{v:'all',l:'Zote',c:activityFeed.length},{v:'login',l:'🔑 Login'},{v:'sale',l:'🛒 Mauzo'},{v:'signup',l:'🆕 Wapya'},{v:'payment',l:'💰 Malipo'}].map(f=>
-        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'6px 12px',borderRadius:8,border:filter===f.v?'2px solid #0A6E47':'1px solid #E2E8F0',background:filter===f.v?'#F0FDF4':'#fff',fontSize:11,fontWeight:filter===f.v?700:500,cursor:'pointer',color:filter===f.v?'#0A6E47':'#64748B'}}>{f.l}</button>
+        <button key={f.v} onClick={()=>setFilter(f.v)} style={{padding:'6px 12px',borderRadius:8,border:filter===f.v?'2px solid #0A6E47':'1px solid #D6E2DB',background:filter===f.v?'#E6F2EC':'#fff',fontSize:11,fontWeight:filter===f.v?700:500,cursor:'pointer',color:filter===f.v?'#0A6E47':'#5C6A62'}}>{f.l}</button>
       )}
     </div>
     <div className="card">
@@ -2060,9 +2068,9 @@ export function ActivityFeedPage(){
           <span style={{fontSize:20}}>{a.icon}</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:600,fontSize:13}}>{a.title}</div>
-            {a.biz&&<div style={{fontSize:11,color:'#94A3B8'}}>{a.biz}</div>}
+            {a.biz&&<div style={{fontSize:11,color:'#9AA5A0'}}>{a.biz}</div>}
           </div>
-          <div style={{fontSize:11,color:'#94A3B8',whiteSpace:'nowrap'}}>{fmtDate(a.time)}</div>
+          <div style={{fontSize:11,color:'#9AA5A0',whiteSpace:'nowrap'}}>{fmtDate(a.time)}</div>
         </div>
       )):<Empty icon="⚡" text="Hakuna shughuli za hivi karibuni"/>}
     </div>
@@ -2072,12 +2080,12 @@ export function ActivityFeedPage(){
 // ===== SYSTEM USAGE REPORT =====
 export function SystemUsagePage(){
   const{systemUsage}=useApp();const su=systemUsage;
-  return <div>
+  return <div className="page-enter">
     <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 16px'}}>📊 System Usage Report</h3>
     <div className="flex-wrap" style={{marginBottom:20}}>
       <Stat icon={IC.people} label="Active Leo" value={su.activeToday} color="#0A6E47" sub="wanatumia leo"/>
       <Stat icon={IC.people} label="Active Wiki" value={su.activeWeek} color="#3B82F6" sub="wiki hii"/>
-      <Stat icon={IC.cart} label="Mauzo Leo" value={su.salesToday} color="#22C55E"/>
+      <Stat icon={IC.cart} label="Mauzo Leo" value={su.salesToday} color="#0A6E47"/>
       <Stat icon={IC.store} label="Maduka" value={su.totalBiz} color="#8B5CF6"/>
     </div>
 
@@ -2094,7 +2102,7 @@ export function SystemUsagePage(){
               <span style={{fontWeight:600}}>{labels[name]||name}</span>
               <span style={{fontWeight:700,color:'#0A6E47'}}>{count}</span>
             </div>
-            <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}>
+            <div style={{height:8,background:'#F6F8F7',borderRadius:4,overflow:'hidden'}}>
               <div style={{height:'100%',width:`${pct}%`,background:'#0A6E47',borderRadius:4}}/>
             </div>
           </div>;
@@ -2113,7 +2121,7 @@ export function SystemUsagePage(){
           {label:'Wateja Jumla',value:su.custTotal,icon:'🤝'},
           {label:'Maduka',value:su.totalBiz,icon:'🏪'},
           {label:'Feature Bora',value:su.topFeature?`${su.topFeature.name} (${su.topFeature.count})`:'-',icon:'⭐'},
-        ].map(m=><div key={m.label} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #F1F5F9'}}>
+        ].map(m=><div key={m.label} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #F6F8F7'}}>
           <span style={{fontSize:13}}>{m.icon} {m.label}</span>
           <span style={{fontWeight:700,fontSize:14}}>{m.value}</span>
         </div>)}
@@ -2141,14 +2149,14 @@ export function EmailTemplatesPage(){
 
   return <div style={{maxWidth:600}}>
     <h3 style={{fontSize:16,fontWeight:700,margin:'0 0 6px'}}>✉️ Email Templates</h3>
-    <p style={{fontSize:13,color:'#64748B',marginBottom:16}}>Hariri ujumbe wa email bila kuandika code. Mabadiliko yataonekana kwenye email zote zinazotumwa.</p>
+    <p style={{fontSize:13,color:'#5C6A62',marginBottom:16}}>Hariri ujumbe wa email bila kuandika code. Mabadiliko yataonekana kwenye email zote zinazotumwa.</p>
 
     {templates.map(t=>(
       <div key={t.key} style={{marginBottom:14}}>
         <label style={{display:'block',fontSize:12,fontWeight:700,color:'#475569',marginBottom:4}}>{t.label}</label>
         {t.key.includes('body')||t.key.includes('footer')?
-          <textarea value={settings[t.key]||t.default} onChange={e=>{updateSetting(t.key,e.target.value);setSaved(false)}} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none',resize:'vertical',minHeight:60,fontFamily:'inherit',boxSizing:'border-box'}}/>:
-          <input value={settings[t.key]||t.default} onChange={e=>{updateSetting(t.key,e.target.value);setSaved(false)}} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          <textarea value={settings[t.key]||t.default} onChange={e=>{updateSetting(t.key,e.target.value);setSaved(false)}} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,outline:'none',resize:'vertical',minHeight:60,fontFamily:'inherit',boxSizing:'border-box'}}/>:
+          <input value={settings[t.key]||t.default} onChange={e=>{updateSetting(t.key,e.target.value);setSaved(false)}} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
         }
       </div>
     ))}
@@ -2175,25 +2183,25 @@ export function AdminReportsPage(){
   const exportPDF=()=>{
     const w=window.open('','_blank');
     w.document.write(`<!DOCTYPE html><html><head><title>Duka Langu Report</title><style>
-      body{font-family:Arial,sans-serif;margin:30px;color:#1E293B}
+      body{font-family:Arial,sans-serif;margin:30px;color:#17231D}
       h1{color:#0A6E47;border-bottom:3px solid #0A6E47;padding-bottom:8px}
-      h2{color:#1E293B;margin-top:24px}
+      h2{color:#17231D;margin-top:24px}
       table{width:100%;border-collapse:collapse;margin:12px 0}
       th{background:#0A6E47;color:#fff;padding:10px;text-align:left;font-size:13px}
-      td{padding:8px 10px;border-bottom:1px solid #E2E8F0;font-size:12px}
-      tr:nth-child(even){background:#F8FAFC}
-      .stat{display:inline-block;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:12px 20px;margin:6px;text-align:center;min-width:100px}
+      td{padding:8px 10px;border-bottom:1px solid #D6E2DB;font-size:12px}
+      tr:nth-child(even){background:#F6F8F7}
+      .stat{display:inline-block;background:#E6F2EC;border:1px solid #C2DED1;border-radius:10px;padding:12px 20px;margin:6px;text-align:center;min-width:100px}
       .stat .num{font-size:24px;font-weight:900;color:#0A6E47}
-      .stat .lbl{font-size:11px;color:#64748B}
+      .stat .lbl{font-size:11px;color:#5C6A62}
       .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
-      .active{background:#F0FDF4;color:#15803D}
-      .trial{background:#FFF7ED;color:#92400E}
-      .expired{background:#FEF2F2;color:#B91C1C}
+      .active{background:#E6F2EC;color:#15803D}
+      .trial{background:#FFF8E6;color:#92400E}
+      .expired{background:#FBECE9;color:#B91C1C}
       @media print{body{margin:15px}}
     </style></head><body>
     <div style="display:flex;align-items:center;gap:14;margin-bottom:20px">
       <div><h1 style="margin:0;font-size:24px">DUKA LANGU — RIPOTI KAMILI</h1>
-      <div style="color:#64748B;font-size:12px">Tarehe: ${new Date().toLocaleDateString('sw-TZ')} | Duka Langu</div></div>
+      <div style="color:#5C6A62;font-size:12px">Tarehe: ${new Date().toLocaleDateString('sw-TZ')} | Duka Langu</div></div>
     </div>
     <div style="margin:16px 0">
       <div class="stat"><div class="num">${businesses.length}</div><div class="lbl">Maduka Jumla</div></div>
@@ -2219,7 +2227,7 @@ export function AdminReportsPage(){
     <table><tr><th>Mwezi</th><th>Wateja Wapya</th></tr>
     ${monthData.map(d=>`<tr><td>${d.month}</td><td>${d.count}</td></tr>`).join('')}
     </table>
-    <div style="margin-top:30px;border-top:2px solid #0A6E47;padding-top:12px;text-align:center;color:#64748B;font-size:11px">
+    <div style="margin-top:30px;border-top:2px solid #0A6E47;padding-top:12px;text-align:center;color:#5C6A62;font-size:11px">
       PesaFly / Duka Langu — pesafly1@gmail.com | +255 628 986 770<br/>
       Ripoti imetolewa: ${new Date().toLocaleString('sw-TZ')}
     </div>
@@ -2228,43 +2236,43 @@ export function AdminReportsPage(){
     setTimeout(()=>w.print(),500);
   };
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:8}}>
       <h3 style={{fontSize:16,fontWeight:700,margin:0}}>📋 Ripoti Kamili ya Mfumo</h3>
       <button onClick={exportPDF} style={{padding:'8px 18px',borderRadius:10,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>📥 Pakua PDF</button>
     </div>
     <div className="flex-wrap" style={{marginBottom:20}}>
       <Stat icon={IC.store} label="Maduka" value={businesses.length} color="#0A6E47" sub={`${active.length} active`}/>
-      <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F59E0B"/>
-      <Stat icon={IC.warn} label="Expired" value={expired.length} color="#EF4444"/>
+      <Stat icon={IC.clock} label="Trial" value={trial.length} color="#F2B705"/>
+      <Stat icon={IC.warn} label="Expired" value={expired.length} color="#C2412D"/>
       <Stat icon={IC.dollar} label="Mapato" value={`TZS ${totalRev.toLocaleString()}`} color="#3B82F6"/>
     </div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:16}}>
       {/* Active Customers */}
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#22C55E'}}>✅ Active ({active.length})</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>{active.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
-          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
-          <div style={{textAlign:'right'}}><Badge color="#8B5CF6">{b.plan||'basic'}</Badge><br/><span style={{fontSize:10,color:'#94A3B8'}}>{b.phone||''}</span></div>
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#0A6E47'}}>✅ Active ({active.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{active.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#9AA5A0'}}>{b.email}</span></div>
+          <div style={{textAlign:'right'}}><Badge color="#8B5CF6">{b.plan||'basic'}</Badge><br/><span style={{fontSize:10,color:'#9AA5A0'}}>{b.phone||''}</span></div>
         </div>)}{!active.length&&<Empty icon="✅" text="Hakuna"/>}</div>
       </div>
       {/* Trial */}
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#F59E0B'}}>⏳ Trial ({trial.length})</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>{trial.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
-          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
-          <Badge color="#F59E0B">Trial</Badge>
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#F2B705'}}>⏳ Trial ({trial.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{trial.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#9AA5A0'}}>{b.email}</span></div>
+          <Badge color="#F2B705">Trial</Badge>
         </div>)}{!trial.length&&<Empty icon="⏳" text="Hakuna"/>}</div>
       </div>
       {/* Expired */}
-      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#EF4444'}}>❌ Expired / Suspended ({expired.length})</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>{expired.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
-          <div><b>{b.name}</b><br/><span style={{color:'#94A3B8'}}>{b.email}</span></div>
-          <Badge color="#EF4444">Expired</Badge>
+      <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px',color:'#C2412D'}}>❌ Expired / Suspended ({expired.length})</h3>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{expired.map(b=><div key={b.id} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{b.name}</b><br/><span style={{color:'#9AA5A0'}}>{b.email}</span></div>
+          <Badge color="#C2412D">Expired</Badge>
         </div>)}{!expired.length&&<Empty icon="❌" text="Hakuna"/>}</div>
       </div>
       {/* Revenue */}
       <div className="card"><h3 style={{fontSize:14,fontWeight:700,margin:'0 0 10px'}}>💰 Malipo ({approved.length})</h3>
-        <div style={{maxHeight:300,overflowY:'auto'}}>{approved.slice(0,20).map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',fontSize:12}}>
-          <div><b>{p.business_name}</b><br/><span style={{color:'#94A3B8',fontFamily:'monospace'}}>{p.transaction_id}</span></div>
+        <div style={{maxHeight:300,overflowY:'auto'}}>{approved.slice(0,20).map(p=><div key={p.id} style={{padding:'6px 0',borderBottom:'1px solid #F6F8F7',display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <div><b>{p.business_name}</b><br/><span style={{color:'#9AA5A0',fontFamily:'monospace'}}>{p.transaction_id}</span></div>
           <div style={{textAlign:'right',fontWeight:700,color:'#0A6E47'}}>TZS {(p.amount||0).toLocaleString()}</div>
         </div>)}</div>
       </div>
@@ -2344,35 +2352,35 @@ export function InfoRequestsPage(){
     setProcessing(null);
   };
 
-  return <div>
+  return <div className="page-enter">
     <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>📝 Ombi za Kubadilisha Taarifa</h3>
-    <p style={{fontSize:12,color:'#64748B',margin:'0 0 16px'}}>Wateja waliopoteza simu/email wanaomba kubadilisha taarifa</p>
+    <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>Wateja waliopoteza simu/email wanaomba kubadilisha taarifa</p>
 
     <div className="flex-wrap" style={{marginBottom:14}}>
-      <Stat icon={IC.clock} label="Yanasubiri" value={requests.filter(r=>r.status==='pending').length} color="#F59E0B"/>
-      <Stat icon={IC.ok} label="Yamekubaliwa" value={requests.filter(r=>r.status==='approved').length} color="#22C55E"/>
-      <Stat icon={IC.warn} label="Yamekataliwa" value={requests.filter(r=>r.status==='rejected').length} color="#EF4444"/>
+      <Stat icon={IC.clock} label="Yanasubiri" value={requests.filter(r=>r.status==='pending').length} color="#F2B705"/>
+      <Stat icon={IC.ok} label="Yamekubaliwa" value={requests.filter(r=>r.status==='approved').length} color="#0A6E47"/>
+      <Stat icon={IC.warn} label="Yamekataliwa" value={requests.filter(r=>r.status==='rejected').length} color="#C2412D"/>
     </div>
 
     <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-      {[{id:'pending',l:'⏳ Subiri',c:'#F59E0B'},{id:'approved',l:'✅ Kubaliwa',c:'#22C55E'},{id:'rejected',l:'❌ Kataliwa',c:'#EF4444'}].map(t=>
-        <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.c}`:'1px solid #E2E8F0',background:tab===t.id?t.c+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.c:'#64748B'}}>{t.l}</button>)}
+      {[{id:'pending',l:'⏳ Subiri',c:'#F2B705'},{id:'approved',l:'✅ Kubaliwa',c:'#0A6E47'},{id:'rejected',l:'❌ Kataliwa',c:'#C2412D'}].map(t=>
+        <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'8px 16px',borderRadius:10,border:tab===t.id?`2px solid ${t.c}`:'1px solid #D6E2DB',background:tab===t.id?t.c+'15':'#fff',fontWeight:tab===t.id?700:500,fontSize:12,cursor:'pointer',color:tab===t.id?t.c:'#5C6A62'}}>{t.l}</button>)}
     </div>
 
     <div className="card">
-      {filtered.map(r=><div key={r.id} style={{padding:'14px 0',borderBottom:'1px solid #F1F5F9'}}>
+      {filtered.map(r=><div key={r.id} style={{padding:'14px 0',borderBottom:'1px solid #F6F8F7'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:10}}>
           <div style={{flex:1,minWidth:250}}>
             <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>🏪 {r.business_name}</div>
             
             {/* Old vs New comparison */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
-              <div style={{background:'#FEF2F2',borderRadius:8,padding:'8px 10px',fontSize:11}}>
+              <div style={{background:'#FBECE9',borderRadius:8,padding:'8px 10px',fontSize:11}}>
                 <div style={{color:'#B91C1C',fontWeight:700,marginBottom:2}}>YA SASA:</div>
                 <div>📧 {r.old_email||'—'}</div>
                 <div>📱 {r.old_phone||'—'}</div>
               </div>
-              <div style={{background:'#F0FDF4',borderRadius:8,padding:'8px 10px',fontSize:11}}>
+              <div style={{background:'#E6F2EC',borderRadius:8,padding:'8px 10px',fontSize:11}}>
                 <div style={{color:'#15803D',fontWeight:700,marginBottom:2}}>MPYA:</div>
                 {r.new_email&&<div>📧 {r.new_email}</div>}
                 {r.new_phone&&<div>📱 {r.new_phone}</div>}
@@ -2381,11 +2389,11 @@ export function InfoRequestsPage(){
               </div>
             </div>
 
-            <div style={{background:'#FFF7ED',borderRadius:8,padding:'8px 10px',fontSize:11,marginBottom:6}}>
+            <div style={{background:'#FFF8E6',borderRadius:8,padding:'8px 10px',fontSize:11,marginBottom:6}}>
               <b>Sababu:</b> {r.reason}
             </div>
             
-            <div style={{fontSize:10,color:'#94A3B8'}}>
+            <div style={{fontSize:10,color:'#9AA5A0'}}>
               {r.id_number&&<>🆔 {r.id_number} • </>}
               {r.whatsapp&&<>💬 {r.whatsapp} • </>}
               📅 {new Date(r.created_at).toLocaleString('sw-TZ')}
@@ -2395,8 +2403,8 @@ export function InfoRequestsPage(){
           </div>
           
           {r.status==='pending'&&<div style={{display:'flex',flexDirection:'column',gap:6}}>
-            <button onClick={()=>approveRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'#22C55E',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>{processing===r.id?'⏳':'✅ Thibitisha'}</button>
-            <button onClick={()=>rejectRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'1px solid #FECACA',background:'#FEF2F2',color:'#EF4444',fontWeight:700,fontSize:12,cursor:'pointer'}}>❌ Kataa</button>
+            <button onClick={()=>approveRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'#0A6E47',color:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>{processing===r.id?'⏳':'✅ Thibitisha'}</button>
+            <button onClick={()=>rejectRequest(r)} disabled={processing===r.id} style={{padding:'8px 16px',borderRadius:8,border:'1px solid #F0D9D4',background:'#FBECE9',color:'#C2412D',fontWeight:700,fontSize:12,cursor:'pointer'}}>❌ Kataa</button>
           </div>}
         </div>
       </div>)}
@@ -2421,7 +2429,7 @@ export function ReferralManagementPage(){
   // Default tier configuration
   const[tiers,setTiers]=useState([
     {id:1,minRefs:1,tokenValue:5000,label:'Bronze',color:'#CD7F32',icon:'🥉',desc:'Mteja 1 ameleta'},
-    {id:2,minRefs:2,tokenValue:10000,label:'Silver',color:'#94A3B8',icon:'🥈',desc:'Wateja 2 wameleta'},
+    {id:2,minRefs:2,tokenValue:10000,label:'Silver',color:'#9AA5A0',icon:'🥈',desc:'Wateja 2 wameleta'},
     {id:3,minRefs:3,tokenValue:15000,label:'Gold (BURE)',color:'#FFD700',icon:'🥇',desc:'Wateja 3 wameleta — Mwezi BURE!'},
   ]);
 
@@ -2591,11 +2599,11 @@ export function ReferralManagementPage(){
   const totalPending=referrals.filter(r=>r.status==='pending').length;
   const totalTokensIssued=referrals.filter(r=>r.status==='token_issued').length;
 
-  return <div>
+  return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
       <div>
         <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎁 Ofa ya Karibisha Rafiki</h2>
-        <p style={{fontSize:12,color:'#64748B',margin:0}}>Wewe ndio unaamua na kutoa tokens — sio automatic</p>
+        <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Wewe ndio unaamua na kutoa tokens — sio automatic</p>
       </div>
       <button onClick={()=>setShowConfig(true)} style={{padding:'10px 18px',borderRadius:12,border:'2px solid #8B5CF6',background:'#F5F3FF',color:'#7C3AED',fontWeight:700,fontSize:13,cursor:'pointer'}}>
         ⚙️ Mipangilio
@@ -2607,42 +2615,42 @@ export function ReferralManagementPage(){
       {tiers.map(t=><div key={t.id} className="card" style={{padding:16,textAlign:'center',borderTop:`4px solid ${t.color}`,background:`linear-gradient(135deg,#fff,${t.color}10)`}}>
         <div style={{fontSize:36,marginBottom:6}}>{t.icon}</div>
         <div style={{fontSize:11,fontWeight:800,color:t.color,letterSpacing:1,marginBottom:4}}>{t.label.toUpperCase()}</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#1E293B',marginBottom:4}}>TZS {t.tokenValue.toLocaleString()}</div>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>{t.desc}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#17231D',marginBottom:4}}>TZS {t.tokenValue.toLocaleString()}</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>{t.desc}</div>
       </div>)}
     </div>
 
     {/* STATS */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:14}}>
-      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #F59E0B'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>WANAOSUBIRI</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B'}}>{totalPending}</div>
-        <div style={{fontSize:10,color:'#94A3B8'}}>kuthibitishwa</div>
-      </div>
-      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #22C55E'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>ZILIZOTHIBITISHWA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>{totalConfirmed}</div>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #F2B705'}}>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>WANAOSUBIRI</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#F2B705'}}>{totalPending}</div>
+        <div style={{fontSize:10,color:'#9AA5A0'}}>kuthibitishwa</div>
       </div>
       <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #0A6E47'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>TOKENS ZIMETOLEWA</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>ZILIZOTHIBITISHWA</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47'}}>{totalConfirmed}</div>
+      </div>
+      <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #0A6E47'}}>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>TOKENS ZIMETOLEWA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#0A6E47'}}>{totalTokensIssued}</div>
       </div>
       <div className="card" style={{padding:14,textAlign:'center',borderLeft:'4px solid #8B5CF6'}}>
-        <div style={{fontSize:11,color:'#64748B',fontWeight:600}}>WACHANGIAJI</div>
+        <div style={{fontSize:11,color:'#5C6A62',fontWeight:600}}>WACHANGIAJI</div>
         <div style={{fontSize:24,fontWeight:900,color:'#8B5CF6'}}>{referrerStats.length}</div>
       </div>
     </div>
 
     {/* SEARCH */}
     <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-      <input type="text" placeholder="🔍 Tafuta mteja..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200,padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13}}/>
-      <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:'10px 14px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,cursor:'pointer'}}>
+      <input type="text" placeholder="🔍 Tafuta mteja..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,minWidth:200,padding:'10px 14px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13}}/>
+      <select value={filter} onChange={e=>setFilter(e.target.value)} style={{padding:'10px 14px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,cursor:'pointer'}}>
         <option value="all">Wote</option>
         <option value="pending">⏳ Wenye Pending</option>
         <option value="ready">✅ Wamefikia Kiwango</option>
         <option value="gold">🥇 Gold (3+ wateja)</option>
       </select>
-      <button onClick={loadReferrals} disabled={loading} style={{padding:'10px 16px',borderRadius:10,border:'1.5px solid #E2E8F0',background:'#fff',cursor:'pointer',fontWeight:600}}>{loading?'⏳':'🔄'}</button>
+      <button onClick={loadReferrals} disabled={loading} style={{padding:'10px 16px',borderRadius:10,border:'1.5px solid #D6E2DB',background:'#fff',cursor:'pointer',fontWeight:600}}>{loading?'⏳':'🔄'}</button>
     </div>
 
     {/* REFERRERS LIST */}
@@ -2650,27 +2658,27 @@ export function ReferralManagementPage(){
       <div style={{maxHeight:600,overflowY:'auto'}}>
         {filteredStats.length?filteredStats.map(stat=>{
           const tier=getCurrentTier(stat.confirmedCount);
-          return <div key={stat.businessId} style={{padding:'16px',borderBottom:'1px solid #F1F5F9'}}>
+          return <div key={stat.businessId} style={{padding:'16px',borderBottom:'1px solid #F6F8F7'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
               <div style={{flex:1,minWidth:200}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,flexWrap:'wrap'}}>
-                  <span style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>{stat.businessName}</span>
+                  <span style={{fontWeight:800,fontSize:14,color:'#17231D'}}>{stat.businessName}</span>
                   {tier&&<span style={{background:tier.color+'20',color:tier.color,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:800}}>{tier.icon} {tier.label.toUpperCase()}</span>}
-                  {stat.pendingCount>0&&<span style={{background:'#FEF3C7',color:'#92400E',padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>⏳ {stat.pendingCount} pending</span>}
+                  {stat.pendingCount>0&&<span style={{background:'#FFF8E6',color:'#92400E',padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>⏳ {stat.pendingCount} pending</span>}
                 </div>
-                <div style={{fontSize:11,color:'#64748B'}}>
+                <div style={{fontSize:11,color:'#5C6A62'}}>
                   📞 {stat.phone||'—'} • 📧 {stat.email||'—'}
                 </div>
                 <div style={{display:'flex',gap:14,marginTop:8,fontSize:12}}>
-                  <span><b style={{color:'#22C55E'}}>{stat.confirmedCount}</b> wamethibitishwa</span>
-                  <span>⏳ <b style={{color:'#F59E0B'}}>{stat.pendingCount}</b> wanasubiri</span>
+                  <span><b style={{color:'#0A6E47'}}>{stat.confirmedCount}</b> wamethibitishwa</span>
+                  <span>⏳ <b style={{color:'#F2B705'}}>{stat.pendingCount}</b> wanasubiri</span>
                   <span>📊 Jumla: <b>{stat.allRefs.length}</b></span>
                 </div>
               </div>
               <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                <button onClick={()=>setShowDetail(stat)} style={{padding:'8px 14px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>👁️ Tazama</button>
+                <button onClick={()=>setShowDetail(stat)} style={{padding:'8px 14px',borderRadius:8,border:'1.5px solid #D6E2DB',background:'#fff',fontWeight:700,fontSize:12,cursor:'pointer'}}>👁️ Tazama</button>
                 {tier&&!stat.tokenGenerated&&<button onClick={()=>generateToken(stat)} style={{padding:'8px 14px',borderRadius:8,border:'none',background:`linear-gradient(135deg,${tier.color},${tier.color}CC)`,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer',boxShadow:`0 4px 12px ${tier.color}40`}}>🎁 Toa Token</button>}
-                {stat.tokenGenerated&&<span style={{padding:'8px 14px',borderRadius:8,background:'#F0FDF4',color:'#15803D',fontWeight:700,fontSize:12}}>✅ Token Imetolewa</span>}
+                {stat.tokenGenerated&&<span style={{padding:'8px 14px',borderRadius:8,background:'#E6F2EC',color:'#15803D',fontWeight:700,fontSize:12}}>✅ Token Imetolewa</span>}
               </div>
             </div>
           </div>;
@@ -2686,26 +2694,26 @@ export function ReferralManagementPage(){
       <div style={{maxHeight:400,overflowY:'auto'}}>
         {showDetail.allRefs.map(ref=>{
           const referred=getBiz(ref.referred_business_id);
-          const sColor=ref.status==='confirmed'?'#22C55E':ref.status==='token_issued'?'#0A6E47':ref.status==='rejected'?'#EF4444':'#F59E0B';
+          const sColor=ref.status==='confirmed'?'#0A6E47':ref.status==='token_issued'?'#0A6E47':ref.status==='rejected'?'#C2412D':'#F2B705';
           const sLabel=ref.status==='confirmed'?'✅ Imethibitishwa':ref.status==='token_issued'?'🎁 Token Imetolewa':ref.status==='rejected'?'❌ Imekataliwa':'⏳ Inasubiri';
-          return <div key={ref.id} style={{padding:12,background:'#F8FAFC',borderRadius:10,marginBottom:8,border:`1px solid ${sColor}30`}}>
+          return <div key={ref.id} style={{padding:12,background:'#F6F8F7',borderRadius:10,marginBottom:8,border:`1px solid ${sColor}30`}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}}>
               <div style={{flex:1,minWidth:200}}>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>{referred?.name||'Haijulikani'}</div>
-                <div style={{fontSize:11,color:'#64748B'}}>
+                <div style={{fontSize:11,color:'#5C6A62'}}>
                   📞 {referred?.phone||'—'} • 📧 {referred?.email||'—'}
                 </div>
-                <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>📅 {fmtDate(ref.created_at)}</div>
+                <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>📅 {fmtDate(ref.created_at)}</div>
                 {referred&&<div style={{fontSize:11,marginTop:4}}>
-                  Hali: {referred.token_active?<span style={{color:'#22C55E',fontWeight:700}}>✅ Active</span>:<span style={{color:'#F59E0B',fontWeight:700}}>⏳ Trial</span>}
+                  Hali: {referred.token_active?<span style={{color:'#0A6E47',fontWeight:700}}>✅ Active</span>:<span style={{color:'#F2B705',fontWeight:700}}>⏳ Trial</span>}
                 </div>}
-                {ref.reject_reason&&<div style={{fontSize:11,color:'#EF4444',marginTop:4}}>💬 {ref.reject_reason}</div>}
+                {ref.reject_reason&&<div style={{fontSize:11,color:'#C2412D',marginTop:4}}>💬 {ref.reject_reason}</div>}
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
                 <span style={{background:sColor+'20',color:sColor,padding:'3px 10px',borderRadius:6,fontSize:10,fontWeight:700}}>{sLabel}</span>
                 {ref.status==='pending'&&<div style={{display:'flex',gap:4}}>
-                  <button onClick={()=>confirmReferral(ref)} disabled={!referred?.token_active} title={!referred?.token_active?'Rafiki bado hajalipa':'Thibitisha'} style={{padding:'4px 10px',borderRadius:6,border:'none',background:referred?.token_active?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:700,fontSize:11,cursor:referred?.token_active?'pointer':'not-allowed'}}>✓</button>
-                  <button onClick={()=>rejectReferral(ref)} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #EF4444',background:'#fff',color:'#EF4444',fontWeight:700,fontSize:11,cursor:'pointer'}}>✗</button>
+                  <button onClick={()=>confirmReferral(ref)} disabled={!referred?.token_active} title={!referred?.token_active?'Rafiki bado hajalipa':'Thibitisha'} style={{padding:'4px 10px',borderRadius:6,border:'none',background:referred?.token_active?'#0A6E47':'#CBD5E1',color:'#fff',fontWeight:700,fontSize:11,cursor:referred?.token_active?'pointer':'not-allowed'}}>✓</button>
+                  <button onClick={()=>rejectReferral(ref)} style={{padding:'4px 10px',borderRadius:6,border:'1px solid #C2412D',background:'#fff',color:'#C2412D',fontWeight:700,fontSize:11,cursor:'pointer'}}>✗</button>
                 </div>}
               </div>
             </div>
@@ -2720,26 +2728,26 @@ export function ReferralManagementPage(){
         💡 Badilisha thamani za tokens kulingana na idadi ya wateja walioletwa. Mfumo utatumia hizi automatic.
       </div>
       
-      {tiers.map((t,i)=><div key={t.id} style={{padding:14,background:'#F8FAFC',borderRadius:12,marginBottom:10,border:`2px solid ${t.color}40`}}>
+      {tiers.map((t,i)=><div key={t.id} style={{padding:14,background:'#F6F8F7',borderRadius:12,marginBottom:10,border:`2px solid ${t.color}40`}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
           <span style={{fontSize:24}}>{t.icon}</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:800,color:t.color,fontSize:14}}>{t.label}</div>
-            <div style={{fontSize:11,color:'#64748B'}}>{t.desc}</div>
+            <div style={{fontSize:11,color:'#5C6A62'}}>{t.desc}</div>
           </div>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Wateja Wanaohitajika</label>
-            <input type="number" value={t.minRefs} onChange={e=>{const nt=[...tiers];nt[i].minRefs=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+            <input type="number" value={t.minRefs} onChange={e=>{const nt=[...tiers];nt[i].minRefs=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #D6E2DB',fontSize:13,boxSizing:'border-box'}}/>
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Thamani ya Token (TZS)</label>
-            <input type="number" value={t.tokenValue} onChange={e=>{const nt=[...tiers];nt[i].tokenValue=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+            <input type="number" value={t.tokenValue} onChange={e=>{const nt=[...tiers];nt[i].tokenValue=+e.target.value||0;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #D6E2DB',fontSize:13,boxSizing:'border-box'}}/>
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569'}}>Jina la Kiwango</label>
-            <input value={t.label} onChange={e=>{const nt=[...tiers];nt[i].label=e.target.value;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,boxSizing:'border-box'}}/>
+            <input value={t.label} onChange={e=>{const nt=[...tiers];nt[i].label=e.target.value;setTiers(nt)}} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #D6E2DB',fontSize:13,boxSizing:'border-box'}}/>
           </div>
         </div>
       </div>)}
@@ -2763,7 +2771,7 @@ export function SupervisorVisitsAdminPage(){
   const[filter,setFilter]=React.useState('new'); // new, in_progress, resolved, all
   const[search,setSearch]=React.useState('');
   
-  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FFF8E6',borderRadius:16,border:'2px solid #F2B705'}}>
     <div style={{fontSize:60,marginBottom:14}}>🔒</div>
     <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
   </div>;
@@ -2842,15 +2850,15 @@ export function SupervisorVisitsAdminPage(){
     setUpdating(false);
   };
   
-  const getStatusColor=(s)=>({new:'#F59E0B',in_progress:'#3B82F6',resolved:'#22C55E',closed:'#94A3B8'}[s]||'#64748B');
+  const getStatusColor=(s)=>({new:'#F2B705',in_progress:'#3B82F6',resolved:'#0A6E47',closed:'#9AA5A0'}[s]||'#5C6A62');
   const getStatusLabel=(s)=>({new:'🆕 Mpya',in_progress:'🔄 Inashughulikiwa',resolved:'✅ Imetatuliwa',closed:'🔒 Imefungwa'}[s]||s);
-  const getUrgencyColor=(u)=>({low:'#94A3B8',normal:'#3B82F6',high:'#F59E0B',critical:'#DC2626'}[u]||'#64748B');
+  const getUrgencyColor=(u)=>({low:'#9AA5A0',normal:'#3B82F6',high:'#F2B705',critical:'#DC2626'}[u]||'#5C6A62');
   const getSatLabel=(s)=>({very_happy:'😊',happy:'🙂',neutral:'😐',unhappy:'😕',very_unhappy:'😡'}[s]||'');
   
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎫 Tiketi za Ufuatiliaji</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Taarifa za ziara za masupervaiza kwa wateja - simamia na fanya utekelezaji</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Taarifa za ziara za masupervaiza kwa wateja - simamia na fanya utekelezaji</p>
     </div>
     
     {/* Critical Alert */}
@@ -2868,17 +2876,17 @@ export function SupervisorVisitsAdminPage(){
         <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>JUMLA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{stats.total}</div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F2B705'}}>
         <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>MPYA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#F59E0B',marginTop:4}}>{stats.new}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#F2B705',marginTop:4}}>{stats.new}</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #3B82F6'}}>
         <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700}}>INASHUGULIKIWA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#3B82F6',marginTop:4}}>{stats.in_progress}</div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #22C55E'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>ZIMETATULIWA</div>
-        <div style={{fontSize:24,fontWeight:900,color:'#22C55E',marginTop:4}}>{stats.resolved}</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{stats.resolved}</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #DC2626'}}>
         <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>CHANGAMOTO HAI</div>
@@ -2888,16 +2896,16 @@ export function SupervisorVisitsAdminPage(){
     
     {/* Search */}
     <div className="card" style={{marginBottom:14}}>
-      <input type="text" placeholder="🔍 Tafuta mteja, supevaiza, biashara, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 14px',border:'1.5px solid #E2E8F0',borderRadius:10,fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+      <input type="text" placeholder="🔍 Tafuta mteja, supevaiza, biashara, simu..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'10px 14px',border:'1.5px solid #D6E2DB',borderRadius:10,fontSize:13,outline:'none',boxSizing:'border-box'}}/>
       
       <div style={{display:'flex',gap:6,marginTop:10,flexWrap:'wrap'}}>
         {[
-          {id:'new',label:`🆕 Mpya (${stats.new})`,color:'#F59E0B'},
+          {id:'new',label:`🆕 Mpya (${stats.new})`,color:'#F2B705'},
           {id:'in_progress',label:`🔄 Inashughulikiwa (${stats.in_progress})`,color:'#3B82F6'},
-          {id:'resolved',label:`✅ Zimetatuliwa (${stats.resolved})`,color:'#22C55E'},
-          {id:'closed',label:`🔒 Zimefungwa (${stats.closed})`,color:'#94A3B8'},
+          {id:'resolved',label:`✅ Zimetatuliwa (${stats.resolved})`,color:'#0A6E47'},
+          {id:'closed',label:`🔒 Zimefungwa (${stats.closed})`,color:'#9AA5A0'},
           {id:'all',label:`📚 Zote (${stats.total})`,color:'#0A6E47'},
-        ].map(t=><button key={t.id} onClick={()=>setFilter(t.id)} style={{padding:'7px 12px',borderRadius:8,border:filter===t.id?`2px solid ${t.color}`:'1.5px solid #E2E8F0',background:filter===t.id?t.color+'15':'#fff',color:filter===t.id?t.color:'#475569',fontWeight:700,fontSize:11,cursor:'pointer'}}>{t.label}</button>)}
+        ].map(t=><button key={t.id} onClick={()=>setFilter(t.id)} style={{padding:'7px 12px',borderRadius:8,border:filter===t.id?`2px solid ${t.color}`:'1.5px solid #D6E2DB',background:filter===t.id?t.color+'15':'#fff',color:filter===t.id?t.color:'#475569',fontWeight:700,fontSize:11,cursor:'pointer'}}>{t.label}</button>)}
       </div>
     </div>
     
@@ -2905,24 +2913,24 @@ export function SupervisorVisitsAdminPage(){
     <div className="card">
       <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>📋 Tiketi ({filtered.length})</h3>
       
-      {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      {loading?<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
       </div>:filtered.length>0?<div style={{display:'flex',flexDirection:'column',gap:10}}>
         {filtered.map(v=><div key={v.id} onClick={()=>{setViewing(v);setAdminNotes(v.admin_notes||'')}} style={{
           padding:'14px 16px',background:'#fff',
-          border:'1.5px solid #E2E8F0',
+          border:'1.5px solid #D6E2DB',
           borderLeft:`4px solid ${getStatusColor(v.status)}`,
           borderRadius:10,cursor:'pointer',transition:'all 0.2s',
-        }} onMouseOver={e=>e.currentTarget.style.background='#F8FAFC'}
+        }} onMouseOver={e=>e.currentTarget.style.background='#F6F8F7'}
             onMouseOut={e=>e.currentTarget.style.background='#fff'}>
           
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:10,marginBottom:8,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4,flexWrap:'wrap'}}>
-                <span style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>👤 {v.customer_name}</span>
+                <span style={{fontWeight:800,fontSize:14,color:'#17231D'}}>👤 {v.customer_name}</span>
                 {v.customer_satisfaction&&<span style={{fontSize:16}}>{getSatLabel(v.customer_satisfaction)}</span>}
               </div>
-              <div style={{fontSize:11,color:'#64748B'}}>
+              <div style={{fontSize:11,color:'#5C6A62'}}>
                 🤝 <b>Supevaiza:</b> {v.agent_name}
                 {v.customer_business&&<> • 🏪 {v.customer_business}</>}
               </div>
@@ -2933,19 +2941,19 @@ export function SupervisorVisitsAdminPage(){
             </div>
           </div>
           
-          <div style={{fontSize:11,color:'#64748B',marginBottom:6,display:'flex',gap:10,flexWrap:'wrap'}}>
+          <div style={{fontSize:11,color:'#5C6A62',marginBottom:6,display:'flex',gap:10,flexWrap:'wrap'}}>
             <span>📅 {new Date(v.created_at).toLocaleString('sw-TZ',{dateStyle:'short',timeStyle:'short'})}</span>
             {v.customer_phone&&<span>📞 {v.customer_phone}</span>}
             {v.customer_location&&<span>📍 {v.customer_location}</span>}
           </div>
           
-          {v.has_issues&&v.issues_description&&<div style={{fontSize:12,color:'#991B1B',padding:'8px 10px',background:'#FEF2F2',borderRadius:6,marginBottom:4}}>
+          {v.has_issues&&v.issues_description&&<div style={{fontSize:12,color:'#991B1B',padding:'8px 10px',background:'#FBECE9',borderRadius:6,marginBottom:4}}>
             <b>⚠️ Changamoto:</b> {v.issues_description.slice(0,150)}{v.issues_description.length>150?'...':''}
           </div>}
         </div>)}
-      </div>:<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      </div>:<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:50,marginBottom:10}}>📋</div>
-        <div style={{fontWeight:700,color:'#64748B'}}>Hakuna tiketi {filter!=='all'?`(${filter})`:''}</div>
+        <div style={{fontWeight:700,color:'#5C6A62'}}>Hakuna tiketi {filter!=='all'?`(${filter})`:''}</div>
       </div>}
     </div>
     
@@ -2967,43 +2975,43 @@ export function SupervisorVisitsAdminPage(){
         </div>
         
         {/* Customer info */}
-        <div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
-          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>👤 MTEJA</div>
-          <div style={{fontWeight:800,fontSize:14,color:'#1E293B'}}>{viewing.customer_name}</div>
+        <div style={{background:'#F6F8F7',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:5}}>👤 MTEJA</div>
+          <div style={{fontWeight:800,fontSize:14,color:'#17231D'}}>{viewing.customer_name}</div>
           {viewing.customer_business&&<div style={{fontSize:12,color:'#475569'}}>🏪 {viewing.customer_business}</div>}
           {viewing.customer_phone&&<div style={{fontSize:12,color:'#475569'}}>📞 {viewing.customer_phone}</div>}
           {viewing.customer_location&&<div style={{fontSize:12,color:'#475569'}}>📍 {viewing.customer_location}</div>}
         </div>
         
         {/* Visit details */}
-        <div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
-          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>📅 TAARIFA YA ZIARA</div>
+        <div style={{background:'#F6F8F7',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:5}}>📅 TAARIFA YA ZIARA</div>
           <div style={{fontSize:12,color:'#475569'}}><b>Tarehe:</b> {new Date(viewing.visit_date||viewing.created_at).toLocaleDateString('sw-TZ')}</div>
           <div style={{fontSize:12,color:'#475569'}}><b>Aina:</b> {viewing.visit_type}</div>
           {viewing.visit_purpose&&<div style={{fontSize:12,color:'#475569',marginTop:6}}><b>Lengo:</b><br/>{viewing.visit_purpose}</div>}
         </div>
         
         {/* Customer status */}
-        <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #BBF7D0'}}>
+        <div style={{background:'#E6F2EC',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #C2DED1'}}>
           <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:5}}>📊 HALI YA MTEJA</div>
           <div style={{fontSize:12,color:'#166534'}}><b>Kuridhika:</b> {getSatLabel(viewing.customer_satisfaction)} {viewing.customer_satisfaction}</div>
           <div style={{fontSize:12,color:'#166534'}}><b>Matumizi:</b> {viewing.is_using_system==='yes'?'✅ Kila Siku':viewing.is_using_system==='sometimes'?'⚠️ Mara Chache':'❌ Hatumii'}</div>
         </div>
         
         {/* Issues */}
-        {viewing.has_issues&&<div style={{background:'#FEF2F2',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #FCA5A5'}}>
+        {viewing.has_issues&&<div style={{background:'#FBECE9',padding:'12px 14px',borderRadius:10,marginBottom:10,border:'1px solid #FCA5A5'}}>
           <div style={{fontSize:11,color:'#991B1B',fontWeight:700,marginBottom:5}}>⚠️ CHANGAMOTO</div>
           {viewing.issue_category&&<div style={{fontSize:12,color:'#7F1D1D',marginBottom:4}}><b>Aina:</b> {viewing.issue_category}</div>}
           <div style={{fontSize:12,color:'#7F1D1D'}}>{viewing.issues_description}</div>
         </div>}
         
-        {viewing.customer_needs&&<div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
-          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>💡 MAHITAJI</div>
+        {viewing.customer_needs&&<div style={{background:'#F6F8F7',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:5}}>💡 MAHITAJI</div>
           <div style={{fontSize:12,color:'#475569'}}>{viewing.customer_needs}</div>
         </div>}
         
-        {viewing.feedback&&<div style={{background:'#F8FAFC',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
-          <div style={{fontSize:11,color:'#64748B',fontWeight:700,marginBottom:5}}>💬 MAONI YA MTEJA</div>
+        {viewing.feedback&&<div style={{background:'#F6F8F7',padding:'12px 14px',borderRadius:10,marginBottom:10}}>
+          <div style={{fontSize:11,color:'#5C6A62',fontWeight:700,marginBottom:5}}>💬 MAONI YA MTEJA</div>
           <div style={{fontSize:12,color:'#475569'}}>{viewing.feedback}</div>
         </div>}
         
@@ -3015,14 +3023,14 @@ export function SupervisorVisitsAdminPage(){
         {/* Admin notes */}
         <div style={{marginBottom:14,marginTop:14}}>
           <label style={{fontSize:12,fontWeight:800,color:'#0A6E47',display:'block',marginBottom:5}}>📌 Maelezo Yako (Admin)</label>
-          <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} rows="3" placeholder="Andika maelezo ya utekelezaji uliofanya..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'2px solid #BBF7D0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical',background:'#F0FDF4'}}/>
+          <textarea value={adminNotes} onChange={e=>setAdminNotes(e.target.value)} rows="3" placeholder="Andika maelezo ya utekelezaji uliofanya..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'2px solid #C2DED1',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical',background:'#E6F2EC'}}/>
         </div>
         
         {/* Action buttons */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           {viewing.status!=='in_progress'&&<button onClick={()=>updateStatus(viewing.id,'in_progress')} disabled={updating} style={{padding:12,background:'linear-gradient(135deg,#3B82F6,#1E40AF)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',boxShadow:'0 4px 12px rgba(59,130,246,0.25)'}}>🔄 Anza Kushughulikia</button>}
-          {viewing.status!=='resolved'&&<button onClick={()=>updateStatus(viewing.id,'resolved')} disabled={updating} style={{padding:12,background:'linear-gradient(135deg,#22C55E,#15803D)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.25)'}}>✅ Imetatuliwa</button>}
-          {viewing.status==='resolved'&&<button onClick={()=>updateStatus(viewing.id,'closed')} disabled={updating} style={{padding:12,background:'#94A3B8',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',gridColumn:'1/-1'}}>🔒 Funga Tiketi</button>}
+          {viewing.status!=='resolved'&&<button onClick={()=>updateStatus(viewing.id,'resolved')} disabled={updating} style={{padding:12,background:'linear-gradient(135deg,#19C277,#06502F)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',boxShadow:'0 4px 12px rgba(34,197,94,0.25)'}}>✅ Imetatuliwa</button>}
+          {viewing.status==='resolved'&&<button onClick={()=>updateStatus(viewing.id,'closed')} disabled={updating} style={{padding:12,background:'#9AA5A0',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:12,cursor:'pointer',gridColumn:'1/-1'}}>🔒 Funga Tiketi</button>}
         </div>
       </div>
     </Modal>}
@@ -3048,7 +3056,7 @@ export function SupervisorTargetsPage(){
   const[saving,setSaving]=React.useState(false);
   
   // Security: Admin only
-  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FEF3C7',borderRadius:16,border:'2px solid #F59E0B'}}>
+  if(user?.role!=='admin')return <div style={{padding:40,textAlign:'center',background:'#FFF8E6',borderRadius:16,border:'2px solid #F2B705'}}>
     <div style={{fontSize:60,marginBottom:14}}>🔒</div>
     <h2 style={{fontSize:22,fontWeight:900,color:'#92400E',margin:'0 0 10px'}}>UKURASA WA ADMIN TU</h2>
   </div>;
@@ -3233,15 +3241,15 @@ export function SupervisorTargetsPage(){
     URL.revokeObjectURL(url);
   };
   
-  return <div>
+  return <div className="page-enter">
     {/* Header */}
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🎯 Targets & Performance ya Mawakala</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za masupervaiza</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Panga targets, fuatilia performance, na simamia bonasi za masupervaiza</p>
     </div>
     
     {/* Period Selector */}
-    <div className="card" style={{marginBottom:16,background:'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none'}}>
+    <div className="card" style={{marginBottom:16,background:'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none'}}>
       <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
         <div style={{fontSize:32}}>📅</div>
         <div style={{flex:1,minWidth:180}}>
@@ -3264,33 +3272,33 @@ export function SupervisorTargetsPage(){
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #0A6E47'}}>
         <div style={{fontSize:10,color:'#15803D',fontWeight:700}}>MASUPERVAIZA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#0A6E47',marginTop:4}}>{totalStats.totalAgents}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.agentsWithTargets} wana target</div>
+        <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>{totalStats.agentsWithTargets} wana target</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #3B82F6'}}>
         <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700}}>WATEJA WAPYA</div>
         <div style={{fontSize:24,fontWeight:900,color:'#3B82F6',marginTop:4}}>{totalStats.totalNewCustomers}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>wameongezwa</div>
+        <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>wameongezwa</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #8B5CF6'}}>
         <div style={{fontSize:10,color:'#6D28D9',fontWeight:700}}>ZIARA (UNIQUE)</div>
         <div style={{fontSize:24,fontWeight:900,color:'#8B5CF6',marginTop:4}}>{totalStats.totalUniqueVisited}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>{totalStats.totalVisits} jumla</div>
+        <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>{totalStats.totalVisits} jumla</div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F59E0B'}}>
+      <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #F2B705'}}>
         <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>BONASI YAILIYOPATIKANA</div>
-        <div style={{fontSize:16,fontWeight:900,color:'#F59E0B',marginTop:4}}>TZS {totalStats.totalBonus.toLocaleString()}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>kwa masupervaiza wote</div>
+        <div style={{fontSize:16,fontWeight:900,color:'#F2B705',marginTop:4}}>TZS {totalStats.totalBonus.toLocaleString()}</div>
+        <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>kwa masupervaiza wote</div>
       </div>
       <div style={{background:'#fff',borderRadius:12,padding:14,borderLeft:'4px solid #DC2626'}}>
         <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>CHANGAMOTO</div>
         <div style={{fontSize:24,fontWeight:900,color:'#DC2626',marginTop:4}}>{totalStats.issuesFound}</div>
-        <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>za mteja</div>
+        <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>za mteja</div>
       </div>
     </div>
     
     {/* Actions */}
     <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
-      <button onClick={exportReport} style={{padding:'10px 16px',background:'#fff',color:'#0A6E47',border:'2px solid #BBF7D0',borderRadius:10,fontWeight:700,fontSize:12,cursor:'pointer'}}>
+      <button onClick={exportReport} style={{padding:'10px 16px',background:'#fff',color:'#0A6E47',border:'2px solid #C2DED1',borderRadius:10,fontWeight:700,fontSize:12,cursor:'pointer'}}>
         📥 Pakua CSV Report
       </button>
     </div>
@@ -3299,10 +3307,10 @@ export function SupervisorTargetsPage(){
     <div className="card">
       <h3 style={{fontSize:14,fontWeight:800,color:'#0A6E47',margin:'0 0 14px'}}>🏆 Performance ya Mawakala — {monthLabel} {period.year}</h3>
       
-      {loading?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      {loading?<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:30,marginBottom:8}}>⏳</div>
         <div>Inaleta data...</div>
-      </div>:sortedByPerformance.length===0?<div style={{textAlign:'center',padding:40,color:'#94A3B8'}}>
+      </div>:sortedByPerformance.length===0?<div style={{textAlign:'center',padding:40,color:'#9AA5A0'}}>
         <div style={{fontSize:50,marginBottom:10}}>👥</div>
         <div style={{fontWeight:700}}>Hakuna masupervaiza</div>
       </div>:<div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -3314,11 +3322,11 @@ export function SupervisorTargetsPage(){
           return <div key={p.supervisor.id} style={{
             padding:'16px 18px',
             background:'#fff',
-            border:`2px solid ${isTop3?'#FCD34D':'#E2E8F0'}`,
+            border:`2px solid ${isTop3?'#FCD34D':'#D6E2DB'}`,
             borderRadius:12,
             position:'relative',
           }}>
-            {isTop3&&<div style={{position:'absolute',top:-10,right:14,background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'#fff',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:800}}>{medal} TOP {idx+1}</div>}
+            {isTop3&&<div style={{position:'absolute',top:-10,right:14,background:'linear-gradient(135deg,#F2B705,#C99400)',color:'#fff',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:800}}>{medal} TOP {idx+1}</div>}
             
             {/* Header */}
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:10,marginBottom:14,flexWrap:'wrap'}}>
@@ -3330,13 +3338,13 @@ export function SupervisorTargetsPage(){
                   fontSize:20,fontWeight:900,
                 }}>{(p.supervisor.name||p.supervisor.email||'?')[0].toUpperCase()}</div>
                 <div>
-                  <div style={{fontWeight:800,fontSize:15,color:'#1E293B'}}>{p.supervisor.name||p.supervisor.email}</div>
-                  <div style={{fontSize:11,color:'#64748B'}}>📞 {p.supervisor.phone||'—'} • Code: {p.supervisor.promo_code||'—'}</div>
+                  <div style={{fontWeight:800,fontSize:15,color:'#17231D'}}>{p.supervisor.name||p.supervisor.email}</div>
+                  <div style={{fontSize:11,color:'#5C6A62'}}>📞 {p.supervisor.phone||'—'} • Code: {p.supervisor.promo_code||'—'}</div>
                 </div>
               </div>
               <div style={{display:'flex',gap:6}}>
                 <button onClick={()=>setEditTarget({supervisor:p.supervisor,target_new_customers:p.targetNewCustomers,target_visits:p.targetVisits,bonus_per_customer:p.bonusPerCustomer,bonus_per_visit:p.bonusPerVisit,notes:p.target?.notes||''})} style={{padding:'8px 14px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>{p.target?'✏️ Hariri Target':'🎯 Weka Target'}</button>
-                <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#0A6E47',border:'2px solid #BBF7D0',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
+                <button onClick={()=>setViewAgent(p)} style={{padding:'8px 14px',background:'#fff',color:'#0A6E47',border:'2px solid #C2DED1',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer'}}>📊 Detail</button>
               </div>
             </div>
             
@@ -3347,10 +3355,10 @@ export function SupervisorTargetsPage(){
                 <div style={{fontSize:10,color:'#1D4ED8',fontWeight:700}}>👥 WATEJA WAPYA</div>
                 <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
                   <span style={{fontSize:22,fontWeight:900,color:'#3B82F6'}}>{p.newCustomers}</span>
-                  {p.target&&<span style={{fontSize:12,color:'#64748B'}}>/ {p.targetNewCustomers}</span>}
+                  {p.target&&<span style={{fontSize:12,color:'#5C6A62'}}>/ {p.targetNewCustomers}</span>}
                 </div>
                 {p.target&&<div style={{height:5,background:'#DBEAFE',borderRadius:5,marginTop:6,overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.min(100,p.customerPct)}%`,background:p.customerPct>=100?'#22C55E':'#3B82F6',transition:'width 0.5s'}}/>
+                  <div style={{height:'100%',width:`${Math.min(100,p.customerPct)}%`,background:p.customerPct>=100?'#0A6E47':'#3B82F6',transition:'width 0.5s'}}/>
                 </div>}
                 {p.target&&<div style={{fontSize:10,color:p.customerPct>=100?'#15803D':'#1D4ED8',marginTop:3,fontWeight:700}}>{p.customerPct}% {p.customerPct>=100?'✅':''}</div>}
               </div>
@@ -3360,24 +3368,24 @@ export function SupervisorTargetsPage(){
                 <div style={{fontSize:10,color:'#6D28D9',fontWeight:700}}>📋 ZIARA (UNIQUE)</div>
                 <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
                   <span style={{fontSize:22,fontWeight:900,color:'#8B5CF6'}}>{p.uniqueVisited}</span>
-                  {p.target&&<span style={{fontSize:12,color:'#64748B'}}>/ {p.targetVisits}</span>}
+                  {p.target&&<span style={{fontSize:12,color:'#5C6A62'}}>/ {p.targetVisits}</span>}
                 </div>
                 {p.target&&<div style={{height:5,background:'#EDE9FE',borderRadius:5,marginTop:6,overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.min(100,p.visitPct)}%`,background:p.visitPct>=100?'#22C55E':'#8B5CF6',transition:'width 0.5s'}}/>
+                  <div style={{height:'100%',width:`${Math.min(100,p.visitPct)}%`,background:p.visitPct>=100?'#0A6E47':'#8B5CF6',transition:'width 0.5s'}}/>
                 </div>}
                 {p.target&&<div style={{fontSize:10,color:p.visitPct>=100?'#15803D':'#6D28D9',marginTop:3,fontWeight:700}}>{p.visitPct}% {p.visitPct>=100?'✅':''}</div>}
-                <div style={{fontSize:10,color:'#94A3B8',marginTop:2}}>({p.totalVisits} jumla)</div>
+                <div style={{fontSize:10,color:'#9AA5A0',marginTop:2}}>({p.totalVisits} jumla)</div>
               </div>
               
               {/* Bonus Earned */}
-              <div style={{background:'#FEF3C7',padding:'10px 12px',borderRadius:10}}>
+              <div style={{background:'#FFF8E6',padding:'10px 12px',borderRadius:10}}>
                 <div style={{fontSize:10,color:'#B45309',fontWeight:700}}>💰 BONASI</div>
-                <div style={{fontSize:14,fontWeight:900,color:'#F59E0B',marginTop:4}}>TZS {p.bonusEarned.toLocaleString()}</div>
+                <div style={{fontSize:14,fontWeight:900,color:'#F2B705',marginTop:4}}>TZS {p.bonusEarned.toLocaleString()}</div>
                 <div style={{fontSize:10,color:'#92400E',marginTop:2}}>iliyopatikana</div>
               </div>
               
               {/* Issues */}
-              {p.issuesFound>0&&<div style={{background:'#FEF2F2',padding:'10px 12px',borderRadius:10}}>
+              {p.issuesFound>0&&<div style={{background:'#FBECE9',padding:'10px 12px',borderRadius:10}}>
                 <div style={{fontSize:10,color:'#991B1B',fontWeight:700}}>⚠️ CHANGAMOTO</div>
                 <div style={{fontSize:22,fontWeight:900,color:'#DC2626',marginTop:4}}>{p.issuesFound}</div>
                 <div style={{fontSize:10,color:'#7F1D1D',marginTop:2}}>za mteja</div>
@@ -3385,11 +3393,11 @@ export function SupervisorTargetsPage(){
             </div>
             
             {/* Overall progress bar (if target set) */}
-            {p.target&&<div style={{padding:'8px 12px',background:overallPct>=100?'#F0FDF4':overallPct>=70?'#FEF3C7':'#FEF2F2',borderRadius:8,fontSize:11,color:overallPct>=100?'#15803D':overallPct>=70?'#92400E':'#991B1B',fontWeight:700}}>
+            {p.target&&<div style={{padding:'8px 12px',background:overallPct>=100?'#E6F2EC':overallPct>=70?'#FFF8E6':'#FBECE9',borderRadius:8,fontSize:11,color:overallPct>=100?'#15803D':overallPct>=70?'#92400E':'#991B1B',fontWeight:700}}>
               {overallPct>=100?'✅ Lengo Limefika!':overallPct>=70?'⏳ Karibu na Lengo':'⚠️ Bado Mbali na Lengo'} — Overall: {overallPct}%
             </div>}
             
-            {!p.target&&<div style={{padding:'8px 12px',background:'#FEF3C7',borderRadius:8,fontSize:11,color:'#92400E',fontWeight:700}}>
+            {!p.target&&<div style={{padding:'8px 12px',background:'#FFF8E6',borderRadius:8,fontSize:11,color:'#92400E',fontWeight:700}}>
               ⚠️ Hakuna target — bonyeza "Weka Target" kuanza kufuatilia
             </div>}
           </div>;
@@ -3400,7 +3408,7 @@ export function SupervisorTargetsPage(){
     {/* EDIT TARGET MODAL */}
     {editTarget&&<Modal open={true} onClose={()=>setEditTarget(null)} title={`🎯 Target — ${editTarget.supervisor.name||editTarget.supervisor.email}`}>
       <div style={{maxHeight:'70vh',overflowY:'auto'}}>
-        <div style={{background:'#F0FDF4',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #BBF7D0'}}>
+        <div style={{background:'#E6F2EC',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #C2DED1'}}>
           <div style={{fontSize:11,color:'#15803D',fontWeight:700,marginBottom:4}}>📅 MWEZI</div>
           <div style={{fontWeight:800,color:'#0A6E47'}}>{monthLabel} {period.year}</div>
         </div>
@@ -3410,13 +3418,13 @@ export function SupervisorTargetsPage(){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>👥 Wateja Wapya</label>
-            <input type="number" value={editTarget.target_new_customers} onChange={e=>setEditTarget({...editTarget,target_new_customers:e.target.value})} placeholder="10" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BBF7D0',fontSize:14,boxSizing:'border-box'}}/>
-            <div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>Idadi ya wateja wapya wa kusajili</div>
+            <input type="number" value={editTarget.target_new_customers} onChange={e=>setEditTarget({...editTarget,target_new_customers:e.target.value})} placeholder="10" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #C2DED1',fontSize:14,boxSizing:'border-box'}}/>
+            <div style={{fontSize:10,color:'#9AA5A0',marginTop:3}}>Idadi ya wateja wapya wa kusajili</div>
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📋 Ziara (Unique)</label>
-            <input type="number" value={editTarget.target_visits} onChange={e=>setEditTarget({...editTarget,target_visits:e.target.value})} placeholder="30" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #BBF7D0',fontSize:14,boxSizing:'border-box'}}/>
-            <div style={{fontSize:10,color:'#94A3B8',marginTop:3}}>Wateja tofauti wa kutembelea (kila 1 = point 1)</div>
+            <input type="number" value={editTarget.target_visits} onChange={e=>setEditTarget({...editTarget,target_visits:e.target.value})} placeholder="30" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #C2DED1',fontSize:14,boxSizing:'border-box'}}/>
+            <div style={{fontSize:10,color:'#9AA5A0',marginTop:3}}>Wateja tofauti wa kutembelea (kila 1 = point 1)</div>
           </div>
         </div>
         
@@ -3425,16 +3433,16 @@ export function SupervisorTargetsPage(){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kwa Mteja Mpya (TZS)</label>
-            <input type="number" value={editTarget.bonus_per_customer} onChange={e=>setEditTarget({...editTarget,bonus_per_customer:e.target.value})} placeholder="5000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDE68A',fontSize:14,boxSizing:'border-box'}}/>
+            <input type="number" value={editTarget.bonus_per_customer} onChange={e=>setEditTarget({...editTarget,bonus_per_customer:e.target.value})} placeholder="5000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDF0CC',fontSize:14,boxSizing:'border-box'}}/>
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>Kwa Ziara (TZS)</label>
-            <input type="number" value={editTarget.bonus_per_visit} onChange={e=>setEditTarget({...editTarget,bonus_per_visit:e.target.value})} placeholder="1000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDE68A',fontSize:14,boxSizing:'border-box'}}/>
+            <input type="number" value={editTarget.bonus_per_visit} onChange={e=>setEditTarget({...editTarget,bonus_per_visit:e.target.value})} placeholder="1000" style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #FDF0CC',fontSize:14,boxSizing:'border-box'}}/>
           </div>
         </div>
         
         {/* Preview */}
-        <div style={{background:'#FEF3C7',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #FCD34D'}}>
+        <div style={{background:'#FFF8E6',padding:'12px 14px',borderRadius:10,marginBottom:14,border:'1.5px solid #FCD34D'}}>
           <div style={{fontSize:11,color:'#92400E',fontWeight:800,marginBottom:6}}>💰 Bonasi ya Kupata (Akifikia Target)</div>
           <div style={{fontSize:11,color:'#78350F',marginBottom:3}}>
             • Wateja Wapya: {editTarget.target_new_customers} × TZS {(+editTarget.bonus_per_customer).toLocaleString()} = <b>TZS {(+editTarget.target_new_customers*+editTarget.bonus_per_customer).toLocaleString()}</b>
@@ -3449,12 +3457,12 @@ export function SupervisorTargetsPage(){
         
         <div style={{marginBottom:14}}>
           <label style={{fontSize:11,fontWeight:700,color:'#475569',display:'block',marginBottom:5}}>📝 Maelezo (Optional)</label>
-          <textarea value={editTarget.notes} onChange={e=>setEditTarget({...editTarget,notes:e.target.value})} rows="2" placeholder="Mfano: Tuna target kubwa mwezi huu kwa sababu..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #E2E8F0',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
+          <textarea value={editTarget.notes} onChange={e=>setEditTarget({...editTarget,notes:e.target.value})} rows="2" placeholder="Mfano: Tuna target kubwa mwezi huu kwa sababu..." style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,boxSizing:'border-box',fontFamily:'inherit',resize:'vertical'}}/>
         </div>
         
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>setEditTarget(null)} style={{flex:1,padding:12,background:'#fff',color:'#64748B',border:'2px solid #E2E8F0',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
-          <button onClick={saveTarget} disabled={saving} style={{flex:2,padding:12,background:saving?'#86EFAC':'linear-gradient(135deg,#0A6E47,#0A6E47)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:saving?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{saving?'⏳ Inahifadhi...':'💾 Hifadhi Target'}</button>
+          <button onClick={()=>setEditTarget(null)} style={{flex:1,padding:12,background:'#fff',color:'#5C6A62',border:'2px solid #D6E2DB',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={saveTarget} disabled={saving} style={{flex:2,padding:12,background:saving?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:10,fontWeight:800,fontSize:13,cursor:saving?'wait':'pointer',boxShadow:'0 4px 15px rgba(11,122,59,0.3)'}}>{saving?'⏳ Inahifadhi...':'💾 Hifadhi Target'}</button>
         </div>
       </div>
     </Modal>}
@@ -3478,7 +3486,7 @@ export function SupervisorTargetsPage(){
         </div>
         
         {/* Bonus */}
-        <div style={{background:'linear-gradient(135deg,#F59E0B,#D97706)',color:'#fff',padding:'14px 16px',borderRadius:12,marginBottom:14}}>
+        <div style={{background:'linear-gradient(135deg,#F2B705,#C99400)',color:'#fff',padding:'14px 16px',borderRadius:12,marginBottom:14}}>
           <div style={{fontSize:11,opacity:0.85,fontWeight:700}}>💰 BONASI YA KULIPWA</div>
           <div style={{fontSize:24,fontWeight:900}}>TZS {viewAgent.bonusEarned.toLocaleString()}</div>
           <div style={{fontSize:11,opacity:0.85,marginTop:4}}>
@@ -3490,7 +3498,7 @@ export function SupervisorTargetsPage(){
         {viewAgent.newCustomersList.length>0&&<div style={{marginBottom:14}}>
           <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'0 0 8px'}}>👥 Wateja Wapya ({viewAgent.newCustomers})</h4>
           <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:200,overflowY:'auto'}}>
-            {viewAgent.newCustomersList.map(b=><div key={b.id} style={{padding:'8px 12px',background:'#F0FDF4',borderRadius:8,fontSize:12,borderLeft:'3px solid #22C55E'}}>
+            {viewAgent.newCustomersList.map(b=><div key={b.id} style={{padding:'8px 12px',background:'#E6F2EC',borderRadius:8,fontSize:12,borderLeft:'3px solid #0A6E47'}}>
               <div style={{fontWeight:700,color:'#15803D'}}>{b.name}</div>
               <div style={{fontSize:11,color:'#166534'}}>📞 {b.phone||'—'} • {new Date(b.created_at).toLocaleDateString('sw-TZ')}</div>
             </div>)}
@@ -3501,7 +3509,7 @@ export function SupervisorTargetsPage(){
         {viewAgent.visitsList.length>0&&<div style={{marginBottom:14}}>
           <h4 style={{fontSize:13,fontWeight:800,color:'#0A6E47',margin:'0 0 8px'}}>📋 Ziara ({viewAgent.totalVisits})</h4>
           <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:300,overflowY:'auto'}}>
-            {viewAgent.visitsList.map(v=><div key={v.id} style={{padding:'8px 12px',background:v.has_issues?'#FEF2F2':'#F5F3FF',borderRadius:8,fontSize:12,borderLeft:`3px solid ${v.has_issues?'#DC2626':'#8B5CF6'}`}}>
+            {viewAgent.visitsList.map(v=><div key={v.id} style={{padding:'8px 12px',background:v.has_issues?'#FBECE9':'#F5F3FF',borderRadius:8,fontSize:12,borderLeft:`3px solid ${v.has_issues?'#DC2626':'#8B5CF6'}`}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
                 <span style={{fontWeight:700,color:v.has_issues?'#991B1B':'#6D28D9'}}>👤 {v.customer_name}</span>
                 {v.has_issues&&<span style={{fontSize:9,padding:'1px 6px',background:'#DC2626',color:'#fff',borderRadius:4,fontWeight:800}}>⚠️ Tatizo</span>}
@@ -3511,7 +3519,7 @@ export function SupervisorTargetsPage(){
           </div>
         </div>}
         
-        {viewAgent.newCustomers===0&&viewAgent.totalVisits===0&&<div style={{textAlign:'center',padding:30,color:'#94A3B8'}}>
+        {viewAgent.newCustomers===0&&viewAgent.totalVisits===0&&<div style={{textAlign:'center',padding:30,color:'#9AA5A0'}}>
           <div style={{fontSize:40,marginBottom:8}}>📊</div>
           <div style={{fontWeight:700}}>Hakuna shughuli mwezi huu</div>
         </div>}

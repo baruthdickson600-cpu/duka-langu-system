@@ -166,20 +166,20 @@ export default function AccountCleanupPage(){
 
   const TABS=[
     ['suspicious',`⚠️ Zinazoshukiwa (${counts.suspicious})`,'#EA580C'],
-    ['suspended',`⏸️ Zilizozimwa (${counts.suspended})`,'#64748B'],
+    ['suspended',`⏸️ Zilizozimwa (${counts.suspended})`,'#5C6A62'],
     ['active',`✅ Hai (${counts.active})`,'#16A34A'],
     ['paid',`💰 Zilizolipa (${counts.paid})`,'#0A6E47'],
     ['all',`📋 Zote (${counts.all})`,'#3B82F6'],
   ];
 
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>🧹 Usafishaji wa Akaunti</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>Zima kwanza (salama) • Futa baadaye ukiwa na uhakika</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Zima kwanza (salama) • Futa baadaye ukiwa na uhakika</p>
     </div>
 
     {/* Onyo */}
-    <div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:'12px 14px',marginBottom:14,fontSize:12.5,color:'#9A3412',lineHeight:1.6}}>
+    <div style={{background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:12,padding:'12px 14px',marginBottom:14,fontSize:12.5,color:'#9A3412',lineHeight:1.6}}>
       ⚠️ <b>Kuzima</b> — akaunti haitumiki, lakini data inabaki. Unaweza kurudisha wakati wowote.<br/>
       🗑️ <b>Kufuta</b> — data yote inapotea <b>milele</b>. Haiwezi kurudishwa.
     </div>
@@ -187,14 +187,14 @@ export default function AccountCleanupPage(){
     {/* Tabs */}
     <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
       {TABS.map(([id,label,col])=>(
-        <button key={id} onClick={()=>{setFilter(id);setSelected([])}} style={{padding:'8px 13px',borderRadius:10,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filter===id?col:'#F1F5F9',color:filter===id?'#fff':'#64748B'}}>{label}</button>
+        <button key={id} onClick={()=>{setFilter(id);setSelected([])}} style={{padding:'8px 13px',borderRadius:10,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filter===id?col:'#F6F8F7',color:filter===id?'#fff':'#5C6A62'}}>{label}</button>
       ))}
     </div>
 
     <Input placeholder="🔍 Tafuta biashara, simu, au email..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
 
     {/* Vitendo */}
-    {selected.length>0&&<div style={{display:'flex',gap:8,marginBottom:12,padding:'12px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12,flexWrap:'wrap',alignItems:'center'}}>
+    {selected.length>0&&<div style={{display:'flex',gap:8,marginBottom:12,padding:'12px 14px',background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:12,flexWrap:'wrap',alignItems:'center'}}>
       <span style={{fontSize:13,fontWeight:700,color:'#15803D'}}>✓ {selected.length} zimechaguliwa</span>
       <div style={{flex:1}}/>
       {filter==='suspended'?
@@ -203,29 +203,29 @@ export default function AccountCleanupPage(){
         <button onClick={()=>setConfirmModal('suspend')} style={{padding:'8px 16px',background:'#EA580C',color:'#fff',border:'none',borderRadius:9,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>⏸️ Zima</button>
       }
       <button onClick={()=>setConfirmModal('delete')} style={{padding:'8px 16px',background:'#fff',color:'#DC2626',border:'1.5px solid #DC2626',borderRadius:9,fontWeight:700,fontSize:12.5,cursor:'pointer'}}>🗑️ Futa Kabisa</button>
-      <button onClick={clearAll} style={{padding:'8px 12px',background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:9,fontWeight:600,fontSize:12,cursor:'pointer'}}>Ondoa</button>
+      <button onClick={clearAll} style={{padding:'8px 12px',background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:9,fontWeight:600,fontSize:12,cursor:'pointer'}}>Ondoa</button>
     </div>}
 
-    {filtered.length>0&&selected.length===0&&<button onClick={selectAll} style={{marginBottom:10,padding:'7px 14px',background:'#F1F5F9',border:'none',borderRadius:8,fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>☑️ Chagua zote ({filtered.length})</button>}
+    {filtered.length>0&&selected.length===0&&<button onClick={selectAll} style={{marginBottom:10,padding:'7px 14px',background:'#F6F8F7',border:'none',borderRadius:8,fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer'}}>☑️ Chagua zote ({filtered.length})</button>}
 
     {/* Orodha */}
-    {loading?<div className="card"><div style={{height:60,background:'#F1F5F9',borderRadius:8}}/></div>:
+    {loading?<div className="card"><div style={{height:60,background:'#F6F8F7',borderRadius:8}}/></div>:
      !filtered.length?<div className="card"><Empty icon="✨" text="Hakuna akaunti hapa"/></div>:
      <div style={{display:'flex',flexDirection:'column',gap:8}}>
       {filtered.map(b=>{
         const d=b._;
         const sel=selected.includes(b.id);
-        return <div key={b.id} className="card" style={{padding:'12px 14px',border:sel?'2px solid #0A6E47':'1px solid #EEF2F6',background:sel?'#F0FDF4':'#fff'}}>
+        return <div key={b.id} className="card" style={{padding:'12px 14px',border:sel?'2px solid #0A6E47':'1px solid #EEF2F6',background:sel?'#E6F2EC':'#fff'}}>
           <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
             <input type="checkbox" checked={sel} onChange={()=>toggle(b.id)} style={{marginTop:3,width:17,height:17,cursor:'pointer',accentColor:'#0A6E47'}}/>
 
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap',marginBottom:3}}>
-                <b style={{fontSize:14,color:'#101828'}}>{b.name||'—'}</b>
+                <b style={{fontSize:14,color:'#17231D'}}>{b.name||'—'}</b>
                 {d.hasPaid&&<Badge color="#0A6E47">💰 Alilipa</Badge>}
-                {d.isSuspended&&<Badge color="#64748B">⏸️ Imezimwa</Badge>}
+                {d.isSuspended&&<Badge color="#5C6A62">⏸️ Imezimwa</Badge>}
                 {d.isActive&&<Badge color="#16A34A">✅ Hai</Badge>}
-                {d.expired&&!d.hasPaid&&<Badge color="#EF4444">Imeisha</Badge>}
+                {d.expired&&!d.hasPaid&&<Badge color="#C2412D">Imeisha</Badge>}
               </div>
 
               <div style={{fontSize:11.5,color:'#98A2B3',marginBottom:6}}>
@@ -242,12 +242,12 @@ export default function AccountCleanupPage(){
               {/* Sababu */}
               {d.reasons.length>0&&<div style={{marginTop:7,display:'flex',gap:5,flexWrap:'wrap'}}>
                 {d.reasons.map((r,i)=>(
-                  <span key={i} style={{fontSize:10.5,padding:'2px 8px',borderRadius:6,background:'#FFF7ED',color:'#9A3412',fontWeight:600}}>{r}</span>
+                  <span key={i} style={{fontSize:10.5,padding:'2px 8px',borderRadius:6,background:'#FFF8E6',color:'#9A3412',fontWeight:600}}>{r}</span>
                 ))}
               </div>}
             </div>
 
-            <button onClick={()=>setDetail(b)} style={{padding:'5px 10px',background:'#F1F5F9',border:'none',borderRadius:7,fontSize:11,cursor:'pointer',color:'#475569',fontWeight:600,flexShrink:0}}>Ona</button>
+            <button onClick={()=>setDetail(b)} style={{padding:'5px 10px',background:'#F6F8F7',border:'none',borderRadius:7,fontSize:11,cursor:'pointer',color:'#475569',fontWeight:600,flexShrink:0}}>Ona</button>
           </div>
         </div>;
       })}
@@ -257,12 +257,12 @@ export default function AccountCleanupPage(){
     {confirmModal==='suspend'&&<Modal open onClose={()=>setConfirmModal(null)} title="⏸️ Zima Akaunti">
       <div style={{fontSize:13.5,color:'#344054',lineHeight:1.7,marginBottom:16}}>
         Unakaribia kuzima akaunti <b>{selected.length}</b>.
-        <div style={{marginTop:10,padding:'11px 13px',background:'#F0FDF4',borderRadius:9,fontSize:12.5,color:'#15803D'}}>
+        <div style={{marginTop:10,padding:'11px 13px',background:'#E6F2EC',borderRadius:9,fontSize:12.5,color:'#15803D'}}>
           ✅ <b>Salama:</b> Data yote inabaki. Wateja hawataweza kuingia, lakini unaweza kuwarudisha wakati wowote.
         </div>
       </div>
       <div style={{display:'flex',gap:8}}>
-        <button onClick={()=>setConfirmModal(null)} style={{flex:1,padding:11,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+        <button onClick={()=>setConfirmModal(null)} style={{flex:1,padding:11,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
         <button onClick={doSuspend} disabled={busy} style={{flex:2,padding:11,background:'#EA580C',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:'pointer'}}>{busy?'Inazima...':'⏸️ Zima'}</button>
       </div>
     </Modal>}
@@ -273,14 +273,14 @@ export default function AccountCleanupPage(){
         Rudisha akaunti <b>{selected.length}</b>? Wateja wataweza kuingia tena.
       </div>
       <div style={{display:'flex',gap:8}}>
-        <button onClick={()=>setConfirmModal(null)} style={{flex:1,padding:11,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+        <button onClick={()=>setConfirmModal(null)} style={{flex:1,padding:11,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
         <button onClick={doRestore} disabled={busy} style={{flex:2,padding:11,background:'#16A34A',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:'pointer'}}>{busy?'...':'↩️ Rudisha'}</button>
       </div>
     </Modal>}
 
     {/* Modal - FUTA (hatari) */}
     {confirmModal==='delete'&&<Modal open onClose={()=>{setConfirmModal(null);setConfirmText('')}} title="🗑️ Futa Kabisa">
-      <div style={{padding:'13px 15px',background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:11,marginBottom:14}}>
+      <div style={{padding:'13px 15px',background:'#FBECE9',border:'1.5px solid #F0D9D4',borderRadius:11,marginBottom:14}}>
         <div style={{fontSize:14,fontWeight:800,color:'#B91C1C',marginBottom:6}}>⚠️ ONYO KALI</div>
         <div style={{fontSize:12.5,color:'#B42318',lineHeight:1.65}}>
           Unakaribia kufuta akaunti <b>{selected.length}</b> <b>MILELE</b>.<br/><br/>
@@ -291,7 +291,7 @@ export default function AccountCleanupPage(){
 
       {/* Onyesha kama kuna aliyelipa */}
       {selected.some(id=>enriched.find(b=>b.id===id)?._.hasPaid)&&
-        <div style={{padding:'11px 13px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:9,marginBottom:14,fontSize:12.5,color:'#9A3412',fontWeight:600}}>
+        <div style={{padding:'11px 13px',background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:9,marginBottom:14,fontSize:12.5,color:'#9A3412',fontWeight:600}}>
           🚨 Baadhi ya akaunti ulizochagua <b>ZIMELIPA</b>! Hakikisha kabla ya kufuta.
         </div>}
 
@@ -299,7 +299,7 @@ export default function AccountCleanupPage(){
       <Input value={confirmText} onChange={e=>setConfirmText(e.target.value)} placeholder="FUTA"/>
 
       <div style={{display:'flex',gap:8,marginTop:8}}>
-        <button onClick={()=>{setConfirmModal(null);setConfirmText('')}} style={{flex:1,padding:11,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+        <button onClick={()=>{setConfirmModal(null);setConfirmText('')}} style={{flex:1,padding:11,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
         <button onClick={doDelete} disabled={busy||confirmText!=='FUTA'} style={{flex:2,padding:11,background:confirmText==='FUTA'?'#DC2626':'#FCA5A5',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:confirmText==='FUTA'?'pointer':'not-allowed'}}>{busy?'Inafuta...':'🗑️ Futa Milele'}</button>
       </div>
     </Modal>}
@@ -322,10 +322,10 @@ export default function AccountCleanupPage(){
           ].map(([k,v],i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'9px 12px',background:'#F9FAFB',borderRadius:8}}>
               <span style={{fontSize:12.5,color:'#667085',fontWeight:600}}>{k}</span>
-              <span style={{fontSize:12.5,color:'#101828',fontWeight:700}}>{v}</span>
+              <span style={{fontSize:12.5,color:'#17231D',fontWeight:700}}>{v}</span>
             </div>
           ))}
-          {d.reasons.length>0&&<div style={{padding:'11px 13px',background:'#FFF7ED',borderRadius:9,fontSize:12,color:'#9A3412'}}>
+          {d.reasons.length>0&&<div style={{padding:'11px 13px',background:'#FFF8E6',borderRadius:9,fontSize:12,color:'#9A3412'}}>
             <b>Sababu za kushukiwa:</b><br/>{d.reasons.join(' • ')}
           </div>}
         </div>;

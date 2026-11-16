@@ -356,19 +356,19 @@ export default function CommsCenterPage(){
 
   const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['settings','⚙️ Mipangilio']];
 
-  return <div>
+  return <div className="page-enter">
     <div style={{marginBottom:16}}>
       <h2 style={{fontSize:22,fontWeight:900,color:'#0A6E47',margin:'0 0 4px'}}>💬 Kituo cha Mawasiliano</h2>
-      <p style={{fontSize:12,color:'#64748B',margin:0}}>SMS • Email • Arifa — mahali pamoja</p>
+      <p style={{fontSize:12,color:'#5C6A62',margin:0}}>SMS • Email • Arifa — mahali pamoja</p>
     </div>
 
     <div style={{display:'flex',gap:6,marginBottom:16,flexWrap:'wrap'}}>
       {TABS.map(([id,label])=>(
-        <button key={id} onClick={()=>{setTab(id);setResult(null)}} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0A6E47':'#F1F5F9',color:tab===id?'#fff':'#64748B'}}>{label}</button>
+        <button key={id} onClick={()=>{setTab(id);setResult(null)}} style={{padding:'8px 14px',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===id?'#0A6E47':'#F6F8F7',color:tab===id?'#fff':'#5C6A62'}}>{label}</button>
       ))}
     </div>
 
-    {result&&<div style={{background:result.ok?'#F0FDF4':'#FEF2F2',color:result.ok?'#15803D':'#B91C1C',padding:'12px 16px',borderRadius:12,marginBottom:16,fontWeight:600,fontSize:14,borderLeft:`4px solid ${result.ok?'#22C55E':'#EF4444'}`}}>{result.text}</div>}
+    {result&&<div style={{background:result.ok?'#E6F2EC':'#FBECE9',color:result.ok?'#15803D':'#B91C1C',padding:'12px 16px',borderRadius:12,marginBottom:16,fontWeight:600,fontSize:14,borderLeft:`4px solid ${result.ok?'#0A6E47':'#C2412D'}`}}>{result.text}</div>}
 
     {/* ===== DASHBOARD ===== */}
     {tab==='dashboard'&&<div>
@@ -432,7 +432,7 @@ export default function CommsCenterPage(){
           {l:'Leo',v:stats.today,c:'#0A6E47'},
           {l:'Mwezi',v:stats.month,c:'#3B82F6'},
           {l:'Zimefika',v:stats.sent,c:'#16A34A'},
-          {l:'Zimeshindwa',v:stats.failed,c:'#EF4444'},
+          {l:'Zimeshindwa',v:stats.failed,c:'#C2412D'},
           {l:'Ufikishaji',v:`${stats.rate}%`,c:'#8B5CF6'},
         ].map((s,i,arr)=>(
           <div key={i} style={{
@@ -451,7 +451,7 @@ export default function CommsCenterPage(){
         {/* Shughuli */}
         <div style={{background:'#fff',borderRadius:16,border:'1px solid #EEF2F6',padding:16,boxShadow:'0 1px 3px rgba(16,24,40,0.04)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-            <span style={{fontSize:13,fontWeight:800,color:'#101828'}}>Shughuli za Hivi Karibuni</span>
+            <span style={{fontSize:13,fontWeight:800,color:'#17231D'}}>Shughuli za Hivi Karibuni</span>
             {history.length>0&&<button onClick={()=>setTab('history')} style={{background:'none',border:'none',color:'#0A6E47',fontSize:11.5,fontWeight:700,cursor:'pointer'}}>Zote →</button>}
           </div>
           {!history.length?
@@ -467,7 +467,7 @@ export default function CommsCenterPage(){
               }}>
                 <span style={{
                   width:7,height:7,borderRadius:'50%',flexShrink:0,
-                  background:h.status?.includes('sent')?'#16A34A':'#EF4444',
+                  background:h.status?.includes('sent')?'#16A34A':'#C2412D',
                 }}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:12.5,fontWeight:600,color:'#344054'}}>{h.recipient}</div>
@@ -484,7 +484,7 @@ export default function CommsCenterPage(){
         {/* SMS za Otomatiki */}
         <div style={{background:'#fff',borderRadius:16,border:'1px solid #EEF2F6',padding:16,boxShadow:'0 1px 3px rgba(16,24,40,0.04)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-            <span style={{fontSize:13,fontWeight:800,color:'#101828'}}>SMS za Otomatiki</span>
+            <span style={{fontSize:13,fontWeight:800,color:'#17231D'}}>SMS za Otomatiki</span>
             <span style={{
               fontSize:10,fontWeight:800,padding:'3px 9px',borderRadius:20,
               background:cfg.auto_sms_enabled==='false'?'#FEF3F2':'#ECFDF3',
@@ -568,13 +568,13 @@ export default function CommsCenterPage(){
           ))}
         </div>
 
-        <label style={{fontSize:12,fontWeight:700,color:'#334155',display:'block',marginBottom:8}}>
+        <label style={{fontSize:12,fontWeight:700,color:'#3A4A42',display:'block',marginBottom:8}}>
           {audience==='staff'?'👔 Chagua Kikundi cha Wafanyakazi':'👥 Chagua Kikundi cha Wateja'}
         </label>
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
           {(audience==='staff'?STAFF_GROUPS:GROUPS).map(g=>{
             const n=audience==='staff'?getGroupStaff(g.id).filter(s=>s.phone).length:getGroupCustomers(g.id).length;
-            return <button key={g.id} onClick={()=>{setGroup(g.id);setSelectedCust([])}} style={{padding:'7px 12px',borderRadius:9,border:group===g.id?'2px solid #0A6E47':'1.5px solid #E2E8F0',background:group===g.id?'#F0FDF4':'#fff',color:group===g.id?'#0A6E47':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>
+            return <button key={g.id} onClick={()=>{setGroup(g.id);setSelectedCust([])}} style={{padding:'7px 12px',borderRadius:9,border:group===g.id?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:group===g.id?'#E6F2EC':'#fff',color:group===g.id?'#0A6E47':'#5C6A62',fontWeight:600,fontSize:12,cursor:'pointer'}}>
               {g.icon} {g.label} ({n})
             </button>;
           })}
@@ -582,15 +582,15 @@ export default function CommsCenterPage(){
 
         {/* Customer search + select */}
         <Input placeholder={audience==='staff'?"🔍 Tafuta mfanyakazi...":"🔍 Tafuta mteja (jina au namba)..."} value={custSearch} onChange={e=>setCustSearch(e.target.value)} style={{marginBottom:8}}/>
-        {custSearch&&<div style={{maxHeight:150,overflowY:'auto',border:'1px solid #E2E8F0',borderRadius:8,marginBottom:8}}>
+        {custSearch&&<div style={{maxHeight:150,overflowY:'auto',border:'1px solid #D6E2DB',borderRadius:8,marginBottom:8}}>
           {searchedCustomers.slice(0,20).map(c=>(
-            <div key={c.id} onClick={()=>setSelectedCust(p=>p.includes(c.id)?p.filter(x=>x!==c.id):[...p,c.id])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderBottom:'1px solid #F1F5F9',cursor:'pointer',background:selectedCust.includes(c.id)?'#F0FDF4':'#fff'}}>
-              <div><div style={{fontSize:12.5,fontWeight:600}}>{c.name}{audience==='staff'&&c.role&&<span style={{marginLeft:6,fontSize:10,padding:'1px 6px',borderRadius:6,background:'#F0FDF4',color:'#0A6E47',fontWeight:700}}>{c.role}</span>}</div><div style={{fontSize:11,color:'#94A3B8'}}>{c.phone}</div></div>
+            <div key={c.id} onClick={()=>setSelectedCust(p=>p.includes(c.id)?p.filter(x=>x!==c.id):[...p,c.id])} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',borderBottom:'1px solid #F6F8F7',cursor:'pointer',background:selectedCust.includes(c.id)?'#E6F2EC':'#fff'}}>
+              <div><div style={{fontSize:12.5,fontWeight:600}}>{c.name}{audience==='staff'&&c.role&&<span style={{marginLeft:6,fontSize:10,padding:'1px 6px',borderRadius:6,background:'#E6F2EC',color:'#0A6E47',fontWeight:700}}>{c.role}</span>}</div><div style={{fontSize:11,color:'#9AA5A0'}}>{c.phone}</div></div>
               {selectedCust.includes(c.id)&&<span style={{color:'#0A6E47',fontWeight:800}}>✓</span>}
             </div>
           ))}
         </div>}
-        {selectedCust.length>0&&<div style={{fontSize:12,color:'#0A6E47',fontWeight:600}}>✓ Wateja {selectedCust.length} wamechaguliwa <button onClick={()=>setSelectedCust([])} style={{marginLeft:8,background:'none',border:'none',color:'#EF4444',cursor:'pointer',fontSize:11}}>Ondoa</button></div>}
+        {selectedCust.length>0&&<div style={{fontSize:12,color:'#0A6E47',fontWeight:600}}>✓ Wateja {selectedCust.length} wamechaguliwa <button onClick={()=>setSelectedCust([])} style={{marginLeft:8,background:'none',border:'none',color:'#C2412D',cursor:'pointer',fontSize:11}}>Ondoa</button></div>}
       </div>
 
       {/* Message */}
@@ -602,33 +602,33 @@ export default function CommsCenterPage(){
         {channel==='notif'&&<div style={{marginBottom:12}}>
           <label style={{fontSize:12,fontWeight:600,color:'#475569',display:'block',marginBottom:6}}>Aina ya Arifa</label>
           <div style={{display:'flex',gap:6}}>
-            {[['info','ℹ️ Taarifa','#3B82F6'],['warning','⚠️ Onyo','#F59E0B'],['success','✅ Mafanikio','#22C55E']].map(([id,l,col])=>(
-              <button key={id} onClick={()=>setNotifType(id)} style={{flex:1,padding:'8px',borderRadius:9,border:notifType===id?`2px solid ${col}`:'1.5px solid #EAECF0',background:notifType===id?`${col}0A`:'#fff',color:notifType===id?col:'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
+            {[['info','ℹ️ Taarifa','#3B82F6'],['warning','⚠️ Onyo','#F2B705'],['success','✅ Mafanikio','#0A6E47']].map(([id,l,col])=>(
+              <button key={id} onClick={()=>setNotifType(id)} style={{flex:1,padding:'8px',borderRadius:9,border:notifType===id?`2px solid ${col}`:'1.5px solid #EAECF0',background:notifType===id?`${col}0A`:'#fff',color:notifType===id?col:'#5C6A62',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
             ))}
           </div>
         </div>}
 
         <Area label="Ujumbe" value={message} onChange={e=>setMessage(e.target.value)} placeholder="Andika ujumbe... Tumia {{jina}} kuweka jina la mteja." rows={5}/>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#94A3B8',marginBottom:10,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#9AA5A0',marginBottom:10,flexWrap:'wrap',gap:8}}>
           <span>Herufi: {message.length}{channel==='sms'&&` • SMS: ${smsCount}`}</span>
           <span>
             Watapokea: <b style={{color:'#0A6E47'}}>{channel==='email'?targets.filter(t=>t.email).length:channel==='notif'?'Wote':targets.length}</b>
             {channel==='sms'&&<> • Gharama: <b style={{color:'#EA580C'}}>~TZS {estCost.toLocaleString()}</b></>}
-            {channel==='email'&&<> • <b style={{color:'#22C55E'}}>Bure</b></>}
-            {channel==='notif'&&<> • <b style={{color:'#22C55E'}}>Bure</b></>}
+            {channel==='email'&&<> • <b style={{color:'#0A6E47'}}>Bure</b></>}
+            {channel==='notif'&&<> • <b style={{color:'#0A6E47'}}>Bure</b></>}
           </span>
         </div>
 
-        {message&&<button onClick={()=>setShowPreview(!showPreview)} style={{marginBottom:10,padding:'6px 12px',background:'#F1F5F9',border:'none',borderRadius:8,fontSize:12,cursor:'pointer',color:'#475569',fontWeight:600}}>
+        {message&&<button onClick={()=>setShowPreview(!showPreview)} style={{marginBottom:10,padding:'6px 12px',background:'#F6F8F7',border:'none',borderRadius:8,fontSize:12,cursor:'pointer',color:'#475569',fontWeight:600}}>
           {showPreview?'🙈 Ficha':'👁️ Onyesho la Awali'}
         </button>}
-        {showPreview&&<div style={{background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:10,padding:12,marginBottom:10,fontSize:12.5,whiteSpace:'pre-wrap',color:'#334155'}}>
+        {showPreview&&<div style={{background:'#F6F8F7',border:'1px solid #D6E2DB',borderRadius:10,padding:12,marginBottom:10,fontSize:12.5,whiteSpace:'pre-wrap',color:'#3A4A42'}}>
           {message.replace(/\{\{jina\}\}/g,targets[0]?.name||'Mteja')}
         </div>}
 
         {sending&&progress.total>0&&<div style={{marginBottom:10}}>
-          <div style={{fontSize:12,color:'#64748B',marginBottom:4}}>Inatuma... {progress.sent+progress.failed}/{progress.total}</div>
-          <div style={{height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',background:'#0A6E47',width:`${((progress.sent+progress.failed)/progress.total)*100}%`,transition:'width 0.3s'}}/></div>
+          <div style={{fontSize:12,color:'#5C6A62',marginBottom:4}}>Inatuma... {progress.sent+progress.failed}/{progress.total}</div>
+          <div style={{height:8,background:'#F6F8F7',borderRadius:4,overflow:'hidden'}}><div style={{height:'100%',background:'#0A6E47',width:`${((progress.sent+progress.failed)/progress.total)*100}%`,transition:'width 0.3s'}}/></div>
         </div>}
 
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -640,8 +640,8 @@ export default function CommsCenterPage(){
           </Btn>
         </div>
 
-        {channel!=='notif'&&<div style={{borderTop:'1px solid #F1F5F9',marginTop:14,paddingTop:14}}>
-          <div style={{fontSize:12,fontWeight:700,color:'#334155',marginBottom:8}}>👤 Au tuma kwa {channel==='email'?'email':'namba'} moja:</div>
+        {channel!=='notif'&&<div style={{borderTop:'1px solid #F6F8F7',marginTop:14,paddingTop:14}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#3A4A42',marginBottom:8}}>👤 Au tuma kwa {channel==='email'?'email':'namba'} moja:</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <Input placeholder="0712345678" value={phone} onChange={e=>setPhone(e.target.value)} style={{marginBottom:0,flex:1,minWidth:140}}/>
             <Btn onClick={sendOne} disabled={sending} style={{minWidth:110,justifyContent:'center'}}>Tuma</Btn>
@@ -658,7 +658,7 @@ export default function CommsCenterPage(){
       </div>
 
       {/* Maelezo ya placeholders */}
-      <div style={{padding:'10px 13px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,marginBottom:12,fontSize:11.5,color:'#15803D'}}>
+      <div style={{padding:'10px 13px',background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:10,marginBottom:12,fontSize:11.5,color:'#15803D'}}>
         💡 <b>Tumia:</b> <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11}}>{'{{jina}}'}</code> (jina la mteja) •
         <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11,marginLeft:4}}>{'{{kiasi}}'}</code> •
         <code style={{background:'#fff',padding:'1px 5px',borderRadius:4,fontSize:11,marginLeft:4}}>{'{{siku}}'}</code> •
@@ -672,9 +672,9 @@ export default function CommsCenterPage(){
           const icons={all:'📋',Malipo:'💰',Ukumbusho:'⏰',Karibu:'👋',Biashara:'🏪',Sikukuu:'🎉',Mfumo:'⚙️'};
           return <button key={cat} onClick={()=>setTplCat(cat)} style={{
             padding:'7px 13px',borderRadius:9,cursor:'pointer',fontWeight:600,fontSize:12,
-            border:tplCat===cat?'2px solid #0A6E47':'1.5px solid #E2E8F0',
-            background:tplCat===cat?'#F0FDF4':'#fff',
-            color:tplCat===cat?'#0A6E47':'#64748B',
+            border:tplCat===cat?'2px solid #0A6E47':'1.5px solid #D6E2DB',
+            background:tplCat===cat?'#E6F2EC':'#fff',
+            color:tplCat===cat?'#0A6E47':'#5C6A62',
           }}>
             {icons[cat]} {cat==='all'?'Zote':cat} ({n})
           </button>;
@@ -685,13 +685,13 @@ export default function CommsCenterPage(){
           <div key={t.id} className="card" style={{padding:14}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6,gap:6}}>
               <b style={{fontSize:13.5,color:'#0A6E47',flex:1}}>{t.name}</b>
-              {t.cat&&<span style={{fontSize:9.5,padding:'2px 7px',borderRadius:6,background:'#F1F5F9',color:'#64748B',fontWeight:700,flexShrink:0}}>{t.cat}</span>}
+              {t.cat&&<span style={{fontSize:9.5,padding:'2px 7px',borderRadius:6,background:'#F6F8F7',color:'#5C6A62',fontWeight:700,flexShrink:0}}>{t.cat}</span>}
             </div>
-            <div style={{fontSize:11.5,color:'#64748B',lineHeight:1.5,marginBottom:10,minHeight:60,whiteSpace:'pre-wrap',overflow:'hidden',maxHeight:80}}>{t.body}</div>
+            <div style={{fontSize:11.5,color:'#5C6A62',lineHeight:1.5,marginBottom:10,minHeight:60,whiteSpace:'pre-wrap',overflow:'hidden',maxHeight:80}}>{t.body}</div>
             <div style={{display:'flex',gap:6}}>
               <button onClick={()=>useTpl(t)} style={{flex:1,padding:'7px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>Tumia</button>
-              <button onClick={()=>{setTplForm(t);setTplModal('edit')}} style={{padding:'7px 10px',background:'#F1F5F9',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.gear}</button>
-              {!DEFAULT_TEMPLATES.find(d=>d.id===t.id)&&<button onClick={()=>delTpl(t)} style={{padding:'7px 10px',background:'#FEF2F2',color:'#EF4444',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.del}</button>}
+              <button onClick={()=>{setTplForm(t);setTplModal('edit')}} style={{padding:'7px 10px',background:'#F6F8F7',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.gear}</button>
+              {!DEFAULT_TEMPLATES.find(d=>d.id===t.id)&&<button onClick={()=>delTpl(t)} style={{padding:'7px 10px',background:'#FBECE9',color:'#C2412D',border:'none',borderRadius:8,fontSize:12,cursor:'pointer'}}>{IC.del}</button>}
             </div>
           </div>
         ))}
@@ -705,15 +705,15 @@ export default function CommsCenterPage(){
         <Input type="date" value={histDate} onChange={e=>{setHistDate(e.target.value);setPage(1)}} style={{marginBottom:0,minWidth:130}}/>
         <div style={{display:'flex',gap:6}}>
           {[['all','Zote'],['sent','✅'],['failed','❌']].map(([id,l])=>(
-            <button key={id} onClick={()=>{setHistFilter(id);setPage(1)}} style={{padding:'8px 12px',borderRadius:8,border:histFilter===id?'2px solid #0A6E47':'1px solid #E2E8F0',background:histFilter===id?'#F0FDF4':'#fff',color:histFilter===id?'#0A6E47':'#64748B',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
+            <button key={id} onClick={()=>{setHistFilter(id);setPage(1)}} style={{padding:'8px 12px',borderRadius:8,border:histFilter===id?'2px solid #0A6E47':'1px solid #D6E2DB',background:histFilter===id?'#E6F2EC':'#fff',color:histFilter===id?'#0A6E47':'#5C6A62',fontWeight:600,fontSize:12,cursor:'pointer'}}>{l}</button>
           ))}
         </div>
         <button onClick={exportCSV} style={{padding:'8px 14px',borderRadius:8,border:'1px solid #0A6E47',background:'#fff',color:'#0A6E47',fontWeight:700,fontSize:12,cursor:'pointer'}}>📥 Excel</button>
       </div>
 
-      <div style={{fontSize:12,color:'#64748B',marginBottom:8}}>Jumla: {filteredHist.length} SMS</div>
+      <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>Jumla: {filteredHist.length} SMS</div>
 
-      {loading?<div className="card"><div style={{height:60,background:'#F1F5F9',borderRadius:8,animation:'pulse 1.5s infinite'}}/></div>:
+      {loading?<div className="card"><div style={{height:60,background:'#F6F8F7',borderRadius:8,animation:'pulse 1.5s infinite'}}/></div>:
        !pagedHist.length?<div className="card"><Empty icon="📭" text="Hakuna historia"/></div>:
        <>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
@@ -722,11 +722,11 @@ export default function CommsCenterPage(){
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
                 <div style={{flex:1,minWidth:150}}>
                   <div style={{fontWeight:600,fontSize:13,marginBottom:2}}>{h.recipient}</div>
-                  <div style={{fontSize:12,color:'#64748B',whiteSpace:'pre-wrap'}}>{h.message}</div>
+                  <div style={{fontSize:12,color:'#5C6A62',whiteSpace:'pre-wrap'}}>{h.message}</div>
                 </div>
                 <div style={{textAlign:'right'}}>
-                  <Badge color={h.status?.includes('sent')?'#22C55E':'#EF4444'}>{h.status?.includes('sent')?'Imetumwa':'Imeshindwa'}</Badge>
-                  <div style={{fontSize:10,color:'#94A3B8',marginTop:4}}>{new Date(h.created_at).toLocaleString('sw',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                  <Badge color={h.status?.includes('sent')?'#0A6E47':'#C2412D'}>{h.status?.includes('sent')?'Imetumwa':'Imeshindwa'}</Badge>
+                  <div style={{fontSize:10,color:'#9AA5A0',marginTop:4}}>{new Date(h.created_at).toLocaleString('sw',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                   {h.status?.includes('failed')&&<button onClick={()=>resendFailed(h)} disabled={sending} style={{marginTop:6,padding:'4px 10px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:6,fontSize:11,fontWeight:700,cursor:'pointer'}}>🔄 Tuma Tena</button>}
                 </div>
               </div>
@@ -734,9 +734,9 @@ export default function CommsCenterPage(){
           ))}
         </div>
         {totalPages>1&&<div style={{display:'flex',justifyContent:'center',gap:8,marginTop:12,alignItems:'center'}}>
-          <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',cursor:page===1?'default':'pointer',opacity:page===1?0.5:1}}>←</button>
-          <span style={{fontSize:13,color:'#64748B'}}>{page}/{totalPages}</span>
-          <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #E2E8F0',background:'#fff',cursor:page===totalPages?'default':'pointer',opacity:page===totalPages?0.5:1}}>→</button>
+          <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',cursor:page===1?'default':'pointer',opacity:page===1?0.5:1}}>←</button>
+          <span style={{fontSize:13,color:'#5C6A62'}}>{page}/{totalPages}</span>
+          <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #D6E2DB',background:'#fff',cursor:page===totalPages?'default':'pointer',opacity:page===totalPages?0.5:1}}>→</button>
         </div>}
        </>}
     </div>}
@@ -747,11 +747,11 @@ export default function CommsCenterPage(){
       <div className="card" style={{marginBottom:12}}>
         <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>🔌 Hali ya Muunganisho</h3>
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#0A6E47'}}>Beem Africa</span></div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Sender ID</span><span style={{fontSize:13,fontWeight:700,color:'#1E293B'}}>Imewekwa (Vercel)</span></div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Hali ya API</span><Badge color={balError?'#EF4444':'#22C55E'}>{balError?'● Tatizo':'● Imeunganishwa'}</Badge></div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F8FAFC',borderRadius:10}}><span style={{fontSize:13,color:'#64748B',fontWeight:600}}>Salio</span><span style={{fontSize:13,fontWeight:800,color:balance!==null&&balance<5000?'#EF4444':'#0A6E47'}}>{balance!==null?`TZS ${balance.toLocaleString()}`:'—'}</span></div>
-          <div style={{padding:'11px 14px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:12,color:'#9A3412'}}>🔒 API Key na Secret zimefichwa kwa usalama. Ili kubadilisha Sender ID, nenda Vercel → Environment Variables → BEEM_SENDER_ID.</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F6F8F7',borderRadius:10}}><span style={{fontSize:13,color:'#5C6A62',fontWeight:600}}>Mtoa Huduma</span><span style={{fontSize:13,fontWeight:700,color:'#0A6E47'}}>Beem Africa</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F6F8F7',borderRadius:10}}><span style={{fontSize:13,color:'#5C6A62',fontWeight:600}}>Sender ID</span><span style={{fontSize:13,fontWeight:700,color:'#17231D'}}>Imewekwa (Vercel)</span></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F6F8F7',borderRadius:10}}><span style={{fontSize:13,color:'#5C6A62',fontWeight:600}}>Hali ya API</span><Badge color={balError?'#C2412D':'#0A6E47'}>{balError?'● Tatizo':'● Imeunganishwa'}</Badge></div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 14px',background:'#F6F8F7',borderRadius:10}}><span style={{fontSize:13,color:'#5C6A62',fontWeight:600}}>Salio</span><span style={{fontSize:13,fontWeight:800,color:balance!==null&&balance<5000?'#C2412D':'#0A6E47'}}>{balance!==null?`TZS ${balance.toLocaleString()}`:'—'}</span></div>
+          <div style={{padding:'11px 14px',background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:10,fontSize:12,color:'#9A3412'}}>🔒 API Key na Secret zimefichwa kwa usalama. Ili kubadilisha Sender ID, nenda Vercel → Environment Variables → BEEM_SENDER_ID.</div>
         </div>
       </div>
 
@@ -760,14 +760,14 @@ export default function CommsCenterPage(){
         <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>✍️ Sahihi na Kifuatisho</h3>
         <Input label="Sahihi ya SMS (mwanzo)" value={cfg.sms_signature} onChange={e=>setCfg({...cfg,sms_signature:e.target.value})} placeholder="Mfano: DukaLangu"/>
         <Area label="Kifuatisho (mwisho wa kila SMS)" value={cfg.sms_footer} onChange={e=>setCfg({...cfg,sms_footer:e.target.value})} placeholder="Mfano: DukaLangu Smart POS - Simamia Biashara Yako Kidijitali." rows={2}/>
-        <div style={{fontSize:11,color:'#94A3B8',marginBottom:10}}>💡 Hivi vitaongezwa kwenye SMS za otomatiki. Kumbuka: maandishi marefu = SMS nyingi = gharama zaidi.</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginBottom:10}}>💡 Hivi vitaongezwa kwenye SMS za otomatiki. Kumbuka: maandishi marefu = SMS nyingi = gharama zaidi.</div>
       </div>
 
       {/* Automatic SMS Controls */}
       <div className="card" style={{marginBottom:12}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <h3 style={{fontSize:15,fontWeight:800,margin:0}}>🤖 SMS za Otomatiki</h3>
-          <button onClick={()=>setCfg({...cfg,auto_sms_enabled:cfg.auto_sms_enabled==='true'?'false':'true'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.auto_sms_enabled==='true'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+          <button onClick={()=>setCfg({...cfg,auto_sms_enabled:cfg.auto_sms_enabled==='true'?'false':'true'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.auto_sms_enabled==='true'?'#0A6E47':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
             {cfg.auto_sms_enabled==='true'?'● IMEWASHWA':'○ IMEZIMWA'}
           </button>
         </div>
@@ -781,21 +781,21 @@ export default function CommsCenterPage(){
             ['auto_reminder_1','⚠️ Ukumbusho — Siku 1','Siku 1 kabla ya kuisha'],
             ['auto_expired','🔴 Usajili Umeisha','Siku ya kuisha'],
           ].map(([key,label,desc])=>(
-            <div key={key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:cfg[key]==='true'?'#F0FDF4':'#FAFBFC',borderRadius:10,border:`1px solid ${cfg[key]==='true'?'#BBF7D0':'#F1F5F9'}`}}>
+            <div key={key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',background:cfg[key]==='true'?'#E6F2EC':'#FAFBFC',borderRadius:10,border:`1px solid ${cfg[key]==='true'?'#C2DED1':'#F6F8F7'}`}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:'#334155'}}>{label}</div>
-                <div style={{fontSize:11,color:'#94A3B8'}}>{desc}</div>
+                <div style={{fontSize:13,fontWeight:700,color:'#3A4A42'}}>{label}</div>
+                <div style={{fontSize:11,color:'#9AA5A0'}}>{desc}</div>
               </div>
-              <button onClick={()=>setCfg({...cfg,[key]:cfg[key]==='true'?'false':'true'})} style={{width:44,height:24,borderRadius:12,border:'none',background:cfg[key]==='true'?'#22C55E':'#CBD5E1',cursor:'pointer',position:'relative',flexShrink:0}}>
+              <button onClick={()=>setCfg({...cfg,[key]:cfg[key]==='true'?'false':'true'})} style={{width:44,height:24,borderRadius:12,border:'none',background:cfg[key]==='true'?'#0A6E47':'#CBD5E1',cursor:'pointer',position:'relative',flexShrink:0}}>
                 <span style={{position:'absolute',top:2,left:cfg[key]==='true'?22:2,width:20,height:20,borderRadius:'50%',background:'#fff',transition:'left 0.2s'}}/>
               </button>
             </div>
           ))}
-          <div style={{padding:'10px 12px',background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,fontSize:11.5,color:'#9A3412'}}>
+          <div style={{padding:'10px 12px',background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:10,fontSize:11.5,color:'#9A3412'}}>
             💡 Makadirio: wateja {withPhone.length} × ukumbusho 3 ≈ TZS {(withPhone.length*3*SMS_COST).toLocaleString()}/mwezi
           </div>
         </div>:
-        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+        <div style={{padding:'14px',background:'#FBECE9',border:'1px solid #F0D9D4',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
           ⚠️ SMS zote za otomatiki zimezimwa. Wateja hawatapokea ukumbusho wala karibu.
         </div>}
 
@@ -809,9 +809,9 @@ export default function CommsCenterPage(){
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div>
             <h3 style={{fontSize:15,fontWeight:800,margin:0}}>📧 Ripoti za Email</h3>
-            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>Kila siku saa 8:00 asubuhi</div>
+            <div style={{fontSize:11.5,color:'#9AA5A0',marginTop:2}}>Kila siku saa 8:00 asubuhi</div>
           </div>
-          <button onClick={()=>setCfg({...cfg,email_reports_enabled:cfg.email_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.email_reports_enabled!=='false'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+          <button onClick={()=>setCfg({...cfg,email_reports_enabled:cfg.email_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.email_reports_enabled!=='false'?'#0A6E47':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
             {cfg.email_reports_enabled!=='false'?'● IMEWASHWA':'○ IMEZIMWA'}
           </button>
         </div>
@@ -822,11 +822,11 @@ export default function CommsCenterPage(){
               <span style={{fontSize:12.5,color:'#344054',fontWeight:600}}>{l}</span>
             </div>
           ))}
-          <div style={{padding:'10px 12px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:11.5,color:'#15803D',marginTop:4}}>
+          <div style={{padding:'10px 12px',background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:10,fontSize:11.5,color:'#15803D',marginTop:4}}>
             💡 Email moja kamili kwa kila mteja. <b>Bure</b> — hakuna gharama.
           </div>
         </div>:
-        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+        <div style={{padding:'14px',background:'#FBECE9',border:'1px solid #F0D9D4',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
           ⚠️ Ripoti za email zimezimwa. Wateja hawatapokea ripoti za kila siku.
         </div>}
       </div>
@@ -836,9 +836,9 @@ export default function CommsCenterPage(){
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <div>
             <h3 style={{fontSize:15,fontWeight:800,margin:0}}>👔 Ripoti za Wafanyakazi</h3>
-            <div style={{fontSize:11.5,color:'#94A3B8',marginTop:2}}>Kila mmoja anapata inayomhusu — saa 8:00</div>
+            <div style={{fontSize:11.5,color:'#9AA5A0',marginTop:2}}>Kila mmoja anapata inayomhusu — saa 8:00</div>
           </div>
-          <button onClick={()=>setCfg({...cfg,staff_reports_enabled:cfg.staff_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.staff_reports_enabled!=='false'?'#22C55E':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
+          <button onClick={()=>setCfg({...cfg,staff_reports_enabled:cfg.staff_reports_enabled==='false'?'true':'false'})} style={{padding:'7px 16px',borderRadius:20,border:'none',background:cfg.staff_reports_enabled!=='false'?'#0A6E47':'#CBD5E1',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
             {cfg.staff_reports_enabled!=='false'?'● IMEWASHWA':'○ IMEZIMWA'}
           </button>
         </div>
@@ -853,11 +853,11 @@ export default function CommsCenterPage(){
               <div style={{fontSize:11,color:'#98A2B3'}}>{x.d}</div>
             </div>
           ))}
-          <div style={{padding:'10px 12px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:10,fontSize:11.5,color:'#15803D'}}>
+          <div style={{padding:'10px 12px',background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:10,fontSize:11.5,color:'#15803D'}}>
             💡 Wafanyakazi {staff.filter(s=>s.email).length} watapokea ripoti. <b>Bure</b>.
           </div>
         </div>:
-        <div style={{padding:'14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
+        <div style={{padding:'14px',background:'#FBECE9',border:'1px solid #F0D9D4',borderRadius:10,fontSize:12.5,color:'#B91C1C'}}>
           ⚠️ Ripoti za wafanyakazi zimezimwa.
         </div>}
       </div>
@@ -878,9 +878,9 @@ export default function CommsCenterPage(){
         <h3 style={{fontSize:16,fontWeight:800,margin:'0 0 14px'}}>{tplModal==='edit'?'✏️ Hariri Template':'➕ Template Mpya'}</h3>
         <Input label="Jina" value={tplForm.name} onChange={e=>setTplForm({...tplForm,name:e.target.value})} placeholder="Mfano: Karibu Mteja"/>
         <Area label="Ujumbe (tumia {{jina}} kwa jina la mteja)" value={tplForm.body} onChange={e=>setTplForm({...tplForm,body:e.target.value})} rows={6}/>
-        <div style={{fontSize:11,color:'#94A3B8',marginBottom:8}}>Herufi: {tplForm.body.length} • SMS: {Math.max(1,Math.ceil(tplForm.body.length/160))}</div>
+        <div style={{fontSize:11,color:'#9AA5A0',marginBottom:8}}>Herufi: {tplForm.body.length} • SMS: {Math.max(1,Math.ceil(tplForm.body.length/160))}</div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>setTplModal(null)} style={{flex:1,padding:11,background:'#F1F5F9',color:'#64748B',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
+          <button onClick={()=>setTplModal(null)} style={{flex:1,padding:11,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Ghairi</button>
           <button onClick={saveTpl} style={{flex:2,padding:11,background:'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:800,cursor:'pointer'}}>Hifadhi</button>
         </div>
       </div>
