@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS payouts (
   marketing_approved BOOLEAN DEFAULT FALSE,
   marketing_approved_by TEXT,
   marketing_approved_at TIMESTAMPTZ,
+  verified_name TEXT,          -- jina lililothibitishwa (si alilotandika mhasibu)
+  verify_note TEXT,            -- sababu kama uthibitisho haukufanikiwa
   rejected_by TEXT,
   rejected_reason TEXT,
   metadata JSONB DEFAULT '{}',
@@ -41,6 +43,9 @@ ALTER TABLE payouts ADD COLUMN IF NOT EXISTS admin_approved_at TIMESTAMPTZ;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS marketing_approved BOOLEAN DEFAULT FALSE;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS marketing_approved_by TEXT;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS marketing_approved_at TIMESTAMPTZ;
+-- Jina la mpokeaji lililothibitishwa na huduma ya kuangalia jina (Abliner)
+ALTER TABLE payouts ADD COLUMN IF NOT EXISTS verified_name TEXT;
+ALTER TABLE payouts ADD COLUMN IF NOT EXISTS verify_note TEXT;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS rejected_by TEXT;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS rejected_reason TEXT;
 

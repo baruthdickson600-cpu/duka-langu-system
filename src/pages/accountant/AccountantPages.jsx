@@ -590,6 +590,9 @@ export function AccPayoutPage(){
   const[bankCode,setBankCode]=useState('');
   const[reason,setReason]=useState('');
   const[fee,setFee]=useState(0);
+  const[vName,setVName]=useState('');      // jina lililothibitishwa
+  const[vErr,setVErr]=useState('');        // sababu ya kushindwa
+  const[vLoading,setVLoading]=useState(false);
   const[sending,setSending]=useState(false);
   const[msg,setMsg]=useState('');
   const[err,setErr]=useState('');
@@ -614,6 +617,24 @@ export function AccPayoutPage(){
     }catch{setHistory([])}
   };
   useEffect(()=>{loadBalance();loadHistory();},[]);
+
+  // Angalia jina la mmiliki wa namba (simu pekee)
+  useEffect(()=>{
+    setVName('');setVErr('');
+    const num=recipient.trim();
+    if(method!=='mobile'||num.replace(/\D/g,'').length<9)return;
+    setVLoading(true);
+    const t=setTimeout(async()=>{
+      try{
+        const r=await fetch(API_BASE+'/api/payments?action=name_lookup&phone='+encodeURIComponent(num));
+        const d=await r.json();
+        if(d.success){setVName(d.name);setRecipientName(d.name);setVErr('')}
+        else{setVName('');setVErr(d.error||'Jina halikupatikana.')}
+      }catch{setVErr('Imeshindwa kuangalia jina.')}
+      setVLoading(false);
+    },700);
+    return()=>{clearTimeout(t);setVLoading(false)};
+  },[recipient,method]);
 
   // Kokotoa ada amount ikibadilika
   useEffect(()=>{
@@ -690,7 +711,18 @@ export function AccPayoutPage(){
       {method==='mobile'&&<Sel label="Mtandao" value={channel} onChange={e=>setChannel(e.target.value)} options={CHANNELS.map(c=>({value:c.v,label:c.l}))}/>}
       {method==='bank'&&<Input label="Bank Code" value={bankCode} onChange={e=>setBankCode(e.target.value)} placeholder="Mf: CRDBTZTZ"/>}
       <Input label={method==='bank'?'Namba ya Akaunti':'Namba ya Simu'} value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder={method==='bank'?'0150XXXXXXXXX':'07XXXXXXXX'}/>
-      <Input label="Jina la Mpokeaji" value={recipientName} onChange={e=>setRecipientName(e.target.value)} placeholder="Jina kamili"/>
+      {method==='mobile'&&(vLoading
+        ?<div style={{fontSize:12,color:'#5C6A62',margin:'-6px 0 10px'}}>🔎 Inaangalia jina...</div>
+        :vName
+          ?<div style={{background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:10,padding:'9px 12px',margin:'-6px 0 10px',fontSize:12.5,color:'#0A6E47'}}>
+             ✅ Mpokeaji: <b>{vName}</b>
+           </div>
+          :vErr
+            ?<div style={{background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:10,padding:'9px 12px',margin:'-6px 0 10px',fontSize:12,color:'#7A5C00'}}>
+               ⚠️ {vErr} Hakiki namba kabla ya kutuma ombi.
+             </div>
+            :null)}
+      <Input label={vName?'Jina la Mpokeaji (limethibitishwa)':'Jina la Mpokeaji'} value={recipientName} onChange={e=>setRecipientName(e.target.value)} placeholder="Jina kamili" disabled={!!vName}/>
       <Input label="Kiasi (TZS)" type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="50000"/>
       <Input label="Sababu ya matumizi *" value={reason} onChange={e=>setReason(e.target.value)} placeholder="Mf: Mshahara, kodi, manunuzi..."/>
 
@@ -734,6 +766,9 @@ export function AccPayoutPage(){
         <div style={{fontSize:14,color:'#5C6A62',marginBottom:12,lineHeight:1.6}}>
           Ombi la <b style={{color:'#0A6E47',fontSize:18}}>{fm(parseFloat(amount)||0)}</b><br/>
           kwenda <b>{recipientName||recipient}</b> ({method==='bank'?'Benki':chName(channel)})<br/>
+          {method==='mobile'&&(vName
+            ?<span style={{color:'#0A6E47',fontSize:12}}>✅ Jina limethibitishwa</span>
+            :<span style={{color:'#C2412D',fontSize:12}}>⚠️ Jina HALIJATHIBITISHWA</span>)}<br/>
           Sababu: <b>{reason}</b><br/>
           Ada: {fm(fee)} • Jumla: <b>{fm(total)}</b>
         </div>

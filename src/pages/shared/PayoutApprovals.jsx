@@ -90,6 +90,14 @@ export default function PayoutApprovals(){
             <span style={{fontSize:9.5,fontWeight:800,padding:'4px 10px',borderRadius:20,background:stColor(p.status)+'20',color:stColor(p.status),whiteSpace:'nowrap'}}>{stLabel(p.status)}</span>
           </div>
 
+          {/* Uthibitisho wa mpokeaji — jina hili linatoka kwa mtandao, si alilotandika mhasibu */}
+          {p.method==='mobile'&&(p.verified_name
+            ?<div style={{background:'#E6F2EC',border:'1px solid #C2DED1',borderRadius:10,padding:'9px 12px',marginBottom:10,fontSize:12.5,color:'#0A6E47'}}>
+               ✅ Namba imethibitishwa ni ya: <b>{p.verified_name}</b>
+             </div>
+            :<div style={{background:'#FBECE9',border:'1px solid #F0D9D4',borderRadius:10,padding:'9px 12px',marginBottom:10,fontSize:12,color:'#C2412D'}}>
+               ⚠️ Jina la mwenye namba HALIKUTHIBITISHWA{p.verify_note?` (${p.verify_note})`:''}. Hakiki kwa makini kabla ya kuidhinisha.
+             </div>)}
           <div style={{background:'#F6F8F7',borderRadius:10,padding:'10px 12px',fontSize:12.5,marginBottom:12}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#5C6A62'}}>Sababu</span><b style={{textAlign:'right'}}>{p.reason||'—'}</b></div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{color:'#5C6A62'}}>Ameomba</span><b>{p.requested_by||'Mhasibu'}</b></div>

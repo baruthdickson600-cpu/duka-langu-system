@@ -26,6 +26,8 @@ const WEBHOOK_SECRET = process.env.SNIPPE_WEBHOOK_SECRET || process.env.PAYMENT_
 const APP_URL = process.env.APP_URL || process.env.VITE_APP_URL || 'https://dukalangu.com';
 const SNIPPE_BASE = 'https://api.snippe.sh';
 const SNIPPE_VERSION = '2026-01-25';
+const ABLINER_KEY = process.env.ABLINER_API_KEY;
+const ABLINER_BASE = 'https://abliner.net/api/v1';
 
 // Vercel: tunahitaji RAW body kwa uthibitisho wa saini ya webhook
 export const config = { api: { bodyParser: false } };
@@ -263,6 +265,29 @@ async function executePayout(supabase, po) {
   }).then(() => {}, () => {});
 
   return gw;
+}
+
+// ---- KUANGALIA JINA LA MMILIKI WA NAMBA (Abliner) ----
+// Hutumika KABLA ya kutoa pesa ili pesa isiende kwa mtu asiye sahihi.
+async function lookupName(phone) {
+  if (!ABLINER_KEY) return { ok: false, error: 'Huduma ya kuangalia jina haijawekwa.', code: 'not_configured' };
+  const msisdn = toMsisdn(phone);
+  if (!msisdn || msisdn.length < 11) return { ok: false, error: 'Namba si sahihi.', code: 'bad_phone' };
+  try {
+    const r = await fetch(`${ABLINER_BASE}/lookup?phone=${encodeURIComponent(msisdn)}`, {
+      headers: { 'Authorization': `Bearer ${ABLINER_KEY}` },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 404) return { ok: false, error: 'Jina halikupatikana kwa namba hii. Hakiki namba.', code: 'name_not_found' };
+    if (!r.ok || d.status !== 'success') {
+      return { ok: false, error: (d && (d.message || d.error)) || `Imeshindwa kuangalia jina (${r.status}).`, code: 'lookup_failed' };
+    }
+    const data = d.data || {};
+    if (!data.name) return { ok: false, error: 'Jina halikupatikana.', code: 'name_not_found' };
+    return { ok: true, name: data.name, network: data.network || null, phone: data.phone || msisdn };
+  } catch (e) {
+    return { ok: false, error: 'Mtandao: ' + (e.message || ''), code: 'network' };
+  }
 }
 
 // ---- BANDO LA SMS ----
@@ -537,9 +562,19 @@ export default async function handler(req, res) {
       const reference = 'PO-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
       const feeRes = await snippeFee(amount);
 
+      // Thibitisha jina la mpokeaji hapa server — tusiamini kilichotumwa na client
+      let verifiedName = null, verifyNote = null;
+      if (method === 'mobile') {
+        const lk = await lookupName(recipient_number);
+        if (lk.ok) verifiedName = lk.name;
+        else verifyNote = lk.error;
+      }
+
       const { data: po, error } = await supabase.from('payouts').insert({
         amount, fee: feeRes.fee || 0, method, channel: channel || null,
-        recipient_name: recipient_name || null, recipient_number, bank_code: bank_code || null,
+        recipient_name: verifiedName || recipient_name || null,
+        verified_name: verifiedName, verify_note: verifyNote,
+        recipient_number, bank_code: bank_code || null,
         reason: reason.trim(), provider: 'snippe', provider_ref: reference,
         status: 'pending_approval', admin_approved: false, marketing_approved: false,
         requested_by: requested_by || null, requested_by_id: requested_by_id || null,
@@ -549,7 +584,13 @@ export default async function handler(req, res) {
       // Arifa Admin + Marketing waidhinishe
       await notifyApprovers(supabase, po);
 
-      return res.status(200).json({ success: true, payout_id: po.id, fee: feeRes.fee || 0, message: '✅ Ombi limetumwa kwa Admin na Marketing kwa idhini.' });
+      return res.status(200).json({
+        success: true, payout_id: po.id, fee: feeRes.fee || 0,
+        verified_name: verifiedName, verify_note: verifyNote,
+        message: verifiedName
+          ? `✅ Ombi limetumwa kwa idhini. Mpokeaji amethibitishwa: ${verifiedName}.`
+          : '✅ Ombi limetumwa kwa Admin na Marketing kwa idhini.',
+      });
     }
 
     // ===== 7. PAYOUT: IDHINISHA (approve) — Admin au Marketing =====
@@ -667,6 +708,15 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, status: 'paid', balance });
       }
       return res.status(200).json({ success: true, status: buy.status });
+    }
+
+    // ===== 13. ANGALIA JINA LA MMILIKI WA NAMBA =====
+    if (action === 'name_lookup') {
+      const phone = req.query?.phone;
+      if (!phone) return res.status(400).json({ success: false, error: 'phone inahitajika.' });
+      const r = await lookupName(phone);
+      if (!r.ok) return res.status(200).json({ success: false, error: r.error, code: r.code });
+      return res.status(200).json({ success: true, name: r.name, network: r.network, phone: r.phone });
     }
 
     return res.status(400).json({ success: false, error: 'Action si sahihi. Tumia initiate | webhook | status | payout_* | sms_balance | sms_buy | sms_status.' });
