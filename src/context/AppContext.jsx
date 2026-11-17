@@ -49,6 +49,39 @@ export function AppProvider({children}){
   const[products,setProds]=useState([]);
   const[orders,setOrders]=useState([]);
   const[sales,setSales]=useState([]);
+
+  // ===== FAIDA YA MAUZO YA MUUZAJI =====
+  // Muuzaji hatumi faida (hana bei ya kununua). Kwa hiyo mauzo yake
+  // yana profit = NULL. JavaScript inahesabu NULL kama sifuri, kwa hiyo
+  // mauzo yake yalikuwa hayaleti faida yoyote kwenye Dashboard na Ripoti.
+  //
+  // Hapa tunaijaza kwa mwenye duka: bei ya kununua inatoka kwenye
+  // bidhaa yenyewe. Hii inafanya kazi hata kama SQL haijaendeshwa, na
+  // hata kwa mauzo ya zamani.
+  const _costMap = useMemo(() => {
+    const m = new Map();
+    (products || []).forEach(p => { if (p && p.id !== undefined) m.set(String(p.id), +p.buy_price || 0); });
+    return m;
+  }, [products]);
+
+  const _withProfit = useCallback(sale => {
+    if (typeof sale?.profit === 'number' && !Number.isNaN(sale.profit)) return sale;
+    const items = Array.isArray(sale?.items) ? sale.items : [];
+    let rev = 0, cost = 0;
+    for (const i of items) {
+      const frac = +i?.fraction || 1, qty = +i?.qty || 0, price = +i?.price || 0;
+      let c = i?.cost;
+      if (c === undefined || c === null || c === '') c = i?.buyPrice;
+      if (c === undefined || c === null || c === '') c = _costMap.get(String(i?.productId || i?.product_id || ''));
+      rev += qty * price * frac;
+      cost += qty * (+c || 0) * frac;
+    }
+    return { ...sale, profit: rev - cost - (+sale?.discount || 0) };
+  }, [_costMap]);
+
+  // Faida ya mauzo moja (namba) — tumia hii badala ya s.profit
+  const _pOf = useCallback(s => _withProfit(s).profit || 0, [_withProfit]);
+
   const[expenses,setExp]=useState([]);
   const[purchases,setPurchases]=useState([]);
   const[customers,setCust]=useState([]);
@@ -1957,7 +1990,7 @@ export function AppProvider({children}){
     // 5. DAILY PERFORMANCE SUMMARY (if sales exist today)
     const todaySales=sales.filter(s=>s.created_at?.startsWith(today));
     const todayTotal=todaySales.reduce((a,s)=>a+s.total,0);
-    const todayProfit=todaySales.reduce((a,s)=>a+s.profit,0);
+    const todayProfit=todaySales.reduce((a,s)=>a+_pOf(s),0);
     const todayExp=expenses.filter(e=>e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
     // Only show if it's after 6 PM
     const hour=new Date().getHours();
@@ -1998,21 +2031,21 @@ export function AppProvider({children}){
       // TODAY stats
       const todaySales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(today));
       const todayTotal=todaySales.reduce((a,s)=>a+(s.total||0),0);
-      const todayProfit=todaySales.reduce((a,s)=>a+(s.profit||0),0);
+      const todayProfit=todaySales.reduce((a,s)=>a+_pOf(s),0);
       const todayExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(today)).reduce((a,e)=>a+(e.amount||0),0);
 
       // WEEK stats
       const weekAgo=new Date(Date.now()-7*86400000).toISOString();
       const weekSales=sales.filter(s=>s.business_id===bizId&&s.created_at>=weekAgo);
       const weekTotal=weekSales.reduce((a,s)=>a+(s.total||0),0);
-      const weekProfit=weekSales.reduce((a,s)=>a+(s.profit||0),0);
+      const weekProfit=weekSales.reduce((a,s)=>a+_pOf(s),0);
       const weekExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at>=weekAgo).reduce((a,e)=>a+(e.amount||0),0);
 
       // MONTH stats
       const monthStart=today.slice(0,7);
       const monthSales=sales.filter(s=>s.business_id===bizId&&s.created_at?.startsWith(monthStart));
       const monthTotal=monthSales.reduce((a,s)=>a+(s.total||0),0);
-      const monthProfit=monthSales.reduce((a,s)=>a+(s.profit||0),0);
+      const monthProfit=monthSales.reduce((a,s)=>a+_pOf(s),0);
       const monthExpTotal=expenses.filter(e=>e.business_id===bizId&&e.created_at?.startsWith(monthStart)).reduce((a,e)=>a+(e.amount||0),0);
 
       // Top selling products (month)
@@ -2640,7 +2673,7 @@ export function AppProvider({children}){
     const wCredit=(creditHistory||[]).filter(t=>new Date(t.created_at)>=weekStart);
     const fin=computePeriodFinance({sales:wSales,returns:wReturns,expenses:wExp,purchases:wPurch,creditHistory:wCredit});
     const wTotal=fin.grossSales;const pwTotal=pwSales.reduce((a,s)=>a+s.total,0);
-    const wProfit=fin.grossProfit;const pwProfit=pwSales.reduce((a,s)=>a+s.profit,0);
+    const wProfit=fin.grossProfit;const pwProfit=pwSales.reduce((a,s)=>a+_pOf(s),0);
     const wExpTotal=fin.totalExpenses;
     const salesChange=pwTotal>0?Math.round((wTotal-pwTotal)/pwTotal*100):0;
     const profitChange=pwProfit>0?Math.round((wProfit-pwProfit)/pwProfit*100):0;
@@ -2669,7 +2702,7 @@ export function AppProvider({children}){
     const mCredit=(creditHistory||[]).filter(t=>localDateStr(t.created_at).startsWith(thisMonth));
     const fin=computePeriodFinance({sales:mSales,returns:mReturns,expenses:mExp,purchases:mPurch,creditHistory:mCredit});
     const mTotal=fin.grossSales;const pmTotal=pmSales.reduce((a,s)=>a+s.total,0);
-    const mProfit=fin.grossProfit;const pmProfit=pmSales.reduce((a,s)=>a+s.profit,0);
+    const mProfit=fin.grossProfit;const pmProfit=pmSales.reduce((a,s)=>a+_pOf(s),0);
     const mExpTotal=fin.totalExpenses;const pmExpTotal=pmExp.reduce((a,e)=>a+(e.amount||0),0);
     const salesChange=pmTotal>0?Math.round((mTotal-pmTotal)/pmTotal*100):0;
     const profitChange=pmProfit>0?Math.round((mProfit-pmProfit)/pmProfit*100):0;
@@ -2748,10 +2781,10 @@ export function AppProvider({children}){
   },[settings,bizId]);
   const goalProgress=useMemo(()=>{
     const today=todayStr();
-    const dayProfit=sales.filter(s=>s.created_at?.startsWith(today)).reduce((a,s)=>a+s.profit,0);
+    const dayProfit=sales.filter(s=>s.created_at?.startsWith(today)).reduce((a,s)=>a+_pOf(s),0);
     const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());
-    const weekProfit=sales.filter(s=>new Date(s.created_at)>=weekStart).reduce((a,s)=>a+s.profit,0);
-    const monthProfit=sales.filter(s=>s.created_at?.startsWith(today.slice(0,7))).reduce((a,s)=>a+s.profit,0);
+    const weekProfit=sales.filter(s=>new Date(s.created_at)>=weekStart).reduce((a,s)=>a+_pOf(s),0);
+    const monthProfit=sales.filter(s=>s.created_at?.startsWith(today.slice(0,7))).reduce((a,s)=>a+_pOf(s),0);
     return{
       daily:{current:dayProfit,goal:getGoal('daily'),pct:getGoal('daily')?Math.min(100,Math.round(dayProfit/getGoal('daily')*100)):0},
       weekly:{current:weekProfit,goal:getGoal('weekly'),pct:getGoal('weekly')?Math.min(100,Math.round(weekProfit/getGoal('weekly')*100)):0},
@@ -2820,6 +2853,7 @@ export function AppProvider({children}){
   // (buy_price ya bidhaa inabaki kwa sababu hutumika kuhesabu faida
   //  wakati wa kuuza — ikiondolewa, faida ya mwenye duka ingeharibika.)
   const _isSeller = user?.role === 'employee';
+
   const _stripItems = items => Array.isArray(items)
     ? items.map(({ cost, lineProfit, buyPrice, buy_price, ...i }) => i)
     : items;
@@ -2833,7 +2867,7 @@ export function AppProvider({children}){
 
   const _visibleSales = useMemo(() => {
     const list = canUseBranches && activeBranch ? branchSales : sales;
-    if (!_isSeller) return list;
+    if (!_isSeller) return (list || []).map(_withProfit);
     // Faida ya mauzo yote NA ya kila bidhaa (cost, lineProfit, buyPrice)
     // zinaondolewa. Database huziweka kwenye kila bidhaa ili mmiliki
     // aone faida ya kila bidhaa — muuzaji hapaswi kuzipata.
@@ -2841,7 +2875,7 @@ export function AppProvider({children}){
       ...rest,
       items: _stripItems(items),
     }));
-  }, [sales, branchSales, canUseBranches, activeBranch, _isSeller]);
+  }, [sales, branchSales, canUseBranches, activeBranch, _isSeller, _withProfit]);
 
   // Bei ya kununua haifiki kwa muuzaji kabisa. Faida ya mauzo yake
   // huhesabiwa ndani ya database (ona profit-server-side.sql).

@@ -453,7 +453,7 @@ export function SalesPage({onDone}){
     if(!cart.length)return alert('Weka bidhaa kwanza!');
     setProcessing(true);
     try{
-      const items=cart.map(c=>({productId:c.productId,name:c.name,qty:c.qty,price:c.price,cost:c.cost||c.buy_price||0,fraction:c.fraction||1}));
+      const items=cart.map(c=>({productId:c.productId,name:c.name,qty:c.qty,price:c.price,cost:c.cost||c.buyPrice||c.buy_price||0,fraction:c.fraction||1}));
       const res=await createOrder({items,discount,customerId:custId||null,customerName:custName||'Mteja',customerPhone:''});
       if(res.error){alert(res.error);setProcessing(false);return;}
       playSaleSuccess();
@@ -868,7 +868,9 @@ export function ReturnsPage(){
   
   const doReturn=async()=>{
     if(!saleId||!reason)return alert('Chagua mauzo na weka sababu!');
-    const items=retItems.filter(i=>i.returnQty>0).map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.returnQty,fraction:i.fraction||1,fractionLabel:i.fractionLabel}));
+    const items=retItems.filter(i=>i.returnQty>0).map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.returnQty,fraction:i.fraction||1,fractionLabel:i.fractionLabel,
+      // Hifadhi gharama ili faida iliyopunguzwa iwe sahihi
+      ...(i.cost!==undefined?{cost:i.cost}:i.buyPrice!==undefined?{buyPrice:i.buyPrice}:{})}));
     if(!items.length)return alert('Chagua bidhaa za kurudisha!');
     await processReturn(saleId,items,reason);
     const isCredit=sale?.payment_method==='credit';
@@ -2555,23 +2557,38 @@ export function GoalsPage(){
 // Gharama ya bidhaa moja kwenye mauzo. Vyanzo kwa mpangilio:
 //   cost       — iliyohifadhiwa na database (mauzo ya muuzaji)
 //   buyPrice   — iliyohifadhiwa na kivinjari (mauzo ya mwenye duka)
-export const unitCost=item=>{
+//   costMap    — bei za kununua za sasa kutoka jedwali la bidhaa
+//                (kinga ya mwisho: mauzo ya muuzaji na marejesho
+//                 hayahifadhi bei ya kununua kabisa)
+export const unitCost=(item,costMap)=>{
   const c=item?.cost;
   if(c!==undefined&&c!==null&&c!=='')return +c||0;
   const b=item?.buyPrice;
   if(b!==undefined&&b!==null&&b!=='')return +b||0;
+  if(costMap){
+    const pid=String(item?.productId||item?.product_id||'');
+    const v=costMap.get(pid);
+    if(v!==undefined)return +v||0;
+  }
   return 0;
 };
+// Ramani ya bei za kununua (mwenye duka pekee anazo)
+export const buildCostMap=products=>{
+  const m=new Map();
+  (products||[]).forEach(p=>{if(p&&p.id!==undefined)m.set(String(p.id),+p.buy_price||0)});
+  return m;
+};
 // Faida ya mstari mmoja wa mauzo
-export const itemProfit=item=>{
+export const itemProfit=(item,costMap)=>{
   if(item?.lineProfit!==undefined&&item?.lineProfit!==null)return +item.lineProfit||0;
   const frac=item?.fraction||1;
-  return (+item?.qty||0)*((+item?.price||0)-unitCost(item))*frac;
+  return (+item?.qty||0)*((+item?.price||0)-unitCost(item,costMap))*frac;
 };
 export const itemRevenue=item=>(+item?.qty||0)*(+item?.price||0)*(item?.fraction||1);
 
 export function ProductAnalyticsPage(){
   const{products,sales,returns,currency}=useApp();
+  const costMap=useMemo(()=>buildCostMap(products),[products]);
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[period,setPeriod]=useState('all');
   const[search,setSearch]=useState('');
@@ -2624,7 +2641,7 @@ export function ProductAnalyticsPage(){
           stats[pid]={
             id:pid,name:(item.name||'Bidhaa iliyofutwa')+' (haipo tena)',
             category:'Zilizofutwa',image:null,
-            buyPrice:unitCost(item),sellPrice:+item.price||0,
+            buyPrice:unitCost(item,costMap),sellPrice:+item.price||0,
             currentStock:0,minStock:0,unit:'Kipande',
             totalSold:0,totalRevenue:0,totalProfit:0,totalReturns:0,
             salesCount:0,lastSaleDate:null,firstSaleDate:null,deleted:true,
@@ -2633,7 +2650,7 @@ export function ProductAnalyticsPage(){
         const frac=item.fraction||1;
         const qty=item.qty*frac;
         const revenue=item.qty*item.price*frac;
-        const profit=itemProfit(item);
+        const profit=itemProfit(item,costMap);
         stats[pid].totalSold+=qty;
         stats[pid].totalRevenue+=revenue;
         stats[pid].totalProfit+=profit;
@@ -3123,7 +3140,8 @@ export function EmployeeDash({onReceipt,onNav}){
 // na kwa bidhaa zilizofutwa kwenye katalogi.
 // ============================================================
 export function ProductProfitPage(){
-  const{sales=[],returns=[],currency}=useApp();
+  const{sales=[],returns=[],products=[],currency}=useApp();
+  const costMap=useMemo(()=>buildCostMap(products),[products]);
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[tab,setTab]=useState('month');
   const[from,setFrom]=useState(localDateStr(new Date(new Date().getFullYear(),new Date().getMonth(),1)));
@@ -3147,7 +3165,7 @@ export function ProductProfitPage(){
       const frac=item.fraction||1;
       const qty=(+item.qty||0)*frac;
       const rev=itemRevenue(item);
-      const prof=itemProfit(item);
+      const prof=itemProfit(item,costMap);
       m[pid].qty+=sign*qty;
       m[pid].revenue+=sign*rev;
       m[pid].cost+=sign*(rev-prof);
@@ -3165,7 +3183,7 @@ export function ProductProfitPage(){
         :sortBy==='revenue'?b.revenue-a.revenue
         :sortBy==='qty'?b.qty-a.qty
         :a.margin-b.margin);
-  },[sales,returns,tab,from,to,q,sortBy]);
+  },[sales,returns,tab,from,to,q,sortBy,costMap]);
 
   const totRev=rows.reduce((a,r)=>a+r.revenue,0);
   const totProfit=rows.reduce((a,r)=>a+r.profit,0);
