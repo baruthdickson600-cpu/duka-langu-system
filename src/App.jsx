@@ -11,7 +11,7 @@ import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
-import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,GoalsPage,ProductAnalyticsPage,EmployeeReportsPage} from './pages/office/OfficePages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,GoalsPage,ProductAnalyticsPage,EmployeeReportsPage,EmployeeDash} from './pages/office/OfficePages';
 import OrdersPage from './pages/office/OrdersPage';
 import PurchasesPage from './pages/office/PurchasesPage';
 import AnimatedLogo from './components/AnimatedLogo';
@@ -109,13 +109,15 @@ const MENUS={
     {id:'sms',icon:IC.send,label:'📨 Bando la SMS'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
+  // MUUZAJI — menyu ya kuuza tu. Hakuna faida, stock value wala ripoti
+  // za biashara; anaona kazi yake ya siku.
   employee:[
-    {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'sales',icon:IC.cart,label:'Mauzo'},
+    {id:'dashboard',icon:IC.home,label:'Kazi Yangu Leo'},
+    {id:'sales',icon:IC.cart,label:'🛒 Uza'},
     {id:'orders',icon:IC.file,label:'📋 Oda'},
-    {id:'emp_reports',icon:IC.chart,label:'📦 Bidhaa Zilizouzwa'},
-    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
+    {id:'emp_reports',icon:IC.chart,label:'📦 Nilizouza Leo'},
     {id:'customers',icon:IC.people,label:'Wateja'},
+    {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
   supervisor:[
@@ -331,17 +333,20 @@ export default function App(){
       case'products':return role==='office'?<ProductsPage/>:null;
       case'sales':return <SalesPage onDone={setReceipt}/>;
       case'orders':return <OrdersPage/>;
-      case'purchases':return <PurchasesPage/>;
+      case'purchases':return role==='office'?<PurchasesPage/>:null;   // bei za kununua
       case'returns':return role==='office'?<ReturnsPage/>:null;
       case'reports':return role==='office'?<ReportsPage onReceipt={setReceipt}/>:null;
       case'emp_reports':return role==='employee'?<EmployeeReportsPage/>:null;
-      case'goals':return <GoalsPage/>;
+      case'goals':return role==='office'?<GoalsPage/>:null;
       case'expenses':return <ExpensesPage/>;
       case'employees':return role==='office'?<EmployeesPage/>:null;
-      case'customers':return <CustomersPage/>;case'sms':return <SmsBundlePage/>;
-      case'analytics':return <ProductAnalyticsPage/>;
+      case'customers':return <CustomersPage/>;
+      case'sms':return role==='office'?<SmsBundlePage/>:null;   // kununua bando ni la mwenye duka
+      case'analytics':return role==='office'?<ProductAnalyticsPage/>:null;
       case'notifications':return <NotifsPage/>;
-      default:return <OfficeDash onReceipt={setReceipt} onNav={setPage}/>;
+      default:return role==='employee'
+        ?<EmployeeDash onReceipt={setReceipt} onNav={setPage}/>
+        :<OfficeDash onReceipt={setReceipt} onNav={setPage}/>;
     }
   };
 

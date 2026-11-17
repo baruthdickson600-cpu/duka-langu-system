@@ -1,4 +1,4 @@
-import React,{createContext,useContext,useState,useCallback,useEffect,useMemo} from 'react';
+import React,{createContext,useContext,useState,useCallback,useEffect,useMemo,useRef} from 'react';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
@@ -75,6 +75,11 @@ export function AppProvider({children}){
   const biz=user?.role==='office'?businesses.find(b=>b.owner_id===user.id)||businesses.find(b=>b.id===user.business_id):user?.role==='employee'?businesses.find(b=>b.id===user.business_id):null;
 
   const bizId=biz?.id||user?.business_id;
+
+  // Je mtumiaji ni muuzaji? Tunatumia ref kwa sababu completeSale
+  // imeundwa kabla ya hapa, na inahitaji thamani ya sasa wakati wa kuuza.
+  const _isSellerRef=useRef(false);
+  useEffect(()=>{_isSellerRef.current=user?.role==='employee'},[user]);
 
   // ===== VIKWAZO VYA KIFURUSHI =====
   // Hurudisha Infinity kwa admin na kwa wateja wa legacy (waliokuwepo
@@ -692,7 +697,12 @@ export function AppProvider({children}){
     if(!bizId||!cart.length)return null;
     const subtotal=cart.reduce((s,c)=>s+c.qty*c.price*(c.fraction||1),0);
     const total=Math.max(0,subtotal-discount);
-    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice)*(c.fraction||1),0)-discount;
+    // Muuzaji hana bei ya kununua, kwa hiyo hahesabu faida — database
+    // inaihesabu yenyewe (profit-server-side.sql). Mwenye duka anaendelea
+    // kuhesabu hapa ili gharama ya WAKATI WA MAUZO ihifadhiwe.
+    const profit=_isSellerRef.current
+      ? null
+      : cart.reduce((s,c)=>s+c.qty*(c.price-(c.buyPrice||0))*(c.fraction||1),0)-discount;
     const offlineId=genId();
     const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:payMethod,payment_details:payDetails,customer_id:custId,customer_name:custName,is_synced:false,offline_id:offlineId,created_at:nowISO()};
 
@@ -1088,7 +1098,9 @@ export function AppProvider({children}){
   const creditSale=useCallback(async(cart,custId,discount=0,dueDate=null)=>{
     if(!bizId||!cart.length||!custId)return null;
     const subtotal=cart.reduce((s,c)=>s+c.qty*c.price,0);const total=Math.max(0,subtotal-discount);
-    const profit=cart.reduce((s,c)=>s+c.qty*(c.price-c.buyPrice),0)-discount;
+    const profit=_isSellerRef.current
+      ? null
+      : cart.reduce((s,c)=>s+c.qty*(c.price-(c.buyPrice||0)),0)-discount;
     const cust=customers.find(c=>c.id===custId);
     // Check credit limit
     if(cust?.credit_limit&&(cust.credit_balance||0)+total>cust.credit_limit){
@@ -2797,13 +2809,38 @@ export function AppProvider({children}){
 
   const myNotifs=user?.role==='admin'||user?.role==='marketing'?notifications.filter(n=>n.target_type==='admin'||n.target_type==='broadcast'||n.target_type==='marketing'):notifications.filter(n=>(n.target_type==='business'&&n.target_id===bizId)||n.target_type==='broadcast');
 
+  // ===== MUUZAJI (employee) HAONI FAIDA =====
+  // Faida huondolewa kwenye mauzo anayoyapata mfanyakazi, ili hakuna
+  // kipengele kinachoweza kuionyesha hata kwa bahati mbaya.
+  // (buy_price ya bidhaa inabaki kwa sababu hutumika kuhesabu faida
+  //  wakati wa kuuza — ikiondolewa, faida ya mwenye duka ingeharibika.)
+  const _isSeller = user?.role === 'employee';
+  const _visibleSales = useMemo(() => {
+    const list = canUseBranches && activeBranch ? branchSales : sales;
+    if (!_isSeller) return list;
+    return (list || []).map(({ profit, ...rest }) => rest);
+  }, [sales, branchSales, canUseBranches, activeBranch, _isSeller]);
+
+  // Bei ya kununua haifiki kwa muuzaji kabisa. Faida ya mauzo yake
+  // huhesabiwa ndani ya database (ona profit-server-side.sql).
+  const _visibleProducts = useMemo(() => {
+    const list = canUseBranches && activeBranch ? branchProducts : products;
+    if (!_isSeller) return list;
+    return (list || []).map(({ buy_price, ...rest }) => rest);
+  }, [products, branchProducts, canUseBranches, activeBranch, _isSeller]);
+
+  // Takwimu zinazofichua faida — za mwenye duka pekee
+  const _visibleLowMargin = _isSeller ? [] : lowMarginProducts;
+  const _visibleInsights  = _isSeller ? [] : aiInsights;
+  const _visibleReorder   = _isSeller ? [] : autoReorderList;
+
   return <Ctx.Provider value={{
     user,loading,restoring,online,lang,setLang,currency,setCurrency,biz,bizId,businesses,
     branches,activeBranch,setActiveBranch,
     // Branch-aware: pages zinapata data ya branch iliyochaguliwa (au zote kama hakuna)
-    products:canUseBranches&&activeBranch?branchProducts:products,
+    products:_visibleProducts,
     copyProductsToBranch,
-    sales:canUseBranches&&activeBranch?branchSales:sales,
+    sales:_visibleSales,
     expenses:canUseBranches&&activeBranch?branchExpenses:expenses,
     // Raw data (zote) - kwa admin, combined reports, na backup
     allProducts:products,allSales:sales,allExpenses:expenses,
@@ -2840,11 +2877,12 @@ export function AppProvider({children}){
     followups,addFollowup,completeFollowup,todayFollowups,
     testimonials,addTestimonial,deleteTestimonial,
     // Computed
-    isExpired,daysLeft,loadData,lowStockProducts,autoReorderList,lowMarginProducts,
+    isExpired,daysLeft,loadData,lowStockProducts,
+    autoReorderList:_visibleReorder,lowMarginProducts:_visibleLowMargin,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,planLimit,canAddMore,SMS_BUNDLES,hasWholesale,
-    saveGoal,getGoal,goalProgress,aiInsights,
+    saveGoal,getGoal,goalProgress,aiInsights:_visibleInsights,
   }}>{children}</Ctx.Provider>;
 }
 

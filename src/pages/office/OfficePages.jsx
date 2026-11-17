@@ -1957,7 +1957,10 @@ export function EmployeesPage(){
 
 // ===== CUSTOMERS & ADVANCED DEBT MANAGEMENT =====
 export function CustomersPage(){
-  const{customers,addCustomer,updateCustomer,deleteCustomer,creditHistory,receivePayment,setCreditLimit,sales,currency,totalDebt,overdueCustomers,overdueTotal,debtAging}=useApp();
+  const{customers,addCustomer,updateCustomer,deleteCustomer,creditHistory,receivePayment,setCreditLimit,sales,currency,totalDebt,overdueCustomers,overdueTotal,debtAging,user}=useApp();
+  // Muuzaji anaona deni la MTEJA mmoja mmoja (anahitaji kabla ya kukopesha),
+  // lakini si jumla za duka wala kutuma SMS za ukumbusho (hizo ni za mwenye duka).
+  const isSeller=user?.role==='employee';
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[search,setSearch]=useState('');
   const[modal,setModal]=useState(false);
@@ -2006,17 +2009,17 @@ export function CustomersPage(){
 
   return <div className="page-enter">
     {/* Ukumbusho wa deni kwa SMS */}
-    {debtCount>0&&<div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+    {!isSeller&&debtCount>0&&<div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
       <DebtReminder/>
     </div>}
-    {/* Tabs: Wateja | Deni Dashboard */}
-    <div style={{display:'flex',background:'#F6F8F7',borderRadius:12,padding:3,marginBottom:16}}>
+    {/* Tabs: Wateja | Deni Dashboard — muuzaji anaona Wateja pekee */}
+    {!isSeller&&<div style={{display:'flex',background:'#F6F8F7',borderRadius:12,padding:3,marginBottom:16}}>
       <button onClick={()=>setTab('customers')} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:14,background:tab==='customers'?'#fff':'transparent',color:tab==='customers'?'#0A6E47':'#9AA5A0',boxShadow:tab==='customers'?'0 2px 8px rgba(0,0,0,.08)':'none',cursor:'pointer'}}>👥 Wateja</button>
       <button onClick={()=>setTab('debt')} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:14,background:tab==='debt'?'#fff':'transparent',color:tab==='debt'?'#C2412D':'#9AA5A0',boxShadow:tab==='debt'?'0 2px 8px rgba(0,0,0,.08)':'none',cursor:'pointer'}}>💰 Deni ({debtCount})</button>
-    </div>
+    </div>}
 
     {/* ===== DEBT DASHBOARD TAB ===== */}
-    {tab==='debt'&&<div>
+    {tab==='debt'&&!isSeller&&<div>
       {/* Debt Stats */}
       <div className="flex-wrap" style={{marginBottom:16}}>
         <Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#C2412D" sub={`${debtCount} wanadaiwa`}/>
@@ -2095,11 +2098,13 @@ export function CustomersPage(){
     {/* ===== CUSTOMERS TAB ===== */}
     {tab==='customers'&&<div>
       {/* Stats */}
+      {/* Takwimu za duka — muuzaji anaona idadi ya wateja pekee */}
       <div className="flex-wrap" style={{marginBottom:16}}>
         <Stat icon={IC.people} label="Wateja" value={customers.length} color="#0A6E47"/>
-        <Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#C2412D" sub={`${debtCount} wanadaiwa`}/>
-        <Stat icon={IC.dollar} label="Walionunua" value={fm(customers.reduce((a,c)=>a+(c.total_spent||0),0))} color="#3B82F6"/>
-        {overdueCustomers.length>0&&<Stat icon={IC.warn} label="Chelewa" value={overdueCustomers.length} color="#B91C1C"/>}
+        {!isSeller&&<Stat icon={IC.wallet} label="Deni Jumla" value={fm(totalDebt)} color="#C2412D" sub={`${debtCount} wanadaiwa`}/>}
+        {!isSeller&&<Stat icon={IC.dollar} label="Walionunua" value={fm(customers.reduce((a,c)=>a+(c.total_spent||0),0))} color="#3B82F6"/>}
+        {!isSeller&&overdueCustomers.length>0&&<Stat icon={IC.warn} label="Chelewa" value={overdueCustomers.length} color="#B91C1C"/>}
+        {isSeller&&<Stat icon={IC.wallet} label="Wanaodaiwa" value={debtCount} color="#C2412D"/>}
       </div>
 
       {/* Search & Filter */}
@@ -2809,7 +2814,8 @@ export function ProductAnalyticsPage(){
 // ===== EMPLOYEE REPORTS — Products Sold Only (NO Revenue/Profit) =====
 export function EmployeeReportsPage(){
   const{sales,returns,products,user}=useApp();
-  const[tab,setTab]=useState('day');
+  // Mfanyakazi anaona SIKU YA LEO pekee — si wiki wala mwezi
+  const tab='day';
   
   const filterByDate=(dateStr)=>{
     if(!dateStr)return false;
@@ -2869,7 +2875,7 @@ export function EmployeeReportsPage(){
       .sort((a,b)=>b.netSold-a.netSold);
   },[fSales,fReturns,products]);
   
-  const periodLabel=tab==='day'?'Leo':tab==='week'?'Wiki Hii':'Mwezi Huu';
+  const periodLabel='Leo';
   
   const exportList=()=>{
     const rows=productsSold.map((p,i)=>[
@@ -2895,11 +2901,6 @@ export function EmployeeReportsPage(){
       <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Angalia bidhaa zako ulizouza na stock iliyobaki</p>
     </div>
     
-    <Tabs tabs={[
-      {id:'day',label:'📅 Leo'},
-      {id:'week',label:'🗓️ Wiki'},
-      {id:'month',label:'📆 Mwezi Huu'},
-    ]} active={tab} onChange={setTab}/>
     
     {/* Summary stats — NO MONEY */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10,marginBottom:14}}>
@@ -2964,5 +2965,117 @@ export function EmployeeReportsPage(){
         })}
       </div>
     </div>:<Empty icon="📦" text={`Hujauza bidhaa ${periodLabel.toLowerCase()}`}/>}
+  </div>;
+}
+
+// ============================================================
+// DASHBOARD YA MFANYAKAZI
+//
+// Mfanyakazi HAONI: faida, thamani ya stock, madeni, mauzo ya wiki
+// au mwezi, bei ya kununua, wala takwimu za biashara nzima.
+// Anaona kazi YAKE ya LEO pekee.
+// ============================================================
+export function EmployeeDash({onReceipt,onNav}){
+  const{sales=[],user,biz,products=[]}=useApp();
+
+  const mine=useMemo(()=>sales.filter(s=>
+    isToday(s.created_at)&&(s.seller_id===user?.id||s.seller_name===user?.name)
+  ),[sales,user]);
+
+  const total=mine.reduce((a,s)=>a+(+s.total||0),0);
+  const count=mine.length;
+  const items=mine.reduce((a,s)=>a+((s.items||[]).reduce((x,i)=>x+(+i.qty||0),0)),0);
+  const avg=count?Math.round(total/count):0;
+
+  // Mgawanyo kwa njia ya malipo (si faida — ni jinsi pesa ilivyoingia)
+  const byPay={};
+  mine.forEach(s=>{const k=payLabel(s.payment_method)||'Taslimu';byPay[k]=(byPay[k]||0)+(+s.total||0)});
+
+  // Bidhaa alizouza leo
+  const sold={};
+  mine.forEach(s=>(s.items||[]).forEach(i=>{
+    const k=i.name||'—';
+    if(!sold[k])sold[k]={qty:0};
+    sold[k].qty+=(+i.qty||0);
+  }));
+  const topSold=Object.entries(sold).sort((a,b)=>b[1].qty-a[1].qty).slice(0,6);
+
+  const hour=new Date().getHours();
+  const greet=hour<12?'Habari za asubuhi':hour<16?'Habari za mchana':hour<19?'Habari za jioni':'Habari za usiku';
+  const QA=[{p:'sales',i:'🛒',l:'Uza'},{p:'orders',i:'📋',l:'Oda'},{p:'emp_reports',i:'📦',l:'Nilizouza'},{p:'customers',i:'👥',l:'Wateja'}];
+
+  return <div className="page-enter">
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>👋 {user?.name||'Mfanyakazi'}</h3>
+    <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>
+      {greet} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long'})}
+      {biz?.name?` • ${biz.name}`:''}
+    </p>
+
+    {/* Mauzo yangu leo */}
+    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',right:-30,top:-30,width:150,height:150,borderRadius:'50%',background:'rgba(242,183,5,.12)'}}/>
+      <div style={{position:'relative'}}>
+        <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>🛒 MAUZO YANGU LEO</div>
+        <div style={{fontSize:38,fontWeight:900,letterSpacing:'-1.5px',lineHeight:1.1,margin:'2px 0 6px'}}>{fmtMoney(total)}</div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(255,255,255,.16)',padding:'5px 12px',borderRadius:20,fontSize:12,fontWeight:700}}>
+          🧾 Risiti {count} • Bidhaa {items}
+        </div>
+        <div style={{display:'flex',gap:10,marginTop:18,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.18)'}}>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>RISITI</div><div style={{fontSize:15.5,fontWeight:800}}>{count}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>BIDHAA</div><div style={{fontSize:15.5,fontWeight:800}}>{items}</div></div>
+          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>WASTANI</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap'}}>{(avg||0).toLocaleString()}</div></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Vitendo vya haraka */}
+    <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+      {QA.map(a=><button key={a.p} className="qbtn ripple" onClick={()=>onNav?.(a.p)} style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:16,padding:'13px 4px',textAlign:'center',cursor:'pointer'}}>
+        <div style={{fontSize:21}}>{a.i}</div>
+        <div style={{fontSize:10.5,fontWeight:700,color:'#17231D',marginTop:3}}>{a.l}</div>
+      </button>)}
+    </div>
+
+    {/* Njia za malipo */}
+    {Object.keys(byPay).length>0&&<div className="card" style={{marginBottom:14}}>
+      <h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>💳 Jinsi Pesa Ilivyoingia Leo</h3>
+      {Object.entries(byPay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
+        <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid #F6F8F7',fontSize:13}}>
+          <span style={{color:'#17231D',fontWeight:600}}>{k}</span>
+          <b style={{color:'#0A6E47'}}>{fmtMoney(v)}</b>
+        </div>
+      ))}
+    </div>}
+
+    {/* Bidhaa nilizouza leo */}
+    <div className="card" style={{marginBottom:14}}>
+      <h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📦 Nilizouza Leo</h3>
+      {topSold.length?<div style={{display:'flex',flexDirection:'column',gap:7}}>
+        {topSold.map(([name,d])=>(
+          <div key={name} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 11px',borderRadius:10,background:'#F6F8F7'}}>
+            <span style={{fontSize:12.5,fontWeight:700,color:'#17231D'}}>{name}</span>
+            <span style={{fontSize:12,fontWeight:800,color:'#0A6E47',whiteSpace:'nowrap'}}>{d.qty}</span>
+          </div>
+        ))}
+      </div>:<Empty icon="📦" text="Hujauza bidhaa leo"/>}
+    </div>
+
+    {/* Risiti za leo */}
+    <div className="card">
+      <h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>🧾 Risiti za Leo ({count})</h3>
+      {count?<div style={{maxHeight:380,overflowY:'auto',display:'flex',flexDirection:'column',gap:7}}>
+        {mine.map(s=>(
+          <div key={s.id} onClick={()=>onReceipt?.(s)} style={{padding:'10px 12px',borderRadius:10,background:'#F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,cursor:'pointer'}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:'#17231D'}}>{s.customer_name||'Mteja wa kawaida'}</div>
+              <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>
+                {new Date(s.created_at).toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'})} • {(s.items||[]).length} bidhaa • {payLabel(s.payment_method)}
+              </div>
+            </div>
+            <b style={{fontSize:13,color:'#0A6E47',whiteSpace:'nowrap'}}>{fmtMoney(s.total)}</b>
+          </div>
+        ))}
+      </div>:<Empty icon="🧾" text="Hakuna mauzo leo bado"/>}
+    </div>
   </div>;
 }
