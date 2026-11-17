@@ -157,7 +157,8 @@ export function OfficeDash({onReceipt,onNav}){
   // Helper: calculate profit lost from returns
   const returnProfit=(rs)=>rs.reduce((sum,r)=>sum+((r.items||[]).reduce((s,i)=>{
     const prod=products.find(p=>p.id===i.productId);
-    const buyPrice=prod?.buy_price||0;
+    // Bidhaa ikifutwa, tumia gharama iliyohifadhiwa kwenye mauzo
+    const buyPrice=prod?.buy_price!=null?+prod.buy_price:unitCost(i);
     return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
   },0)),0);
   
@@ -171,11 +172,16 @@ export function OfficeDash({onReceipt,onNav}){
   const tTotal=Math.max(0,tCashSales.reduce((a,s)=>a+s.total,0)+tCreditIncome-tCashRefunds);
   const wTotal=Math.max(0,wCashSales.reduce((a,s)=>a+s.total,0)+wCreditIncome-wCashRefunds);
   
+  const mTotal=Math.max(0,mCashSales.reduce((a,s)=>a+(s.total||0),0)+mCreditIncome-mCashRefunds);
+
   // ===== Profit calculation (CASH BASIS) =====
-  // Only count profit when cash is received (not when credit given)
-  const mCashProfit=mCashSales.reduce((a,s)=>a+s.profit,0);
-  // For credit payments — estimate profit proportionally
-  const mProfit=Math.max(0,mCashProfit-returnProfit(mReturns.filter(r=>!r.was_credit)));
+  // Faida inahesabiwa pesa ikiingia pekee (si deni likitolewa).
+  // Marejesho ya taslimu yanapunguza faida ya kipindi hicho.
+  const netProfit=(cashSales,rs)=>Math.max(0,
+    cashSales.reduce((a,s)=>a+(s.profit||0),0)-returnProfit(rs.filter(r=>!r.was_credit)));
+  const tProfit=netProfit(tCashSales,tReturns);
+  const wProfit=netProfit(wCashSales,wReturns);
+  const mProfit=netProfit(mCashSales,mReturns);
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
   // ===== Matumizi ya LEO ===== (tarehe za ndani)
   const _today=todayStr();
@@ -230,8 +236,6 @@ export function OfficeDash({onReceipt,onNav}){
   // Oda zinazoendelea (pending + partial)
   const activeOrders=(orders||[]).filter(o=>o.status==='pending'||o.status==='partial');
   const activeOrdersValue=activeOrders.reduce((a,o)=>a+(o.remaining_amount||o.total||0),0);
-  // Wastani wa mauzo leo (cash tu)
-  const avgSaleToday=tCashSales.length?Math.round(tCashSales.reduce((a,s)=>a+(s.total||0),0)/tCashSales.length):0;
   // Thamani ya stock iliyopo (bei ya kununua × idadi)
   const stockValue=(products||[]).reduce((a,p)=>a+((p.buy_price||0)*(p.quantity||0)),0);
   // Deni la wateja (jumla nje)
@@ -257,19 +261,27 @@ export function OfficeDash({onReceipt,onNav}){
           <span style={{marginLeft:'auto',fontSize:10,fontWeight:700,background:'rgba(242,183,5,.25)',color:'#F2B705',padding:'3px 10px',borderRadius:20}}>{bizTypeCfg.icon} {biz?.name||bizTypeCfg.label}</span>
         </div>
         <div style={{fontSize:34,fontWeight:900,letterSpacing:'-1px',margin:'2px 0 14px'}}>{fm(tBankAmount)}</div>
-        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
-            <div style={{fontSize:11,opacity:.85}}>📈 Faida Mwezi</div>
-            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{fm(mProfit-mExp)}</div>
-          </div>
-          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
-            <div style={{fontSize:11,opacity:.85}}>📊 Wiki Hii</div>
-            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{fm(wTotal)}</div>
-          </div>
-          <div style={{flex:1,minWidth:100,background:'rgba(255,255,255,.14)',borderRadius:14,padding:'10px 12px'}}>
-            <div style={{fontSize:11,opacity:.85}}>🧾 Mauzo Leo</div>
-            <div style={{fontSize:16,fontWeight:800,marginTop:2}}>{tCashSales.length}</div>
-          </div>
+        {/* Mauzo na faida yake kwa kila kipindi */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+          {[
+            {l:'LEO',   s:tTotal, p:tProfit, n:tCashSales.length},
+            {l:'WIKI',  s:wTotal, p:wProfit, n:wCashSales.length},
+            {l:'MWEZI', s:mTotal, p:mProfit, n:mCashSales.length},
+          ].map(k=>{
+            const mg=k.s>0?Math.round(k.p/k.s*100):0;
+            return <div key={k.l} style={{background:'rgba(255,255,255,.14)',borderRadius:14,padding:'11px 10px',minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:7}}>
+                <span style={{fontSize:10,fontWeight:800,letterSpacing:.6,opacity:.9}}>{k.l}</span>
+                <span style={{fontSize:9,fontWeight:700,opacity:.7,marginLeft:'auto'}}>🧾{k.n}</span>
+              </div>
+              <div style={{fontSize:9.5,opacity:.78,fontWeight:700}}>MAUZO</div>
+              <div style={{fontSize:15,fontWeight:900,letterSpacing:'-.3px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fm(k.s)}</div>
+              <div style={{height:1,background:'rgba(255,255,255,.18)',margin:'7px 0 6px'}}/>
+              <div style={{fontSize:9.5,opacity:.78,fontWeight:700}}>FAIDA</div>
+              <div style={{fontSize:15,fontWeight:900,letterSpacing:'-.3px',color:'#F2B705',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fm(k.p)}</div>
+              <div style={{fontSize:9,opacity:.65,fontWeight:700,marginTop:2}}>{mg}% margin</div>
+            </div>;
+          })}
         </div>
       </div>
     </div>
@@ -287,10 +299,12 @@ export function OfficeDash({onReceipt,onNav}){
     {/* ===== KPI CARDS za kisasa ===== */}
     <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}}>
       {[
-        {ic:'🛒',k:'Mauzo Ghafi',v:fm(tSales.reduce((a,s)=>a+s.total,0)),c:'#0A6E47',bg:'#E6F2EC'},
+        // Faida ya mwezi KASORO matumizi — hii ndiyo iliyobaki kweli
+        {ic:'📈',k:'Faida Halisi (Mwezi)',v:fm(mProfit-mExp),c:'#0A6E47',bg:'#E6F2EC'},
         {ic:'💳',k:'Deni Nje',v:fm(outstandingDebt),c:'#C2412D',bg:'#FBECE9'},
         {ic:'📦',k:'Thamani ya Stock',v:fm(stockValue),c:'#F2B705',bg:'rgba(242,183,5,.12)'},
         {ic:'⚠️',k:'Stock Alert',v:lowStockProducts.length,c:'#C2412D',bg:'#FBECE9'},
+        ...(activeOrders.length?[{ic:'📋',k:`Oda Zinaendelea (${activeOrders.length})`,v:fm(activeOrdersValue),c:'#3B82F6',bg:'#DBEAFE'}]:[]),
       ].map((s,i)=>(
         <div key={i} className="kpi card" style={{background:'#fff',border:'1px solid #D6E2DB',borderRadius:18,padding:15,boxShadow:'0 1px 3px rgba(16,26,21,.04)'}}>
           <div className="ic" style={{width:38,height:38,borderRadius:11,background:s.bg,display:'grid',placeItems:'center',fontSize:18,marginBottom:10}}>{s.ic}</div>
@@ -3036,7 +3050,6 @@ export function EmployeeDash({onReceipt,onNav}){
   const total=mine.reduce((a,s)=>a+(+s.total||0),0);
   const count=mine.length;
   const items=mine.reduce((a,s)=>a+((s.items||[]).reduce((x,i)=>x+(+i.qty||0),0)),0);
-  const avg=count?Math.round(total/count):0;
 
   // Mgawanyo kwa njia ya malipo (si faida — ni jinsi pesa ilivyoingia)
   const byPay={};
@@ -3074,7 +3087,6 @@ export function EmployeeDash({onReceipt,onNav}){
         <div style={{display:'flex',gap:10,marginTop:18,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.18)'}}>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>RISITI</div><div style={{fontSize:15.5,fontWeight:800}}>{count}</div></div>
           <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>BIDHAA</div><div style={{fontSize:15.5,fontWeight:800}}>{items}</div></div>
-          <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>WASTANI</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap'}}>{(avg||0).toLocaleString()}</div></div>
         </div>
       </div>
     </div>
