@@ -9,6 +9,9 @@
 -- database inaihesabu yenyewe kwa kutumia bei za kununua zilizomo
 -- kwenye jedwali la bidhaa. Bei hiyo haitoki kwenye server kamwe.
 --
+-- Pia inahifadhi `cost` na `lineProfit` ndani ya KILA bidhaa ya mauzo,
+-- ili mwenye duka aone faida ya kila bidhaa aliyoiuza.
+--
 -- Mwenye duka (office) anaendelea kuhesabu kwenye kivinjari kama
 -- zamani — trigger haigusi mauzo yenye faida tayari.
 --
@@ -25,14 +28,10 @@ DECLARE
   unit_cost   NUMERIC;
   revenue     NUMERIC := 0;
   cost_total  NUMERIC := 0;
+  new_items   JSONB := '[]'::jsonb;
 BEGIN
-  -- Faida ikiwa tayari imetumwa (mwenye duka), usiguse.
-  IF NEW.profit IS NOT NULL THEN
-    RETURN NEW;
-  END IF;
-
   IF NEW.items IS NULL OR jsonb_typeof(NEW.items) <> 'array' THEN
-    NEW.profit := 0;
+    IF NEW.profit IS NULL THEN NEW.profit := 0; END IF;
     RETURN NEW;
   END IF;
 
@@ -59,11 +58,24 @@ BEGIN
 
     revenue    := revenue    + (qty * price * frac);
     cost_total := cost_total + (qty * unit_cost * frac);
+
+    -- MUHIMU: hifadhi gharama ndani ya kila bidhaa, ili mwenye duka
+    -- aweze kuona faida ya KILA BIDHAA baadaye. Bila hii, mauzo ya
+    -- muuzaji yangekosa gharama (kivinjari chake hakina bei ya kununua).
+    new_items := new_items || jsonb_build_array(
+      it
+      || jsonb_build_object('cost', unit_cost)
+      || jsonb_build_object('lineProfit', qty * (price - unit_cost) * frac)
+    );
   END LOOP;
 
-  -- Kanuni ileile iliyokuwa kwenye kivinjari:
-  -- faida = mapato ya bidhaa - gharama - punguzo
-  NEW.profit := revenue - cost_total - COALESCE(NEW.discount, 0);
+  NEW.items := new_items;
+
+  -- Faida ya mauzo yote: ikiwa tayari imetumwa (mwenye duka), usiguse.
+  IF NEW.profit IS NULL THEN
+    NEW.profit := revenue - cost_total - COALESCE(NEW.discount, 0);
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -73,6 +85,21 @@ CREATE TRIGGER trg_sales_profit
   BEFORE INSERT ON sales
   FOR EACH ROW
   EXECUTE FUNCTION dl_compute_sale_profit();
+
+-- ---------- ODA (ORDERS) ----------
+-- Oda zinatumia muundo ule ule (items, discount, profit), na muuzaji
+-- anaweza kuunda oda. Kwa hiyo trigger ile ile inatumika hapa pia.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+              WHERE table_schema='public' AND table_name='orders') THEN
+    DROP TRIGGER IF EXISTS trg_orders_profit ON orders;
+    CREATE TRIGGER trg_orders_profit
+      BEFORE INSERT ON orders
+      FOR EACH ROW
+      EXECUTE FUNCTION dl_compute_sale_profit();
+  END IF;
+END $$;
 
 -- ---------- JARIBIO LA HARAKA (hiari) ----------
 -- Hii inaonyesha trigger inavyohesabu bila kuhifadhi chochote.

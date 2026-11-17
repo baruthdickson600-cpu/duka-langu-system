@@ -1,6 +1,7 @@
 import React,{useState,useMemo} from 'react';
 import DebtReminder from '../../components/DebtReminder';
 import PhoneNameInput from '../../components/PhoneNameInput';
+import {PageHead,GBtn,SumCard} from '../../components/Page';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -2549,6 +2550,26 @@ export function GoalsPage(){
 }
 
 // ===== PRODUCT ANALYTICS PAGE — KITAALAMU =====
+
+// ===== FAIDA YA KILA BIDHAA ILIYOUZWA =====
+// Gharama ya bidhaa moja kwenye mauzo. Vyanzo kwa mpangilio:
+//   cost       — iliyohifadhiwa na database (mauzo ya muuzaji)
+//   buyPrice   — iliyohifadhiwa na kivinjari (mauzo ya mwenye duka)
+export const unitCost=item=>{
+  const c=item?.cost;
+  if(c!==undefined&&c!==null&&c!=='')return +c||0;
+  const b=item?.buyPrice;
+  if(b!==undefined&&b!==null&&b!=='')return +b||0;
+  return 0;
+};
+// Faida ya mstari mmoja wa mauzo
+export const itemProfit=item=>{
+  if(item?.lineProfit!==undefined&&item?.lineProfit!==null)return +item.lineProfit||0;
+  const frac=item?.fraction||1;
+  return (+item?.qty||0)*((+item?.price||0)-unitCost(item))*frac;
+};
+export const itemRevenue=item=>(+item?.qty||0)*(+item?.price||0)*(item?.fraction||1);
+
 export function ProductAnalyticsPage(){
   const{products,sales,returns,currency}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
@@ -2596,17 +2617,30 @@ export function ProductAnalyticsPage(){
     // Aggregate sales
     filteredSales.forEach(s=>{
       (s.items||[]).forEach(item=>{
-        if(!stats[item.productId])return;
-        const qty=item.qty*(item.fraction||1);
-        const revenue=item.qty*item.price*(item.fraction||1);
-        const profit=item.qty*(item.price-item.buyPrice)*(item.fraction||1);
-        stats[item.productId].totalSold+=qty;
-        stats[item.productId].totalRevenue+=revenue;
-        stats[item.productId].totalProfit+=profit;
-        stats[item.productId].salesCount++;
+        const pid=item.productId||item.product_id;
+        // Bidhaa iliyofutwa kwenye katalogi bado ina mauzo — tusiiruke,
+        // vinginevyo faida yake ingetoweka kwenye ripoti.
+        if(!stats[pid]){
+          stats[pid]={
+            id:pid,name:(item.name||'Bidhaa iliyofutwa')+' (haipo tena)',
+            category:'Zilizofutwa',image:null,
+            buyPrice:unitCost(item),sellPrice:+item.price||0,
+            currentStock:0,minStock:0,unit:'Kipande',
+            totalSold:0,totalRevenue:0,totalProfit:0,totalReturns:0,
+            salesCount:0,lastSaleDate:null,firstSaleDate:null,deleted:true,
+          };
+        }
+        const frac=item.fraction||1;
+        const qty=item.qty*frac;
+        const revenue=item.qty*item.price*frac;
+        const profit=itemProfit(item);
+        stats[pid].totalSold+=qty;
+        stats[pid].totalRevenue+=revenue;
+        stats[pid].totalProfit+=profit;
+        stats[pid].salesCount++;
         const d=new Date(s.created_at);
-        if(!stats[item.productId].lastSaleDate||d>new Date(stats[item.productId].lastSaleDate))stats[item.productId].lastSaleDate=s.created_at;
-        if(!stats[item.productId].firstSaleDate||d<new Date(stats[item.productId].firstSaleDate))stats[item.productId].firstSaleDate=s.created_at;
+        if(!stats[pid].lastSaleDate||d>new Date(stats[pid].lastSaleDate))stats[pid].lastSaleDate=s.created_at;
+        if(!stats[pid].firstSaleDate||d<new Date(stats[pid].firstSaleDate))stats[pid].firstSaleDate=s.created_at;
       });
     });
     
@@ -3076,6 +3110,162 @@ export function EmployeeDash({onReceipt,onNav}){
           </div>
         ))}
       </div>:<Empty icon="🧾" text="Hakuna mauzo leo bado"/>}
+    </div>
+  </div>;
+}
+
+// ============================================================
+// FAIDA KWA KILA BIDHAA ILIYOUZWA — kwa mwenye duka pekee
+//
+// Inaonyesha kila bidhaa iliyouzwa: idadi, mauzo, gharama, faida
+// na asilimia ya faida. Inachukua gharama kutoka kwenye mauzo
+// yenyewe, kwa hiyo inafanya kazi hata kwa mauzo ya wafanyakazi
+// na kwa bidhaa zilizofutwa kwenye katalogi.
+// ============================================================
+export function ProductProfitPage(){
+  const{sales=[],returns=[],currency}=useApp();
+  const fm=n=>fmtMoney(n,currency||'TZS');
+  const[tab,setTab]=useState('month');
+  const[from,setFrom]=useState(localDateStr(new Date(new Date().getFullYear(),new Date().getMonth(),1)));
+  const[to,setTo]=useState(todayStr());
+  const[q,setQ]=useState('');
+  const[sortBy,setSortBy]=useState('profit');
+
+  const inRange=d=>{
+    if(!d)return false;
+    if(tab==='day')return isToday(d);
+    if(tab==='week')return isThisWeek(d);
+    if(tab==='month')return isThisMonth(d);
+    return inDateRange(d,from,to);
+  };
+
+  const rows=useMemo(()=>{
+    const m={};
+    const add=(item,sign)=>{
+      const pid=item.productId||item.product_id||item.name;
+      if(!m[pid])m[pid]={id:pid,name:item.name||'—',qty:0,revenue:0,cost:0,profit:0,count:0};
+      const frac=item.fraction||1;
+      const qty=(+item.qty||0)*frac;
+      const rev=itemRevenue(item);
+      const prof=itemProfit(item);
+      m[pid].qty+=sign*qty;
+      m[pid].revenue+=sign*rev;
+      m[pid].cost+=sign*(rev-prof);
+      m[pid].profit+=sign*prof;
+      if(sign>0)m[pid].count++;
+    };
+    sales.filter(s=>inRange(s.created_at)).forEach(s=>(s.items||[]).forEach(i=>add(i,1)));
+    // Marejesho yanapunguza mauzo na faida
+    returns.filter(r=>inRange(r.created_at)).forEach(r=>(r.items||[]).forEach(i=>add(i,-1)));
+    return Object.values(m)
+      .filter(r=>r.qty!==0||r.revenue!==0)
+      .filter(r=>!q||r.name.toLowerCase().includes(q.toLowerCase()))
+      .map(r=>({...r,margin:r.revenue>0?Math.round(r.profit/r.revenue*100):0}))
+      .sort((a,b)=>sortBy==='profit'?b.profit-a.profit
+        :sortBy==='revenue'?b.revenue-a.revenue
+        :sortBy==='qty'?b.qty-a.qty
+        :a.margin-b.margin);
+  },[sales,returns,tab,from,to,q,sortBy]);
+
+  const totRev=rows.reduce((a,r)=>a+r.revenue,0);
+  const totProfit=rows.reduce((a,r)=>a+r.profit,0);
+  const totCost=rows.reduce((a,r)=>a+r.cost,0);
+  const totMargin=totRev>0?Math.round(totProfit/totRev*100):0;
+  const best=rows.filter(r=>r.profit>0)[0];
+  const worst=[...rows].sort((a,b)=>a.profit-b.profit)[0];
+
+  const exportPDF=()=>{
+    const rowsHtml=rows.map(r=>`<tr><td>${r.name}</td><td>${r.qty}</td><td>${fm(r.revenue)}</td><td>${fm(r.cost)}</td><td>${fm(r.profit)}</td><td>${r.margin}%</td></tr>`).join('');
+    exportToPDF('Faida kwa Bidhaa',`
+      <h1>FAIDA KWA KILA BIDHAA</h1>
+      <p>${tab==='custom'?`${from} hadi ${to}`:tab==='day'?'Leo':tab==='week'?'Wiki Hii':'Mwezi Huu'}</p>
+      <p class="big">Faida: ${fm(totProfit)} (${totMargin}%)</p>
+      <table><tr><th>Bidhaa</th><th>Idadi</th><th>Mauzo</th><th>Gharama</th><th>Faida</th><th>%</th></tr>${rowsHtml}</table>
+    `);
+  };
+
+  const TABS=[{id:'day',l:'Leo'},{id:'week',l:'Wiki'},{id:'month',l:'Mwezi'},{id:'custom',l:'Tarehe'}];
+
+  return <div className="page-enter">
+    <PageHead icon="💹" title="Faida kwa Bidhaa" sub="Kila bidhaa iliyouzwa na faida yake">
+      <GBtn onClick={exportPDF}>📥 PDF</GBtn>
+    </PageHead>
+
+    {/* Muda */}
+    <div style={{display:'flex',gap:6,marginBottom:12}}>
+      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'9px 0',borderRadius:10,border:'none',fontWeight:700,fontSize:12.5,cursor:'pointer',background:tab===t.id?'#0A6E47':'#F6F8F7',color:tab===t.id?'#fff':'#5C6A62'}}>{t.l}</button>)}
+    </div>
+    {tab==='custom'&&<div style={{display:'flex',gap:8,marginBottom:12}}>
+      <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{flex:1,padding:'9px 10px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,background:'#fff',color:'#17231D'}}/>
+      <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{flex:1,padding:'9px 10px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,background:'#fff',color:'#17231D'}}/>
+    </div>}
+
+    {/* Muhtasari */}
+    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>
+      <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>FAIDA YA BIDHAA ZILIZOUZWA</div>
+      <div style={{fontSize:34,fontWeight:900,letterSpacing:'-1px',margin:'2px 0 6px'}}>{fm(totProfit)}</div>
+      <div style={{display:'inline-flex',gap:6,background:'rgba(255,255,255,.16)',padding:'5px 12px',borderRadius:20,fontSize:12,fontWeight:700}}>
+        📊 Margin {totMargin}% • Bidhaa {rows.length}
+      </div>
+      <div style={{display:'flex',gap:10,marginTop:18,paddingTop:16,borderTop:'1px solid rgba(255,255,255,.18)'}}>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>MAUZO</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap'}}>{(totRev||0).toLocaleString()}</div></div>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>GHARAMA</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap',color:'#FCA5A5'}}>{(totCost||0).toLocaleString()}</div></div>
+        <div style={{flex:1,minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>FAIDA</div><div style={{fontSize:15.5,fontWeight:800,whiteSpace:'nowrap',color:totProfit>=0?'#86EFAC':'#FCA5A5'}}>{(totProfit||0).toLocaleString()}</div></div>
+      </div>
+    </div>
+
+    {/* Bora na mbaya */}
+    {rows.length>1&&<div className="stagger" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+      {best&&<div className="card" style={{padding:'13px 12px'}}>
+        <div style={{fontSize:9.5,color:'#5C6A62',fontWeight:700}}>🏆 INAYOLIPA ZAIDI</div>
+        <div style={{fontSize:13,fontWeight:800,color:'#17231D',marginTop:3}}>{best.name}</div>
+        <div style={{fontSize:14,fontWeight:900,color:'#0A6E47'}}>{fm(best.profit)}</div>
+      </div>}
+      {worst&&worst.id!==best?.id&&<div className="card" style={{padding:'13px 12px'}}>
+        <div style={{fontSize:9.5,color:'#5C6A62',fontWeight:700}}>{worst.profit<0?'⚠️ HASARA':'📉 INAYOLIPA KIDOGO'}</div>
+        <div style={{fontSize:13,fontWeight:800,color:'#17231D',marginTop:3}}>{worst.name}</div>
+        <div style={{fontSize:14,fontWeight:900,color:worst.profit<0?'#C2412D':'#F2B705'}}>{fm(worst.profit)}</div>
+      </div>}
+    </div>}
+
+    {/* Tafuta na panga */}
+    <div style={{display:'flex',gap:8,marginBottom:12}}>
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Tafuta bidhaa..." style={{flex:2,padding:'10px 12px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:13,background:'#fff',color:'#17231D'}}/>
+      <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{flex:1,padding:'10px 8px',borderRadius:10,border:'1.5px solid #D6E2DB',fontSize:12.5,background:'#fff',color:'#17231D'}}>
+        <option value="profit">Faida</option>
+        <option value="revenue">Mauzo</option>
+        <option value="qty">Idadi</option>
+        <option value="margin">Margin ndogo</option>
+      </select>
+    </div>
+
+    {/* Orodha */}
+    <div className="card">
+      <h3 style={{fontSize:14.5,fontWeight:800,margin:'0 0 10px',color:'#17231D'}}>📦 Bidhaa ({rows.length})</h3>
+      {rows.length?<div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {rows.map(r=>{
+          const mc=r.margin<0?'#C2412D':r.margin<15?'#F2B705':'#0A6E47';
+          return <div key={r.id} style={{padding:'11px 12px',borderRadius:12,background:'#F6F8F7'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:7}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#17231D'}}>{r.name}</div>
+                <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>Idadi {r.qty} • Mauzo {r.count}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:15,fontWeight:900,color:r.profit>=0?'#0A6E47':'#C2412D',whiteSpace:'nowrap'}}>{fm(r.profit)}</div>
+                <span style={{fontSize:9,fontWeight:800,padding:'2px 8px',borderRadius:20,background:mc+'20',color:mc}}>{r.margin}%</span>
+              </div>
+            </div>
+            <div style={{display:'flex',gap:12,fontSize:11,color:'#5C6A62'}}>
+              <span>Mauzo: <b style={{color:'#17231D'}}>{fm(r.revenue)}</b></span>
+              <span>Gharama: <b style={{color:'#C2412D'}}>{fm(r.cost)}</b></span>
+            </div>
+            <div style={{background:'#D6E2DB',borderRadius:4,height:5,marginTop:7,overflow:'hidden'}}>
+              <div style={{width:Math.min(Math.max(r.margin,0),100)+'%',height:'100%',background:mc,borderRadius:4}}/>
+            </div>
+          </div>;
+        })}
+      </div>:<Empty icon="💹" text="Hakuna bidhaa iliyouzwa kipindi hiki"/>}
     </div>
   </div>;
 }

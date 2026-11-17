@@ -11,7 +11,7 @@ import AuthPage from './pages/AuthPage';
 import LandingPage from './pages/LandingPage';
 import LockedPage from './pages/LockedPage';
 import {AdminDashboard,StoresPage,TokensPage,PromoPage,SettingsPage,BroadcastPage,SecurityPage,BackupPage,TicketsPage,PaymentsPage,PartnersPage,ActivityFeedPage,SystemUsagePage,EmailTemplatesPage,AdminReportsPage,InfoRequestsPage,ReferralManagementPage,SupervisorVisitsAdminPage,SupervisorTargetsPage} from './pages/admin/AdminPages';
-import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,GoalsPage,ProductAnalyticsPage,EmployeeReportsPage,EmployeeDash} from './pages/office/OfficePages';
+import {OfficeDash,SalesPage,ProductsPage,ReportsPage,ExpensesPage,EmployeesPage,CustomersPage,NotifsPage,BranchesPage,ReturnsPage,GoalsPage,ProductAnalyticsPage,EmployeeReportsPage,EmployeeDash,ProductProfitPage} from './pages/office/OfficePages';
 import OrdersPage from './pages/office/OrdersPage';
 import PurchasesPage from './pages/office/PurchasesPage';
 import AnimatedLogo from './components/AnimatedLogo';
@@ -98,6 +98,7 @@ const MENUS={
     {id:'products',icon:IC.box,label:'Bidhaa'},
     {id:'purchases',icon:IC.cart,label:'🛒 Manunuzi'},
     {id:'analytics',icon:IC.chart,label:'📊 Uchambuzi'},
+    {id:'product_profit',icon:IC.chart,label:'💹 Faida kwa Bidhaa'},
     {id:'sales',icon:IC.cart,label:'Mauzo'},
     {id:'orders',icon:IC.file,label:'📋 Oda'},
     {id:'returns',icon:IC.refresh,label:'Rudisha'},
@@ -343,6 +344,7 @@ export default function App(){
       case'customers':return <CustomersPage/>;
       case'sms':return role==='office'?<SmsBundlePage/>:null;   // kununua bando ni la mwenye duka
       case'analytics':return role==='office'?<ProductAnalyticsPage/>:null;
+      case'product_profit':return role==='office'?<ProductProfitPage/>:null;
       case'notifications':return <NotifsPage/>;
       default:return role==='employee'
         ?<EmployeeDash onReceipt={setReceipt} onNav={setPage}/>

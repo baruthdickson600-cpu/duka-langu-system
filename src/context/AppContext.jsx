@@ -796,7 +796,11 @@ export function AppProvider({children}){
 
     const subtotal=items.reduce((s,i)=>s+i.qty*i.price,0);
     const total=subtotal-discount;
-    const profit=items.reduce((s,i)=>s+i.qty*(i.price-(i.cost||0)),0);
+    // Muuzaji hana bei ya kununua, kwa hiyo hawezi kuhesabu faida.
+    // Tunatuma NULL na database inaihesabu yenyewe (trigger).
+    const profit=_isSellerRef.current
+      ? null
+      : items.reduce((s,i)=>s+i.qty*(i.price-(i.cost||0)),0);
     const paid=Math.min(+initialPayment||0,total);
     const remaining=total-paid;
     const status=remaining<=0?'completed':(paid>0?'partial':'pending');
@@ -871,7 +875,8 @@ export function AppProvider({children}){
   const recordOrderAsSale=useCallback(async(order,paymentMethod='cash')=>{
     const sd={
       business_id:bizId,branch_id:order.branch_id||null,seller_id:user?.id,seller_name:user?.name,
-      items:order.items,subtotal:order.subtotal,discount:order.discount,total:order.total,profit:order.profit,
+      items:order.items,subtotal:order.subtotal,discount:order.discount,total:order.total,
+      profit:_isSellerRef.current?null:order.profit,
       payment_method:paymentMethod,customer_id:order.customer_id,customer_name:order.customer_name,
       is_synced:online,created_at:nowISO(),notes:`Order ${order.order_number}`,
     };
@@ -2815,10 +2820,27 @@ export function AppProvider({children}){
   // (buy_price ya bidhaa inabaki kwa sababu hutumika kuhesabu faida
   //  wakati wa kuuza — ikiondolewa, faida ya mwenye duka ingeharibika.)
   const _isSeller = user?.role === 'employee';
+  const _stripItems = items => Array.isArray(items)
+    ? items.map(({ cost, lineProfit, buyPrice, buy_price, ...i }) => i)
+    : items;
+
+  const _visibleOrders = useMemo(() => {
+    if (!_isSeller) return orders;
+    return (orders || []).map(({ profit, items, ...rest }) => ({
+      ...rest, items: _stripItems(items),
+    }));
+  }, [orders, _isSeller]);
+
   const _visibleSales = useMemo(() => {
     const list = canUseBranches && activeBranch ? branchSales : sales;
     if (!_isSeller) return list;
-    return (list || []).map(({ profit, ...rest }) => rest);
+    // Faida ya mauzo yote NA ya kila bidhaa (cost, lineProfit, buyPrice)
+    // zinaondolewa. Database huziweka kwenye kila bidhaa ili mmiliki
+    // aone faida ya kila bidhaa — muuzaji hapaswi kuzipata.
+    return (list || []).map(({ profit, items, ...rest }) => ({
+      ...rest,
+      items: _stripItems(items),
+    }));
   }, [sales, branchSales, canUseBranches, activeBranch, _isSeller]);
 
   // Bei ya kununua haifiki kwa muuzaji kabisa. Faida ya mauzo yake
@@ -2859,7 +2881,7 @@ export function AppProvider({children}){
     purchases,addPurchase,deletePurchase,
     addBranch,updateBranch,deleteBranch,getBranches,
     // Orders (Pending + Partial Payments)
-    orders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,
+    orders:_visibleOrders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,
     // Tickets
     createTicket,replyTicket,closeTicket,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
