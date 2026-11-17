@@ -21,6 +21,27 @@ async function safeInsert(t,d,opts={}){try{const clean={};for(const[k,v]of Objec
 async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).eq(c,v);if(r.error)console.warn('Update:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
+// Soma view kwanza; ikikosekana (SQL ya RLS haijaendeshwa bado), rudi
+// kwenye jedwali. Bila hii, mpangilio mbaya wa kupeleka ulifanya
+// bidhaa ZITOWEKE kabisa kwa muuzaji, kimya kimya.
+async function trySelect(t,q={}){
+  try{
+    let s=supabase.from(t).select('*');
+    if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);
+    if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});
+    if(q.limit)s=s.limit(q.limit);
+    const r=await s;
+    if(r.error)return{error:r.error};
+    return{data:r.data||[]};
+  }catch(e){return{error:e}}
+}
+async function safeSelectPref(view,table,q={}){
+  const a=await trySelect(view,q);
+  if(!a.error)return a.data;
+  console.warn('[view]',view,'haipatikani ('+(a.error?.message||'')+') — natumia',table);
+  const b=await trySelect(table,q);
+  return b.error?[]:b.data;
+}
 async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});if(q.limit)s=s.limit(q.limit);const r=await s;if(r.error){console.warn('Select:',t,r.error.message);return[]}return r.data||[]}catch(e){console.warn('DB:',t,e);return[]}}
 
 
@@ -270,8 +291,12 @@ export function AppProvider({children}){
         const[pr,sl,ex,cu,em,sh,br,tk,rt,cr]=await Promise.all([
           // Muuzaji anasoma VIEW zisizo na bei ya kununua wala faida.
           // Jedwali halisi limefungwa kwa RLS (ona rls-kinga-ya-bei.sql).
-          safeSelect(role==='employee'?'products_pub':'products',{eq:{business_id:bid}}),
-          safeSelect(role==='employee'?'sales_pub':'sales',{eq:{business_id:bid},order:{col:'created_at'}}),
+          role==='employee'
+            ?safeSelectPref('products_pub','products',{eq:{business_id:bid}})
+            :safeSelect('products',{eq:{business_id:bid}}),
+          role==='employee'
+            ?safeSelectPref('sales_pub','sales',{eq:{business_id:bid},order:{col:'created_at'}})
+            :safeSelect('sales',{eq:{business_id:bid},order:{col:'created_at'}}),
           safeSelect('expenses',{eq:{business_id:bid},order:{col:'created_at'}}),safeSelect('customers',{eq:{business_id:bid}}),
           safeSelect('users',{eq:{business_id:bid,role:'employee'}}),safeSelect('stock_history',{eq:{business_id:bid},order:{col:'created_at'},limit:200}),
           safeSelect('branches',{eq:{business_id:bid}}),safeSelect('support_tickets',{eq:{business_id:bid},order:{col:'created_at'}}),
@@ -409,7 +434,7 @@ export function AppProvider({children}){
         setPendingSyncCount(progress.total-progress.synced-progress.failed);
       },tok);
       if(result.synced>0){
-        if(bizId){const freshSales=await safeSelect(_isSellerRef.current?'sales_pub':'sales',{eq:{business_id:bizId},order:{col:'created_at'}});if(freshSales.length)setSales(freshSales);}
+        if(bizId){const q={eq:{business_id:bizId},order:{col:'created_at'}};const freshSales=_isSellerRef.current?await safeSelectPref('sales_pub','sales',q):await safeSelect('sales',q);if(freshSales.length)setSales(freshSales);}
         window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
       }
       const newCount=await getPendingCount();
@@ -854,8 +879,10 @@ export function AppProvider({children}){
   // Pakia orders wakati wa loadData (inatumia bizId)
   const loadOrders=useCallback(async(bid)=>{
     try{
-      const tbl=_isSellerRef.current?'orders_pub':'orders';
-      const{data}=await supabase.from(tbl).select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(300);
+      const q={eq:{business_id:bid},order:{col:'created_at'},limit:300};
+      const data=_isSellerRef.current
+        ?await safeSelectPref('orders_pub','orders',q)
+        :await safeSelect('orders',q);
       setOrders(data||[]);
     }catch(e){}
   },[]);
@@ -1360,7 +1387,11 @@ export function AppProvider({children}){
   const getBranches=useCallback(()=>bizId?branches.filter(b=>b.business_id===bizId):[],[bizId,branches]);
   // Branch filtering: ukichagua branch, onyesha bidhaa za branch HIYO + za jumla (branch_id=null)
   // Bidhaa za zamani (kabla ya branches) zina branch_id=null - zinaonekana kwenye branches zote
-  const branchProducts=useMemo(()=>activeBranch?products.filter(p=>p.branch_id===activeBranch):products,[products,activeBranch]);
+  // Bidhaa isiyo na tawi ni ya duka lote (nyingi ziliundwa kabla ya matawi).
+  // Bila kuzijumuisha, muuzaji aliyepangwa kwenye tawi aliona DUKA TUPU.
+  const branchProducts=useMemo(()=>activeBranch
+    ?products.filter(p=>p.branch_id===activeBranch||p.branch_id==null)
+    :products,[products,activeBranch]);
   const branchSales=useMemo(()=>activeBranch?sales.filter(s=>s.branch_id===activeBranch):sales,[sales,activeBranch]);
   const branchExpenses=useMemo(()=>activeBranch?expenses.filter(e=>e.branch_id===activeBranch):expenses,[expenses,activeBranch]);
 
