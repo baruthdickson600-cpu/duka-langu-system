@@ -188,7 +188,11 @@ export async function deductStockOffline(productId, qty) {
 
 // ===== SYNC ENGINE =====
 // Fanya sync ya mauzo yote yanayosubiri → Supabase
-export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress) {
+// accessToken: token ya mtumiaji aliyeingia. MUHIMU — bila hiyo ombi
+// linaenda kama 'anon', auth.uid() inakuwa NULL, na RLS inakataa mauzo
+// yote (ona rls-kinga-ya-bei.sql). Pia hatuombi row irudi, kwa sababu
+// muuzaji hana ruhusa ya kuona mauzo.
+export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, accessToken) {
   const pending = await getPendingSales();
   if (!pending.length) return { synced: 0, failed: 0, total: 0 };
 
@@ -206,15 +210,15 @@ export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress) {
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=representation',
+          'Authorization': `Bearer ${accessToken || supabaseKey}`,
+          'Prefer': 'return=minimal',
         },
         body: JSON.stringify(cleanSale),
       });
 
       if (res.ok) {
-        const [saved] = await res.json();
-        await markSaleSynced(offline_id, saved?.id);
+        // return=minimal: hakuna body. Hifadhi kama imesync bila id mpya.
+        await markSaleSynced(offline_id, null);
         synced++;
         onProgress?.({ synced, failed, total: pending.length, current: sale });
       } else {

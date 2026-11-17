@@ -13,7 +13,11 @@ const todayStr=()=>localDateStr(new Date()); // tarehe ya ndani (EAT), si UTC
 const ADMIN_EMAIL='baruthdickson600@gmail.com';
 const ADMIN_PASS='baruth@500';
 
-async function safeInsert(t,d){try{const clean={};for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}const r=await supabase.from(t).insert(clean).select();if(r.error){console.warn('[safeInsert]',t,r.error.message);return{__error:true,message:r.error.message}}return r?.data?.[0]||null}catch(e){console.warn('[safeInsert]',t,e?.message||e);return{__error:true,message:e?.message||'error'}}}
+// opts.noReturn: muuzaji hana ruhusa ya KUONA mauzo/oda (RLS), kwa hiyo
+// .select() baada ya insert inakataliwa. Bila kurudisha row, inafanya kazi.
+async function safeInsert(t,d,opts={}){try{const clean={};for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}
+  if(opts.noReturn){const r0=await supabase.from(t).insert(clean);if(r0.error){console.warn('[safeInsert]',t,r0.error.message);return{__error:true,message:r0.error.message}}return null}
+  const r=await supabase.from(t).insert(clean).select();if(r.error){console.warn('[safeInsert]',t,r.error.message);return{__error:true,message:r.error.message}}return r?.data?.[0]||null}catch(e){console.warn('[safeInsert]',t,e?.message||e);return{__error:true,message:e?.message||'error'}}}
 async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).eq(c,v);if(r.error)console.warn('Update:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
@@ -113,6 +117,36 @@ export function AppProvider({children}){
   // imeundwa kabla ya hapa, na inahitaji thamani ya sasa wakati wa kuuza.
   const _isSellerRef=useRef(false);
   useEffect(()=>{_isSellerRef.current=user?.role==='employee'},[user]);
+
+  // ===== KUANDIKA CHINI YA RLS (ona rls-kinga-ya-bei.sql) =====
+  // Muuzaji hawezi UPDATE products wala orders: database inamkatalia,
+  // na RETURNING ingempa row yenye bei. Anatumia function za database
+  // zinazorudisha idadi pekee.
+  const setStock=useCallback(async(productId,newQty,delta)=>{
+    if(!productId)return;
+    if(_isSellerRef.current){
+      if(!delta)return;
+      try{
+        const r=await supabase.rpc(delta<0?'dl_deduct_stock':'dl_restore_stock',
+          {p_id:productId,p_qty:Math.abs(delta)});
+        if(r.error)console.warn('[stock]',r.error.message);
+      }catch(e){console.warn('[stock]',e?.message||e)}
+      return;
+    }
+    await safeUpdate('products',{quantity:Math.max(0,+newQty||0)},'id',productId);
+  },[]);
+
+  const patchOrder=useCallback(async(orderId,patch)=>{
+    if(!orderId)return;
+    if(_isSellerRef.current){
+      try{
+        const r=await supabase.rpc('dl_order_update',{p_id:orderId,p_patch:patch});
+        if(r.error)console.warn('[order]',r.error.message);
+      }catch(e){console.warn('[order]',e?.message||e)}
+      return;
+    }
+    await safeUpdate('orders',patch,'id',orderId);
+  },[]);
 
   // ===== VIKWAZO VYA KIFURUSHI =====
   // Hurudisha Infinity kwa admin na kwa wateja wa legacy (waliokuwepo
@@ -234,7 +268,10 @@ export function AppProvider({children}){
       const ll=await safeSelect('login_logs',{order:{col:'created_at'},limit:200});if(ll.length)setLogs(ll);
       if(role!=='admin'&&bid){
         const[pr,sl,ex,cu,em,sh,br,tk,rt,cr]=await Promise.all([
-          safeSelect('products',{eq:{business_id:bid}}),safeSelect('sales',{eq:{business_id:bid},order:{col:'created_at'}}),
+          // Muuzaji anasoma VIEW zisizo na bei ya kununua wala faida.
+          // Jedwali halisi limefungwa kwa RLS (ona rls-kinga-ya-bei.sql).
+          safeSelect(role==='employee'?'products_pub':'products',{eq:{business_id:bid}}),
+          safeSelect(role==='employee'?'sales_pub':'sales',{eq:{business_id:bid},order:{col:'created_at'}}),
           safeSelect('expenses',{eq:{business_id:bid},order:{col:'created_at'}}),safeSelect('customers',{eq:{business_id:bid}}),
           safeSelect('users',{eq:{business_id:bid,role:'employee'}}),safeSelect('stock_history',{eq:{business_id:bid},order:{col:'created_at'},limit:200}),
           safeSelect('branches',{eq:{business_id:bid}}),safeSelect('support_tickets',{eq:{business_id:bid},order:{col:'created_at'}}),
@@ -365,11 +402,14 @@ export function AppProvider({children}){
     try{
       const SUPA_URL='https://snosfxagzglswaotrgzv.supabase.co';
       const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNub3NmeGFnemdsc3dhb3RyZ3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDcwMDAsImV4cCI6MjA5MDY4MzAwMH0.qS6lEKGJ6IRganQTcpB1sFtw90XDyK0BMaQKSTVLXKE';
+      // Token ya mtumiaji — RLS inaihitaji ili ijue ni biashara ipi
+      let tok=null;
+      try{const{data}=await supabase.auth.getSession();tok=data?.session?.access_token||null}catch(_){}
       const result=await syncPendingSales(SUPA_URL,SUPA_KEY,(progress)=>{
         setPendingSyncCount(progress.total-progress.synced-progress.failed);
-      });
+      },tok);
       if(result.synced>0){
-        if(bizId){const freshSales=await safeSelect('sales',{eq:{business_id:bizId},order:{col:'created_at'}});if(freshSales.length)setSales(freshSales);}
+        if(bizId){const freshSales=await safeSelect(_isSellerRef.current?'sales_pub':'sales',{eq:{business_id:bizId},order:{col:'created_at'}});if(freshSales.length)setSales(freshSales);}
         window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
       }
       const newCount=await getPendingCount();
@@ -755,7 +795,7 @@ export function AppProvider({children}){
       // ===== ONLINE: Tuma Supabase moja kwa moja =====
       try{
         const{offline_id,...cleanData}=sd;
-        const saved=await safeInsert('sales',{...cleanData,is_synced:true});
+        const saved=await safeInsert('sales',{...cleanData,is_synced:true},{noReturn:_isSellerRef.current});
         // Kama Supabase imekataa (mf. constraint ya payment_method kwa mpesa/airtel/tigo/nmb/crdb),
         // safeInsert inarudisha {__error:true}. Tusiweke object ya kosa kama mauzo/risiti —
         // hifadhi offline na data KAMILI ili risiti ionyeshe njia ya malipo iliyochaguliwa.
@@ -768,7 +808,7 @@ export function AppProvider({children}){
           // Bado punguza stock kwenye Supabase (bidhaa zimetoka kweli)
           for(const item of cart){
             const prod=products.find(p=>p.id===item.productId);
-            if(prod){const stockOut=item.qty*(item.fraction||1);const nq=Math.max(0,prod.quantity-stockOut);await safeUpdate('products',{quantity:nq},'id',item.productId);}
+            if(prod){const stockOut=item.qty*(item.fraction||1);const nq=Math.max(0,prod.quantity-stockOut);await setStock(item.productId,nq,-stockOut);}
           }
           return offFinal;
         }
@@ -780,7 +820,7 @@ export function AppProvider({children}){
           if(prod){
             const stockOut=item.qty*(item.fraction||1);
             const nq=Math.max(0,prod.quantity-stockOut);
-            await safeUpdate('products',{quantity:nq},'id',item.productId);
+            await setStock(item.productId,nq,-stockOut);
             await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'sale',quantity_before:prod.quantity,quantity_change:-stockOut,quantity_after:nq,user_id:user?.id});
           }
         }
@@ -814,7 +854,8 @@ export function AppProvider({children}){
   // Pakia orders wakati wa loadData (inatumia bizId)
   const loadOrders=useCallback(async(bid)=>{
     try{
-      const{data}=await supabase.from('orders').select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(300);
+      const tbl=_isSellerRef.current?'orders_pub':'orders';
+      const{data}=await supabase.from(tbl).select('*').eq('business_id',bid).order('created_at',{ascending:false}).limit(300);
       setOrders(data||[]);
     }catch(e){}
   },[]);
@@ -844,7 +885,7 @@ export function AppProvider({children}){
       const stockOut=item.qty*(item.fraction||1);
       setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:Math.max(0,p.quantity-stockOut)}:p));
       const prod=products.find(p=>p.id===item.productId);
-      if(prod)safeUpdate('products',{quantity:Math.max(0,prod.quantity-stockOut)},'id',item.productId).catch(()=>{});
+      if(prod)setStock(item.productId,Math.max(0,prod.quantity-stockOut),-stockOut).catch(()=>{});
     });
 
     const rec={
@@ -855,7 +896,7 @@ export function AppProvider({children}){
       seller_id:user?.id,seller_name:user?.name,notes,
       ...(status==='completed'?{completed_at:nowISO()}:{}),
     };
-    const d=await safeInsert('orders',rec);
+    const d=await safeInsert('orders',rec,{noReturn:_isSellerRef.current});
     if(d&&d.__error){
       // Rudisha stock (kwa sababu order haikuhifadhiwa)
       items.forEach(item=>{
@@ -894,7 +935,7 @@ export function AppProvider({children}){
     await safeInsert('order_payments',{order_id:orderId,business_id:bizId,amount:amt,payment_method:paymentMethod,received_by:user?.id});
     const updates={paid_amount:newPaid,remaining_amount:Math.max(0,newRemaining),status:newStatus};
     if(newStatus==='completed')updates.completed_at=nowISO();
-    await safeUpdate('orders',updates,'id',orderId);
+    await patchOrder(orderId,updates);
     setOrders(prev=>prev.map(o=>o.id===orderId?{...o,...updates}:o));
 
     // Ikikamilika -> rekodi kama sale
@@ -913,7 +954,7 @@ export function AppProvider({children}){
       payment_method:paymentMethod,customer_id:order.customer_id,customer_name:order.customer_name,
       is_synced:online,created_at:nowISO(),notes:`Order ${order.order_number}`,
     };
-    const d=await safeInsert('sales',sd);
+    const d=await safeInsert('sales',sd,{noReturn:_isSellerRef.current});
     if(d&&!d.__error)setSales(prev=>[d,...prev]);
     return d;
   },[bizId,user,online]);
@@ -930,10 +971,10 @@ export function AppProvider({children}){
         const stockBack=item.qty*(item.fraction||1);
         setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:(p.quantity||0)+stockBack}:p));
         const prod=products.find(p=>p.id===item.productId);
-        if(prod)safeUpdate('products',{quantity:(prod.quantity||0)+stockBack},'id',item.productId).catch(()=>{});
+        if(prod)setStock(item.productId,(prod.quantity||0)+stockBack,+stockBack).catch(()=>{});
       });
     }
-    await safeUpdate('orders',{status:'cancelled',reserved_stock:false,cancelled_at:nowISO()},'id',orderId);
+    await patchOrder(orderId,{status:'cancelled',reserved_stock:false,cancelled_at:nowISO()});
     setOrders(prev=>prev.map(o=>o.id===orderId?{...o,status:'cancelled',reserved_stock:false}:o));
     return{ok:true};
   },[orders,products]);
@@ -1145,11 +1186,11 @@ export function AppProvider({children}){
       return{error:`Deni litazidi kikomo cha TZS ${(cust.credit_limit||0).toLocaleString()}! Sasa: TZS ${(cust.credit_balance||0).toLocaleString()}, Mpya: TZS ${total.toLocaleString()}`};
     }
     const sd={business_id:bizId,branch_id:activeBranch||null,seller_id:user?.id,seller_name:user?.name,items:cart,subtotal,discount,total,profit,payment_method:'credit',customer_id:custId,customer_name:cust?.name,is_synced:online};
-    const saved=await safeInsert('sales',sd);const final=saved||{...sd,id:genId(),created_at:nowISO()};
+    const saved=await safeInsert('sales',sd,{noReturn:_isSellerRef.current});const final=saved||{...sd,id:genId(),created_at:nowISO()};
     setSales(prev=>[final,...prev]);
     for(const item of cart){
       const prod=products.find(p=>p.id===item.productId);
-      if(prod){const nq=Math.max(0,prod.quantity-item.qty);await safeUpdate('products',{quantity:nq},'id',item.productId);setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p))}
+      if(prod){const nq=Math.max(0,prod.quantity-item.qty);await setStock(item.productId,nq,-item.qty);setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p))}
     }
     const newBal=(cust?.credit_balance||0)+total;
     const newSpent=(cust?.total_spent||0)+total;
