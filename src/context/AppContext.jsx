@@ -1,6 +1,7 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo,useRef} from 'react';
 import {buildCostMap,withProfit,saleProfit} from '../utils/money';
 import {changeStock} from '../utils/stock';
+import {validateReturn,returnableUnits,fullyReturned} from '../utils/returns';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
@@ -1163,21 +1164,38 @@ export function AppProvider({children}){
   const processReturn=useCallback(async(saleId,items,reason)=>{
     if(!bizId)return null;
     const sale=sales.find(s=>s.id===saleId);if(!sale)return null;
-    // Calculate refund considering fractions (½ kg of 10K = 5K refund)
-    const refundTotal=items.reduce((s,i)=>s+i.qty*i.price*(i.fraction||1),0);
-    const ret={business_id:bizId,sale_id:saleId,items,reason,refund_amount:refundTotal,processed_by:user?.id,status:'completed',customer_id:sale.customer_id||null,was_credit:sale.payment_method==='credit'};
+
+    // ===== UHAKIKI =====
+    // Hapa awali hakukuwa na uhakiki WOWOTE. Bidhaa iliyouzwa mara
+    // moja iliweza kurudishwa mara 10, kwa sababu marejesho ya awali
+    // hayakuhesabiwa. Pia bei ilitoka kwenye ombi, si kwenye mauzo.
+    // Soma marejesho ya mauzo HAYA moja kwa moja kutoka database.
+    // State inaweza kuwa haijapakia yote (PostgREST ina kikomo cha
+    // safu), na rejesho la zamani lisiloonekana lingeruhusu
+    // kurudisha mara ya pili.
+    let priorReturns=returns;
+    try{
+      const fresh=await safeSelect('returns',{eq:{sale_id:saleId}});
+      if(Array.isArray(fresh)&&fresh.length>=0)priorReturns=fresh;
+    }catch(_){}
+    const v=validateReturn(sale,priorReturns,items);
+    if(!v.ok)return{error:v.problems[0]||'Hakuna bidhaa inayoweza kurudishwa'};
+    const okItems=v.items;
+    const refundTotal=v.refund;
+
+    const ret={business_id:bizId,sale_id:saleId,items:okItems,reason,refund_amount:refundTotal,processed_by:user?.id,status:'completed',customer_id:sale.customer_id||null,was_credit:sale.payment_method==='credit'};
     const saved=await safeInsert('returns',ret);
     const final=saved||{...ret,id:genId(),created_at:nowISO()};
     setReturns(prev=>[final,...prev]);
     
     // Restore stock (accounting for fractions)
-    for(const item of items){
+    for(const item of okItems){
       const prod=products.find(p=>p.id===item.productId);
       if(prod){
         // Stock to restore: qty * fraction (e.g., 1 × ½ = 0.5 kg back to stock)
         const stockBack=item.qty*(item.fraction||1);
         const nq=prod.quantity+stockBack;
-        await safeUpdate('products',{quantity:nq},'id',item.productId);
+        await setStock(item.productId,nq,+stockBack);
         await safeInsert('stock_history',{product_id:item.productId,business_id:bizId,change_type:'return',quantity_before:prod.quantity,quantity_change:stockBack,quantity_after:nq,user_id:user?.id,note:`Rudisha kutoka mauzo #${saleId?.slice(0,8)} - ${reason}`});
         setProds(prev=>prev.map(p=>p.id===item.productId?{...p,quantity:nq}:p));
       }
@@ -1205,7 +1223,7 @@ export function AppProvider({children}){
     }
     
     return final;
-  },[bizId,user,products,sales,customers]);
+  },[bizId,user,products,sales,customers,returns,setStock]);
 
   // ===== EXPENSES =====
   const addExpense=useCallback(async(exp)=>{if(!bizId)return;const d=await safeInsert('expenses',{...exp,business_id:bizId,branch_id:activeBranch||null,recorded_by:user?.id});setExp(prev=>[d||{...exp,id:genId(),business_id:bizId,created_at:nowISO()},...prev])},[bizId,activeBranch,user]);
@@ -3040,6 +3058,8 @@ export function AppProvider({children}){
     autoReorderList:_visibleReorder,lowMarginProducts:_visibleLowMargin,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
     failedSyncCount,getFailedSales,
+    returnableUnits:sale=>returnableUnits(sale,returns),
+    fullyReturned:sale=>fullyReturned(sale,returns),
     retryFailedSales:async()=>{const n=await retryFailedSales();setFailedSyncCount(await getFailedCount().catch(()=>0));setPendingSyncCount(await getPendingCount().catch(()=>0));await triggerSync();return n},
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,planLimit,canAddMore,SMS_BUNDLES,hasWholesale,

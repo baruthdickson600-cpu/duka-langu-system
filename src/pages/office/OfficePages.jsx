@@ -870,26 +870,41 @@ export function ProductsPage(){
 
 // ===== RETURN/REFUND =====
 export function ReturnsPage(){
-  const{sales,returns,processReturn,customers,currency}=useApp();
+  const{sales,returns,processReturn,customers,currency,returnableUnits}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[modal,setModal]=useState(false);const[saleId,setSaleId]=useState('');const[reason,setReason]=useState('');const[retItems,setRetItems]=useState([]);
   const sale=sales.find(s=>s.id===saleId);
   const cust=sale?.customer_id?customers.find(c=>c.id===sale.customer_id):null;
 
-  const handleSelectSale=(sid)=>{setSaleId(sid);const s=sales.find(x=>x.id===sid);if(s)setRetItems((s.items||[]).map(i=>({...i,returnQty:0})))};
-  
+  // Bidhaa iliyouzwa mara moja iliweza kurudishwa mara 10, kwa sababu
+  // marejesho ya awali hayakuhesabiwa. Sasa tunaonyesha ILIYOBAKI.
+  const handleSelectSale=(sid)=>{
+    setSaleId(sid);
+    const s=sales.find(x=>x.id===sid);
+    if(!s){setRetItems([]);return}
+    const left=returnableUnits?.(s)||new Map();
+    setRetItems((s.items||[]).map(i=>{
+      const f=i.fraction||1;
+      const kiasi=(left.get(String(i.productId))||0)/f;   // kwa idadi, si vipimo
+      return {...i,returnQty:0,maxQty:Math.max(0,kiasi),alreadyBack:(+i.qty||0)-Math.max(0,kiasi)};
+    }));
+  };
+
   // Calculate total refund considering fractions
   const totalRefund=retItems.reduce((s,i)=>s+(i.returnQty||0)*i.price*(i.fraction||1),0);
-  
+  const zoteZimerudishwa=retItems.length>0&&retItems.every(i=>(i.maxQty||0)<=0);
+
   const doReturn=async()=>{
     if(!saleId||!reason)return alert('Chagua mauzo na weka sababu!');
     const items=retItems.filter(i=>i.returnQty>0).map(i=>({productId:i.productId,name:i.name,price:i.price,qty:i.returnQty,fraction:i.fraction||1,fractionLabel:i.fractionLabel,
       // Hifadhi gharama ili faida iliyopunguzwa iwe sahihi
       ...(i.cost!==undefined?{cost:i.cost}:i.buyPrice!==undefined?{buyPrice:i.buyPrice}:{})}));
     if(!items.length)return alert('Chagua bidhaa za kurudisha!');
-    await processReturn(saleId,items,reason);
+    const r=await processReturn(saleId,items,reason);
+    if(r?.error)return alert('⚠️ '+r.error);
     const isCredit=sale?.payment_method==='credit';
-    alert(`✅ Bidhaa zimerudishwa!\n\n📦 Stock imeongezeka kwa idadi sahihi\n💰 Rejesho: TZS ${totalRefund.toLocaleString()}${isCredit?'\n💳 Deni la mteja limepunguzwa':''}`);
+    const kiasi=r?.refund_amount!=null?+r.refund_amount:totalRefund;
+    alert(`✅ Bidhaa zimerudishwa!\n\n📦 Stock imeongezeka kwa idadi sahihi\n💰 Rejesho: TZS ${kiasi.toLocaleString()}${isCredit?'\n💳 Deni la mteja limepunguzwa':''}`);
     setModal(false);setSaleId('');setReason('');setRetItems([]);
   };
 
@@ -952,6 +967,10 @@ export function ReturnsPage(){
           <b>Deni lake litapunguzwa automatic</b> kulingana na thamani ya bidhaa zinazorudishwa.
         </div>}
         
+        {zoteZimerudishwa&&<div style={{background:'#FBECE9',border:'1px solid #C2412D',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:12,color:'#C2412D',fontWeight:700}}>
+          ⚠️ Mauzo haya yamerudishwa <b>yote</b>. Hakuna bidhaa iliyobaki.
+        </div>}
+
         <div style={{background:'#F6F8F7',borderRadius:10,padding:12,marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:'#0A6E47',marginBottom:8}}>Chagua Bidhaa za Kurudisha:</div>
           {retItems.map((item,i)=>{
@@ -962,12 +981,18 @@ export function ReturnsPage(){
                 <div style={{flex:1,minWidth:160}}>
                   <div style={{fontWeight:700,fontSize:13}}>{item.name}{f}</div>
                   <div style={{fontSize:11,color:'#5C6A62'}}>Alinunua: <b>{item.qty}</b> • Bei: <b>{fm(item.price*(item.fraction||1))}</b></div>
+                  {(item.alreadyBack||0)>0&&<div style={{fontSize:10.5,color:'#C2412D',fontWeight:700,marginTop:2}}>
+                    ↩️ Imerudishwa: {item.alreadyBack} • Zimebaki: {item.maxQty||0}
+                  </div>}
+                  {(item.maxQty||0)<=0&&<div style={{fontSize:10.5,color:'#9AA5A0',fontWeight:700,marginTop:2}}>
+                    Imerudishwa yote — haiwezi kurudishwa tena
+                  </div>}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontSize:11,color:'#475569',fontWeight:600}}>Rudisha:</span>
-                  <button onClick={()=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.max(0,(x.returnQty||0)-1)}:x))} style={{width:28,height:28,borderRadius:6,border:'none',background:'#F6F8F7',fontWeight:700,fontSize:14,cursor:'pointer'}}>−</button>
-                  <input type="number" min="0" max={item.qty} value={item.returnQty||0} onChange={e=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.min(+e.target.value||0,item.qty)}:x))} style={{width:50,padding:'4px 6px',borderRadius:6,border:'1px solid #D6E2DB',textAlign:'center',fontWeight:700}}/>
-                  <button onClick={()=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.min((x.returnQty||0)+1,item.qty)}:x))} style={{width:28,height:28,borderRadius:6,border:'none',background:'#E6F2EC',color:'#0A6E47',fontWeight:700,fontSize:14,cursor:'pointer'}}>+</button>
+                  <button disabled={(item.maxQty||0)<=0} onClick={()=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.max(0,(x.returnQty||0)-1)}:x))} style={{width:28,height:28,borderRadius:6,border:'none',background:'#F6F8F7',fontWeight:700,fontSize:14,cursor:'pointer',opacity:(item.maxQty||0)<=0?.4:1}}>−</button>
+                  <input type="number" min="0" max={item.maxQty||0} disabled={(item.maxQty||0)<=0} value={item.returnQty||0} onChange={e=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.min(Math.max(0,+e.target.value||0),x.maxQty||0)}:x))} style={{width:50,padding:'4px 6px',borderRadius:6,border:'1px solid #D6E2DB',textAlign:'center',fontWeight:700}}/>
+                  <button disabled={(item.maxQty||0)<=0} onClick={()=>setRetItems(retItems.map((x,j)=>j===i?{...x,returnQty:Math.min((x.returnQty||0)+1,x.maxQty||0)}:x))} style={{width:28,height:28,borderRadius:6,border:'none',background:'#E6F2EC',color:'#0A6E47',fontWeight:700,fontSize:14,cursor:'pointer',opacity:(item.maxQty||0)<=0?.4:1}}>+</button>
                   {item.returnQty>0&&<div style={{fontWeight:800,color:'#C2412D',fontSize:13,minWidth:80,textAlign:'right'}}>−{fm(itemTotal)}</div>}
                 </div>
               </div>
