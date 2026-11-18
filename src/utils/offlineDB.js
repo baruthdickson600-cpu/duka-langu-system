@@ -202,7 +202,8 @@ export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, acc
   for (const sale of pending) {
     try {
       // Andaa data safi (ondoa fields za offline tu)
-      const { offline_id, sync_status, sync_attempts, last_attempt, ...cleanSale } = sale;
+      // stock_applied ni alama ya ndani — Supabase haina safu hiyo
+      const { offline_id, sync_status, sync_attempts, last_attempt, stock_applied, ...cleanSale } = sale;
 
       // Tuma kwenye Supabase moja kwa moja kwa fetch (sw.js haitumii supabase-js)
       const res = await fetch(`${supabaseUrl}/rest/v1/sales`, {

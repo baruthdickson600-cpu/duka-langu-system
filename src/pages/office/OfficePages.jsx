@@ -2,6 +2,7 @@ import React,{useState,useMemo} from 'react';
 import DebtReminder from '../../components/DebtReminder';
 import PhoneNameInput from '../../components/PhoneNameInput';
 import {PageHead,GBtn,SumCard} from '../../components/Page';
+import {buildCostMap,unitCost,itemProfit,itemRevenue,returnProfit as retProfit,netProfit as calcNetProfit,margin} from '../../utils/money';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -155,12 +156,9 @@ export function OfficeDash({onReceipt,onNav}){
   const mReturns=(returns||[]).filter(r=>isThisMonth(r.created_at));
   
   // Helper: calculate profit lost from returns
-  const returnProfit=(rs)=>rs.reduce((sum,r)=>sum+((r.items||[]).reduce((s,i)=>{
-    const prod=products.find(p=>p.id===i.productId);
-    // Bidhaa ikifutwa, tumia gharama iliyohifadhiwa kwenye mauzo
-    const buyPrice=prod?.buy_price!=null?+prod.buy_price:unitCost(i);
-    return s+i.qty*(i.price-buyPrice)*(i.fraction||1);
-  },0)),0);
+  // Hesabu zote za pesa ziko src/utils/money.js (zina majaribio)
+  const costMap=useMemo(()=>buildCostMap(products),[products]);
+  const returnProfit=rs=>retProfit(rs,costMap);
   
   // Subtract CASH refunds only (credit returns don't reduce cash income)
   const tCashRefunds=tReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
@@ -177,8 +175,7 @@ export function OfficeDash({onReceipt,onNav}){
   // ===== Profit calculation (CASH BASIS) =====
   // Faida inahesabiwa pesa ikiingia pekee (si deni likitolewa).
   // Marejesho ya taslimu yanapunguza faida ya kipindi hicho.
-  const netProfit=(cashSales,rs)=>Math.max(0,
-    cashSales.reduce((a,s)=>a+(s.profit||0),0)-returnProfit(rs.filter(r=>!r.was_credit)));
+  const netProfit=(cashSales,rs)=>calcNetProfit(cashSales,rs,costMap);
   const tProfit=netProfit(tCashSales,tReturns);
   const wProfit=netProfit(wCashSales,wReturns);
   const mProfit=netProfit(mCashSales,mReturns);
@@ -2575,34 +2572,6 @@ export function GoalsPage(){
 // Gharama ya bidhaa moja kwenye mauzo. Vyanzo kwa mpangilio:
 //   cost       — iliyohifadhiwa na database (mauzo ya muuzaji)
 //   buyPrice   — iliyohifadhiwa na kivinjari (mauzo ya mwenye duka)
-//   costMap    — bei za kununua za sasa kutoka jedwali la bidhaa
-//                (kinga ya mwisho: mauzo ya muuzaji na marejesho
-//                 hayahifadhi bei ya kununua kabisa)
-export const unitCost=(item,costMap)=>{
-  const c=item?.cost;
-  if(c!==undefined&&c!==null&&c!=='')return +c||0;
-  const b=item?.buyPrice;
-  if(b!==undefined&&b!==null&&b!=='')return +b||0;
-  if(costMap){
-    const pid=String(item?.productId||item?.product_id||'');
-    const v=costMap.get(pid);
-    if(v!==undefined)return +v||0;
-  }
-  return 0;
-};
-// Ramani ya bei za kununua (mwenye duka pekee anazo)
-export const buildCostMap=products=>{
-  const m=new Map();
-  (products||[]).forEach(p=>{if(p&&p.id!==undefined)m.set(String(p.id),+p.buy_price||0)});
-  return m;
-};
-// Faida ya mstari mmoja wa mauzo
-export const itemProfit=(item,costMap)=>{
-  if(item?.lineProfit!==undefined&&item?.lineProfit!==null)return +item.lineProfit||0;
-  const frac=item?.fraction||1;
-  return (+item?.qty||0)*((+item?.price||0)-unitCost(item,costMap))*frac;
-};
-export const itemRevenue=item=>(+item?.qty||0)*(+item?.price||0)*(item?.fraction||1);
 
 export function ProductAnalyticsPage(){
   const{products,sales,returns,currency}=useApp();

@@ -1,4 +1,6 @@
 import React,{createContext,useContext,useState,useCallback,useEffect,useMemo,useRef} from 'react';
+import {buildCostMap,withProfit,saleProfit} from '../utils/money';
+import {changeStock} from '../utils/stock';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
@@ -83,29 +85,12 @@ export function AppProvider({children}){
   // Hapa tunaijaza kwa mwenye duka: bei ya kununua inatoka kwenye
   // bidhaa yenyewe. Hii inafanya kazi hata kama SQL haijaendeshwa, na
   // hata kwa mauzo ya zamani.
-  const _costMap = useMemo(() => {
-    const m = new Map();
-    (products || []).forEach(p => { if (p && p.id !== undefined) m.set(String(p.id), +p.buy_price || 0); });
-    return m;
-  }, [products]);
+  const _costMap = useMemo(() => buildCostMap(products), [products]);
 
-  const _withProfit = useCallback(sale => {
-    if (typeof sale?.profit === 'number' && !Number.isNaN(sale.profit)) return sale;
-    const items = Array.isArray(sale?.items) ? sale.items : [];
-    let rev = 0, cost = 0;
-    for (const i of items) {
-      const frac = +i?.fraction || 1, qty = +i?.qty || 0, price = +i?.price || 0;
-      let c = i?.cost;
-      if (c === undefined || c === null || c === '') c = i?.buyPrice;
-      if (c === undefined || c === null || c === '') c = _costMap.get(String(i?.productId || i?.product_id || ''));
-      rev += qty * price * frac;
-      cost += qty * (+c || 0) * frac;
-    }
-    return { ...sale, profit: rev - cost - (+sale?.discount || 0) };
-  }, [_costMap]);
+  const _withProfit = useCallback(sale => withProfit(sale, _costMap), [_costMap]);
 
   // Faida ya mauzo moja (namba) — tumia hii badala ya s.profit
-  const _pOf = useCallback(s => _withProfit(s).profit || 0, [_withProfit]);
+  const _pOf = useCallback(s => saleProfit(s, _costMap) || 0, [_costMap]);
 
   const[expenses,setExp]=useState([]);
   const[purchases,setPurchases]=useState([]);
@@ -143,18 +128,18 @@ export function AppProvider({children}){
   // Muuzaji hawezi UPDATE products wala orders: database inamkatalia,
   // na RETURNING ingempa row yenye bei. Anatumia function za database
   // zinazorudisha idadi pekee.
-  const setStock=useCallback(async(productId,newQty,delta)=>{
-    if(!productId)return;
-    if(_isSellerRef.current){
-      if(!delta)return;
-      try{
-        const r=await supabase.rpc(delta<0?'dl_deduct_stock':'dl_restore_stock',
-          {p_id:productId,p_qty:Math.abs(delta)});
-        if(r.error)console.warn('[stock]',r.error.message);
-      }catch(e){console.warn('[stock]',e?.message||e)}
-      return;
-    }
-    await safeUpdate('products',{quantity:Math.max(0,+newQty||0)},'id',productId);
+  // MUHIMU: kama function ya database haipo (SQL ya RLS haijaendeshwa),
+  // ILIBIDI turudi kwenye UPDATE ya moja kwa moja. Bila hivyo stock
+  // HAIKUPUNGUA KABISA, na hakuna mtu aliyeambiwa.
+  const setStock=useCallback((productId,newQty,delta)=>{
+    if(!productId)return Promise.resolve();
+    return changeStock({
+      isSeller:_isSellerRef.current, delta,
+      rpcFn:()=>supabase.rpc(delta<0?'dl_deduct_stock':'dl_restore_stock',
+        {p_id:productId,p_qty:Math.abs(delta)}),
+      updateFn:()=>safeUpdate('products',{quantity:Math.max(0,+newQty||0)},'id',productId),
+      warn:m=>console.warn('[stock]',m),
+    });
   },[]);
 
   const patchOrder=useCallback(async(orderId,patch)=>{
@@ -162,9 +147,9 @@ export function AppProvider({children}){
     if(_isSellerRef.current){
       try{
         const r=await supabase.rpc('dl_order_update',{p_id:orderId,p_patch:patch});
-        if(r.error)console.warn('[order]',r.error.message);
-      }catch(e){console.warn('[order]',e?.message||e)}
-      return;
+        if(!r.error&&r.data!==false)return;       // imefanikiwa
+        console.warn('[order] rpc imeshindwa, najaribu moja kwa moja:',r.error?.message||'haikubadilika');
+      }catch(e){console.warn('[order] rpc:',e?.message||e)}
     }
     await safeUpdate('orders',patch,'id',orderId);
   },[]);
@@ -430,17 +415,58 @@ export function AppProvider({children}){
       // Token ya mtumiaji — RLS inaihitaji ili ijue ni biashara ipi
       let tok=null;
       try{const{data}=await supabase.auth.getSession();tok=data?.session?.access_token||null}catch(_){}
+      // Mauzo ya offline yalipunguza stock ya kifaa pekee. Database
+      // haikuguswa kamwe — ndiyo sababu stock "haikupungua" kwa maduka
+      // yenye mtandao mbovu. Tunaikumbuka kabla ya sync.
+      const before=await getPendingSales().catch(()=>[]);
       const result=await syncPendingSales(SUPA_URL,SUPA_KEY,(progress)=>{
         setPendingSyncCount(progress.total-progress.synced-progress.failed);
       },tok);
       if(result.synced>0){
+        // Punguza stock ya database kwa mauzo yaliyoingia sasa
+        try{
+          const left=new Set((await getPendingSales().catch(()=>[])).map(x=>x.offline_id));
+          const done=(before||[]).filter(x=>!left.has(x.offline_id)&&!x.stock_applied);
+          const delta=new Map();
+          done.forEach(sale=>(sale.items||[]).forEach(i=>{
+            const out=(+i.qty||0)*(+i.fraction||1);
+            if(i.productId&&out>0)delta.set(i.productId,(delta.get(i.productId)||0)+out);
+          }));
+          for(const[pid,out]of delta){
+            const prod=products.find(p=>p.id===pid);
+            // Stock ya kifaa ilipungua tayari, kwa hiyo ni lengo sahihi
+            await setStock(pid,prod?Math.max(0,+prod.quantity||0):0,-out);
+          }
+        }catch(e){console.warn('[Sync stock]',e?.message||e)}
         if(bizId){const q={eq:{business_id:bizId},order:{col:'created_at'}};const freshSales=_isSellerRef.current?await safeSelectPref('sales_pub','sales',q):await safeSelect('sales',q);if(freshSales.length)setSales(freshSales);}
         window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
       }
       const newCount=await getPendingCount();
       setPendingSyncCount(newCount);
     }catch(e){console.warn('[Sync]',e);}
-  },[bizId]);
+  },[bizId,products,setStock]);
+
+  // ===== SYNC OTOMATIKI =====
+  // Tukio 'trigger-offline-sync' lilikuwa linatumwa mtandao ukirudi,
+  // lakini HAKUNA aliyekuwa anaisikiliza. Mauzo ya offline yalikaa
+  // kwenye foleni hadi mtu abonyeze mwenyewe — ndiyo sababu stock ya
+  // database ilibaki ileile.
+  useEffect(()=>{
+    const h=()=>{triggerSync()};
+    window.addEventListener('trigger-offline-sync',h);
+    return()=>window.removeEventListener('trigger-offline-sync',h);
+  },[triggerSync]);
+
+  // App ikifunguliwa na mauzo yakiwa yanasubiri, sync yenyewe
+  useEffect(()=>{
+    if(!online||!bizId)return;
+    let off=false;
+    const t=setTimeout(async()=>{
+      try{const c=await getPendingCount();if(!off&&c>0)await triggerSync()}catch(_){}
+    },3000);
+    return()=>{off=true;clearTimeout(t)};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[online,bizId]);
 
   // ===== AUTH — Email + Password PEKEE =====
   const login=useCallback(async(email,password)=>{
@@ -826,7 +852,8 @@ export function AppProvider({children}){
         // hifadhi offline na data KAMILI ili risiti ionyeshe njia ya malipo iliyochaguliwa.
         if(saved&&saved.__error){
           console.warn('[Sale] Supabase insert rejected, saving offline. Reason:',saved.message);
-          const offlineRecord=await saveSaleOffline(sd);
+          // stock_applied: tumepunguza DB hapa chini, sync isirudie
+          const offlineRecord=await saveSaleOffline({...sd,stock_applied:true});
           const offFinal={...sd,id:offlineId,_offline:true};
           setSales(prev=>[offFinal,...prev]);
           const oc=await getPendingCount();setPendingSyncCount(oc);

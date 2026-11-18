@@ -19,10 +19,9 @@ export const CH_LABEL={
 };
 export const chName=c=>CH_LABEL[c]||c||'Nyingine';
 
-export const txAmt=t=>+t.amount||0;
-export const txMonth=t=>(t.paid_at||t.created_at||'').slice(0,7);
-export const txDate=t=>(t.paid_at||t.created_at||'').slice(0,10);
-export const sumTx=list=>(list||[]).reduce((a,t)=>a+txAmt(t),0);
+// Hesabu zenyewe ziko src/utils/money.js (zina majaribio).
+// Tunazitoa tena hapa ili mahali zilipoagizwa pasibadilike.
+export {txAmt,txMonth,txDate,sumTx} from '../utils/money';
 
 export function usePaidTx(){
   const{supabase}=useApp();
