@@ -104,8 +104,19 @@ export async function markSaleSynced(offlineId, supabaseId) {
   });
 }
 
-// Weka alama ya kushindwa (failed) na ongeza attempt count
-export async function markSaleFailed(offlineId) {
+// Weka alama ya kushindwa na ongeza attempt count.
+//
+// permanent=true  -> server ilikataa (4xx). Haitajirekebisha yenyewe,
+//                    kwa hiyo inahitaji mkono wa binadamu.
+// permanent=false -> mtandao ulikatika au server ilikwama (5xx).
+//                    HII INAJIREKEBISHA — tusiache KAMWE.
+//
+// ⚠️ KOSA LA AWALI: kila kushindwa kulihesabiwa sawa, na baada ya
+//    majaribio 5 mauzo yalipewa 'failed'. getPendingSales() inasoma
+//    'pending' pekee, kwa hiyo alama ya njano ilipotea na mauzo
+//    YALIPOTEA KWENYE RIPOTI KABISA — bila mtu kuambiwa. Duka lenye
+//    mtandao mbovu lilipoteza mauzo ya kweli.
+export async function markSaleFailed(offlineId, permanent = false) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_SALES, 'readwrite');
@@ -115,8 +126,8 @@ export async function markSaleFailed(offlineId) {
       const record = getReq.result;
       if (!record) { resolve(null); return; }
       const attempts = (record.sync_attempts || 0) + 1;
-      // Baada ya majaribio 5, weka kama failed (itahitaji mkono wa binadamu)
-      const status = attempts >= 5 ? 'failed' : 'pending';
+      // Kosa la mtandao linabaki 'pending' MILELE — litafanikiwa siku moja
+      const status = permanent ? 'failed' : 'pending';
       const updated = { ...record, sync_status: status, sync_attempts: attempts, last_attempt: new Date().toISOString() };
       const putReq = store.put(updated);
       putReq.onsuccess = () => resolve(updated);
@@ -130,6 +141,34 @@ export async function markSaleFailed(offlineId) {
 export async function getPendingCount() {
   const pending = await getPendingSales();
   return pending.length;
+}
+
+// Mauzo ambayo server ilikataa — yanahitaji mkono wa binadamu.
+// Lazima yaonekane, vinginevyo pesa inapotea kimya kimya.
+export async function getFailedSales() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SALES, 'readonly');
+    const req = tx.objectStore(STORE_SALES).index('sync_status').getAll('failed');
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+export async function getFailedCount() {
+  return (await getFailedSales()).length;
+}
+
+// Jaribu tena mauzo yaliyokataliwa (mtu akishaona na kurekebisha)
+export async function retryFailedSales() {
+  const failed = await getFailedSales();
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_SALES, 'readwrite');
+    const store = tx.objectStore(STORE_SALES);
+    failed.forEach(r => store.put({ ...r, sync_status: 'pending', sync_attempts: 0 }));
+    tx.oncomplete = () => resolve(failed.length);
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 // ===== STOCK SNAPSHOT =====
@@ -201,9 +240,11 @@ export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, acc
 
   for (const sale of pending) {
     try {
-      // Andaa data safi (ondoa fields za offline tu)
-      // stock_applied ni alama ya ndani — Supabase haina safu hiyo
-      const { offline_id, sync_status, sync_attempts, last_attempt, stock_applied, ...cleanSale } = sale;
+      // Andaa data safi (ondoa fields za offline tu).
+      // offline_id INATUMWA kwa makusudi: ina unique index kwenye
+      // database, kwa hiyo mauzo yale yale hayawezi kuingia mara mbili.
+      const { sync_status, sync_attempts, last_attempt, stock_applied, synced_id, synced_at, ...cleanSale } = sale;
+      const offline_id = sale.offline_id;
 
       // Tuma kwenye Supabase moja kwa moja kwa fetch (sw.js haitumii supabase-js)
       const res = await fetch(`${supabaseUrl}/rest/v1/sales`, {
@@ -222,15 +263,24 @@ export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, acc
         await markSaleSynced(offline_id, null);
         synced++;
         onProgress?.({ synced, failed, total: pending.length, current: sale });
+      } else if (res.status === 409) {
+        // Mauzo yalishaingia (jibu la awali lilipotea njiani).
+        // HII NDIYO ILIYOKUWA INALETA MAUZO MARA MBILI.
+        console.warn('[Sync] Mauzo yalishaingia, naruka:', offline_id);
+        await markSaleSynced(offline_id, null);
+        synced++;
+        onProgress?.({ synced, failed, total: pending.length, current: sale });
       } else {
         const err = await res.text();
-        console.warn('[Sync] Sale failed:', err);
-        await markSaleFailed(offline_id);
+        const permanent = res.status >= 400 && res.status < 500;
+        console.warn('[Sync] Sale failed', res.status, permanent ? '(ya kudumu)' : '(ya muda)', err);
+        await markSaleFailed(offline_id, permanent);
         failed++;
       }
     } catch (e) {
+      // Mtandao — jaribu tena baadaye, usiache kamwe
       console.warn('[Sync] Network error:', e);
-      await markSaleFailed(sale.offline_id);
+      await markSaleFailed(sale.offline_id, false);
       failed++;
     }
   }

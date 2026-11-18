@@ -3,7 +3,7 @@ import {buildCostMap,withProfit,saleProfit} from '../utils/money';
 import {changeStock} from '../utils/stock';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
-import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,syncPendingSales} from '../utils/offlineDB';
+import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
 import {computePeriodFinance,localDateStr} from '../utils/helpers';
 
@@ -67,6 +67,7 @@ export function AppProvider({children}){
   const[restoring,setRestoring]=useState(true); // Wakati wa kurudisha session mwanzoni
   const[needsOnboarding,setNeedsOnboarding]=useState(null); // {email,name} kwa Google user mpya
   const[online,setOnline]=useState(navigator.onLine);
+  const[failedSyncCount,setFailedSyncCount]=useState(0);
   const[pendingSyncCount,setPendingSyncCount]=useState(0);
   const[lang,setLang]=useState('sw');
   const[currency,setCurrency]=useState('TZS');
@@ -175,6 +176,7 @@ export function AppProvider({children}){
     window.addEventListener('online',on);
     window.addEventListener('offline',off);
     getPendingCount().then(c=>setPendingSyncCount(c)).catch(()=>{});
+    getFailedCount().then(c=>setFailedSyncCount(c)).catch(()=>{});
     return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)};
   },[]);
 
@@ -443,6 +445,7 @@ export function AppProvider({children}){
       }
       const newCount=await getPendingCount();
       setPendingSyncCount(newCount);
+      setFailedSyncCount(await getFailedCount().catch(()=>0));
     }catch(e){console.warn('[Sync]',e);}
   },[bizId,products,setStock]);
 
@@ -845,8 +848,9 @@ export function AppProvider({children}){
     if(online){
       // ===== ONLINE: Tuma Supabase moja kwa moja =====
       try{
-        const{offline_id,...cleanData}=sd;
-        const saved=await safeInsert('sales',{...cleanData,is_synced:true},{noReturn:_isSellerRef.current});
+        // offline_id inatumwa: unique index inazuia mauzo yale yale
+        // kuingia mara mbili, hata kama jibu la kwanza lilipotea.
+        const saved=await safeInsert('sales',{...sd,is_synced:true},{noReturn:_isSellerRef.current});
         // Kama Supabase imekataa (mf. constraint ya payment_method kwa mpesa/airtel/tigo/nmb/crdb),
         // safeInsert inarudisha {__error:true}. Tusiweke object ya kosa kama mauzo/risiti —
         // hifadhi offline na data KAMILI ili risiti ionyeshe njia ya malipo iliyochaguliwa.
@@ -3035,6 +3039,8 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,
     autoReorderList:_visibleReorder,lowMarginProducts:_visibleLowMargin,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
+    failedSyncCount,getFailedSales,
+    retryFailedSales:async()=>{const n=await retryFailedSales();setFailedSyncCount(await getFailedCount().catch(()=>0));setPendingSyncCount(await getPendingCount().catch(()=>0));await triggerSync();return n},
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,planLimit,canAddMore,SMS_BUNDLES,hasWholesale,
     saveGoal,getGoal,goalProgress,aiInsights:_visibleInsights,

@@ -160,7 +160,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
+  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,failedSyncCount,retryFailedSales,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -461,6 +461,13 @@ export default function App(){
           {!online&&<Badge color="#F2B705">📡 Offline</Badge>}
           {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F2B705',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⏳ {pendingSyncCount} pending
+          </button>}
+          {failedSyncCount>0&&<button onClick={async()=>{
+            if(!window.confirm(`Mauzo ${failedSyncCount} yamekataliwa na mfumo na HAYAPO kwenye ripoti.\n\nJaribu kuyatuma tena?`))return;
+            try{await retryFailedSales?.()}catch(e){}
+          }} title="Mauzo yaliyokataliwa — bonyeza kujaribu tena"
+            style={{background:'#FBECE9',border:'1.5px solid #C2412D',color:'#C2412D',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+            ⚠️ {failedSyncCount} hayajaingia
           </button>}
           <button className="theme-toggle" onClick={toggleTheme} title={theme==='dark'?'Washa mwanga':'Washa giza'} style={{background:'none',border:'none',fontSize:18,padding:4,cursor:'pointer',lineHeight:1}}>
             {theme==='dark'?'☀️':'🌙'}
