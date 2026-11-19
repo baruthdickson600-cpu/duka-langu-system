@@ -3,6 +3,7 @@ import DebtReminder from '../../components/DebtReminder';
 import PhoneNameInput from '../../components/PhoneNameInput';
 import {PageHead,GBtn,SumCard} from '../../components/Page';
 import {buildCostMap,unitCost,itemProfit,itemRevenue,returnProfit as retProfit,netProfit as calcNetProfit,margin} from '../../utils/money';
+import {cashReport,mineOnly} from '../../utils/cash';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -1621,14 +1622,15 @@ export function ReportsPage({onReceipt}){
 
 // ===== EXPENSES =====
 export function ExpensesPage(){
-  const{expenses,addExpense,updateExpense,deleteExpense,currency}=useApp();
+  const{expenses,addExpense,updateExpense,deleteExpense,currency,sales=[],user}=useApp();
+  const isSeller=user?.role==='employee';
   const fm=n=>fmtMoney(n,currency||'TZS');
-  const total=expenses.reduce((a,e)=>a+(e.amount||0),0);
-  const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
-  const wExp=expenses.filter(e=>isThisWeek(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
-  const tExp=expenses.filter(e=>isToday(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  // Muuzaji anaona matumizi YAKE pekee; mmiliki anaona yote.
+  // Orodha, chati na hesabu zote zinatumia hii — zisipingane.
+  const myExpenses=useMemo(()=>isSeller?mineOnly(expenses,user?.id):(expenses||[]),[expenses,isSeller,user]);
+  const total=myExpenses.reduce((a,e)=>a+(e.amount||0),0);
   
-  const[f,setF]=useState({category:'kodi',description:'',amount:'',is_recurring:false,recurring_interval:'monthly'});
+  const[f,setF]=useState({category:'kodi',description:'',amount:'',payment_method:'cash',is_recurring:false,recurring_interval:'monthly'});
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState('all');
   const[period,setPeriod]=useState('all');
@@ -1657,11 +1659,11 @@ export function ExpensesPage(){
   const getCatLabel=(v)=>CATS.find(c=>c.value===v)?.label||v;
 
   const catMap={};
-  expenses.forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+(e.amount||0)});
+  myExpenses.forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+(e.amount||0)});
   const pieData=Object.entries(catMap).map(([n,v])=>({name:getCatLabel(n),value:v}));
   
   // Filtered list
-  const filtered=expenses.filter(e=>{
+  const filtered=myExpenses.filter(e=>{
     if(period==='today'&&!isToday(e.created_at))return false;
     if(period==='week'&&!isThisWeek(e.created_at))return false;
     if(period==='month'&&!isThisMonth(e.created_at))return false;
@@ -1675,6 +1677,20 @@ export function ExpensesPage(){
   }).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   
   const filteredTotal=filtered.reduce((a,e)=>a+(e.amount||0),0);
+
+  // ===== HESABU KAMILI =====
+  // Mauzo na matumizi ya kipindi kile kile, ili mtumiaji aone
+  // pesa iliyoingia, iliyotoka, na iliyobaki — si matumizi tu.
+  const inPeriod=d=>period==='today'?isToday(d):period==='week'?isThisWeek(d)
+                   :period==='month'?isThisMonth(d):true;
+  const periodLabel={today:'Leo',week:'Wiki Hii',month:'Mwezi Huu',all:'Jumla'}[period]||'Jumla';
+  const mySales=isSeller
+    ? sales.filter(x=>x.seller_id===user?.id||x.seller_name===user?.name)
+    : sales;
+  const kasa=cashReport({
+    sales:mySales.filter(x=>inPeriod(x.created_at)),
+    expenses:myExpenses.filter(x=>inPeriod(x.created_at)),
+  });
   
   const handleEdit=(exp)=>{
     setEditF({
@@ -1715,12 +1731,46 @@ export function ExpensesPage(){
       <p style={{fontSize:12,color:'#5C6A62',margin:0}}>Hifadhi, hariri, na fuatilia gharama zote za biashara</p>
     </div>
     
-    {/* STATS */}
-    <div className="flex-wrap" style={{marginBottom:16}}>
-      <Stat icon={IC.wallet} label="Jumla" value={fm(total)} color="#C2412D" sub={`${expenses.length} matumizi`}/>
-      <Stat icon={IC.wallet} label="Mwezi Huu" value={fm(mExp)} color="#F2B705"/>
-      <Stat icon={IC.wallet} label="Wiki Hii" value={fm(wExp)} color="#3B82F6"/>
-      <Stat icon={IC.wallet} label="Leo" value={fm(tExp)} color="#0A6E47"/>
+    {/* ===== HESABU KAMILI ===== */}
+    <div className="card" style={{marginBottom:16,borderLeft:'4px solid #0A6E47'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+        <h3 style={{fontSize:15,fontWeight:800,color:'#17231D',margin:0}}>🧮 Hesabu Kamili</h3>
+        <div style={{display:'flex',gap:5,marginLeft:'auto',flexWrap:'wrap'}}>
+          {[['today','Leo'],['week','Wiki'],['month','Mwezi'],['all','Zote']].map(([k,l])=>
+            <button key={k} onClick={()=>setPeriod(k)} style={{
+              padding:'4px 11px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',
+              border:'1px solid '+(period===k?'#0A6E47':'#D6E2DB'),
+              background:period===k?'#0A6E47':'#fff',color:period===k?'#fff':'#5C6A62'}}>{l}</button>)}
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginBottom:12}}>
+        {[
+          {l:'Mauzo ya taslimu',v:kasa.taslimu,c:'#0A6E47',i:'💵'},
+          {l:'Mauzo ya simu',v:kasa.simu,c:'#3B82F6',i:'📱',note:'haipo mkononi'},
+          {l:'Mauzo ya deni',v:kasa.deni,c:'#9AA5A0',i:'💳',note:'haijalipwa'},
+          {l:'Matumizi',v:kasa.matumizi,c:'#C2412D',i:'🧾',note:`${kasa.idadiMatumizi} rekodi`},
+        ].map(k=><div key={k.l} style={{background:'#F6F8F7',borderRadius:12,padding:'11px 13px',minWidth:0}}>
+          <div style={{fontSize:10.5,color:'#5C6A62',fontWeight:700}}>{k.i} {k.l}</div>
+          <div style={{fontSize:16,fontWeight:900,color:k.c,letterSpacing:'-.4px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fm(k.v)}</div>
+          {k.note&&<div style={{fontSize:9.5,color:'#9AA5A0',fontWeight:600}}>{k.note}</div>}
+        </div>)}
+      </div>
+
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',
+        padding:'13px 16px',borderRadius:12,background:kasa.mkononi<0?'#FBECE9':'#E6F2EC'}}>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:12.5,fontWeight:800,color:kasa.mkononi<0?'#C2412D':'#0A6E47'}}>PESA MKONONI · {periodLabel}</div>
+          <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>
+            Taslimu {fm(kasa.taslimu)} − matumizi ya taslimu {fm(kasa.matumiziTaslimu)}
+          </div>
+        </div>
+        <b style={{fontSize:22,fontWeight:900,letterSpacing:'-.8px',whiteSpace:'nowrap',
+          color:kasa.mkononi<0?'#C2412D':'#0A6E47'}}>{fm(kasa.mkononi)}</b>
+      </div>
+      {isSeller&&<p style={{fontSize:10.5,color:'#5C6A62',margin:'9px 0 0'}}>
+        Unaona mauzo na matumizi yako mwenyewe.
+      </p>}
     </div>
     
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16}}>
@@ -1730,13 +1780,17 @@ export function ExpensesPage(){
         <Sel label="Aina" value={f.category} onChange={e=>setF({...f,category:e.target.value})} options={CATS}/>
         <Input label="Maelezo" value={f.description} onChange={e=>setF({...f,description:e.target.value})} placeholder="Mfano: Umeme Aprili"/>
         <Input label="Kiasi (TZS)" type="number" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})} placeholder="Mfano: 50000"/>
+        <Sel label="Umelipaje" value={f.payment_method} onChange={e=>setF({...f,payment_method:e.target.value})}
+          options={[{value:'cash',label:'Taslimu (pesa mkononi)'},{value:'mpesa',label:'M-Pesa'},
+                    {value:'halopesa',label:'HaloPesa'},{value:'airtel',label:'Airtel Money'},
+                    {value:'tigo',label:'Tigo/Mixx'},{value:'bank',label:'Benki'}]}/>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,padding:'8px 12px',background:'#E6F2EC',borderRadius:8}}>
           <input type="checkbox" checked={f.is_recurring} onChange={e=>setF({...f,is_recurring:e.target.checked})} id="rec" style={{cursor:'pointer'}}/>
           <label htmlFor="rec" style={{fontSize:12,fontWeight:600,color:'#0A6E47',cursor:'pointer'}}>🔄 Inarudia kila mwezi</label>
         </div>
         <Btn onClick={()=>{
           if(!+f.amount||+f.amount<=0)return alert('Weka kiasi sahihi!');
-          addExpense({category:f.category,description:f.description,amount:+f.amount,is_recurring:f.is_recurring,recurring_interval:f.is_recurring?f.recurring_interval:null});
+          addExpense({category:f.category,description:f.description,amount:+f.amount,payment_method:f.payment_method,is_recurring:f.is_recurring,recurring_interval:f.is_recurring?f.recurring_interval:null});
           setF({...f,description:'',amount:''});
           alert(`✅ MATUMIZI YAMEHIFADHIWA!\n\n${CAT_ICONS[f.category]||'📌'} ${getCatLabel(f.category)}\n💰 ${fm(+f.amount)}`);
         }} style={{width:'100%',justifyContent:'center'}}>{IC.plus} Hifadhi Matumizi</Btn>
@@ -3039,7 +3093,7 @@ export function EmployeeReportsPage(){
 // Anaona kazi YAKE ya LEO pekee.
 // ============================================================
 export function EmployeeDash({onReceipt,onNav}){
-  const{sales=[],user,biz,products=[],lowStockProducts=[],currency}=useApp();
+  const{sales=[],user,biz,products=[],lowStockProducts=[],expenses=[],currency}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
 
   const isMine=s=>s.seller_id===user?.id||s.seller_name===user?.name;
@@ -3098,6 +3152,11 @@ export function EmployeeDash({onReceipt,onNav}){
   // Bidhaa zinazoisha — IDADI pekee, hakuna bei ya kununua
   const lowStock=useMemo(()=>(lowStockProducts||[])
     .slice().sort((a,b)=>(+a.quantity||0)-(+b.quantity||0)).slice(0,5),[lowStockProducts]);
+
+  // ===== HESABU YA PESA =====
+  // Matumizi aliyoyaandika YEYE leo, kwenye pesa aliyouza leo
+  const myExp=useMemo(()=>mineOnly(expenses,user?.id).filter(e=>isToday(e.created_at)),[expenses,user]);
+  const kasa=useMemo(()=>cashReport({sales:mine,expenses:myExp}),[mine,myExp]);
 
   const hour=new Date().getHours();
   const greet=hour<12?'Habari za asubuhi':hour<16?'Habari za mchana':hour<19?'Habari za jioni':'Habari za usiku';
@@ -3168,6 +3227,39 @@ export function EmployeeDash({onReceipt,onNav}){
         <div style={{fontSize:10.5,fontWeight:700,color:'#17231D',marginTop:3}}>{a.l}</div>
       </button>)}
     </div>
+
+    {/* ===== HESABU YA PESA LEO ===== */}
+    <Card style={{borderLeft:'4px solid #0A6E47'}}>
+      <Head icon="💵" title="Hesabu ya Pesa Leo" right={kasa.idadiMatumizi?`matumizi ${kasa.idadiMatumizi}`:null}/>
+      <div style={{display:'flex',flexDirection:'column',gap:0}}>
+        {[
+          {l:'Mauzo ya taslimu',v:kasa.taslimu,c:'#17231D'},
+          ...(kasa.simu>0?[{l:'Mauzo ya simu (M-Pesa n.k.)',v:kasa.simu,c:'#5C6A62',note:'haipo mkononi'}]:[]),
+          ...(kasa.deni>0?[{l:'Mauzo ya deni',v:kasa.deni,c:'#5C6A62',note:'haijalipwa'}]:[]),
+          {l:'Matumizi yangu',v:-kasa.matumiziTaslimu,c:'#C2412D'},
+        ].map((r,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+          padding:'7px 0',borderBottom:'1px dashed #D6E2DB',gap:8}}>
+          <span style={{fontSize:12.5,color:'#5C6A62',minWidth:0}}>{r.l}
+            {r.note&&<span style={{fontSize:10,color:'#9AA5A0'}}> · {r.note}</span>}</span>
+          <b style={{fontSize:13,color:r.c,whiteSpace:'nowrap'}}>{r.v<0?'− ':''}{fm(Math.abs(r.v))}</b>
+        </div>)}
+      </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+        marginTop:11,padding:'12px 14px',borderRadius:12,
+        background:kasa.mkononi<0?'#FBECE9':'#E6F2EC'}}>
+        <span style={{fontSize:12.5,fontWeight:800,color:kasa.mkononi<0?'#C2412D':'#0A6E47'}}>
+          PESA MKONONI
+        </span>
+        <b style={{fontSize:19,fontWeight:900,letterSpacing:'-.5px',
+          color:kasa.mkononi<0?'#C2412D':'#0A6E47',whiteSpace:'nowrap'}}>{fm(kasa.mkononi)}</b>
+      </div>
+      <p style={{fontSize:10.5,color:'#5C6A62',margin:'9px 0 0'}}>
+        Hii ndiyo pesa unayopaswa kuwa nayo mkononi sasa.{' '}
+        <span onClick={()=>onNav?.('expenses')} style={{color:'#0A6E47',fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>
+          Andika matumizi
+        </span>
+      </p>
+    </Card>
 
     {/* ===== MAUZO KWA SAA ===== */}
     {count>0&&<Card>
