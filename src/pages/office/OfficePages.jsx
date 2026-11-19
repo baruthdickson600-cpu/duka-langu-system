@@ -160,6 +160,8 @@ export function OfficeDash({onReceipt,onNav}){
   // Hesabu zote za pesa ziko src/utils/money.js (zina majaribio)
   const costMap=useMemo(()=>buildCostMap(products),[products]);
   const returnProfit=rs=>retProfit(rs,costMap);
+  // Namba bila sarafu — jedwali la hesabu linaonyesha sarafu mara moja juu
+  const nm=v=>Math.round(+v||0).toLocaleString();
   
   // Subtract CASH refunds only (credit returns don't reduce cash income)
   const tCashRefunds=tReturns.filter(r=>!r.was_credit).reduce((a,r)=>a+(r.refund_amount||0),0);
@@ -181,6 +183,14 @@ export function OfficeDash({onReceipt,onNav}){
   const wProfit=netProfit(wCashSales,wReturns);
   const mProfit=netProfit(mCashSales,mReturns);
   const mExp=expenses.filter(e=>isThisMonth(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  const wExp=expenses.filter(e=>isThisWeek(e.created_at)).reduce((a,e)=>a+(e.amount||0),0);
+  // Manunuzi ya stock yaliyotumia pesa ya duka (yanapunguza pesa, si faida)
+  const sumBuy=f=>purchases.filter(p=>p.source==='shop'&&f(p.created_at)).reduce((a,p)=>a+(p.total||0),0);
+  const wStockBuy=sumBuy(isThisWeek), mStockBuy=sumBuy(isThisMonth);
+  // Deni jipya lililotolewa (mauzo yasiyolipwa)
+  const tCredit=tCreditSales.reduce((a,s)=>a+(s.total||0),0);
+  const wCredit=wCreditSales.reduce((a,s)=>a+(s.total||0),0);
+  const mCredit=mCreditSales.reduce((a,s)=>a+(s.total||0),0);
   // ===== Matumizi ya LEO ===== (tarehe za ndani)
   const _today=todayStr();
   const tExp=expenses.filter(e=>e.business_id===biz?.id&&localDateStr(e.created_at)===_today).reduce((a,e)=>a+(e.amount||0),0);
@@ -311,6 +321,86 @@ export function OfficeDash({onReceipt,onNav}){
         </div>
       ))}
     </div>
+
+    {/* ===== HESABU KAMILI: SIKU / WIKI / MWEZI ===== */}
+    {isOff&&<div className="card" style={{marginBottom:16,borderLeft:'4px solid #0A6E47'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:13,flexWrap:'wrap'}}>
+        <h3 style={{fontSize:15.5,fontWeight:800,color:'#17231D',margin:0}}>🧮 Hesabu Kamili</h3>
+        <span style={{fontSize:10.5,color:'#9AA5A0',marginLeft:'auto'}}>{currency||'TZS'} · msingi wa pesa iliyoingia</span>
+      </div>
+
+      <div style={{overflowX:'auto'}}>
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12.5,minWidth:290}}>
+        <thead>
+          <tr>
+            <th style={{textAlign:'left',padding:'0 0 8px',fontSize:10.5,fontWeight:800,color:'#5C6A62',letterSpacing:.5}}></th>
+            {['LEO','WIKI','MWEZI'].map(h=>
+              <th key={h} style={{textAlign:'right',padding:'0 0 8px 10px',fontSize:10.5,fontWeight:800,color:'#0A6E47',letterSpacing:.7}}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            {k:'Pesa iliyokusanywa',v:[tTotal,wTotal,mTotal],c:'#17231D',b:1,
+             note:'taslimu + simu + malipo ya madeni'},
+            {k:'Faida',v:[tProfit,wProfit,mProfit],c:'#0A6E47',b:1},
+            {k:'Matumizi',v:[-tExp,-wExp,-mExp],c:'#C2412D'},
+          ].map(r=>(
+            <tr key={r.k}>
+              <td style={{padding:'9px 0',borderBottom:'1px solid #D6E2DB'}}>
+                <div style={{fontWeight:r.b?700:500,color:'#17231D'}}>{r.k}</div>
+                {r.note&&<div style={{fontSize:9.5,color:'#9AA5A0',lineHeight:1.4,marginTop:1}}>{r.note}</div>}
+              </td>
+              {r.v.map((x,i)=>
+                <td key={i} style={{textAlign:'right',padding:'9px 0 9px 10px',borderBottom:'1px solid #D6E2DB',
+                  fontWeight:800,color:r.c,whiteSpace:'nowrap'}}>{x<0?'− ':''}{nm(Math.abs(x))}</td>)}
+            </tr>
+          ))}
+          <tr>
+            <td style={{padding:'11px 0 4px'}}>
+              <div style={{fontWeight:900,color:'#0A6E47',fontSize:13}}>FAIDA HALISI</div>
+              <div style={{fontSize:9.5,color:'#9AA5A0'}}>faida kasoro matumizi</div>
+            </td>
+            {[tProfit-tExp,wProfit-wExp,mProfit-mExp].map((x,i)=>
+              <td key={i} style={{textAlign:'right',padding:'11px 0 4px 10px',fontSize:15,fontWeight:900,
+                letterSpacing:'-.4px',whiteSpace:'nowrap',color:x<0?'#C2412D':'#0A6E47'}}>{nm(x)}</td>)}
+          </tr>
+        </tbody>
+      </table>
+      </div>
+
+      {/* Vinavyopunguza pesa bila kugusa faida */}
+      {(tCredit+wCredit+mCredit+tStockBuy+wStockBuy+mStockBuy)>0&&
+      <div style={{marginTop:13,paddingTop:11,borderTop:'1px dashed #D6E2DB',overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:11.5,minWidth:290}}>
+          <tbody>
+            {[
+              {k:'Deni jipya lililotolewa',v:[tCredit,wCredit,mCredit],note:'bado haijalipwa'},
+              {k:'Manunuzi ya stock',v:[tStockBuy,wStockBuy,mStockBuy],note:'pesa ya duka'},
+            ].filter(r=>r.v.some(x=>x>0)).map(r=>(
+              <tr key={r.k}>
+                <td style={{padding:'5px 0'}}>
+                  <span style={{color:'#5C6A62',fontWeight:600}}>{r.k}</span>
+                  <div style={{fontSize:9,color:'#9AA5A0',lineHeight:1.35}}>{r.note}</div>
+                </td>
+                {r.v.map((x,i)=>
+                  <td key={i} style={{textAlign:'right',padding:'5px 0 5px 10px',fontWeight:700,color:'#5C6A62',whiteSpace:'nowrap'}}>{nm(x)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>}
+
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap',
+        marginTop:13,padding:'12px 15px',borderRadius:12,background:tBankAmount<0?'#FBECE9':'#E6F2EC'}}>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:12.5,fontWeight:800,color:'#0A6E47'}}>PESA ILIYOBAKI LEO</div>
+          <div style={{fontSize:10,color:'#5C6A62',marginTop:1}}>
+            {fm(tTotal)} − matumizi {fm(tExp)}{tStockBuy>0?` − stock ${fm(tStockBuy)}`:''}
+          </div>
+        </div>
+        <b style={{fontSize:20,fontWeight:900,letterSpacing:'-.6px',color:'#0A6E47',whiteSpace:'nowrap'}}>{fm(tBankAmount)}</b>
+      </div>
+    </div>}
 
     {/* Credit Sales Info Banner */}
     {isOff&&tCreditSales.length>0&&<div style={{
