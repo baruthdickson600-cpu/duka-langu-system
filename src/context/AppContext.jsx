@@ -4,7 +4,7 @@ import {changeStock} from '../utils/stock';
 import {validateReturn,returnableUnits,fullyReturned} from '../utils/returns';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
 import { API_BASE } from '../config/api';
-import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
+import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,getStuckSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
 import {computePeriodFinance,localDateStr} from '../utils/helpers';
 
@@ -3114,7 +3114,7 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,
     autoReorderList:_visibleReorder,lowMarginProducts:_visibleLowMargin,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
-    failedSyncCount,getFailedSales,stockIssueCount,clearStockIssues:()=>setStockIssueCount(0),
+    failedSyncCount,getFailedSales,getStuckSales,stockIssueCount,clearStockIssues:()=>setStockIssueCount(0),
     returnableUnits:sale=>returnableUnits(sale,returns),
     fullyReturned:sale=>fullyReturned(sale,returns),
     retryFailedSales:async()=>{const n=await retryFailedSales();setFailedSyncCount(await getFailedCount().catch(()=>0));setPendingSyncCount(await getPendingCount().catch(()=>0));await triggerSync();return n},

@@ -158,6 +158,15 @@ export async function getFailedCount() {
   return (await getFailedSales()).length;
 }
 
+// Mauzo YOTE yaliyokwama — yanayosubiri NA yaliyokataliwa.
+// Haya ndiyo yanayoweza kurudishwa: yana data kamili (bidhaa,
+// jumla, njia ya malipo, mteja, muda halisi wa mauzo).
+export async function getStuckSales() {
+  const [pending, failed] = await Promise.all([getPendingSales(), getFailedSales()]);
+  return [...pending, ...failed]
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
 // Jaribu tena mauzo yaliyokataliwa (mtu akishaona na kurekebisha)
 export async function retryFailedSales() {
   const failed = await getFailedSales();

@@ -160,7 +160,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,failedSyncCount,retryFailedSales,stockIssueCount,clearStockIssues,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
+  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,failedSyncCount,retryFailedSales,getStuckSales,stockIssueCount,clearStockIssues,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -187,6 +187,9 @@ export default function App(){
     };
   },[]);
   const[profileOpen,setProfileOpen]=useState(false);
+  const[recoverOpen,setRecoverOpen]=useState(false);
+  const[recover,setRecover]=useState([]);
+  const[recovering,setRecovering]=useState(false);
   // ===== DARK / LIGHT MODE =====
   const[theme,setTheme]=useState(()=>{try{return localStorage.getItem('dl-theme')||'light'}catch{return'light'}});
   useEffect(()=>{
@@ -462,13 +465,64 @@ export default function App(){
           {pendingSyncCount>0&&typeof triggerSync==='function'&&<button onClick={()=>triggerSync?.()} title="Bonyeza kusync mauzo" style={{background:'#FEF3C7',border:'1.5px solid #F2B705',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⏳ {pendingSyncCount} pending
           </button>}
-          {failedSyncCount>0&&<button onClick={async()=>{
-            if(!window.confirm(`Mauzo ${failedSyncCount} yamekataliwa na mfumo na HAYAPO kwenye ripoti.\n\nJaribu kuyatuma tena?`))return;
-            try{await retryFailedSales?.()}catch(e){}
-          }} title="Mauzo yaliyokataliwa — bonyeza kujaribu tena"
+          {(failedSyncCount>0||pendingSyncCount>0)&&<button onClick={async()=>{
+            try{setRecover(await getStuckSales?.()||[])}catch(e){setRecover([])}
+            setRecoverOpen(true);
+          }} title="Mauzo yaliyokwama — bonyeza kuyaona na kuyarudisha"
             style={{background:'#FBECE9',border:'1.5px solid #C2412D',color:'#C2412D',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
-            ⚠️ {failedSyncCount} hayajaingia
+            ⚠️ {failedSyncCount+pendingSyncCount} hayajaingia
           </button>}
+          {recoverOpen&&<div onClick={()=>setRecoverOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9999,display:'grid',placeItems:'center',padding:16}}>
+            <div onClick={e=>e.stopPropagation()} className="card" style={{maxWidth:560,width:'100%',maxHeight:'85vh',overflowY:'auto',cursor:'default'}}>
+              <h3 style={{fontSize:17,fontWeight:900,color:'#C2412D',margin:'0 0 6px'}}>⚠️ Mauzo Yaliyokwama</h3>
+              <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 14px',lineHeight:1.55}}>
+                Mauzo haya <b>yapo kwenye kifaa hiki</b> lakini hayajafika kwenye mfumo, kwa hiyo hayaonekani kwenye ripoti.
+                Data yake ni kamili. Bonyeza <b>Rudisha</b> ili yaingie.
+              </p>
+              {recover.length===0
+                ? <p style={{fontSize:13,color:'#5C6A62'}}>Hakuna mauzo yaliyokwama kwenye kifaa hiki.</p>
+                : <>
+                  <div style={{maxHeight:'45vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:7,marginBottom:14}}>
+                    {recover.map((r,i)=>{
+                      const d=new Date(r.created_at);
+                      return <div key={r.offline_id||i} style={{padding:'9px 11px',borderRadius:10,background:'#F6F8F7',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:12.5,fontWeight:700,color:'#17231D'}}>
+                            {d.toLocaleDateString('sw-TZ',{day:'numeric',month:'short'})} · {d.toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'})}
+                          </div>
+                          <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>
+                            {(r.items||[]).length} bidhaa · {r.customer_name||'Mteja wa kawaida'}
+                            {r.sync_status==='failed'&&<span style={{color:'#C2412D',fontWeight:700}}> · ilikataliwa</span>}
+                          </div>
+                        </div>
+                        <b style={{fontSize:13,color:'#0A6E47',whiteSpace:'nowrap'}}>{(+r.total||0).toLocaleString()}</b>
+                      </div>;
+                    })}
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 13px',borderRadius:10,background:'#E6F2EC',marginBottom:14}}>
+                    <span style={{fontSize:12.5,fontWeight:800,color:'#0A6E47'}}>Jumla ya {recover.length} mauzo</span>
+                    <b style={{fontSize:16,fontWeight:900,color:'#0A6E47'}}>
+                      {recover.reduce((a,r)=>a+(+r.total||0),0).toLocaleString()}
+                    </b>
+                  </div>
+                </>}
+              <div style={{display:'flex',gap:9}}>
+                <button onClick={()=>setRecoverOpen(false)} style={{flex:1,padding:'11px',borderRadius:10,border:'1px solid #D6E2DB',background:'#fff',color:'#5C6A62',fontWeight:700,fontSize:13,cursor:'pointer'}}>Funga</button>
+                {recover.length>0&&<button disabled={recovering} onClick={async()=>{
+                  setRecovering(true);
+                  try{await retryFailedSales?.()}catch(e){}
+                  try{setRecover(await getStuckSales?.()||[])}catch(e){}
+                  setRecovering(false);
+                }} style={{flex:2,padding:'11px',borderRadius:10,border:'none',background:'#0A6E47',color:'#fff',fontWeight:800,fontSize:13,cursor:recovering?'wait':'pointer',opacity:recovering?.7:1}}>
+                  {recovering?'Inatuma...':'↻ Rudisha Mauzo Haya'}
+                </button>}
+              </div>
+              <p style={{fontSize:10.5,color:'#9AA5A0',margin:'11px 0 0',lineHeight:1.5}}>
+                Mauzo yanahifadhiwa kwenye kivinjari cha kifaa kilichouza. Kila muuzaji afungue akaunti yake kwenye kifaa chake ili kurudisha yake.
+              </p>
+            </div>
+          </div>}
+
           {stockIssueCount>0&&<button onClick={()=>{
             alert(`⚠️ Stock haijahifadhiwa kwenye database mara ${stockIssueCount}.\n\nMauzo yamerekodiwa lakini idadi ya bidhaa haikupungua. Mwambie msimamizi — database inahitaji kurekebishwa (rls-hatua-1-maandalizi.sql).`);
             clearStockIssues?.();
