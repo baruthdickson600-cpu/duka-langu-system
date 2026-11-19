@@ -70,3 +70,20 @@ describe('changeStock', () => {
     expect(await changeStock({ isSeller: true, delta: -1, rpcFn: fail('x') })).toBe('none');
   });
 });
+
+describe('changeStock — kushindwa kabisa hakupaswi kunyamaza', () => {
+  it('RLS ikizuia UPDATE na RPC haipo -> "failed"', async () => {
+    const r = await changeStock({
+      isSeller: true, delta: -4,
+      rpcFn: () => ({ error: { message: 'Could not find the function public.dl_deduct_stock' } }),
+      updateFn: async () => ({ ok: false, message: 'new row violates row-level security policy' }),
+    });
+    expect(r).toBe('failed');
+  });
+  it('UPDATE ikifanikiwa -> "update"', async () => {
+    expect(await changeStock({ isSeller: false, delta: -4, updateFn: async () => ({ ok: true }) })).toBe('update');
+  });
+  it('updateFn isiyorudisha kitu bado ni mafanikio', async () => {
+    expect(await changeStock({ isSeller: false, delta: -4, updateFn: async () => {} })).toBe('update');
+  });
+});

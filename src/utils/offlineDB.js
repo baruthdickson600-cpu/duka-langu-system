@@ -231,6 +231,18 @@ export async function deductStockOffline(productId, qty) {
 // linaenda kama 'anon', auth.uid() inakuwa NULL, na RLS inakataa mauzo
 // yote (ona rls-kinga-ya-bei.sql). Pia hatuombi row irudi, kwa sababu
 // muuzaji hana ruhusa ya kuona mauzo.
+// Tambua safu isiyojulikana kutoka kwenye kosa la PostgREST
+export function unknownColumn(msg){
+  const m = String(msg || '');
+  const a = m.match(/Could not find the '([^']+)' column/i);
+  if (a) return a[1];
+  const b = m.match(/column "([^"]+)" of relation/i);
+  if (b) return b[1];
+  const c = m.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i);
+  if (c) return c[1];
+  return null;
+}
+
 export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, accessToken) {
   const pending = await getPendingSales();
   if (!pending.length) return { synced: 0, failed: 0, total: 0 };
@@ -246,17 +258,29 @@ export async function syncPendingSales(supabaseUrl, supabaseKey, onProgress, acc
       const { sync_status, sync_attempts, last_attempt, stock_applied, synced_id, synced_at, ...cleanSale } = sale;
       const offline_id = sale.offline_id;
 
-      // Tuma kwenye Supabase moja kwa moja kwa fetch (sw.js haitumii supabase-js)
-      const res = await fetch(`${supabaseUrl}/rest/v1/sales`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${accessToken || supabaseKey}`,
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify(cleanSale),
-      });
+      // Tuma kwenye Supabase moja kwa moja kwa fetch (sw.js haitumii supabase-js).
+      // Safu isipokuwepo kwenye database, PostgREST inakataa ombi ZIMA na
+      // mauzo yanapotea. Kwa hiyo tunaiondoa na kujaribu tena.
+      let res, body = { ...cleanSale };
+      for (let jaribio = 0; jaribio < 4; jaribio++) {
+        res = await fetch(`${supabaseUrl}/rest/v1/sales`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${accessToken || supabaseKey}`,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(body),
+        });
+        if (res.ok || res.status === 409) break;
+        if (res.status !== 400) break;
+        const txt = await res.clone().text();
+        const col = unknownColumn(txt);
+        if (!col || !(col in body)) break;
+        console.warn('[Sync] safu', col, 'haipo kwenye database — naiondoa');
+        delete body[col];
+      }
 
       if (res.ok) {
         // return=minimal: hakuna body. Hifadhi kama imesync bila id mpya.

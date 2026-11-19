@@ -18,10 +18,58 @@ const ADMIN_PASS='baruth@500';
 
 // opts.noReturn: muuzaji hana ruhusa ya KUONA mauzo/oda (RLS), kwa hiyo
 // .select() baada ya insert inakataliwa. Bila kurudisha row, inafanya kazi.
-async function safeInsert(t,d,opts={}){try{const clean={};for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}
-  if(opts.noReturn){const r0=await supabase.from(t).insert(clean);if(r0.error){console.warn('[safeInsert]',t,r0.error.message);return{__error:true,message:r0.error.message}}return null}
-  const r=await supabase.from(t).insert(clean).select();if(r.error){console.warn('[safeInsert]',t,r.error.message);return{__error:true,message:r.error.message}}return r?.data?.[0]||null}catch(e){console.warn('[safeInsert]',t,e?.message||e);return{__error:true,message:e?.message||'error'}}}
-async function safeUpdate(t,d,c,v){try{const r=await supabase.from(t).update(d).eq(c,v);if(r.error)console.warn('Update:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
+// ⚠️ SOMO: database ikikosa safu tuliyotuma, PostgREST inakataa OMBI
+// ZIMA. Mauzo yanapotea. HATUPASWI KAMWE kutegemea SQL kuwa
+// imeendeshwa — tunaondoa safu isiyojulikana na kujaribu tena.
+export function unknownColumn(msg){
+  const m=String(msg||'');
+  const a=m.match(/Could not find the '([^']+)' column/i);        // PGRST204
+  if(a)return a[1];
+  const b=m.match(/column "([^"]+)" of relation/i);                // 42703
+  if(b)return b[1];
+  const c=m.match(/column ['"]?([a-z0-9_]+)['"]? does not exist/i);
+  if(c)return c[1];
+  return null;
+}
+
+async function safeInsert(t,d,opts={}){
+  const clean={};
+  for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}
+  const dropped=[];
+  for(let jaribio=0;jaribio<4;jaribio++){
+    try{
+      const q=supabase.from(t).insert(clean);
+      const r=opts.noReturn?await q:await q.select();
+      if(!r.error)return opts.noReturn?null:(r?.data?.[0]||null);
+
+      const col=unknownColumn(r.error.message);
+      if(col&&col in clean){
+        delete clean[col];dropped.push(col);
+        console.warn('[safeInsert]',t,'safu',col,'haipo kwenye database — naiondoa na kujaribu tena');
+        continue;
+      }
+      console.warn('[safeInsert]',t,r.error.message);
+      return{__error:true,message:r.error.message};
+    }catch(e){
+      console.warn('[safeInsert]',t,e?.message||e);
+      return{__error:true,message:e?.message||'error'};
+    }
+  }
+  return{__error:true,message:'Safu hazijulikani: '+dropped.join(', ')};
+}
+// Inarudisha hali — ilikuwa inameza makosa kimya kimya, ndiyo
+// iliyofanya stock ishindwe kuhifadhiwa bila mtu kujua.
+async function safeUpdate(t,d,c,v){
+  try{
+    // count:'exact' ni muhimu — RLS ikizuia, Postgres HAITOI KOSA,
+    // inasasisha safu SIFURI tu. Bila kuhesabu, tungeamini
+    // imefanikiwa wakati hakuna kilichobadilika.
+    const r=await supabase.from(t).update(d,{count:'exact'}).eq(c,v);
+    if(r.error){console.warn('Update:',t,r.error.message);return{ok:false,message:r.error.message}}
+    if(r.count===0)return{ok:false,message:'hakuna safu iliyobadilika (RLS au safu haipo)'};
+    return{ok:true};
+  }catch(e){console.warn('DB:',e);return{ok:false,message:e?.message||'error'}}
+}
 async function safeDelete(t,c,v){try{const r=await supabase.from(t).delete().eq(c,v);if(r.error)console.warn('Delete:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{onConflict:c});if(r.error)console.warn('Upsert:',t,r.error.message)}catch(e){console.warn('DB:',e)}}
 // Soma view kwanza; ikikosekana (SQL ya RLS haijaendeshwa bado), rudi
@@ -68,6 +116,7 @@ export function AppProvider({children}){
   const[restoring,setRestoring]=useState(true); // Wakati wa kurudisha session mwanzoni
   const[needsOnboarding,setNeedsOnboarding]=useState(null); // {email,name} kwa Google user mpya
   const[online,setOnline]=useState(navigator.onLine);
+  const[stockIssueCount,setStockIssueCount]=useState(0);
   const[failedSyncCount,setFailedSyncCount]=useState(0);
   const[pendingSyncCount,setPendingSyncCount]=useState(0);
   const[lang,setLang]=useState('sw');
@@ -133,15 +182,23 @@ export function AppProvider({children}){
   // MUHIMU: kama function ya database haipo (SQL ya RLS haijaendeshwa),
   // ILIBIDI turudi kwenye UPDATE ya moja kwa moja. Bila hivyo stock
   // HAIKUPUNGUA KABISA, na hakuna mtu aliyeambiwa.
-  const setStock=useCallback((productId,newQty,delta)=>{
-    if(!productId)return Promise.resolve();
-    return changeStock({
+  const setStock=useCallback(async(productId,newQty,delta)=>{
+    if(!productId)return 'none';
+    const r=await changeStock({
       isSeller:_isSellerRef.current, delta,
       rpcFn:()=>supabase.rpc(delta<0?'dl_deduct_stock':'dl_restore_stock',
         {p_id:productId,p_qty:Math.abs(delta)}),
       updateFn:()=>safeUpdate('products',{quantity:Math.max(0,+newQty||0)},'id',productId),
       warn:m=>console.warn('[stock]',m),
     });
+    // Njia ZOTE zimeshindwa — stock ya database haijabadilika.
+    // Hii HAIPASWI kunyamaza: mfanyakazi auze akijua, si kugundua
+    // baada ya wiki kwamba stock ni batili.
+    if(r==='failed'){
+      setStockIssueCount(n=>n+1);
+      console.warn('[stock] HAIJAHIFADHIWA kwenye database:',productId);
+    }
+    return r;
   },[]);
 
   const patchOrder=useCallback(async(orderId,patch)=>{
@@ -3057,7 +3114,7 @@ export function AppProvider({children}){
     isExpired,daysLeft,loadData,lowStockProducts,
     autoReorderList:_visibleReorder,lowMarginProducts:_visibleLowMargin,
     promoPending,verifyPromoLogin,cancelPromoLogin,pendingSyncCount,triggerSync,
-    failedSyncCount,getFailedSales,
+    failedSyncCount,getFailedSales,stockIssueCount,clearStockIssues:()=>setStockIssueCount(0),
     returnableUnits:sale=>returnableUnits(sale,returns),
     fullyReturned:sale=>fullyReturned(sale,returns),
     retryFailedSales:async()=>{const n=await retryFailedSales();setFailedSyncCount(await getFailedCount().catch(()=>0));setPendingSyncCount(await getPendingCount().catch(()=>0));await triggerSync();return n},

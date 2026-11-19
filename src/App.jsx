@@ -160,7 +160,7 @@ function ReceiptModal({sale,bizName,footer,onClose}){
 }
 
 export default function App(){
-  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,failedSyncCount,retryFailedSales,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
+  const{user,restoring,needsOnboarding,completeGoogleSignup,cancelOnboarding,login,signup,forgotPassword,biz,isExpired,daysLeft,logout,notifications,popups,setPopups,online,currency,setCurrency,settings,getBranches,activeBranch,setActiveBranch,canUseBranches,isEmployeeLocked,pendingPayments,unreadMsgs,pendingSyncCount,triggerSync,failedSyncCount,retryFailedSales,stockIssueCount,clearStockIssues,products,supabase,updateUserProfile,currentPlan,isPremium,isEnterprise,canUseFeature,PLANS}=useApp();
   React.useEffect(()=>{
     if(products?.length)saveStockSnapshot(products).catch(()=>{});
   },[products]);
@@ -468,6 +468,13 @@ export default function App(){
           }} title="Mauzo yaliyokataliwa — bonyeza kujaribu tena"
             style={{background:'#FBECE9',border:'1.5px solid #C2412D',color:'#C2412D',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
             ⚠️ {failedSyncCount} hayajaingia
+          </button>}
+          {stockIssueCount>0&&<button onClick={()=>{
+            alert(`⚠️ Stock haijahifadhiwa kwenye database mara ${stockIssueCount}.\n\nMauzo yamerekodiwa lakini idadi ya bidhaa haikupungua. Mwambie msimamizi — database inahitaji kurekebishwa (rls-hatua-1-maandalizi.sql).`);
+            clearStockIssues?.();
+          }} title="Stock haikuhifadhiwa"
+            style={{background:'#FFF8E6',border:'1.5px solid #F2B705',color:'#92400E',padding:'3px 8px',borderRadius:8,fontSize:11,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+            📦 stock {stockIssueCount}
           </button>}
           <button className="theme-toggle" onClick={toggleTheme} title={theme==='dark'?'Washa mwanga':'Washa giza'} style={{background:'none',border:'none',fontSize:18,padding:4,cursor:'pointer',lineHeight:1}}>
             {theme==='dark'?'☀️':'🌙'}

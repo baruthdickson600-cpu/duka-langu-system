@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:haraka": "vite build"
+    "build:haraka": "vite build",
+    "verify": "vite build -c .verify/vite.config.js --outDir .verify/dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

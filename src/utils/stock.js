@@ -30,7 +30,12 @@ export async function changeStock({ isSeller, delta, rpcFn, updateFn, warn }) {
   }
 
   if (typeof updateFn === 'function') {
-    await updateFn();
+    const r = await updateFn();
+    // updateFn inaweza kurudisha {ok:false} — njia zote zimeshindwa
+    if (r && r.ok === false) {
+      say('update imeshindwa: ' + (r.message || 'haijulikani'));
+      return 'failed';
+    }
     return 'update';
   }
   return 'none';
