@@ -36,7 +36,10 @@ async function safeInsert(t,d,opts={}){
   const clean={};
   for(const[k,v]of Object.entries(d)){clean[k]=typeof v==='string'?v.substring(0,500):v;}
   const dropped=[];
-  for(let jaribio=0;jaribio<4;jaribio++){
+  // Bidhaa ina safu nyingi za hiari (wholesale_price, wholesale_min_qty,
+  // expiry_date, image, branch_id...). Database ikikosa nne au zaidi,
+  // majaribio 4 yalikuwa hayatoshi na bidhaa ilikataliwa kabisa.
+  for(let jaribio=0;jaribio<12;jaribio++){
     try{
       const q=supabase.from(t).insert(clean);
       const r=opts.noReturn?await q:await q.select();
@@ -817,7 +820,12 @@ export function AppProvider({children}){
     setProds(prev=>sortProducts([...prev,newProd]));
     return{success:true,product:newProd};
   },[bizId,activeBranch,products]);
-  const updateProduct=useCallback(async(pid,u)=>{await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);setProds(prev=>sortProducts(prev.map(p=>p.id===pid?{...p,...u}:p)))},[]);
+  const updateProduct=useCallback(async(pid,u)=>{
+    const r=await safeUpdate('products',{...u,updated_at:nowISO()},'id',pid);
+    if(r&&r.ok===false)return{success:false,error:`Imeshindikana kuhifadhi: ${r.message}`};
+    setProds(prev=>sortProducts(prev.map(p=>p.id===pid?{...p,...u}:p)));
+    return{success:true};
+  },[]);
 
   // ===== MANUNUZI YA STOCK (Purchases) =====
   // Mmiliki ananunua bidhaa za kuuza. HII SI expense — faida haibadiliki.

@@ -931,12 +931,18 @@ export function ProductsPage(){
     <Modal open={modal.open} onClose={()=>{setModal({open:false});setDupErr('')}} title={modal.data?'Hariri':'Ongeza Bidhaa'}>
       {dupErr&&<div style={{background:'#FFF8E6',border:'2px solid #F2B705',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,fontWeight:600,color:'#92400E'}}>⚠️ {dupErr}</div>}
       <ProdForm init={modal.data||{}} onSave={async pr=>{
-        if(modal.data){updateProduct(modal.data.id,pr);setModal({open:false});setDupErr('');}
-        else{
-          const result=await addProduct(pr);
-          if(result?.duplicate){setDupErr(result.error);}
-          else{setModal({open:false});setDupErr('');}
+        // KOSA LOLOTE lazima lionekane. Awali kila kosa lisilo la
+        // jina kurudiwa lilifunga dirisha kimya kimya — mtumiaji
+        // aliamini bidhaa imeingia wakati haikuingia.
+        if(modal.data){
+          const r=await updateProduct(modal.data.id,pr);
+          if(r&&r.success===false)return setDupErr(r.error||'Imeshindikana kuhifadhi mabadiliko.');
+          setModal({open:false});setDupErr('');
+          return;
         }
+        const result=await addProduct(pr);
+        if(result&&result.success===false)return setDupErr(result.error||'Imeshindikana kuhifadhi bidhaa.');
+        setModal({open:false});setDupErr('');
       }}/>
     </Modal>
     {/* Nakili Bidhaa kwa Tawi Lingine */}

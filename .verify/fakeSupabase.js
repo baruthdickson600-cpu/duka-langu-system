@@ -69,6 +69,9 @@ function q(table){
       return { data:null, error:{ message:`Could not find the table 'public.${table}' in the schema cache`, code:'PGRST205' }, status:404 };
 
     if (op === 'insert'){
+      // RLS: products/orders zinahitaji role 'office' au 'admin' (WITH CHECK)
+      if (CFG.rls && CFG.role === 'employee' && ['products'].includes(table))
+        return { data:null, error:{ message:'new row violates row-level security policy for table "products"', code:'42501' }, status:403 };
       const list = Array.isArray(payload) ? payload : [payload];
       const out = [];
       for (const r of list){
