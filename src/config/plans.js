@@ -24,7 +24,7 @@ export const PLANS = {
       'Ripoti za msingi',
       'SMS 50 kwa mwezi (ukumbusho wa deni)',
     ],
-    limits: { employees: 3, branches: 1, products: 500, customers: 1000 },
+    limits: { employees: 3, branches: 1, products: 2500, customers: 1000 },
     smsQuota: 50,
     smsFeatures: ['debt_reminder'],
   },
