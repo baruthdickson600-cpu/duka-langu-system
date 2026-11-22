@@ -64,3 +64,10 @@ node .verify/uwakala.cjs   # hali 12 za upotevu wa pesa
 | 18 | SQL ya sehemu 6 haijaendeshwa | muamala UNAENDELEA (safu hiari zinaondolewa) |
 | 19 | Float chini ya kiwango, miamala miwili | SMS MOJA tu kwa siku |
 | 20 | Tofauti kwenye upatanisho | SMS ya tofauti na ya hitimisho kwa mmiliki |
+
+### Ukaguzi wa ghafla na uthibitisho
+
+| | Hali | Inachotarajiwa |
+|---|---|---|
+| 21 | Mmiliki anaomba ukaguzi | wakala anaona banner, anapata SMS, ukaguzi wa pili unazuiwa, tofauti inakamatwa, SIKU HAIFUNGWI |
+| 22 | Miamala 12 (8 imethibitishwa) + float_buy | asilimia 67, float_buy imerukwa, kipimo kinaonekana |

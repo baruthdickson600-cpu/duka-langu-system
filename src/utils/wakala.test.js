@@ -13,6 +13,7 @@ import {
   GHARAMA, CHANZO, gharamaLabel, isGharama, validateGharama,
   gharamaTotals, faidaHalisi,
   mtandaoWa, mtandaoJina, mtandaoUnalingana, safishaNamba, nambaKamili,
+  uthibitisho, uthibitishoHali,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -519,5 +520,81 @@ describe('namba za simu', () => {
     expect(safishaNamba(null)).toBe('');
     expect(nambaKamili('0712')).toBe(false);
     expect(nambaKamili('0712345678')).toBe(true);
+  });
+});
+
+// ============================================================
+// KIWANGO CHA UTHIBITISHO kama kipimo cha hatari
+// ============================================================
+describe('kiwango cha uthibitisho', () => {
+  const t = (type, o = {}) => ({ type, amount: 1000, ...o });
+  const many = (n, o) => Array.from({ length: n }, () => t('deposit', o));
+
+  it('inahesabu asilimia ya miamala iliyothibitishwa', () => {
+    const r = uthibitisho([
+      t('deposit', { phone: '0712345678', jina_thibitishwa: true }),
+      t('withdraw', { phone: '0712345679', jina_thibitishwa: true }),
+      t('deposit', { phone: '0712345670' }),
+      t('deposit'),
+    ]);
+    expect(r.idadi).toBe(4);
+    expect(r.thibitishwa).toBe(2);
+    expect(r.yenyeNamba).toBe(3);
+    expect(r.bilaNamba).toBe(1);
+    expect(r.asilimia).toBe(50);
+  });
+
+  it('float na mtaji havihesabiwi — havina mteja', () => {
+    const r = uthibitisho([
+      t('float_buy'), t('cash_in'), t('cash_out'), t('float_sell'),
+      t('deposit', { jina_thibitishwa: true }),
+    ]);
+    expect(r.idadi).toBe(1);
+    expect(r.asilimia).toBe(100);
+  });
+
+  it('marejesho hayahesabiwi mara mbili', () => {
+    const r = uthibitisho([
+      t('deposit', { jina_thibitishwa: true }),
+      t('deposit', { jina_thibitishwa: true, reverses: 'x' }),
+    ]);
+    expect(r.idadi).toBe(1);
+  });
+
+  it('orodha tupu haitoi NaN wala asilimia ya uongo', () => {
+    const r = uthibitisho([]);
+    expect(r.idadi).toBe(0);
+    expect(r.asilimia).toBe(null);
+  });
+
+  describe('ishara ya hatari', () => {
+    it('sampuli ndogo HAITOI onyo — si haki kumshtaki kwa miamala mitano', () => {
+      const r = uthibitishoHali(uthibitisho(many(5, { jina_thibitishwa: false })));
+      expect(r.hali).toBe('haitoshi');
+      expect(r.onyo).toBe(false);
+    });
+    it('kiwango cha chini kinatoa onyo', () => {
+      const sasa = uthibitisho([...many(4, { jina_thibitishwa: true }), ...many(16, {})]);
+      expect(sasa.asilimia).toBe(20);
+      expect(uthibitishoHali(sasa).onyo).toBe(true);
+      expect(uthibitishoHali(sasa).hali).toBe('chini');
+    });
+    it('KUSHUKA ghafla ni ishara hata kiwango kikiwa bado juu', () => {
+      const kabla = uthibitisho(many(20, { jina_thibitishwa: true }));        // 100%
+      const sasa  = uthibitisho([...many(14, { jina_thibitishwa: true }), ...many(6, {})]); // 70%
+      const r = uthibitishoHali(sasa, kabla);
+      expect(r.hali).toBe('kushuka');
+      expect(r.tofauti).toBe(30);
+    });
+    it('kushuka kidogo si ishara', () => {
+      const kabla = uthibitisho(many(20, { jina_thibitishwa: true }));
+      const sasa  = uthibitisho([...many(18, { jina_thibitishwa: true }), ...many(2, {})]);
+      expect(uthibitishoHali(sasa, kabla).onyo).toBe(false);
+    });
+    it('kipindi cha nyuma chenye sampuli ndogo hakitumiki kulinganisha', () => {
+      const kabla = uthibitisho(many(3, { jina_thibitishwa: true }));
+      const sasa  = uthibitisho([...many(14, { jina_thibitishwa: true }), ...many(6, {})]);
+      expect(uthibitishoHali(sasa, kabla).hali).toBe('sawa');
+    });
   });
 });

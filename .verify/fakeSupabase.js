@@ -5,7 +5,7 @@
 //  - ina unique index kwenye (business_id, offline_id)
 const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:[],
              stock_history:[], customers:[], expenses:[], credit_transactions:[],
-             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[] };
+             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[], wakala_checks:[] };
 
 const CFG = {
   schema: {
@@ -31,6 +31,9 @@ const CFG = {
     wakala_expenses:['id','business_id','tarehe','aina','amount','chanzo','maelezo','tx_id',
                      'offline_id','recorded_by','created_at'],
     wakala_alerts:['id','business_id','aina','kitu','day','ujumbe','created_at'],
+    wakala_checks:['id','business_id','day','requested_by','requested_at','deadline','answered_by',
+                   'answered_at','lines','counted_cash','expected_cash','variance_cash',
+                   'variance_float','dakika','note','status'],
     wakala_payments:['id','business_id','amount','days','phone','provider','provider_ref',
                      'external_id','status','paid_at','created_at'],
   },
@@ -192,6 +195,45 @@ export const supabase = {
       const d = +args.p_qty || 0;
       p.quantity = name === 'dl_deduct_stock' ? Math.max(0, (+p.quantity||0) - d) : (+p.quantity||0) + d;
       return { data: p.quantity, error:null };
+    }
+    if (name === 'dl_wakala_check_open'){
+      const biz=args.p_biz;
+      if (DB.wakala_checks.some(c=>c.business_id===biz&&c.status==='pending'&&new Date(c.deadline)>new Date()))
+        return { data:null, error:{ message:'Kuna ukaguzi unaosubiri majibu tayari.' } };
+      const now=new Date();
+      const row={ id:uuid(), business_id:biz,
+        day:new Date(Date.now()+3*3600000).toISOString().slice(0,10),
+        requested_by:CFG.uid, requested_at:now.toISOString(),
+        deadline:new Date(now.getTime()+(args.p_dakika||15)*60000).toISOString(),
+        lines:{}, status:'pending' };
+      DB.wakala_checks.push(row);
+      return { data:row, error:null };
+    }
+    if (name === 'dl_wakala_check_answer'){
+      const c=DB.wakala_checks.find(x=>x.id===args.p_id);
+      if (!c) return { data:null, error:{ message:'Ukaguzi haujapatikana.' } };
+      if (c.status!=='pending') return { data:null, error:{ message:'Ukaguzi huu umekwisha jibiwa.' } };
+      const SIGN={deposit:[1,-1],withdraw:[-1,1],float_buy:[-1,1],float_sell:[1,-1],cash_in:[1,0],cash_out:[-1,0]};
+      const dayTx=DB.wakala_tx.filter(t=>t.business_id===c.business_id&&String(t.tx_date)===String(c.day));
+      let vf=0; const lines={};
+      DB.wakala_lines.filter(l=>l.business_id===c.business_id&&l.active!==false).forEach(l=>{
+        const opening=+l.opening_float||0;
+        const expected=dayTx.filter(t=>t.line_id===l.id)
+          .reduce((a,t)=>a+(t.reverses?-1:1)*(SIGN[t.type]?SIGN[t.type][1]:0)*(+t.amount||0),opening);
+        const counted=(args.p_counted&&args.p_counted[l.id]!=null)?+args.p_counted[l.id]:expected;
+        vf+=counted-expected;
+        lines[l.id]={expected,counted,variance:counted-expected};
+      });
+      const cfg=DB.wakala_settings.find(x=>x.business_id===c.business_id);
+      const openCash=+(cfg?.cash_opening)||0;
+      const expCash=dayTx.reduce((a,t)=>a+(t.reverses?-1:1)*(SIGN[t.type]?SIGN[t.type][0]:0)*(+t.amount||0),openCash);
+      Object.assign(c,{ answered_by:CFG.uid, answered_at:new Date().toISOString(), lines,
+        counted_cash:+args.p_counted_cash||0, expected_cash:expCash,
+        variance_cash:(+args.p_counted_cash||0)-expCash, variance_float:vf,
+        dakika:(Date.now()-new Date(c.requested_at).getTime())/60000,
+        note:args.p_note||null,
+        status:new Date()>new Date(c.deadline)?'expired':'done' });
+      return { data:c, error:null };
     }
     if (name === 'dl_wakala_add_expense'){
       const biz=args.p_biz, day=args.p_tarehe, chanzo=args.p_chanzo||'taslimu';

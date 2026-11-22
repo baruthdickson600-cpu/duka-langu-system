@@ -305,6 +305,61 @@ R.push(await run('20. BEEM — tofauti kwenye upatanisho inamfikia mmiliki',
       tofauti:(window.__api.sms.find(x=>x.kind==='wakala_tofauti')||{}).message||''}));
   }));
 
+// ---------- 21. Ukaguzi wa ghafla ----------
+R.push(await run('21. UKAGUZI WA GHAFLA — mmiliki anaomba, wakala anajibu, tofauti inakamatwa',
+  {db:{...baseDB(),wakala_settings:[{business_id:BIZ,cash_opening:100000,threshold:1000,
+        alert_phone:'0617288752'}]},uid:OWNER,role:'office',
+   rpcs:['dl_wakala_check_open','dl_wakala_check_answer'],render:'rekodi'},
+  async p=>{
+    await andika(p,{type:'deposit',amount:50000,commission:800,line_id:L1});
+    await p.waitForTimeout(500);
+    const a=await p.evaluate(async()=>await window.__wk.ombaUkaguzi(15));
+    // Ukurasa wa wakala uko kwenye hook yake; tukio linaufahamisha
+    await p.evaluate(()=>window.dispatchEvent(new CustomEvent('wakala-refresh')));
+    await p.waitForTimeout(1200);
+    const pale=await p.evaluate(()=>({
+      banner:document.body.innerText.includes('UKAGUZI WA GHAFLA'),
+      sms:window.__api.sms.filter(x=>x.kind==='wakala_ukaguzi').length,
+    }));
+    // Pili haruhusiwi
+    const b=await p.evaluate(async()=>await window.__wk.ombaUkaguzi(15));
+    // Wakala anajibu: float halisi 440,000 (inatarajiwa 450,000)
+    const c=await p.evaluate(async(ids)=>{
+      const u=window.__wk.ukaguziWazi;
+      return await window.__wk.jibuUkaguzi({id:u.id,
+        counted:{[ids[0]]:440000,[ids[1]]:200000},countedCash:150000});
+    },[L1,L2]);
+    await p.waitForTimeout(700);
+    return p.evaluate(([x,y,z,w])=>({...x,omba:y.ok,pili:z.ok,jibu:w.ok,
+      tofautiFloat:(window.__db.wakala_checks[0]||{}).variance_float,
+      tofautiTaslimu:(window.__db.wakala_checks[0]||{}).variance_cash,
+      status:(window.__db.wakala_checks[0]||{}).status,
+      sikuImefungwa:window.__db.wakala_days.length}),[pale,a,b,c]);
+  }));
+
+// ---------- 22. Kiwango cha uthibitisho ----------
+R.push(await run('22. KIWANGO CHA UTHIBITISHO kinahesabiwa na kuonyeshwa kwa mmiliki',
+  {db:{...baseDB({tx:[
+     ...Array.from({length:8},(_,i)=>({id:'tv'+i,business_id:BIZ,line_id:L1,tx_date:leo(),
+       type:'deposit',amount:10000,commission:300,phone:'07123456'+i,
+       jina_halisi:'MTEJA',jina_thibitishwa:true,created_at:new Date().toISOString()})),
+     ...Array.from({length:4},(_,i)=>({id:'tu'+i,business_id:BIZ,line_id:L1,tx_date:leo(),
+       type:'withdraw',amount:5000,commission:200,
+       jina_thibitishwa:false,created_at:new Date().toISOString()})),
+     {id:'tf1',business_id:BIZ,line_id:L1,tx_date:leo(),type:'float_buy',amount:200000,
+      commission:0,created_at:new Date().toISOString()},
+   ]})},uid:OWNER,role:'office',render:'dash'},
+  async p=>{
+    await p.waitForTimeout(900);
+    return p.evaluate(()=>{
+      const s=window.__wk.summary(window.__wk.today,window.__wk.today);
+      return {asilimia:s.uthibitisho.asilimia,idadi:s.uthibitisho.idadi,
+        thibitishwa:s.uthibitisho.thibitishwa,
+        kwenyeSkrini:document.body.innerText.includes('Majina yaliyothibitishwa'),
+        onyo:document.body.innerText.includes('haijathibitishwa')};
+    });
+  }));
+
 // ===================== MATOKEO =====================
 const ok=(c)=>c?'✅':'❌';
 let fails=0;
@@ -416,6 +471,23 @@ for(const r of R){
     T('arifa ya tofauti ipo',o.aina.includes('wakala_tofauti'));
     T('arifa ya hitimisho ipo',o.aina.includes('wakala_hitimisho'));
     T('ujumbe unataja TOFAUTI',/TOFAUTI/.test(o.tofauti));
+  }
+  if(r.name.startsWith('21.')){
+    T('ukaguzi umeombwa',o.omba===true);
+    T('wakala ameona banner',o.banner===true);
+    T(`SMS imemfikia (${o.sms})`,o.sms===1);
+    T('ukaguzi wa pili umezuiwa',o.pili===false);
+    T('wakala amejibu',o.jibu===true);
+    T(`tofauti ya float -10,000 imekamatwa (${o.tofautiFloat})`,Number(o.tofautiFloat)===-10000);
+    T(`taslimu ni sawa (${o.tofautiTaslimu})`,Number(o.tofautiTaslimu)===0);
+    T('status ni done',o.status==='done');
+    T('SIKU HAIKUFUNGWA — biashara inaendelea',o.sikuImefungwa===0);
+  }
+  if(r.name.startsWith('22.')){
+    T(`miamala 12 imehesabiwa, float_buy imerukwa (${o.idadi})`,o.idadi===12);
+    T(`8 zimethibitishwa (${o.thibitishwa})`,o.thibitishwa===8);
+    T(`asilimia 67 (${o.asilimia})`,o.asilimia===67);
+    T('kipimo kinaonekana kwa mmiliki',o.kwenyeSkrini===true);
   }
   if(r.name.startsWith('12.')){
     T(`kamisheni ya leo inaonekana (${o.kamisheniLeo})`,o.kamisheniLeo===800);

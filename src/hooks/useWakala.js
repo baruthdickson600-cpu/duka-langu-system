@@ -18,6 +18,7 @@ import {
   wakalaAccess, floatAfter, cashAfter, commissionTotal,
   dayTotals, validateTx, txDeltas, validateGharama, gharamaTotals, faidaHalisi,
   safishaNamba, nambaKamili, txLabel as txLabelOf, varianceState,
+  uthibitisho, uthibitishoHali,
 } from '../utils/wakala';
 import { localDateStr, genId } from '../utils/helpers';
 
@@ -54,6 +55,7 @@ export function useWakala({ load = true } = {}) {
   const [txs, setTxs]           = useState([]);
   const [days, setDays]         = useState([]);
   const [gharama, setGharama]   = useState([]);
+  const [checks, setChecks]     = useState([]);
   const [cfg, setCfg]           = useState({ cash_opening: 0, threshold: 1000, alert_sms: false });
   const [ready, setReady]       = useState(false);   // jedwali lipo?
   const [loading, setLoading]   = useState(false);
@@ -92,12 +94,13 @@ export function useWakala({ load = true } = {}) {
     setErr('');
     try {
       const q = t => supabase.from(t).select('*').eq('business_id', bizId);
-      const [ln, tx, dy, st, gh] = await Promise.all([
+      const [ln, tx, dy, st, gh, ck] = await Promise.all([
         q('wakala_lines').order('sort_order'),
         q('wakala_tx').order('created_at', { ascending: false }).limit(1500),
         q('wakala_days').order('day', { ascending: false }).limit(400),
         supabase.from('wakala_settings').select('*').eq('business_id', bizId).maybeSingle(),
         q('wakala_expenses').order('tarehe', { ascending: false }).limit(800),
+        q('wakala_checks').order('requested_at', { ascending: false }).limit(100),
       ]);
 
       // Jedwali halipo -> huduma haiwezi kutumika, lakini ukurasa
@@ -111,6 +114,7 @@ export function useWakala({ load = true } = {}) {
       if (!st.error && st.data) setCfg(st.data);
       // Gharama ni za hiari — SQL ya 5 ikiwa haijaendeshwa, ukurasa unabaki hai
       setGharama(gh.error ? [] : (gh.data || []));
+      setChecks(ck.error ? [] : (ck.data || []));
       setReady(true);
     } catch (e) {
       if (missingTable(e)) setReady(false);
@@ -123,6 +127,30 @@ export function useWakala({ load = true } = {}) {
 
   useEffect(() => {
     if (load && access.visible && bizId) reload();
+  }, [load, access.visible, bizId, reload]);
+
+  // ⚠️ Mmiliki na wakala wako kwenye simu mbili tofauti. Mmiliki
+  // akiomba ukaguzi, ukurasa wa wakala HAUJUI — alipakia data mara
+  // moja tu alipofungua. Angebaki akiangalia skrini isiyobadilika
+  // wakati saa inakimbia.
+  //
+  // Kwa hiyo tunaangalia tena kila dakika, na mara moja anaporudi
+  // kwenye app. Ni swali dogo, halilemei mfumo.
+  useEffect(() => {
+    if (!load || !access.visible || !bizId) return;
+    const angalia = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      reload();
+    };
+    const t = setInterval(angalia, 60000);
+    const rudi = () => { if (document.visibilityState === 'visible') reload(); };
+    window.addEventListener('wakala-refresh', reload);
+    document.addEventListener('visibilitychange', rudi);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('wakala-refresh', reload);
+      document.removeEventListener('visibilitychange', rudi);
+    };
   }, [load, access.visible, bizId, reload]);
 
   // Float ya kuanzia bila kutegemea mpangilio wa matangazo hapa chini
@@ -377,6 +405,52 @@ export function useWakala({ load = true } = {}) {
     } catch (e) { return { ok: false, error: e?.message }; }
   }, [supabase, reload, explain]);
 
+  // ===== UKAGUZI WA GHAFLA =====
+  // Wafanyakazi wa maduka tofauti wanaweza kukopeshana pesa wakati
+  // wa ukaguzi uliopangwa ili tofauti isionekane. Kinga pekee ni
+  // ukaguzi ASIOUJUA unakuja.
+  const ombaUkaguzi = useCallback(async (dakika = 15) => {
+    try {
+      const { data, error } = await supabase.rpc('dl_wakala_check_open',
+        { p_biz: bizId, p_dakika: dakika });
+      if (error) {
+        if (missingTable(error))
+          return { ok: false, error: 'SQL ya ukaguzi (wakala-7-ukaguzi.sql) haijaendeshwa bado.' };
+        return { ok: false, error: await explain(error) };
+      }
+      await reload();
+      try { window.dispatchEvent(new CustomEvent('wakala-refresh')); } catch (_) {}
+      // Mwambie wakala mara moja — ukaguzi usioonekana hauna maana
+      try {
+        const simu = cfg.alert_phone || biz?.phone;
+        if (simu) await fetch('/api/send-sms', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: simu, business_id: bizId, kind: 'wakala_ukaguzi',
+            message: `DukaLangu: mmiliki ameomba UKAGUZI. Hesabu float na taslimu sasa hivi, ` +
+                     `kisha andika kwenye mfumo ndani ya dakika ${dakika}.` }),
+        });
+      } catch (_) {}
+      return { ok: true, check: data };
+    } catch (e) { return { ok: false, error: e?.message }; }
+  }, [bizId, supabase, reload, explain, cfg.alert_phone, biz?.phone]);
+
+  const jibuUkaguzi = useCallback(async ({ id, counted, countedCash, note }) => {
+    try {
+      const { data, error } = await supabase.rpc('dl_wakala_check_answer', {
+        p_id: id, p_counted: counted || {},
+        p_counted_cash: Number(countedCash) || 0, p_note: note || null,
+      });
+      if (error) return { ok: false, error: await explain(error) };
+      await reload();
+      return { ok: true, check: data };
+    } catch (e) { return { ok: false, error: e?.message }; }
+  }, [supabase, reload, explain]);
+
+  // Ukaguzi unaosubiri majibu sasa hivi
+  const ukaguziWazi = useMemo(() =>
+    (checks || []).find(c => c.status === 'pending' && new Date(c.deadline) > new Date()) || null,
+    [checks]);
+
   // ===== LAINI ZA FLOAT (mmiliki) =====
   const saveLine = useCallback(async (line) => {
     try {
@@ -477,6 +551,7 @@ export function useWakala({ load = true } = {}) {
       gharamaKubwa:  gt.kubwaAina,
       idadiGharama:  gt.idadi,
       ...faidaHalisi({ kamisheni: kam, gharama: gt.jumla }),
+      uthibitisho: uthibitisho(t),
       siku:          dd.length,
       tofautiTaslimu: dd.reduce((a, d) => a + (Number(d.variance_cash) || 0), 0),
       tofautiFloat:   dd.reduce((a, d) => a + (Number(d.variance_float) || 0), 0),
@@ -489,10 +564,10 @@ export function useWakala({ load = true } = {}) {
     // hali
     access, ready, loading, err, isOwner: user?.role === 'office',
     // data
-    lines, txs, days, cfg, gharama, balances, today,
+    lines, txs, days, cfg, gharama, checks, ukaguziWazi, balances, today,
     // vitendo
     reload, addTx, reverseTx, closeDay, reopenDay, saveLine, removeLine, saveCfg,
-    lookupJina, arifu,
+    lookupJina, arifu, ombaUkaguzi, jibuUkaguzi, uthibitishoHali,
     addGharama, delGharama,
     // vikokotoo
     txOn, closedOn, openingFloat, openingCash, summary, txDeltas,

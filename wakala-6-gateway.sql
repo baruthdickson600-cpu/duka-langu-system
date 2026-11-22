@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — UWAKALA NA GATEWAY (Abliner, Beem, Snippe)
 --
--- Sehemu 6/6. Endesha BAADA ya sehemu 1–5.
+-- Sehemu 6/7. Endesha BAADA ya sehemu 1–5.
 --
 -- Kila gateway inafanya kazi tofauti kwenye uwakala:
 --
@@ -142,4 +142,4 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 6/6 SAWA — gateway za uwakala zimeunganishwa.' AS status;
+SELECT 'Sehemu 6/7 SAWA — gateway za uwakala zimeunganishwa.' AS status;

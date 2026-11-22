@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — GHARAMA ZA UWAKALA
 --
--- Sehemu 5/6. Endesha BAADA ya sehemu 1–4.
+-- Sehemu 5/7. Endesha BAADA ya sehemu 1–4.
 --
 -- Kamisheni si faida. Mwenye uwakala analipa kodi, umeme, bando,
 -- usafiri wa kufuata float, mshahara. Bila kuandika gharama hizi
@@ -181,4 +181,4 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 5/6 SAWA — gharama za uwakala zimewekwa.' AS status;
+SELECT 'Sehemu 5/7 SAWA — gharama za uwakala zimewekwa.' AS status;

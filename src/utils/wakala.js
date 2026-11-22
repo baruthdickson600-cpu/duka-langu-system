@@ -333,3 +333,39 @@ export const safishaNamba = (p) => {
   return d;
 };
 export const nambaKamili = p => safishaNamba(p).length === 12;
+
+// ============================================================
+// KIWANGO CHA UTHIBITISHO
+//
+// Abliner haitozi chochote, kwa hiyo hakuna sababu ya kuruka
+// uthibitisho. Hilo linageuza kiwango cha uthibitisho kuwa KIPIMO
+// CHA HATARI: wakala akiacha ghafla kuandika namba, ni dalili ya
+// mapema — inaonekana kabla tofauti haijatokea.
+//
+// Miamala ya float na mtaji haihusiki; haina mteja.
+// ============================================================
+export const uthibitisho = (txs) => {
+  const list = (txs || []).filter(t => t && !t.reverses && TX[t.type]?.earns);
+  const yenyeNamba = list.filter(t => String(t.phone || '').trim());
+  const zilizothibitishwa = list.filter(t => t.jina_thibitishwa);
+  const idadi = list.length;
+  return {
+    idadi,
+    thibitishwa: zilizothibitishwa.length,
+    yenyeNamba: yenyeNamba.length,
+    bilaNamba: idadi - yenyeNamba.length,
+    asilimia: idadi ? Math.round((zilizothibitishwa.length / idadi) * 100) : null,
+  };
+};
+
+// Kushuka kwa kiwango ni ishara, si hukumu. Tunalinganisha kipindi
+// cha sasa na kilichopita, na tunanyamaza kama sampuli ni ndogo.
+export const UTHIBITISHO_CHINI = 60;   // asilimia
+export const UTHIBITISHO_KUSHUKA = 25; // pointi
+export const uthibitishoHali = (sasa, kabla) => {
+  if (!sasa || sasa.idadi < 10) return { hali: 'haitoshi', onyo: false };
+  if (sasa.asilimia < UTHIBITISHO_CHINI) return { hali: 'chini', onyo: true };
+  if (kabla && kabla.idadi >= 10 && kabla.asilimia - sasa.asilimia >= UTHIBITISHO_KUSHUKA)
+    return { hali: 'kushuka', onyo: true, tofauti: kabla.asilimia - sasa.asilimia };
+  return { hali: 'sawa', onyo: false };
+};

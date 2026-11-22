@@ -235,6 +235,7 @@ export function WakalaRecordPage() {
     </PageHead>
 
     <Hali wk={wk} />
+    <UkaguziWazi wk={wk} />
 
     {closed && <div style={{ background: C.soft, borderRadius: 14, padding: '11px 14px', marginBottom: 14, fontSize: 13, color: C.dark }}>
       🔒 <b>Siku ya leo imefungwa tayari.</b> Muamala mpya hauwezi kuingia. Mmiliki
@@ -435,6 +436,113 @@ function UndoModal({ tx, onClose, wk }) {
 }
 
 // ============================================================
+// 🔍 UKAGUZI WA GHAFLA
+//
+// Wafanyakazi wa maduka tofauti wanaweza kukopeshana pesa wakati
+// wa ukaguzi uliopangwa ili tofauti isionekane. Kinga pekee ni
+// ukaguzi wasioujua unakuja — kwa hiyo hauwezi kufutwa wala
+// kuahirishwa, na muda unaotumiwa unarekodiwa.
+// ============================================================
+function UkaguziWazi({ wk }) {
+  const u = wk.ukaguziWazi;
+  const [counted, setCounted] = useState({});
+  const [cash, setCash] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [salio, setSalio] = useState(0);
+
+  // Muda unaopungua — wakala aone kwamba saa inakimbia
+  useEffect(() => {
+    if (!u) return;
+    const piga = () => setSalio(Math.max(0, Math.round((new Date(u.deadline) - new Date()) / 1000)));
+    piga();
+    const t = setInterval(piga, 1000);
+    return () => clearInterval(t);
+  }, [u]);
+
+  if (!u) return null;
+  const tayari = wk.lines.every(l => counted[l.id] !== undefined && counted[l.id] !== '') && cash !== '';
+  const dk = Math.floor(salio / 60), sek = salio % 60;
+
+  return <div style={{
+    background: '#FFF3CD', border: `2px solid ${C.gold}`, borderRadius: 16,
+    padding: '16px', marginBottom: 14,
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+      <div>
+        <div style={{ fontWeight: 900, fontSize: 16, color: '#7A5B00' }}>🔍 UKAGUZI WA GHAFLA</div>
+        <div style={{ fontSize: 12.5, color: '#7A5B00', marginTop: 3 }}>
+          Mmiliki ameomba uhesabu <b>sasa hivi</b>. Piga <b>*150*00#</b> uone float halisi,
+          na uhesabu taslimu kwa mkono.
+        </div>
+      </div>
+      <span style={{
+        background: salio < 120 ? C.red : C.gold, color: '#fff', padding: '7px 13px',
+        borderRadius: 20, fontWeight: 900, fontSize: 15, whiteSpace: 'nowrap',
+      }}>{dk}:{String(sek).padStart(2, '0')}</span>
+    </div>
+
+    <div style={{ marginTop: 12 }}>
+      {wk.lines.map(l => <Input key={l.id} label={`Float halisi — ${l.name}`} type="number"
+        inputMode="numeric" value={counted[l.id] ?? ''}
+        onChange={e => setCounted(p => ({ ...p, [l.id]: e.target.value }))} />)}
+      <Input label="Taslimu halisi kasheni" type="number" inputMode="numeric" value={cash}
+        onChange={e => setCash(e.target.value)} placeholder="0" />
+    </div>
+
+    {err && <div style={{ background: C.blush, borderRadius: 10, padding: '9px 12px', fontSize: 12.5, color: '#7F2318', marginBottom: 10 }}>⚠️ {err}</div>}
+
+    <Btn disabled={busy || !tayari} onClick={async () => {
+      setBusy(true); setErr('');
+      const body = {};
+      wk.lines.forEach(l => { body[l.id] = Number(counted[l.id]) || 0; });
+      const r = await wk.jibuUkaguzi({ id: u.id, counted: body, countedCash: cash });
+      setBusy(false);
+      if (!r.ok) setErr(r.error); else { setCounted({}); setCash(''); }
+    }} style={{ width: '100%', padding: '13px' }}>
+      {busy ? 'Inatuma...' : '🔍 Tuma hesabu yangu'}
+    </Btn>
+    {salio === 0 && <div style={{ fontSize: 11.5, color: '#7F2318', textAlign: 'center', marginTop: 7 }}>
+      Muda umeisha. Tuma hata hivyo — kuchelewa kunarekodiwa, lakini hesabu inahitajika.
+    </div>}
+  </div>;
+}
+
+// Matokeo ya ukaguzi mmoja, kwa mmiliki
+function UkaguziKadi({ c, lines, threshold }) {
+  const nameOf = id => lines.find(l => l.id === id)?.name || 'Laini';
+  const jumla = Math.abs(Number(c.variance_cash) || 0) + Math.abs(Number(c.variance_float) || 0);
+  const st = varianceState(jumla, threshold);
+  const sawa = st === 'sawa' || st === 'ndogo';
+  return <div style={{
+    padding: '11px 13px', borderRadius: 12, marginBottom: 7,
+    background: c.status === 'pending' ? C.warm : sawa ? '#fff' : C.blush,
+    border: `1px solid ${C.line}`,
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 13 }}>
+          {c.status === 'pending' ? '⏳ Inasubiri majibu' : `🔍 ${siku(c.day)}`}
+        </div>
+        <div style={{ fontSize: 11, color: C.pale }}>
+          {new Date(c.requested_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+          {c.answered_at ? ` · amejibu baada ya dakika ${Number(c.dakika).toFixed(0)}` : ''}
+          {c.status === 'expired' && c.answered_at ? ' · amechelewa' : ''}
+        </div>
+      </div>
+      {c.answered_at && <Badge color={sawa ? C.green : C.red}>
+        {sawa ? 'Sawa' : money(jumla)}
+      </Badge>}
+    </div>
+    {c.answered_at && !sawa && <div style={{ marginTop: 8, fontSize: 12, color: '#7F2318' }}>
+      Taslimu {sign(c.variance_cash)}
+      {Object.entries(c.lines || {}).map(([id, d]) => Number(d.variance)
+        ? ` · ${nameOf(id)} ${sign(d.variance)}` : '').join('')}
+    </div>}
+  </div>;
+}
+
+// ============================================================
 // 🔒 FUNGA SIKU — upatanisho
 //
 // Mpangilio ni wa makusudi: wakala anaandika alichohesabu KWANZA,
@@ -606,6 +714,8 @@ export function WakalaDash() {
   const wk = useWakala();
   const { employees } = useApp();
   const wakalaStaff = (employees || []).filter(doesWakala);
+  const [ukaguziMsg, setUkaguziMsg] = useState(null);
+  const [ukaguziBusy, setUkaguziBusy] = useState(false);
   const today = wk.today;
   const monthStart = today.slice(0, 7) + '-01';
   const weekStart = useMemo(() => {
@@ -654,6 +764,69 @@ export function WakalaDash() {
         { l: 'TASLIMU KASHENI', v: money(wk.balances.cash), c: wk.balances.cash < 0 ? '#FFD9D2' : '#fff' },
       ]} />
     </HeroCard>
+
+    {/* ---------- Ukaguzi wa ghafla ---------- */}
+    <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 220px' }}>
+          <div style={{ fontWeight: 900, color: C.green }}>🔍 Ukaguzi wa ghafla</div>
+          <p style={{ fontSize: 12.5, color: C.muted, margin: '4px 0 0' }}>
+            Wakala apate ujumbe wa kuhesabu <b>sasa hivi</b>, popote ulipo. Ukaguzi
+            unaojulikana mapema hauna maana — wafanyakazi wanakopeshana ili tofauti
+            isionekane.
+          </p>
+        </div>
+        <Btn disabled={ukaguziBusy || !!wk.ukaguziWazi} onClick={async () => {
+          setUkaguziBusy(true); setUkaguziMsg(null);
+          const r = await wk.ombaUkaguzi(15);
+          setUkaguziBusy(false);
+          setUkaguziMsg(r.ok
+            ? { ok: true, text: 'Ukaguzi umeombwa. Wakala amepata ujumbe.' }
+            : { ok: false, text: r.error });
+        }}>{ukaguziBusy ? 'Inatuma...' : wk.ukaguziWazi ? 'Unasubiri majibu' : '🔍 Omba ukaguzi sasa'}</Btn>
+      </div>
+
+      {ukaguziMsg && <div style={{
+        marginTop: 10, borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
+        background: ukaguziMsg.ok ? C.soft : C.blush, color: ukaguziMsg.ok ? C.dark : '#7F2318',
+      }}>{ukaguziMsg.ok ? '✅ ' : '⚠️ '}{ukaguziMsg.text}</div>}
+
+      {(wk.checks || []).length > 0 && <div style={{ marginTop: 12 }}>
+        {(wk.checks || []).slice(0, 5).map(c =>
+          <UkaguziKadi key={c.id} c={c} lines={wk.lines} threshold={wk.cfg.threshold} />)}
+      </div>}
+    </div>
+
+    {/* ---------- Kiwango cha uthibitisho wa majina ---------- */}
+    {(() => {
+      const u = mwezi.uthibitisho, p = wiki.uthibitisho;
+      const h = wk.uthibitishoHali(p, u);
+      if (!u || u.idadi < 5) return null;
+      return <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+          <div style={{ fontWeight: 900, color: C.green }}>✅ Majina yaliyothibitishwa</div>
+          <div style={{ fontWeight: 900, fontSize: 20, color: h.onyo ? C.red : C.green }}>
+            {u.asilimia}%
+          </div>
+        </div>
+        <div style={{ height: 8, background: C.line, borderRadius: 4, overflow: 'hidden', margin: '8px 0' }}>
+          <div style={{ width: (u.asilimia || 0) + '%', height: '100%', borderRadius: 4,
+            background: h.onyo ? C.red : C.green }} />
+        </div>
+        <div style={{ fontSize: 12, color: C.muted }}>
+          Miamala {u.thibitishwa} kati ya {u.idadi} mwezi huu. Kuthibitisha jina ni bure —
+          hakuna sababu ya kuruka.
+        </div>
+        {h.onyo && <div style={{
+          marginTop: 10, background: C.blush, borderRadius: 10, padding: '9px 12px',
+          fontSize: 12.5, color: '#7F2318',
+        }}>
+          {h.hali === 'kushuka'
+            ? <>⚠️ Kiwango kimeshuka kwa pointi {h.tofauti} wiki hii. Muulize wakala kwa nini ameacha kuandika namba.</>
+            : <>⚠️ Zaidi ya theluthi ya miamala haijathibitishwa. Hii ni hatari ya pesa kwenda namba isiyo sahihi.</>}
+        </div>}
+      </div>;
+    })()}
 
     {/* Gharama hazijaandikwa — faida inayoonekana si ya kweli */}
     {mwezi.gharama === 0 && mwezi.kamisheni > 0 && <div style={{
