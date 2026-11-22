@@ -490,6 +490,24 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, message: 'Imepokewa.' });
       }
 
+      // Kama ni MALIPO YA UWAKALA (reference inaanza na WK-)
+      // Hii inarudi hapa hapa, kwa hiyo haifiki kamwe kwenye
+      // activateBusiness() — malipo ya uwakala HAYAFUNGUI duka.
+      if (String(ref).startsWith('WK-')) {
+        const { data: pay } = await supabase.from('wakala_payments')
+          .select('*').eq('provider_ref', ref).maybeSingle();
+        if (!pay) return res.status(200).json({ success: true, message: 'Malipo ya uwakala hayajapatikana (imepuuzwa).' });
+        if (pay.status === 'paid') return res.status(200).json({ success: true, message: 'Tayari imethibitishwa.' });
+        if (isPaid) {
+          await supabase.from('wakala_payments')
+            .update({ external_id: data.transaction_id || pay.external_id }).eq('id', pay.id);
+          const { data: act } = await supabase.rpc('dl_wakala_activate', { p_ref: ref });
+          return res.status(200).json({ success: true, message: 'Uwakala umeongezewa siku.', ...(act || {}) });
+        }
+        if (isFailed) await supabase.from('wakala_payments').update({ status: 'failed' }).eq('id', pay.id);
+        return res.status(200).json({ success: true, message: 'Imepokewa.' });
+      }
+
       // Kama ni event ya PAYOUT (kutoa pesa), sasisha jedwali la payouts
       if (evt.startsWith('payout')) {
         const { data: po } = await supabase.from('payouts').select('*').eq('provider_ref', ref).maybeSingle();
@@ -711,6 +729,55 @@ export default async function handler(req, res) {
     }
 
     // ===== 13. ANGALIA JINA LA MMILIKI WA NAMBA =====
+    // ===== MALIPO YA UWAKALA (13,000 kwa mwezi) =====
+    // Ni tofauti kabisa na malipo ya duka: jedwali lake, reference
+    // yake (WK-), na haiwashi duka hata kidogo.
+    if (action === 'wakala_pay' && req.method === 'POST') {
+      const body = parseJSON(await readRawBody(req));
+      const { business_id, business_name, user_email, phone, amount, days } = body;
+      if (!business_id || !phone) {
+        return res.status(400).json({ success: false, error: 'business_id na namba ya simu zinahitajika.' });
+      }
+      if (!SNIPPE_KEY) return res.status(500).json({ success: false, error: 'Snippe API key haijawekwa kwenye server.' });
+
+      const amt = Number(amount) || 13000;
+      const dys = Number(days) || 30;
+      const reference = 'WK-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
+
+      const gw = await snippeInitiate({ amount: amt, phone, reference, email: user_email, name: business_name });
+      if (!gw.ok) return res.status(400).json({ success: false, error: gw.error });
+
+      const { data: pay, error } = await supabase.from('wakala_payments').insert({
+        business_id, amount: amt, days: dys, phone,
+        provider: 'snippe', provider_ref: gw.snippeRef || reference,
+        external_id: gw.snippeRef || null, status: 'pending',
+      }).select().single();
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+
+      return res.status(200).json({
+        success: true, reference: gw.snippeRef || reference, payment_id: pay.id,
+        message: '📲 Angalia simu yako — weka PIN kuthibitisha malipo ya uwakala.',
+      });
+    }
+
+    // Hali ya malipo ya uwakala (kama webhook imechelewa)
+    if (action === 'wakala_pay_status') {
+      const ref = req.query?.ref;
+      if (!ref) return res.status(400).json({ success: false, error: 'ref inahitajika.' });
+      const { data: pay } = await supabase.from('wakala_payments')
+        .select('*').eq('provider_ref', ref).maybeSingle();
+      if (!pay) return res.status(404).json({ success: false, error: 'Malipo hayajapatikana.' });
+      if (pay.status === 'paid') return res.status(200).json({ success: true, status: 'paid' });
+
+      // Uliza Snippe moja kwa moja
+      const st = await snippeStatus(ref);   // inarudisha null ikishindikana
+      if (st && st.paid) {
+        const { data: act } = await supabase.rpc('dl_wakala_activate', { p_ref: ref });
+        return res.status(200).json({ success: true, status: 'paid', ...(act || {}) });
+      }
+      return res.status(200).json({ success: true, status: pay.status });
+    }
+
     if (action === 'name_lookup') {
       const phone = req.query?.phone;
       if (!phone) return res.status(400).json({ success: false, error: 'phone inahitajika.' });
@@ -719,7 +786,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, name: r.name, network: r.network, phone: r.phone });
     }
 
-    return res.status(400).json({ success: false, error: 'Action si sahihi. Tumia initiate | webhook | status | payout_* | sms_balance | sms_buy | sms_status.' });
+    return res.status(400).json({ success: false, error: 'Action si sahihi. Tumia initiate | webhook | status | payout_* | sms_balance | sms_buy | sms_status | wakala_pay | name_lookup.' });
   } catch (err) {
     console.error('[payments]', err?.message);
     return res.status(500).json({ success: false, error: 'Tatizo la mfumo: ' + (err?.message || '') });

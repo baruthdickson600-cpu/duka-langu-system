@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — KAZI YA MFANYAKAZI (duka / uwakala / zote)
 --
--- Sehemu 4/5. Endesha BAADA ya sehemu 1, 2 na 3.
+-- Sehemu 4/6. Endesha BAADA ya sehemu 1, 2 na 3.
 --
 -- Maduka mengi hupenda akaunti ziwe TOFAUTI: mmoja anauza dukani,
 -- mwingine anafanya uwakala. Kuunganisha ni HIARI.
@@ -162,7 +162,7 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 4/5 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
+SELECT 'Sehemu 4/6 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
 
 
 -- ============================================================

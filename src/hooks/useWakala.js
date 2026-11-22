@@ -13,10 +13,11 @@
 // tupu na `ready:false` — HAIVUNJI ukurasa. Somo la offline_id.
 // ============================================================
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, unknownColumn } from '../context/AppContext';
 import {
   wakalaAccess, floatAfter, cashAfter, commissionTotal,
   dayTotals, validateTx, txDeltas, validateGharama, gharamaTotals, faidaHalisi,
+  safishaNamba, nambaKamili, txLabel as txLabelOf, varianceState,
 } from '../utils/wakala';
 import { localDateStr, genId } from '../utils/helpers';
 
@@ -24,7 +25,20 @@ import { localDateStr, genId } from '../utils/helpers';
 // Hesabu ya pesa haipaswi kutegemea umbo la jibu.
 const one = d => (Array.isArray(d) ? d[0] : d) || null;
 
+const tzs = n => 'TZS ' + Math.round(Number(n) || 0).toLocaleString();
+
 const isRls = e => /row-level security|42501/i.test(String(e?.message || e?.code || ''));
+
+// Safu zinazoweza kukosekana kama SQL ya sehemu husika haijaendeshwa.
+// ⚠️ Somo la offline_id: tukizituma kwenye database isiyo nazo,
+//    PostgREST inakataa MUAMALA MZIMA. Mauzo yote yalikufa hivyo.
+//    Kwa hiyo tukikataliwa, tunaziondoa na kujaribu tena.
+const SAFU_HIARI = ['jina_halisi', 'mtandao', 'jina_thibitishwa', 'offline_id'];
+const ondoaHiari = (row) => {
+  const o = { ...row };
+  SAFU_HIARI.forEach(k => delete o[k]);
+  return o;
+};
 
 // Jedwali halipo / safu haipo — si kosa la mtumiaji
 const missingTable = e => {
@@ -45,6 +59,7 @@ export function useWakala({ load = true } = {}) {
   const [loading, setLoading]   = useState(false);
   const [err, setErr]           = useState('');
   const busy = useRef(false);
+  const summaryRef = useRef(null);
 
   // ===== RUHUSA =====
   const access = useMemo(() => wakalaAccess({
@@ -110,6 +125,57 @@ export function useWakala({ load = true } = {}) {
     if (load && access.visible && bizId) reload();
   }, [load, access.visible, bizId, reload]);
 
+  // Float ya kuanzia bila kutegemea mpangilio wa matangazo hapa chini
+  const openingFloatFor = useCallback((lineId, day) => {
+    const prev = days
+      .filter(d => String(d.day) < String(day) && d.lines && d.lines[lineId])
+      .sort((a, b) => String(b.day).localeCompare(String(a.day)))[0];
+    if (prev) return Number(prev.lines[lineId].counted) || 0;
+    return Number(lines.find(l => l.id === lineId)?.opening_float) || 0;
+  }, [days, lines]);
+
+  // ===== BEEM: ARIFA KWA MMILIKI =====
+  // Kila arifa inagharimu TZS 23. Kwa hiyo:
+  //   1. kila aina ni ya hiari, imezimwa mwanzoni
+  //   2. arifa moja ya aina moja kwa siku moja (jedwali la wakala_alerts
+  //      lina unique index — bila yo, float ikishuka chini mmiliki
+  //      angepokea SMS kila muamala na bando lake lingeisha siku moja)
+  const arifu = useCallback(async (aina, ujumbe, kitu) => {
+    const simu = cfg.alert_phone || biz?.phone;
+    if (!simu || !ujumbe) return { ok: false, skipped: 'hakuna namba' };
+    try {
+      // Weka alama KWANZA. Ikishindikana, SMS haikutumwa leo kwa aina hii.
+      const { error } = await supabase.from('wakala_alerts').insert({
+        business_id: bizId, aina, kitu: kitu || null, ujumbe,
+      });
+      if (error) return { ok: false, skipped: 'imeshatumwa leo' };
+
+      await fetch('/api/send-sms', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: simu, message: ujumbe, business_id: bizId, kind: 'wakala_' + aina }),
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e?.message };
+    }
+  }, [supabase, bizId, cfg.alert_phone, biz?.phone]);
+
+  // ===== ABLINER: KUTHIBITISHA JINA =====
+  // Pesa ikienda namba isiyo sahihi HAIRUDI. Hii ndiyo kinga pekee
+  // inayofanya kazi KABLA pesa haijatoka, si baada.
+  const lookupJina = useCallback(async (phone) => {
+    const p = safishaNamba(phone);
+    if (!nambaKamili(p)) return { ok: false, error: 'Namba haijakamilika' };
+    try {
+      const r = await fetch(`/api/payments?action=name_lookup&phone=${encodeURIComponent(p)}`);
+      const d = await r.json().catch(() => ({}));
+      if (!d?.success) return { ok: false, error: d?.error || 'Jina halijapatikana', code: d?.code };
+      return { ok: true, name: d.name, network: d.network, phone: d.phone || p };
+    } catch (e) {
+      return { ok: false, error: 'Mtandao haupatikani' };
+    }
+  }, []);
+
   // ===== MIAMALA =====
   // Kuandika muamala. recorded_by na created_at vinapigwa chapa na
   // DATABASE, si hapa — kwa hiyo hatuvitumi kabisa.
@@ -124,6 +190,9 @@ export function useWakala({ load = true } = {}) {
       commission:  Number(input.commission) || 0,
       customer:    input.customer || null,
       phone:       input.phone || null,
+      jina_halisi:      input.jina_halisi || null,
+      mtandao:          input.mtandao || null,
+      jina_thibitishwa: !!input.jina_thibitishwa,
       ref:         input.ref || null,
       note:        input.note || null,
       tx_date:     input.tx_date || localDateStr(new Date()),
@@ -134,7 +203,12 @@ export function useWakala({ load = true } = {}) {
     if (!v.ok) return { ok: false, error: v.errors.join(' ') };
 
     try {
-      const { data, error } = await supabase.from('wakala_tx').insert(tx).select().single();
+      let { data, error } = await supabase.from('wakala_tx').insert(tx).select().single();
+      // Safu mpya hazipo bado -> ziondoe, muamala uendelee. Pesa ni muhimu
+      // kuliko jina lililothibitishwa.
+      if (error && unknownColumn(error.message)) {
+        ({ data, error } = await supabase.from('wakala_tx').insert(ondoaHiari(tx)).select().single());
+      }
       if (error) {
         // 23505 = ulishaingia. Mtandao hafifu ulirudia ombi — si kosa.
         if (String(error.code) === '23505') {
@@ -146,11 +220,36 @@ export function useWakala({ load = true } = {}) {
       const row = one(data);
       if (!row) { await reload(); return { ok: true }; }
       setTxs(p => [row, ...p]);
+
+      // Arifa kwa mmiliki — zisizuie muamala ukishindikana
+      try {
+        const baada = [...txs, row].filter(t => String(t.tx_date) === String(row.tx_date));
+
+        // Muamala mkubwa kuliko kikomo
+        if (cfg.arifa_mkubwa && Number(row.amount) >= Number(cfg.kikomo_kikubwa || 0) &&
+            ['deposit', 'withdraw'].includes(row.type)) {
+          await arifu('mkubwa',
+            `DukaLangu: muamala mkubwa — ${txLabelOf(row.type)} ${tzs(row.amount)}` +
+            (row.jina_halisi ? ` kwa ${row.jina_halisi}` : '') + '.', row.id);
+        }
+
+        // Float imeshuka chini ya kiwango
+        if (cfg.arifa_float && row.line_id) {
+          const ln = lines.find(l => l.id === row.line_id);
+          const salio = floatAfter(openingFloatFor(row.line_id, row.tx_date), baada, row.line_id);
+          if (ln && salio < Number(cfg.float_chini || 0)) {
+            await arifu('float',
+              `DukaLangu: float ya ${ln.name} imebaki ${tzs(salio)}. Mpelekee wakala float.`,
+              ln.id);
+          }
+        }
+      } catch (_) { /* arifa ni ya ziada; muamala umeshaandikwa */ }
+
       return { ok: true, tx: row };
     } catch (e) {
       return { ok: false, error: e?.message || 'Imeshindwa kuandika muamala' };
     }
-  }, [access.canRecord, bizId, lines, supabase, reload, explain]);
+  }, [access.canRecord, bizId, lines, supabase, reload, explain, txs, cfg, arifu, openingFloatFor]);
 
   // Kurekebisha = KUANDIKA REJESHO, si kufuta. Rekodi ya awali
   // inabaki ikionekana kwa mmiliki. Hapo mwanya wa kufuta unafungwa.
@@ -203,11 +302,31 @@ export function useWakala({ load = true } = {}) {
         return { ok: false, error: await explain(error) };
       }
       await reload();
+
+      try {
+        const v = Number(data?.variance_cash || 0), vf = Number(data?.variance_float || 0);
+        const kiwango = Number(cfg.threshold || 0);
+        const mbaya = varianceState(v, kiwango) !== 'sawa' && varianceState(v, kiwango) !== 'ndogo';
+        const mbayaF = varianceState(vf, kiwango) !== 'sawa' && varianceState(vf, kiwango) !== 'ndogo';
+
+        if (cfg.arifa_tofauti && (mbaya || mbayaF)) {
+          await arifu('tofauti',
+            `DukaLangu UWAKALA ${day}: TOFAUTI imekamatwa. Taslimu ${tzs(v)}, float ${tzs(vf)}. ` +
+            `Kagua miamala ya siku hii.`, String(day));
+        }
+        if (cfg.arifa_hitimisho) {
+          const s2 = summaryRef.current ? summaryRef.current(day, day) : null;
+          await arifu('hitimisho',
+            `DukaLangu UWAKALA ${day}: miamala ${data?.tx_count || 0}, kamisheni ${tzs(data?.commission)}` +
+            (s2 ? `, gharama ${tzs(s2.gharama)}, faida ${tzs(s2.faida)}` : '') + '.', String(day));
+        }
+      } catch (_) { /* siku imeshafungwa; arifa ni ya ziada */ }
+
       return { ok: true, day: data };
     } catch (e) {
       return { ok: false, error: e?.message || 'Imeshindwa kufunga siku' };
     }
-  }, [access.canClose, bizId, supabase, reload, explain]);
+  }, [access.canClose, bizId, supabase, reload, explain, cfg, arifu]);
 
   // Kufungua siku (mmiliki pekee — RLS inazuia muuzaji)
   const reopenDay = useCallback(async (dayId) => {
@@ -364,6 +483,7 @@ export function useWakala({ load = true } = {}) {
       sikuZaTofauti:  dd.filter(d => Number(d.variance_cash) || Number(d.variance_float)).length,
     };
   }, [txs, days, gharama]);
+  summaryRef.current = summary;
 
   return {
     // hali
@@ -372,6 +492,7 @@ export function useWakala({ load = true } = {}) {
     lines, txs, days, cfg, gharama, balances, today,
     // vitendo
     reload, addTx, reverseTx, closeDay, reopenDay, saveLine, removeLine, saveCfg,
+    lookupJina, arifu,
     addGharama, delGharama,
     // vikokotoo
     txOn, closedOn, openingFloat, openingCash, summary, txDeltas,

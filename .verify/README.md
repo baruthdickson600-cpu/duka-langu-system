@@ -54,3 +54,13 @@ node .verify/uwakala.cjs   # hali 12 za upotevu wa pesa
 | 10 | Amewashiwa hajalipa | vipengele vimefungwa, ujumbe wa malipo |
 | 11 | SQL haijaendeshwa | ukurasa hauvunjiki, unaeleza |
 | 12 | Mmiliki | anaona kamisheni, laini zote na tofauti |
+
+### Gateway (Abliner, Beem, Snippe)
+
+| | Hali | Inachotarajiwa |
+|---|---|---|
+| 16 | Abliner: namba kamili | jina linajazwa, limeandikwa "limethibitishwa" |
+| 17 | Namba ya Airtel kwenye laini ya M-Pesa | onyo linatolewa kabla ya kutuma |
+| 18 | SQL ya sehemu 6 haijaendeshwa | muamala UNAENDELEA (safu hiari zinaondolewa) |
+| 19 | Float chini ya kiwango, miamala miwili | SMS MOJA tu kwa siku |
+| 20 | Tofauti kwenye upatanisho | SMS ya tofauti na ya hitimisho kwa mmiliki |

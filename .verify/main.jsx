@@ -7,8 +7,22 @@ window.__offlineDB=__offlineDB;
 // Njia ya sync inatumia fetch moja kwa moja (si supabase-js).
 // Tunaiga PostgREST hapa pia, vinginevyo sync haijaribiwi kamwe.
 const _fetch = window.fetch.bind(window);
+window.__api = { lookups: [], sms: [] };
 window.fetch = async (url, opt = {}) => {
   const u = String(url);
+  // Gateway za nje — zinaigwa hapa ili tujaribu bila mtandao
+  if (u.includes('action=name_lookup')) {
+    const phone = decodeURIComponent((u.match(/phone=([^&]+)/) || [])[1] || '');
+    window.__api.lookups.push(phone);
+    const fake = (window.__seed && window.__seed.lookup) || null;
+    if (!fake) return new Response(JSON.stringify({ success: false, error: 'Haipatikani' }), { status: 200 });
+    return new Response(JSON.stringify({ success: true, ...fake }), { status: 200 });
+  }
+  if (u.includes('/api/send-sms')) {
+    try { window.__api.sms.push(JSON.parse(opt.body || '{}')); } catch (_) {}
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
+  }
+
   if (u.includes('/rest/v1/sales') && (opt.method || 'GET').toUpperCase() === 'POST') {
     let row = {}; try { row = JSON.parse(opt.body || '{}') } catch (_) {}
     const cols = __cfg.schema.sales || [];

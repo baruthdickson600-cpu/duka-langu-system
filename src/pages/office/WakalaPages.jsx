@@ -12,14 +12,15 @@
 //   🧾 Ripoti      — historia ya siku na miamala yote
 //   ⚙️ Laini       — mmiliki anaweka mitandao na kiwango cha onyo
 // ============================================================
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import useWakala from '../../hooks/useWakala';
 import { IC, Btn, Modal, Input, Sel, Area, Badge, Empty, Tabs } from '../../components/UI';
 import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
 import { TX, txLabel, varianceState, doesWakala,
-         GHARAMA, CHANZO, gharamaLabel, gharamaIcon } from '../../utils/wakala';
+         GHARAMA, CHANZO, gharamaLabel, gharamaIcon,
+         mtandaoUnalingana, mtandaoJina, nambaKamili } from '../../utils/wakala';
 
 const C = {
   green: '#0A6E47', dark: '#06502F', gold: '#F2B705', red: '#C2412D',
@@ -46,6 +47,80 @@ const ICONS = {
 };
 
 // ============================================================
+// 💳 KULIPIA UWAKALA (Snippe)
+//
+// Mmiliki analipa mwenyewe bila kusubiri admin. Reference inaanza
+// na WK-, kwa hiyo webhook inaiongeza kwenye uwakala PEKEE —
+// usajili wa duka haubadiliki hata kidogo.
+// ============================================================
+function LipaUwakala({ compact }) {
+  const { biz, user } = useApp();
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState(biz?.phone || '');
+  const [hali, setHali] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const BEI = 13000;
+
+  const lipa = async () => {
+    setBusy(true); setHali(null);
+    try {
+      const r = await fetch('/api/payments?action=wakala_pay', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: biz?.id, business_name: biz?.name,
+          user_email: user?.email, phone, amount: BEI, days: 30,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!d?.success) { setHali({ bad: true, text: d?.error || 'Imeshindwa kuanzisha malipo.' }); return; }
+      setHali({ bad: false, text: d.message, ref: d.reference });
+      // Subiri webhook; kama imechelewa, uliza Snippe
+      let n = 0;
+      const piga = setInterval(async () => {
+        n++;
+        try {
+          const q = await fetch(`/api/payments?action=wakala_pay_status&ref=${encodeURIComponent(d.reference)}`);
+          const s2 = await q.json().catch(() => ({}));
+          if (s2?.status === 'paid') {
+            clearInterval(piga);
+            setHali({ bad: false, text: '✅ Malipo yamethibitishwa. Fungua upya ukurasa.' });
+            setTimeout(() => window.location.reload(), 1800);
+          }
+        } catch (_) {}
+        if (n > 40) clearInterval(piga);
+      }, 4000);
+    } catch (e) {
+      setHali({ bad: true, text: 'Mtandao haupatikani.' });
+    } finally { setBusy(false); }
+  };
+
+  return <>
+    <Btn onClick={() => setOpen(true)} style={compact ? {} : { marginTop: 4 }}>
+      💳 Lipia uwakala — TZS 13,000
+    </Btn>
+    <Modal open={open} onClose={() => setOpen(false)} title="Lipia huduma ya uwakala">
+      <div style={{ background: C.soft, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 12.5, color: C.dark }}>
+        <b>TZS 13,000 kwa mwezi mmoja.</b> Hii ni ya uwakala pekee — malipo ya
+        duka (15,000) ni tofauti na hayaguswi. Siku zitaongezwa juu ya ulizonazo,
+        kwa hiyo hupotezi chochote ukilipa mapema.
+      </div>
+      <Input label="Namba ya kulipia (M-Pesa, Airtel, Mixx, Halopesa)" value={phone}
+        onChange={e => setPhone(e.target.value)} placeholder="07.." inputMode="tel" />
+      {hali && <div style={{
+        borderRadius: 12, padding: '11px 13px', marginBottom: 12, fontSize: 13,
+        background: hali.bad ? C.blush : C.soft, color: hali.bad ? '#7F2318' : C.dark,
+      }}>{hali.text}</div>}
+      <Btn onClick={lipa} disabled={busy || !phone} style={{ width: '100%', padding: '14px' }}>
+        {busy ? 'Inaanzisha...' : `Lipa TZS 13,000`}
+      </Btn>
+      <div style={{ fontSize: 11, color: C.pale, textAlign: 'center', marginTop: 8 }}>
+        Utapokea ombi la PIN kwenye simu yako.
+      </div>
+    </Modal>
+  </>;
+}
+
+// ============================================================
 // Ujumbe wa hali — jedwali halipo, au usajili umeisha
 // ============================================================
 function Hali({ wk }) {
@@ -65,9 +140,7 @@ function Hali({ wk }) {
       Huduma imewashwa kwa akaunti yako lakini malipo hayajakamilika.
       Gharama ni <b>TZS 13,000 kwa mwezi</b>, tofauti na malipo ya duka.
     </p>
-    <Btn onClick={() => window.dispatchEvent(new CustomEvent('navigate-page', { detail: 'notifications' }))}>
-      Jinsi ya kulipa
-    </Btn>
+    <LipaUwakala compact />
   </div>;
 
   if (wk.access.expired) return <div style={{
@@ -76,15 +149,16 @@ function Hali({ wk }) {
   }}>
     <b>⏰ Usajili wa uwakala umeisha.</b> Hauwezi kuandika muamala mpya,
     lakini <b>unaweza kufunga siku kwa siku {wk.access.graceLeft} zilizobaki</b> —
-    pesa isibaki bila kuhesabiwa. Lipia TZS 13,000 ili kuendelea.
+    pesa isibaki bila kuhesabiwa.
+    <div style={{ marginTop: 10 }}><LipaUwakala compact /></div>
   </div>;
 
   if (wk.access.warn) return <div style={{
     background: C.warm, border: `1px solid ${C.gold}55`, borderRadius: 14,
     padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#7A5B00',
   }}>
-    <b>⚠️ Zimebaki siku {wk.access.daysLeft}</b> za usajili wa uwakala. Lipia mapema
-    ili huduma isisimame.
+    <b>⚠️ Zimebaki siku {wk.access.daysLeft}</b> za usajili wa uwakala.
+    <div style={{ marginTop: 10 }}><LipaUwakala compact /></div>
   </div>;
 
   return null;
@@ -102,6 +176,9 @@ export function WakalaRecordPage() {
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [undo, setUndo] = useState(null);
+  // Uthibitisho wa jina (Abliner)
+  const [jina, setJina] = useState({ hali: 'tupu' });  // tupu|inatafuta|sawa|kosa
+  const tmr = useRef(null);
 
   const def = TX[type] || {};
   const lineId = f.line_id || wk.lines[0]?.id || '';
@@ -110,9 +187,35 @@ export function WakalaRecordPage() {
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
 
+  // Namba ikikamilika, tafuta jina mara moja. Mtumiaji asisubiri
+  // kubonyeza kitu — kuthibitisha lazima kuwe rahisi kuliko kuruka.
+  useEffect(() => {
+    clearTimeout(tmr.current);
+    if (!nambaKamili(f.phone)) { setJina({ hali: 'tupu' }); return; }
+    setJina({ hali: 'inatafuta' });
+    tmr.current = setTimeout(async () => {
+      const r = await wk.lookupJina(f.phone);
+      if (r.ok) {
+        setJina({ hali: 'sawa', name: r.name, network: r.network });
+        setF(p => ({ ...p, customer: p.customer || r.name }));
+      } else {
+        setJina({ hali: 'kosa', error: r.error });
+      }
+    }, 650);
+    return () => clearTimeout(tmr.current);
+  }, [f.phone, wk.lookupJina]);
+
+  // Mtandao wa namba dhidi ya laini iliyochaguliwa
+  const laini = wk.lines.find(l => l.id === lineId);
+  const oanisho = jina.hali === 'sawa'
+    ? mtandaoUnalingana(jina.network, laini?.name) : { known: false, sawa: true };
+
   const submit = async () => {
     setMsg(null); setSaving(true);
-    const r = await wk.addTx({ ...f, type, line_id: def.line ? lineId : null });
+    const r = await wk.addTx({ ...f, type, line_id: def.line ? lineId : null,
+      jina_halisi: jina.hali === 'sawa' ? jina.name : null,
+      mtandao: jina.hali === 'sawa' ? jina.network : null,
+      jina_thibitishwa: jina.hali === 'sawa' });
     setSaving(false);
     if (!r.ok) { setMsg({ bad: true, text: r.error }); return; }
     setMsg({
@@ -121,6 +224,7 @@ export function WakalaRecordPage() {
         : `${txLabel(type)} ${money(f.amount)} imeandikwa.`,
     });
     setF({ amount: '', commission: '', line_id: f.line_id, customer: '', phone: '', note: '' });
+    setJina({ hali: 'tupu' });
   };
 
   if (!wk.ready || wk.access.neverPaid) return <div><PageHead icon="📲" title="Rekodi ya Uwakala" /><Hali wk={wk} /></div>;
@@ -200,9 +304,35 @@ export function WakalaRecordPage() {
       </>}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Input label="Jina la mteja (hiari)" value={f.customer} onChange={e => set('customer', e.target.value)} />
-        <Input label="Namba (hiari)" value={f.phone} onChange={e => set('phone', e.target.value)} placeholder="07.." />
+        <Input label="Namba ya mteja" value={f.phone} onChange={e => set('phone', e.target.value)}
+          placeholder="07.." inputMode="tel" />
+        <Input label="Jina" value={f.customer} onChange={e => set('customer', e.target.value)} />
       </div>
+
+      {/* ---- Uthibitisho wa jina: kinga pekee KABLA pesa haijatoka ---- */}
+      {jina.hali !== 'tupu' && <div style={{
+        borderRadius: 12, padding: '10px 13px', marginBottom: 10, fontSize: 12.5,
+        background: jina.hali === 'sawa' ? (oanisho.known && !oanisho.sawa ? C.blush : C.soft) : '#F6F8F7',
+        border: `1px solid ${jina.hali === 'sawa' && oanisho.known && !oanisho.sawa ? C.red + '44' : C.line}`,
+      }}>
+        {jina.hali === 'inatafuta' && <span style={{ color: C.muted }}>⏳ Inatafuta jina...</span>}
+        {jina.hali === 'kosa' && <span style={{ color: C.muted }}>
+          ℹ️ {jina.error}. Andika jina mwenyewe — muamala utaendelea, lakini hautakuwa umethibitishwa.
+        </span>}
+        {jina.hali === 'sawa' && <>
+          <div style={{ fontWeight: 900, color: C.dark, fontSize: 14 }}>✅ {jina.name}</div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>
+            {mtandaoJina(oanisho.namba || jina.network)} · jina limethibitishwa na mtandao
+          </div>
+          {oanisho.known && !oanisho.sawa && <div style={{
+            marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.red}33`,
+            color: '#7F2318', fontWeight: 700,
+          }}>
+            ⚠️ Namba hii ni <b>{mtandaoJina(oanisho.namba)}</b> lakini umechagua laini ya{' '}
+            <b>{laini?.name}</b>. Hakikisha kabla ya kutuma — pesa ikienda vibaya hairudi.
+          </div>}
+        </>}
+      </div>}
 
       {/* Athari — wakala aone kinachotokea kabla ya kubonyeza */}
       {Number(f.amount) > 0 && <div style={{
@@ -728,6 +858,10 @@ export function WakalaLinesPage() {
   const [edit, setEdit] = useState(null);
   const [err, setErr] = useState('');
   const [th, setTh] = useState('');
+  const [cfg, setCfg] = useState({});
+  const [arifaMsg, setArifaMsg] = useState(null);
+  // Mipangilio ikishapakiwa, ijaze fomu mara moja
+  useEffect(() => { setCfg(c => (c.__tayari ? c : { ...wk.cfg, __tayari: true })); }, [wk.cfg]);
 
   const save = async () => {
     setErr('');
@@ -789,6 +923,72 @@ export function WakalaLinesPage() {
         <Btn onClick={() => { wk.saveCfg({ threshold: Number(th) || 0 }); setTh(''); }}
           style={{ marginBottom: 12 }}>Hifadhi</Btn>
       </div>
+    </div>
+
+    {/* ---------- Usajili ---------- */}
+    <div className="card" style={{ padding: 16, marginTop: 14 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 4 }}>💳 Usajili wa uwakala</div>
+      <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 10px' }}>
+        {wk.access.daysLeft > 0
+          ? <>Zimebaki <b>siku {wk.access.daysLeft}</b>. Ukilipa mapema, siku zinaongezwa juu ya ulizonazo.</>
+          : 'Hujalipia bado. Huduma itafunguka mara malipo yatakapothibitishwa.'}
+      </p>
+      <LipaUwakala compact />
+    </div>
+
+    {/* ---------- Arifa kwa mmiliki (Beem SMS) ---------- */}
+    <div className="card" style={{ padding: 16, marginTop: 14 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 4 }}>📨 Arifa za SMS</div>
+      <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 12px' }}>
+        Upotevu wa pesa ukigundulika saa tatu usiku, si lazima usubiri hadi asubuhi.
+        Kila SMS inagharimu <b>TZS 23</b> kutoka bando lako, kwa hiyo chagua
+        unachotaka kweli. Arifa moja ya aina moja kwa siku moja.
+      </p>
+
+      <Input label="Namba ya kupokea arifa" value={cfg.alert_phone ?? ''}
+        onChange={e => setCfg(p => ({ ...p, alert_phone: e.target.value }))}
+        placeholder="07.. (ikiachwa wazi, namba ya duka itatumika)" />
+
+      {[
+        ['arifa_tofauti', '🚨 Tofauti kwenye upatanisho', 'Siku ikifungwa na pesa isilingane na rekodi'],
+        ['arifa_float', '🔋 Float inayoisha', 'Laini yoyote ikishuka chini ya kiwango ulichoweka'],
+        ['arifa_mkubwa', '💰 Muamala mkubwa', 'Muamala unaozidi kiwango ulichoweka'],
+        ['arifa_hitimisho', '📊 Hitimisho la siku', 'Kamisheni, gharama na faida siku ikifungwa'],
+      ].map(([k, jina, maelezo]) => <label key={k} style={{
+        display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
+        borderRadius: 12, marginBottom: 7, cursor: 'pointer',
+        background: cfg[k] ? C.soft : '#fff', border: `1.5px solid ${cfg[k] ? C.green : C.line}`,
+      }}>
+        <input type="checkbox" checked={!!cfg[k]} style={{ marginTop: 3, width: 17, height: 17 }}
+          onChange={e => setCfg(p => ({ ...p, [k]: e.target.checked }))} />
+        <span>
+          <span style={{ fontWeight: 800, fontSize: 13, color: C.ink, display: 'block' }}>{jina}</span>
+          <span style={{ fontSize: 11.5, color: C.muted }}>{maelezo}</span>
+        </span>
+      </label>)}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+        <Input label="Float ikishuka chini ya" type="number" value={cfg.float_chini ?? 50000}
+          onChange={e => setCfg(p => ({ ...p, float_chini: e.target.value }))} />
+        <Input label="Muamala unaozidi" type="number" value={cfg.kikomo_kikubwa ?? 500000}
+          onChange={e => setCfg(p => ({ ...p, kikomo_kikubwa: e.target.value }))} />
+      </div>
+
+      <Btn onClick={async () => {
+        const r = await wk.saveCfg({
+          alert_phone: cfg.alert_phone || null,
+          arifa_tofauti: !!cfg.arifa_tofauti, arifa_float: !!cfg.arifa_float,
+          arifa_mkubwa: !!cfg.arifa_mkubwa, arifa_hitimisho: !!cfg.arifa_hitimisho,
+          float_chini: Number(cfg.float_chini) || 0,
+          kikomo_kikubwa: Number(cfg.kikomo_kikubwa) || 0,
+        });
+        setArifaMsg(r.ok ? { ok: true, text: 'Arifa zimehifadhiwa.' }
+                         : { ok: false, text: r.error || 'Imeshindwa. Hakikisha wakala-6-gateway.sql imeendeshwa.' });
+      }} style={{ width: '100%', marginTop: 12 }}>Hifadhi arifa</Btn>
+      {arifaMsg && <div style={{
+        marginTop: 10, borderRadius: 10, padding: '9px 12px', fontSize: 12.5,
+        background: arifaMsg.ok ? C.soft : C.blush, color: arifaMsg.ok ? C.dark : '#7F2318',
+      }}>{arifaMsg.ok ? '✅ ' : '⚠️ '}{arifaMsg.text}</div>}
     </div>
 
     <Modal open={!!edit} onClose={() => { setEdit(null); setErr(''); }} title={edit?.id ? 'Badilisha laini' : 'Laini mpya'}>

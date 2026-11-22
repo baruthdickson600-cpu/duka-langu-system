@@ -281,3 +281,55 @@ export const faidaHalisi = ({ kamisheni, gharama }) => {
     hasara: faida < 0,
   };
 };
+
+// ============================================================
+// MITANDAO — kuoanisha jina la laini na mtandao halisi
+//
+// Abliner inarudisha mtandao wa namba (Vodacom, Airtel, Halotel...).
+// Laini ya float ina jina la biashara (M-Pesa, Mixx by Yas...).
+// Vikikosana, ni kosa kubwa: wakala anatoa float ya M-Pesa kwa
+// namba ya Airtel, muamala unakwama au unaenda mahali pengine.
+// ============================================================
+const MITANDAO = {
+  // ⚠️ Lazima tutumie mipaka ya maneno (\\b). Bila yo, "Azam Pesa"
+  //    inasomeka kama "M-Pesa" kwa sababu ina herufi zilezile ndani.
+  azam:    /\b(azam\s?pesa|azam)\b/,
+  halotel: /\b(halo\s?pesa|halotel|halo)\b/,
+  ttcl:    /\b(t\s?pesa|ttcl)\b/,
+  tigo:    /\b(tigo\s?pesa|tigo|mixx?(\s?by\s?yas)?|yas)\b/,
+  airtel:  /\b(airtel(\s?money)?)\b/,
+  vodacom: /\b(vodacom|vodafone|m\s?pesa)\b/,
+};
+const JINA_MTANDAO = {
+  vodacom: 'Vodacom (M-Pesa)', airtel: 'Airtel Money', tigo: 'Mixx by Yas',
+  halotel: 'Halopesa', ttcl: 'TTCL T-Pesa', azam: 'Azam Pesa',
+};
+// Jina lolote -> mtandao mmoja unaojulikana
+export const mtandaoWa = (jina) => {
+  // '-' na '.' zinakuwa nafasi ili "m-pesa" na "m pesa" ziwe sawa
+  const t = String(jina || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!t) return null;
+  for (const [k, re] of Object.entries(MITANDAO)) if (re.test(t)) return k;
+  return null;
+};
+
+export const mtandaoJina = k => JINA_MTANDAO[k] || k || '—';
+
+// Je mtandao wa namba unalingana na laini iliyochaguliwa?
+// Kisichojulikana hakikatazwi — tunaonya tu tunapokuwa na uhakika.
+export const mtandaoUnalingana = (mtandaoWaNamba, jinaLaLaini) => {
+  const a = mtandaoWa(mtandaoWaNamba), b = mtandaoWa(jinaLaLaini);
+  if (!a || !b) return { known: false, sawa: true };
+  return { known: true, sawa: a === b, namba: a, laini: b };
+};
+
+// Namba ya Tanzania -> 2557XXXXXXXX
+export const safishaNamba = (p) => {
+  const d = String(p || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('255')) return d.slice(0, 12);
+  if (d.startsWith('0'))   return '255' + d.slice(1, 10);
+  if (d.length === 9)      return '255' + d;
+  return d;
+};
+export const nambaKamili = p => safishaNamba(p).length === 12;

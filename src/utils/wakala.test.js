@@ -12,6 +12,7 @@ import {
   shellMode, KAZI, kaziOf, doesWakala, doesDuka,
   GHARAMA, CHANZO, gharamaLabel, isGharama, validateGharama,
   gharamaTotals, faidaHalisi,
+  mtandaoWa, mtandaoJina, mtandaoUnalingana, safishaNamba, nambaKamili,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -456,5 +457,67 @@ describe('gharama za uwakala', () => {
     it('bila gharama, faida ni kamisheni yote', () => {
       expect(faidaHalisi({ kamisheni: 90000 }).faida).toBe(90000);
     });
+  });
+});
+
+// ============================================================
+// MITANDAO — kuzuia float kwenda mtandao usio sahihi
+// ============================================================
+describe('mitandao', () => {
+  it('inatambua mitandao kwa majina yote yanayotumika', () => {
+    ['Vodacom','M-Pesa','mpesa','VODAFONE'].forEach(x => expect(mtandaoWa(x)).toBe('vodacom'));
+    ['Airtel','Airtel Money'].forEach(x => expect(mtandaoWa(x)).toBe('airtel'));
+    ['Tigo','TigoPesa','Mixx by Yas','YAS'].forEach(x => expect(mtandaoWa(x)).toBe('tigo'));
+    ['Halotel','Halopesa','HALO PESA'].forEach(x => expect(mtandaoWa(x)).toBe('halotel'));
+    expect(mtandaoWa('TTCL')).toBe('ttcl');
+    expect(mtandaoWa('Azam Pesa')).toBe('azam');
+    expect(mtandaoWa('AzamPesa')).toBe('azam');
+    // Hapa ndipo kosa lilikuwa: "Azam Pesa" ilisomeka kama M-Pesa
+    expect(mtandaoWa('Azam Pesa')).not.toBe('vodacom');
+    expect(mtandaoWa('Halopesa')).not.toBe('vodacom');
+    expect(mtandaoWa('T-Pesa')).toBe('ttcl');
+  });
+  it('isiyojulikana inarudisha null', () => {
+    expect(mtandaoWa('Benki ya CRDB')).toBe(null);
+    expect(mtandaoWa('')).toBe(null);
+    expect(mtandaoWa(null)).toBe(null);
+  });
+  it('majina ya kuonyesha', () => {
+    expect(mtandaoJina('vodacom')).toBe('Vodacom (M-Pesa)');
+    expect(mtandaoJina(null)).toBe('—');
+  });
+
+  describe('kuoanisha namba na laini', () => {
+    it('vinalingana', () => {
+      expect(mtandaoUnalingana('Vodacom', 'M-Pesa')).toMatchObject({ known: true, sawa: true });
+      expect(mtandaoUnalingana('Airtel', 'Airtel Money')).toMatchObject({ known: true, sawa: true });
+    });
+    it('VIMEKOSANA — hapa ndipo pesa inapopotea', () => {
+      const r = mtandaoUnalingana('Airtel', 'M-Pesa');
+      expect(r.known).toBe(true);
+      expect(r.sawa).toBe(false);
+      expect(r.namba).toBe('airtel');
+      expect(r.laini).toBe('vodacom');
+    });
+    it('kisichojulikana hakikatazwi — hatuonyi bila uhakika', () => {
+      expect(mtandaoUnalingana('Benki', 'M-Pesa')).toMatchObject({ known: false, sawa: true });
+      expect(mtandaoUnalingana(null, null)).toMatchObject({ known: false, sawa: true });
+    });
+  });
+});
+
+describe('namba za simu', () => {
+  it('inasafisha maumbo yote ya Tanzania', () => {
+    expect(safishaNamba('0712345678')).toBe('255712345678');
+    expect(safishaNamba('712345678')).toBe('255712345678');
+    expect(safishaNamba('255712345678')).toBe('255712345678');
+    expect(safishaNamba('+255 712 345 678')).toBe('255712345678');
+    expect(safishaNamba('0712-345-678')).toBe('255712345678');
+  });
+  it('tupu na takataka', () => {
+    expect(safishaNamba('')).toBe('');
+    expect(safishaNamba(null)).toBe('');
+    expect(nambaKamili('0712')).toBe(false);
+    expect(nambaKamili('0712345678')).toBe(true);
   });
 });

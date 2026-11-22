@@ -235,6 +235,76 @@ R.push(await run('15. Faida halisi = kamisheni - gharama; marudio yanazuiwa',
               kamisheni:s.kamisheni,gharama:s.gharama,faida:s.faida,hasara:s.hasara};},[a,b]);
   }));
 
+// ---------- 16. Abliner: jina linathibitishwa ----------
+R.push(await run('16. ABLINER — jina linathibitishwa na kujazwa lenyewe',
+  {db:baseDB(),uid:SELLER,role:'employee',render:'rekodi',
+   lookup:{name:'JUMA RAMADHANI SAID',network:'Vodacom',phone:'255712345678'}},
+  async p=>{
+    await p.fill('input[inputmode="tel"]','0712345678').catch(()=>{});
+    await p.waitForTimeout(1500);
+    return p.evaluate(()=>({
+      maombi:window.__api.lookups.length,
+      jinaKwenyeSkrini:document.body.innerText.includes('JUMA RAMADHANI SAID'),
+      thibitisho:document.body.innerText.includes('jina limethibitishwa'),
+      onyo:document.body.innerText.includes('Hakikisha kabla ya kutuma'),
+    }));
+  }));
+
+// ---------- 17. Mtandao umekosana ----------
+R.push(await run('17. ABLINER — namba ya AIRTEL kwenye laini ya M-PESA inaonywa',
+  {db:baseDB(),uid:SELLER,role:'employee',render:'rekodi',
+   lookup:{name:'ASHA MOHAMED',network:'Airtel',phone:'255682345678'}},
+  async p=>{
+    await p.fill('input[inputmode="tel"]','0682345678').catch(()=>{});
+    await p.waitForTimeout(1500);
+    return p.evaluate(()=>({
+      jina:document.body.innerText.includes('ASHA MOHAMED'),
+      onyo:document.body.innerText.includes('Hakikisha kabla ya kutuma'),
+      ujumbe:document.body.innerText.includes('Airtel Money'),
+    }));
+  }));
+
+// ---------- 18. Safu za sehemu 6 hazipo ----------
+R.push(await run('18. SQL ya 6 HAIJAENDESHWA — muamala UNAENDELEA (somo la offline_id)',
+  {db:baseDB(),uid:SELLER,role:'employee',render:'rekodi',
+   schemaDrop:[['wakala_tx','jina_halisi'],['wakala_tx','mtandao'],['wakala_tx','jina_thibitishwa']]},
+  async p=>{
+    const r=await andika(p,{type:'deposit',amount:50000,commission:800,line_id:L1,
+      jina_halisi:'JUMA',mtandao:'Vodacom',jina_thibitishwa:true});
+    return p.evaluate(x=>({ok:x.ok,error:x.error,idadi:window.__db.wakala_tx.length,
+      kiasi:window.__db.wakala_tx[0]?.amount}),r);
+  }));
+
+// ---------- 19. Beem: arifa ya float ----------
+R.push(await run('19. BEEM — float ikishuka chini, SMS MOJA kwa siku',
+  {db:{...baseDB(),wakala_settings:[{business_id:BIZ,cash_opening:100000,threshold:1000,
+        alert_phone:'0617288752',arifa_float:true,float_chini:480000,kikomo_kikubwa:500000}]},
+   uid:OWNER,role:'office',render:'rekodi'},
+  async p=>{
+    await andika(p,{type:'deposit',amount:30000,line_id:L1});  // float 470,000 < 480,000
+    await p.waitForTimeout(700);
+    await andika(p,{type:'deposit',amount:10000,line_id:L1});  // bado chini
+    await p.waitForTimeout(700);
+    return p.evaluate(()=>({sms:window.__api.sms.length,
+      kwa:window.__api.sms[0]?.phone, aina:window.__api.sms[0]?.kind,
+      ujumbe:window.__api.sms[0]?.message||''}));
+  }));
+
+// ---------- 20. Beem: arifa ya tofauti ----------
+R.push(await run('20. BEEM — tofauti kwenye upatanisho inamfikia mmiliki',
+  {db:{...baseDB(),wakala_settings:[{business_id:BIZ,cash_opening:100000,threshold:1000,
+        alert_phone:'0617288752',arifa_tofauti:true,arifa_hitimisho:true}]},
+   uid:OWNER,role:'office',rpcs:['dl_wakala_close_day'],render:'funga'},
+  async p=>{
+    await andika(p,{type:'deposit',amount:50000,commission:800,line_id:L1});
+    await p.waitForTimeout(500);
+    await funga(p,{day:leo(),counted:{[L1]:450000,[L2]:200000},countedCash:120000}); // -30,000
+    await p.waitForTimeout(900);
+    return p.evaluate(()=>({sms:window.__api.sms.length,
+      aina:window.__api.sms.map(x=>x.kind),
+      tofauti:(window.__api.sms.find(x=>x.kind==='wakala_tofauti')||{}).message||''}));
+  }));
+
 // ===================== MATOKEO =====================
 const ok=(c)=>c?'✅':'❌';
 let fails=0;
@@ -318,6 +388,34 @@ for(const r of R){
     T(`gharama 2,000 (${o.gharama})`,o.gharama===2000);
     T(`faida halisi 3,000 (${o.faida})`,o.faida===3000);
     T('si hasara',o.hasara===false);
+  }
+  if(r.name.startsWith('16.')){
+    T(`Abliner imeulizwa (${o.maombi})`,o.maombi===1);
+    T('jina linaonekana kwenye skrini',o.jinaKwenyeSkrini===true);
+    T('limeandikwa kuwa limethibitishwa',o.thibitisho===true);
+    T('hakuna onyo — mtandao unalingana',o.onyo===false);
+  }
+  if(r.name.startsWith('17.')){
+    T('jina linaonekana',o.jina===true);
+    T('ONYO la mtandao limetolewa',o.onyo===true);
+    T('onyo linataja Airtel Money',o.ujumbe===true);
+  }
+  if(r.name.startsWith('18.')){
+    T('muamala UMEPITA licha ya safu kukosekana',o.ok===true);
+    T(`umeingia DB (${o.idadi})`,o.idadi===1);
+    T(`kiasi ni sahihi (${o.kiasi})`,Number(o.kiasi)===50000);
+  }
+  if(r.name.startsWith('19.')){
+    T(`SMS MOJA tu, si mbili (${o.sms})`,o.sms===1);
+    T(`imeenda kwa mmiliki (${o.kwa})`,o.kwa==='0617288752');
+    T('aina ni wakala_float',o.aina==='wakala_float');
+    T('ujumbe unataja laini na salio',/M-Pesa/.test(o.ujumbe)&&/470,000/.test(o.ujumbe));
+  }
+  if(r.name.startsWith('20.')){
+    T(`SMS mbili: tofauti na hitimisho (${o.sms})`,o.sms===2);
+    T('arifa ya tofauti ipo',o.aina.includes('wakala_tofauti'));
+    T('arifa ya hitimisho ipo',o.aina.includes('wakala_hitimisho'));
+    T('ujumbe unataja TOFAUTI',/TOFAUTI/.test(o.tofauti));
   }
   if(r.name.startsWith('12.')){
     T(`kamisheni ya leo inaonekana (${o.kamisheniLeo})`,o.kamisheniLeo===800);

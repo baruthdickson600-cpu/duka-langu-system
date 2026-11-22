@@ -5,7 +5,7 @@
 //  - ina unique index kwenye (business_id, offline_id)
 const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:[],
              stock_history:[], customers:[], expenses:[], credit_transactions:[],
-             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[] };
+             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[] };
 
 const CFG = {
   schema: {
@@ -23,12 +23,16 @@ const CFG = {
     credit_transactions:['id','business_id','customer_id','type','amount','balance_after','note','recorded_by','created_at'],
     wakala_lines:['id','business_id','name','short_code','opening_float','active','sort_order','created_at'],
     wakala_tx:['id','business_id','line_id','tx_date','type','amount','commission','customer','phone','ref','note',
-               'reverses','offline_id','recorded_by','created_at'],
+               'reverses','offline_id','recorded_by','created_at','jina_halisi','mtandao','jina_thibitishwa'],
     wakala_days:['id','business_id','day','lines','counted_cash','expected_cash','variance_cash','variance_float',
                  'commission','tx_count','note','closed_by','closed_at'],
-    wakala_settings:['business_id','cash_opening','threshold','alert_phone','alert_sms','updated_at'],
+    wakala_settings:['business_id','cash_opening','threshold','alert_phone','alert_sms','updated_at',
+                     'arifa_tofauti','arifa_float','arifa_mkubwa','arifa_hitimisho','float_chini','kikomo_kikubwa'],
     wakala_expenses:['id','business_id','tarehe','aina','amount','chanzo','maelezo','tx_id',
                      'offline_id','recorded_by','created_at'],
+    wakala_alerts:['id','business_id','aina','kitu','day','ujumbe','created_at'],
+    wakala_payments:['id','business_id','amount','days','phone','provider','provider_ref',
+                     'external_id','status','paid_at','created_at'],
   },
   rpcs: new Set(),        // tupu = SQL haijaendeshwa
   missing: new Set(),     // jedwali ambalo SQL yake haijaendeshwa
@@ -92,6 +96,13 @@ function q(table){
             rows().some(x => x.business_id === r.business_id && x.offline_id === r.offline_id))
           return { data:null, error:{ message:'duplicate key value violates unique constraint "sales_offline_id_uniq"', code:'23505' }, status:409 };
 
+        if (table === 'wakala_alerts'){
+          const day = r.day || new Date().toISOString().slice(0,10);
+          if (rows().some(x => x.business_id===r.business_id && x.aina===r.aina &&
+                               String(x.kitu||'')===String(r.kitu||'') && String(x.day||day)===String(day)))
+            return { data:null, error:{ message:'duplicate alert', code:'23505' }, status:409 };
+          r.day = day;
+        }
         // ===== KINGA ZA UWAKALA (kama triggers za Postgres) =====
         if (table === 'wakala_tx'){
           if (r.offline_id != null && rows().some(x => x.business_id===r.business_id && x.offline_id===r.offline_id))
