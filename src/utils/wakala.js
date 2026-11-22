@@ -369,3 +369,31 @@ export const uthibitishoHali = (sasa, kabla) => {
     return { hali: 'kushuka', onyo: true, tofauti: kabla.asilimia - sasa.asilimia };
   return { hali: 'sawa', onyo: false };
 };
+
+// ============================================================
+// GHARAMA: NANI AMEIANDIKA
+//
+// Wakala yupo kibandani — ndiye anayeona kinachohitajika: LUKU
+// imeisha, daftari limekwisha, bodaboda ya kwenda kuchukua float.
+// Mmiliki yupo ofisini — analipa kodi, mshahara, leseni.
+//
+// Wote wawili wanaandika, lakini mmiliki anahitaji kuona kwa
+// kutenganishwa: gharama za kibandani ndizo zinazoongezeka kimya
+// kimya, na ndizo zinazohitaji maswali.
+// ============================================================
+export const KIBANDANI = 'kibandani', OFISINI = 'ofisini';
+
+export const gharamaChanzo = (g, ownerId) =>
+  String(g?.recorded_by ?? '') === String(ownerId ?? '\u0000') ? OFISINI : KIBANDANI;
+
+export const gharamaKwaChanzo = (list, ownerId) => {
+  const l = (list || []).filter(Boolean);
+  const ofisi = l.filter(g => gharamaChanzo(g, ownerId) === OFISINI);
+  const kibanda = l.filter(g => gharamaChanzo(g, ownerId) === KIBANDANI);
+  const jumla = x => x.reduce((a, g) => a + num(g.amount), 0);
+  return {
+    ofisini:  { idadi: ofisi.length,   jumla: jumla(ofisi) },
+    kibandani:{ idadi: kibanda.length, jumla: jumla(kibanda) },
+    jumla: jumla(l),
+  };
+};

@@ -13,7 +13,7 @@ import {
   GHARAMA, CHANZO, gharamaLabel, isGharama, validateGharama,
   gharamaTotals, faidaHalisi,
   mtandaoWa, mtandaoJina, mtandaoUnalingana, safishaNamba, nambaKamili,
-  uthibitisho, uthibitishoHali,
+  uthibitisho, uthibitishoHali, gharamaChanzo, gharamaKwaChanzo, KIBANDANI, OFISINI,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -596,5 +596,33 @@ describe('kiwango cha uthibitisho', () => {
       const sasa  = uthibitisho([...many(14, { jina_thibitishwa: true }), ...many(6, {})]);
       expect(uthibitishoHali(sasa, kabla).hali).toBe('sawa');
     });
+  });
+});
+
+describe('gharama: nani ameiandika', () => {
+  const OWNER = 'u-owner', WAKALA = 'u-wakala';
+  const list = [
+    { aina: 'kodi', amount: 80000, recorded_by: OWNER },
+    { aina: 'leseni', amount: 50000, recorded_by: OWNER },
+    { aina: 'umeme', amount: 12000, recorded_by: WAKALA },
+    { aina: 'usafiri', amount: 8000, recorded_by: WAKALA },
+    { aina: 'vifaa', amount: 6000, recorded_by: WAKALA },
+  ];
+  it('inatenganisha za ofisini na za kibandani', () => {
+    const r = gharamaKwaChanzo(list, OWNER);
+    expect(r.ofisini).toEqual({ idadi: 2, jumla: 130000 });
+    expect(r.kibandani).toEqual({ idadi: 3, jumla: 26000 });
+    expect(r.jumla).toBe(156000);
+  });
+  it('iliyoandikwa na mmiliki ni ya ofisini', () => {
+    expect(gharamaChanzo({ recorded_by: OWNER }, OWNER)).toBe(OFISINI);
+    expect(gharamaChanzo({ recorded_by: WAKALA }, OWNER)).toBe(KIBANDANI);
+  });
+  it('isiyojulikana aliyeiandika ni ya kibandani, si ya mmiliki', () => {
+    expect(gharamaChanzo({}, OWNER)).toBe(KIBANDANI);
+    expect(gharamaChanzo({ recorded_by: null }, null)).toBe(KIBANDANI);
+  });
+  it('orodha tupu', () => {
+    expect(gharamaKwaChanzo([], OWNER).jumla).toBe(0);
   });
 });

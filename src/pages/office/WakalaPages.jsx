@@ -20,7 +20,8 @@ import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
 import { TX, txLabel, varianceState, doesWakala,
          GHARAMA, CHANZO, gharamaLabel, gharamaIcon,
-         mtandaoUnalingana, mtandaoJina, nambaKamili } from '../../utils/wakala';
+         mtandaoUnalingana, mtandaoJina, nambaKamili,
+         gharamaChanzo, gharamaKwaChanzo, KIBANDANI, OFISINI } from '../../utils/wakala';
 
 const C = {
   green: '#0A6E47', dark: '#06502F', gold: '#F2B705', red: '#C2412D',
@@ -1127,6 +1128,7 @@ export function WakalaLinesPage() {
         ['arifa_float', '🔋 Float inayoisha', 'Laini yoyote ikishuka chini ya kiwango ulichoweka'],
         ['arifa_mkubwa', '💰 Muamala mkubwa', 'Muamala unaozidi kiwango ulichoweka'],
         ['arifa_hitimisho', '📊 Hitimisho la siku', 'Kamisheni, gharama na faida siku ikifungwa'],
+        ['arifa_asubuhi', '🌅 Uchambuzi wa asubuhi', 'Kila siku saa 1 asubuhi — miamala ya jana, float iliyobaki, na kama siku haikufungwa'],
       ].map(([k, jina, maelezo]) => <label key={k} style={{
         display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
         borderRadius: 12, marginBottom: 7, cursor: 'pointer',
@@ -1152,6 +1154,7 @@ export function WakalaLinesPage() {
           alert_phone: cfg.alert_phone || null,
           arifa_tofauti: !!cfg.arifa_tofauti, arifa_float: !!cfg.arifa_float,
           arifa_mkubwa: !!cfg.arifa_mkubwa, arifa_hitimisho: !!cfg.arifa_hitimisho,
+          arifa_asubuhi: !!cfg.arifa_asubuhi,
           float_chini: Number(cfg.float_chini) || 0,
           kikomo_kikubwa: Number(cfg.kikomo_kikubwa) || 0,
         });
@@ -1197,6 +1200,8 @@ export default WakalaDash;
 // ============================================================
 export function WakalaGharamaPage() {
   const wk = useWakala();
+  const { biz, employees } = useApp();
+  const [chanzo, setChanzo] = useState('zote');
   const [f, setF] = useState({ aina: 'kodi', amount: '', chanzo: 'taslimu', maelezo: '', tarehe: localDateStr(new Date()) });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1208,7 +1213,11 @@ export function WakalaGharamaPage() {
     : kipindi === 'wiki' ? (() => { const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - d.getDay()); return localDateStr(d); })()
     : today.slice(0, 8) + '01';
   const s = wk.summary(from, today);
-  const orodha = (wk.gharama || []).filter(g => String(g.tarehe) >= from && String(g.tarehe) <= today);
+  const zote = (wk.gharama || []).filter(g => String(g.tarehe) >= from && String(g.tarehe) <= today);
+  const kwaChanzo = gharamaKwaChanzo(zote, biz?.owner_id);
+  const orodha = chanzo === 'zote' ? zote
+    : zote.filter(g => gharamaChanzo(g, biz?.owner_id) === chanzo);
+  const jinaLa = id => (employees || []).find(e => e.id === id)?.name || 'Wakala';
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const submit = async () => {
@@ -1225,7 +1234,10 @@ export function WakalaGharamaPage() {
   const aina = Object.entries(s.gharamaKwaAina || {}).sort((a, b) => b[1] - a[1]);
 
   return <div>
-    <PageHead icon="💸" title="Gharama za Uwakala" sub="Kodi, umeme, bando, mshahara — ndizo zinazokula kamisheni" />
+    <PageHead icon="💸" title="Gharama za Uwakala"
+      sub={wk.isOwner
+        ? 'Kodi, umeme, bando, mshahara — ndizo zinazokula kamisheni'
+        : 'Andika kila gharama ya kibandani — LUKU, usafiri, daftari'} />
     <Hali wk={wk} />
 
     {/* ---------- Faida halisi ---------- */}
@@ -1302,6 +1314,28 @@ export function WakalaGharamaPage() {
       </Btn>
     </div>
 
+    {/* ---------- Ofisini dhidi ya kibandani ---------- */}
+    {wk.isOwner && kwaChanzo.jumla > 0 && <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 10 }}>🏢 Zilipotoka</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {[['ofisini', '🏢 Ofisini', kwaChanzo.ofisini, 'Kodi, leseni, mshahara — zako'],
+          ['kibandani', '🏪 Kibandani', kwaChanzo.kibandani, 'Alizoandika wakala mwenyewe']]
+          .map(([k, jina, d, maelezo]) => <button key={k}
+            onClick={() => setChanzo(chanzo === k ? 'zote' : k)} style={{
+            textAlign: 'left', padding: '12px 13px', borderRadius: 12, cursor: 'pointer',
+            border: chanzo === k ? `2px solid ${C.green}` : `1.5px solid ${C.line}`,
+            background: chanzo === k ? C.soft : '#fff',
+          }}>
+            <div style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>{jina}</div>
+            <div style={{ fontSize: 17, fontWeight: 900, color: C.ink }}>{money(d.jumla)}</div>
+            <div style={{ fontSize: 10.5, color: C.pale }}>{d.idadi} rekodi · {maelezo}</div>
+          </button>)}
+      </div>
+      {chanzo !== 'zote' && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>
+        Orodha hapa chini inaonyesha za <b>{chanzo}</b> pekee. Bofya tena kuona zote.
+      </div>}
+    </div>}
+
     {/* ---------- Mchanganuo kwa aina ---------- */}
     {aina.length > 0 && <div className="card" style={{ padding: 16, marginBottom: 14 }}>
       <div style={{ fontWeight: 900, color: C.green, marginBottom: 12 }}>📊 Gharama kwa aina</div>
@@ -1338,6 +1372,7 @@ export function WakalaGharamaPage() {
               </div>
               <div style={{ fontSize: 11, color: C.pale }}>
                 {siku(g.tarehe)} · {g.chanzo === 'taslimu' ? '💵 kasheni' : '🏦 nje ya kasheni'}
+                {' · '}{gharamaChanzo(g, biz?.owner_id) === OFISINI ? '🏢 ofisini' : '🏪 ' + jinaLa(g.recorded_by)}
                 {g.maelezo ? ' · ' + g.maelezo : ''}
               </div>
             </div>

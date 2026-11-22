@@ -71,3 +71,12 @@ node .verify/uwakala.cjs   # hali 12 za upotevu wa pesa
 |---|---|---|
 | 21 | Mmiliki anaomba ukaguzi | wakala anaona banner, anapata SMS, ukaguzi wa pili unazuiwa, tofauti inakamatwa, SIKU HAIFUNGWI |
 | 22 | Miamala 12 (8 imethibitishwa) + float_buy | asilimia 67, float_buy imerukwa, kipimo kinaonekana |
+
+### Gharama za wakala na uchambuzi wa asubuhi
+
+| | Hali | Inachotarajiwa |
+|---|---|---|
+| 23 | Wakala anaandika gharama | inaingia, recorded_by ni yeye, kasheni inapungua, haoni mchanganuo wa mmiliki |
+| 24 | Mmiliki anaona gharama zote | ofisini na kibandani zimetenganishwa |
+
+Ujumbe wa asubuhi una majaribio yake: `src/utils/asubuhi.test.js` (urefu wa SMS, hakuna emoji, siku isiyofungwa).

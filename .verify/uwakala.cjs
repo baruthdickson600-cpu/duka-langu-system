@@ -360,6 +360,39 @@ R.push(await run('22. KIWANGO CHA UTHIBITISHO kinahesabiwa na kuonyeshwa kwa mmi
     });
   }));
 
+// ---------- 23. Wakala anaandika gharama ----------
+R.push(await run('23. WAKALA anaandika gharama za kibandani; haziwezi kufutwa naye',
+  {db:baseDB(),uid:SELLER,role:'employee',
+   rpcs:['dl_wakala_add_expense','dl_wakala_del_expense'],render:'gharama'},
+  async p=>{
+    const a=await gharama(p,{aina:'umeme',amount:12000,chanzo:'taslimu',maelezo:'LUKU'});
+    await p.waitForTimeout(800);
+    return p.evaluate(x=>({ok:x.ok,error:x.error,
+      idadi:window.__db.wakala_expenses.length,
+      aliyeandika:window.__db.wakala_expenses[0]?.recorded_by,
+      kasheni:window.__wk.balances.cash,
+      kitufeChaKufuta:document.body.innerText.includes('Zilipotoka'),
+      ukurasaUnafunguka:document.body.innerText.includes('Gharama za Uwakala')}),a);
+  }));
+
+// ---------- 24. Mmiliki anatenganisha ofisi na kibanda ----------
+R.push(await run('24. MMILIKI anaona zilipotoka — ofisini dhidi ya kibandani',
+  {db:{...baseDB(),wakala_expenses:[
+     {id:'g1',business_id:BIZ,tarehe:leo(),aina:'kodi',amount:80000,chanzo:'nje',recorded_by:OWNER},
+     {id:'g2',business_id:BIZ,tarehe:leo(),aina:'leseni',amount:50000,chanzo:'nje',recorded_by:OWNER},
+     {id:'g3',business_id:BIZ,tarehe:leo(),aina:'umeme',amount:12000,chanzo:'taslimu',recorded_by:SELLER},
+     {id:'g4',business_id:BIZ,tarehe:leo(),aina:'usafiri',amount:8000,chanzo:'taslimu',recorded_by:SELLER}]},
+   uid:OWNER,role:'office',rpcs:['dl_wakala_add_expense','dl_wakala_del_expense'],render:'gharama'},
+  async p=>{
+    await p.waitForTimeout(900);
+    return p.evaluate(()=>({
+      zilipotoka:document.body.innerText.includes('Zilipotoka'),
+      ofisini:document.body.innerText.includes('TZS 130,000'),
+      kibandani:document.body.innerText.includes('TZS 20,000'),
+      jumla:window.__wk.summary(window.__wk.today,window.__wk.today).gharama,
+    }));
+  }));
+
 // ===================== MATOKEO =====================
 const ok=(c)=>c?'✅':'❌';
 let fails=0;
@@ -488,6 +521,20 @@ for(const r of R){
     T(`8 zimethibitishwa (${o.thibitishwa})`,o.thibitishwa===8);
     T(`asilimia 67 (${o.asilimia})`,o.asilimia===67);
     T('kipimo kinaonekana kwa mmiliki',o.kwenyeSkrini===true);
+  }
+  if(r.name.startsWith('23.')){
+    T('ukurasa unafunguka kwa wakala',o.ukurasaUnafunguka===true);
+    T('gharama imeandikwa',o.ok===true);
+    T(`imeingia DB (${o.idadi})`,o.idadi===1);
+    T('recorded_by ni wakala',o.aliyeandika==='u-seller');
+    T(`kasheni imepungua: 100,000-12,000 (${o.kasheni})`,o.kasheni===88000);
+    T('hakuna mchanganuo wa mmiliki kwake',o.kitufeChaKufuta===false);
+  }
+  if(r.name.startsWith('24.')){
+    T('mchanganuo wa Zilipotoka unaonekana',o.zilipotoka===true);
+    T('ofisini 130,000',o.ofisini===true);
+    T('kibandani 20,000',o.kibandani===true);
+    T(`jumla 150,000 (${o.jumla})`,o.jumla===150000);
   }
   if(r.name.startsWith('12.')){
     T(`kamisheni ya leo inaonekana (${o.kamisheniLeo})`,o.kamisheniLeo===800);

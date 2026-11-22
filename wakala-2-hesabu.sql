@@ -1,4 +1,4 @@
--- Sehemu 2/7 ya wakala-migration.sql — endesha kwa mpangilio
+-- Sehemu 2/8 ya wakala-migration.sql — endesha kwa mpangilio
 -- 6. KINGA ZA DATABASE (triggers)
 -- ============================================================
 
@@ -179,4 +179,4 @@ END $close$;
 
 
 -- ============================================================
-SELECT 'Sehemu 2/7 SAWA — kinga na hesabu zipo.' AS status;
+SELECT 'Sehemu 2/8 SAWA — kinga na hesabu zipo.' AS status;

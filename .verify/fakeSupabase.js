@@ -27,7 +27,7 @@ const CFG = {
     wakala_days:['id','business_id','day','lines','counted_cash','expected_cash','variance_cash','variance_float',
                  'commission','tx_count','note','closed_by','closed_at'],
     wakala_settings:['business_id','cash_opening','threshold','alert_phone','alert_sms','updated_at',
-                     'arifa_tofauti','arifa_float','arifa_mkubwa','arifa_hitimisho','float_chini','kikomo_kikubwa'],
+                     'arifa_tofauti','arifa_float','arifa_mkubwa','arifa_hitimisho','arifa_asubuhi','float_chini','kikomo_kikubwa'],
     wakala_expenses:['id','business_id','tarehe','aina','amount','chanzo','maelezo','tx_id',
                      'offline_id','recorded_by','created_at'],
     wakala_alerts:['id','business_id','aina','kitu','day','ujumbe','created_at'],

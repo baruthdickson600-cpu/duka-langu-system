@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — UKAGUZI WA GHAFLA
 --
--- Sehemu 7/7. Endesha BAADA ya sehemu 1–6.
+-- Sehemu 7/8. Endesha BAADA ya sehemu 1–6.
 --
 -- MicroSave imeorodhesha njia moja ya wizi ambayo upatanisho wa
 -- kawaida HAUWEZI kuikamata: wafanyakazi wa maduka tofauti
@@ -168,4 +168,4 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 7/7 SAWA — ukaguzi wa ghafla umewekwa.' AS status;
+SELECT 'Sehemu 7/8 SAWA — ukaguzi wa ghafla umewekwa.' AS status;

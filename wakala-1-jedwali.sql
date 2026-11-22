@@ -1,4 +1,4 @@
--- Sehemu 1/7 ya wakala-migration.sql — endesha kwa mpangilio
+-- Sehemu 1/8 ya wakala-migration.sql — endesha kwa mpangilio
 -- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (jedwali + kinga)
 --
@@ -166,4 +166,4 @@ CREATE TABLE IF NOT EXISTS wakala_settings (
 
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
-SELECT 'Sehemu 1/7 SAWA — jedwali yametengenezwa.' AS status;
+SELECT 'Sehemu 1/8 SAWA — jedwali yametengenezwa.' AS status;

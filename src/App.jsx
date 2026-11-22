@@ -43,6 +43,7 @@ const WAKALA_MENU_OFFICE=[
 ];
 const WAKALA_MENU_EMP=[
   {id:'wakala_rekodi',icon:IC.plus,label:'📲 Uwakala'},
+  {id:'wakala_gharama',icon:IC.money||IC.dollar,label:'💸 Gharama'},
   {id:'wakala_funga',icon:IC.lock,label:'🔒 Funga Siku'},
 ];
 
@@ -375,7 +376,7 @@ export default function App(){
         case'wakala':return role==='office'?<WakalaDash/>:<WakalaRecordPage/>;
         case'wakala_rekodi':return <WakalaRecordPage/>;
         case'wakala_funga':return <WakalaClosePage/>;
-        case'wakala_gharama':return role==='office'?<WakalaGharamaPage/>:null;
+        case'wakala_gharama':return <WakalaGharamaPage/>;
         case'wakala_ripoti':return role==='office'?<WakalaReportPage/>:null;
         case'wakala_laini':return role==='office'?<WakalaLinesPage/>:null;
         default:break;
