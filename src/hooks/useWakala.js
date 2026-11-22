@@ -24,6 +24,8 @@ import { localDateStr, genId } from '../utils/helpers';
 // Hesabu ya pesa haipaswi kutegemea umbo la jibu.
 const one = d => (Array.isArray(d) ? d[0] : d) || null;
 
+const isRls = e => /row-level security|42501/i.test(String(e?.message || e?.code || ''));
+
 // Jedwali halipo / safu haipo — si kosa la mtumiaji
 const missingTable = e => {
   const m = String(e?.message || e?.msg || e || '');
@@ -48,6 +50,23 @@ export function useWakala({ load = true } = {}) {
     enabled:   biz?.wakala_enabled,
     paidUntil: biz?.wakala_paid_until,
   }), [biz?.wakala_enabled, biz?.wakala_paid_until]);
+
+  // Database ikikataa, mtumiaji hapaswi kuona Kiingereza cha PostgREST.
+  // dl_whoami() inatuambia SABABU halisi — nani database inamwona.
+  const explain = useCallback(async (e) => {
+    const raw = e?.message || 'Imeshindwa';
+    if (!isRls(e)) return raw;
+    try {
+      const { data } = await supabase.rpc('dl_whoami');
+      if (data && !data.uid)
+        return 'Mfumo haujakutambua kwenye database. Toka, kisha ingia tena.';
+      if (data && !data.business && !data.anamiliki)
+        return 'Akaunti yako haijaunganishwa na duka lolote kwenye database. Wasiliana na msimamizi.';
+      if (data && data.role === 'employee' && data.kazi === 'duka')
+        return 'Hauna kazi ya uwakala. Mwambie mmiliki akubadilishie kwenye Wafanyakazi.';
+    } catch (_) { /* dl_whoami haipo — SQL ya 4 haijaendeshwa */ }
+    return 'Database imekataa ombi hili. Hakikisha wakala-4-kazi.sql imeendeshwa.';
+  }, [supabase]);
 
   // ===== KUPAKIA =====
   const reload = useCallback(async () => {
@@ -118,7 +137,7 @@ export function useWakala({ load = true } = {}) {
           await reload();
           return { ok: true, duplicate: true };
         }
-        return { ok: false, error: error.message || 'Imeshindwa kuandika muamala' };
+        return { ok: false, error: await explain(error) };
       }
       const row = one(data);
       if (!row) { await reload(); return { ok: true }; }
@@ -127,7 +146,7 @@ export function useWakala({ load = true } = {}) {
     } catch (e) {
       return { ok: false, error: e?.message || 'Imeshindwa kuandika muamala' };
     }
-  }, [access.canRecord, bizId, lines, supabase, reload]);
+  }, [access.canRecord, bizId, lines, supabase, reload, explain]);
 
   // Kurekebisha = KUANDIKA REJESHO, si kufuta. Rekodi ya awali
   // inabaki ikionekana kwa mmiliki. Hapo mwanya wa kufuta unafungwa.
@@ -150,7 +169,7 @@ export function useWakala({ load = true } = {}) {
       if (error) {
         if (String(error.code) === '23505')
           return { ok: false, error: 'Muamala huu umekwisha rekebishwa tayari.' };
-        return { ok: false, error: error.message };
+        return { ok: false, error: await explain(error) };
       }
       const row = one(data);
       if (!row) { await reload(); return { ok: true }; }
@@ -159,7 +178,7 @@ export function useWakala({ load = true } = {}) {
     } catch (e) {
       return { ok: false, error: e?.message || 'Imeshindwa' };
     }
-  }, [access.canRecord, bizId, supabase]);
+  }, [access.canRecord, bizId, supabase, explain]);
 
   // ===== KUFUNGA SIKU =====
   // Hesabu inafanyika UPANDE WA DATABASE. Wakala anatuma alichohesabu
@@ -177,24 +196,24 @@ export function useWakala({ load = true } = {}) {
       if (error) {
         if (missingTable(error))
           return { ok: false, error: 'SQL ya uwakala haijaendeshwa bado. Mjulishe msimamizi.' };
-        return { ok: false, error: error.message || 'Imeshindwa kufunga siku' };
+        return { ok: false, error: await explain(error) };
       }
       await reload();
       return { ok: true, day: data };
     } catch (e) {
       return { ok: false, error: e?.message || 'Imeshindwa kufunga siku' };
     }
-  }, [access.canClose, bizId, supabase, reload]);
+  }, [access.canClose, bizId, supabase, reload, explain]);
 
   // Kufungua siku (mmiliki pekee — RLS inazuia muuzaji)
   const reopenDay = useCallback(async (dayId) => {
     try {
       const { error } = await supabase.from('wakala_days').delete().eq('id', dayId);
-      if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: await explain(error) };
       setDays(p => p.filter(d => d.id !== dayId));
       return { ok: true };
     } catch (e) { return { ok: false, error: e?.message }; }
-  }, [supabase]);
+  }, [supabase, explain]);
 
   // ===== LAINI ZA FLOAT (mmiliki) =====
   const saveLine = useCallback(async (line) => {
@@ -211,23 +230,23 @@ export function useWakala({ load = true } = {}) {
       const r = line.id
         ? await supabase.from('wakala_lines').update(row).eq('id', line.id).select().single()
         : await supabase.from('wakala_lines').insert(row).select().single();
-      if (r.error) return { ok: false, error: r.error.message };
+      if (r.error) return { ok: false, error: await explain(r.error) };
       const saved = one(r.data);
       setLines(p => line.id ? p.map(l => l.id === line.id ? (saved || l) : l) : (saved ? [...p, saved] : p));
       return { ok: true, line: saved };
     } catch (e) { return { ok: false, error: e?.message }; }
-  }, [bizId, supabase]);
+  }, [bizId, supabase, explain]);
 
   const removeLine = useCallback(async (id) => {
     try {
       // Laini iliyo na miamala HAIFUTIKI (ON DELETE RESTRICT).
       // Tunaizima badala ya kuifuta — historia inabaki.
       const { error } = await supabase.from('wakala_lines').update({ active: false }).eq('id', id);
-      if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: await explain(error) };
       setLines(p => p.filter(l => l.id !== id));
       return { ok: true };
     } catch (e) { return { ok: false, error: e?.message }; }
-  }, [supabase]);
+  }, [supabase, explain]);
 
   const saveCfg = useCallback(async (patch) => {
     try {
@@ -235,11 +254,11 @@ export function useWakala({ load = true } = {}) {
       delete row.id;
       const { data, error } = await supabase.from('wakala_settings')
         .upsert(row, { onConflict: 'business_id' }).select().single();
-      if (error) return { ok: false, error: error.message };
+      if (error) return { ok: false, error: await explain(error) };
       setCfg(one(data) || row);
       return { ok: true };
     } catch (e) { return { ok: false, error: e?.message }; }
-  }, [bizId, cfg, supabase]);
+  }, [bizId, cfg, supabase, explain]);
 
   // ===== HESABU =====
   const today = localDateStr(new Date());
