@@ -50,7 +50,7 @@ Promise.all([
   function WakalaProbe(){
     const app=useApp(); window.__app=app;
     const wk=WH.default(); window.__wk=wk;
-    const P={dash:WP.WakalaDash,rekodi:WP.WakalaRecordPage,funga:WP.WakalaClosePage,
+    const P={dash:WP.WakalaDash,rekodi:WP.WakalaRecordPage,funga:WP.WakalaClosePage,gharama:WP.WakalaGharamaPage,
              ripoti:WP.WakalaReportPage,laini:WP.WakalaLinesPage}[seed.render]||WP.WakalaDash;
     if(!app.user)return <div id="waiting">waiting</div>;
     return <div style={{padding:16,maxWidth:900,margin:'0 auto',background:'#F6F8F7',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}>

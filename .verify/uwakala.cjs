@@ -48,6 +48,7 @@ async function run(name,seed,fn){
 }
 
 const andika=(p,tx)=>p.evaluate(async t=>await window.__wk.addTx(t),tx);
+const gharama=(p,g)=>p.evaluate(async x=>await window.__wk.addGharama(x),g);
 const funga=(p,a)=>p.evaluate(async x=>await window.__wk.closeDay(x),a);
 
 (async()=>{
@@ -195,6 +196,45 @@ R.push(await run('12. MMILIKI anaona kamisheni, tofauti na float za laini zote',
     }));
   }));
 
+// ---------- 13. Gharama ya kasheni inapunguza kasheni ----------
+R.push(await run('13. Gharama ya KASHENI inapunguza kasheni — upatanisho unabaki SAWA',
+  {db:baseDB(),uid:OWNER,role:'office',rpcs:['dl_wakala_close_day','dl_wakala_add_expense','dl_wakala_del_expense'],render:'gharama'},
+  async p=>{
+    await andika(p,{type:'deposit',amount:50000,commission:800,line_id:L1});
+    await gharama(p,{aina:'kodi',amount:30000,chanzo:'taslimu',maelezo:'Kodi'});
+    await p.waitForTimeout(700);
+    // Kasheni halisi: 100,000 +50,000 -30,000 = 120,000
+    const r=await funga(p,{day:leo(),counted:{[L1]:450000,[L2]:200000},countedCash:120000});
+    return p.evaluate(x=>({ok:x.ok,error:x.error,
+      taslimu:window.__wk.balances.cash,
+      cashOut:window.__db.wakala_tx.filter(t=>t.type==='cash_out').length,
+      tofauti:(window.__db.wakala_days[0]||{}).variance_cash}),r);
+  }));
+
+// ---------- 14. Gharama ya nje haigusi kasheni ----------
+R.push(await run('14. Gharama ya NJE haigusi kasheni',
+  {db:baseDB(),uid:OWNER,role:'office',rpcs:['dl_wakala_close_day','dl_wakala_add_expense','dl_wakala_del_expense'],render:'gharama'},
+  async p=>{
+    await gharama(p,{aina:'mshahara',amount:120000,chanzo:'nje'});
+    await p.waitForTimeout(600);
+    return p.evaluate(()=>({taslimu:window.__wk.balances.cash,
+      cashOut:window.__db.wakala_tx.filter(t=>t.type==='cash_out').length,
+      gharama:window.__wk.summary(window.__wk.today,window.__wk.today).gharama}));
+  }));
+
+// ---------- 15. Faida halisi na marudio ----------
+R.push(await run('15. Faida halisi = kamisheni - gharama; marudio yanazuiwa',
+  {db:baseDB(),uid:OWNER,role:'office',rpcs:['dl_wakala_close_day','dl_wakala_add_expense','dl_wakala_del_expense'],render:'gharama'},
+  async p=>{
+    await andika(p,{type:'deposit',amount:50000,commission:5000,line_id:L1});
+    const a=await gharama(p,{aina:'umeme',amount:2000,chanzo:'taslimu',offline_id:'same-g'});
+    const b=await gharama(p,{aina:'umeme',amount:2000,chanzo:'taslimu',offline_id:'same-g'});
+    await p.waitForTimeout(700);
+    return p.evaluate(([x,y])=>{const s=window.__wk.summary(window.__wk.today,window.__wk.today);
+      return {la1:x.ok,la2:y.ok,idadi:window.__db.wakala_expenses.length,
+              kamisheni:s.kamisheni,gharama:s.gharama,faida:s.faida,hasara:s.hasara};},[a,b]);
+  }));
+
 // ===================== MATOKEO =====================
 const ok=(c)=>c?'✅':'❌';
 let fails=0;
@@ -259,6 +299,25 @@ for(const r of R){
   if(r.name.startsWith('11.')){
     T('ready=false (jedwali halipo)',o.ready===false);
     T('ukurasa unaonyesha maelezo, hauvunjiki',o.ujumbe===true);
+  }
+  if(r.name.startsWith('13.')){
+    T('siku imefungwa',o.ok===true);
+    T(`kasheni 120,000 (${o.taslimu})`,o.taslimu===120000);
+    T(`muamala wa cash_out umetengenezwa (${o.cashOut})`,o.cashOut===1);
+    T(`tofauti ni SIFURI — si upungufu wa uongo (${o.tofauti})`,Number(o.tofauti)===0);
+  }
+  if(r.name.startsWith('14.')){
+    T(`kasheni haijabadilika: 100,000 (${o.taslimu})`,o.taslimu===100000);
+    T(`hakuna cash_out (${o.cashOut})`,o.cashOut===0);
+    T(`gharama imehesabiwa (${o.gharama})`,o.gharama===120000);
+  }
+  if(r.name.startsWith('15.')){
+    T('ya kwanza imepita',o.la1===true);
+    T('marudio yamezuiwa',o.idadi===1);
+    T(`kamisheni 5,000 (${o.kamisheni})`,o.kamisheni===5000);
+    T(`gharama 2,000 (${o.gharama})`,o.gharama===2000);
+    T(`faida halisi 3,000 (${o.faida})`,o.faida===3000);
+    T('si hasara',o.hasara===false);
   }
   if(r.name.startsWith('12.')){
     T(`kamisheni ya leo inaonekana (${o.kamisheniLeo})`,o.kamisheniLeo===800);

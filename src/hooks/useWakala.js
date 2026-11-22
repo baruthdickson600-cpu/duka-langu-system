@@ -16,7 +16,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   wakalaAccess, floatAfter, cashAfter, commissionTotal,
-  dayTotals, validateTx, txDeltas,
+  dayTotals, validateTx, txDeltas, validateGharama, gharamaTotals, faidaHalisi,
 } from '../utils/wakala';
 import { localDateStr, genId } from '../utils/helpers';
 
@@ -39,6 +39,7 @@ export function useWakala({ load = true } = {}) {
   const [lines, setLines]       = useState([]);
   const [txs, setTxs]           = useState([]);
   const [days, setDays]         = useState([]);
+  const [gharama, setGharama]   = useState([]);
   const [cfg, setCfg]           = useState({ cash_opening: 0, threshold: 1000, alert_sms: false });
   const [ready, setReady]       = useState(false);   // jedwali lipo?
   const [loading, setLoading]   = useState(false);
@@ -76,11 +77,12 @@ export function useWakala({ load = true } = {}) {
     setErr('');
     try {
       const q = t => supabase.from(t).select('*').eq('business_id', bizId);
-      const [ln, tx, dy, st] = await Promise.all([
+      const [ln, tx, dy, st, gh] = await Promise.all([
         q('wakala_lines').order('sort_order'),
         q('wakala_tx').order('created_at', { ascending: false }).limit(1500),
         q('wakala_days').order('day', { ascending: false }).limit(400),
         supabase.from('wakala_settings').select('*').eq('business_id', bizId).maybeSingle(),
+        q('wakala_expenses').order('tarehe', { ascending: false }).limit(800),
       ]);
 
       // Jedwali halipo -> huduma haiwezi kutumika, lakini ukurasa
@@ -92,6 +94,8 @@ export function useWakala({ load = true } = {}) {
       setTxs(tx.error ? [] : (tx.data || []));
       setDays(dy.error ? [] : (dy.data || []));
       if (!st.error && st.data) setCfg(st.data);
+      // Gharama ni za hiari — SQL ya 5 ikiwa haijaendeshwa, ukurasa unabaki hai
+      setGharama(gh.error ? [] : (gh.data || []));
       setReady(true);
     } catch (e) {
       if (missingTable(e)) setReady(false);
@@ -215,6 +219,45 @@ export function useWakala({ load = true } = {}) {
     } catch (e) { return { ok: false, error: e?.message }; }
   }, [supabase, explain]);
 
+  // ===== GHARAMA =====
+  // Gharama ya taslimu LAZIMA ipunguze kasheni. Database inaandika
+  // gharama na muamala wa cash_out pamoja; hapa tunapakia upya ili
+  // salio linaloonekana liwe lile lile la database.
+  const addGharama = useCallback(async (g) => {
+    const v = validateGharama(g);
+    if (!v.ok) return { ok: false, error: v.errors.join(' ') };
+    try {
+      const { data, error } = await supabase.rpc('dl_wakala_add_expense', {
+        p_biz: bizId,
+        p_tarehe: g.tarehe || localDateStr(new Date()),
+        p_aina: g.aina,
+        p_amount: Number(g.amount) || 0,
+        p_chanzo: g.chanzo || 'taslimu',
+        p_maelezo: g.maelezo || null,
+        p_offline_id: g.offline_id || genId(),
+      });
+      if (error) {
+        if (String(error.code) === '23505') { await reload(); return { ok: true, duplicate: true }; }
+        if (missingTable(error))
+          return { ok: false, error: 'SQL ya gharama (wakala-5-gharama.sql) haijaendeshwa bado.' };
+        return { ok: false, error: await explain(error) };
+      }
+      await reload();
+      return { ok: true, gharama: data };
+    } catch (e) {
+      return { ok: false, error: e?.message || 'Imeshindwa kuandika gharama' };
+    }
+  }, [bizId, supabase, reload, explain]);
+
+  const delGharama = useCallback(async (id) => {
+    try {
+      const { error } = await supabase.rpc('dl_wakala_del_expense', { p_id: id });
+      if (error) return { ok: false, error: await explain(error) };
+      await reload();
+      return { ok: true };
+    } catch (e) { return { ok: false, error: e?.message }; }
+  }, [supabase, reload, explain]);
+
   // ===== LAINI ZA FLOAT (mmiliki) =====
   const saveLine = useCallback(async (line) => {
     try {
@@ -304,22 +347,32 @@ export function useWakala({ load = true } = {}) {
     const inRange = d => (!from || String(d) >= String(from)) && (!to || String(d) <= String(to));
     const t  = txs.filter(x => inRange(x.tx_date));
     const dd = days.filter(x => inRange(x.day));
+    const gg = gharama.filter(x => inRange(x.tarehe));
+    const gt = gharamaTotals(gg);
+    const kam = dayTotals(t).kamisheni;
     return {
       ...dayTotals(t),
+      gharama:       gt.jumla,
+      gharamaTaslimu: gt.taslimu,
+      gharamaKwaAina: gt.kwaAina,
+      gharamaKubwa:  gt.kubwaAina,
+      idadiGharama:  gt.idadi,
+      ...faidaHalisi({ kamisheni: kam, gharama: gt.jumla }),
       siku:          dd.length,
       tofautiTaslimu: dd.reduce((a, d) => a + (Number(d.variance_cash) || 0), 0),
       tofautiFloat:   dd.reduce((a, d) => a + (Number(d.variance_float) || 0), 0),
       sikuZaTofauti:  dd.filter(d => Number(d.variance_cash) || Number(d.variance_float)).length,
     };
-  }, [txs, days]);
+  }, [txs, days, gharama]);
 
   return {
     // hali
     access, ready, loading, err, isOwner: user?.role === 'office',
     // data
-    lines, txs, days, cfg, balances, today,
+    lines, txs, days, cfg, gharama, balances, today,
     // vitendo
     reload, addTx, reverseTx, closeDay, reopenDay, saveLine, removeLine, saveCfg,
+    addGharama, delGharama,
     // vikokotoo
     txOn, closedOn, openingFloat, openingCash, summary, txDeltas,
   };

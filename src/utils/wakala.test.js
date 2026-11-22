@@ -10,6 +10,8 @@ import {
   floatAfter, cashAfter, commissionTotal,
   reconcileLine, reconcileCash, varianceState, dayTotals, wakalaAccess,
   shellMode, KAZI, kaziOf, doesWakala, doesDuka,
+  GHARAMA, CHANZO, gharamaLabel, isGharama, validateGharama,
+  gharamaTotals, faidaHalisi,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -365,6 +367,94 @@ describe('kazi ya mfanyakazi', () => {
     ['duka', 'zote', undefined].forEach(k => {
       expect(shellMode({ role: 'employee', kazi: k, shopExpired: false })).toBe('duka');
       expect(shellMode({ role: 'employee', kazi: k, shopExpired: true })).toBe('locked');
+    });
+  });
+});
+
+// ============================================================
+// GHARAMA ZA UWAKALA — kamisheni si faida
+// ============================================================
+describe('gharama za uwakala', () => {
+  const g = (aina, amount, chanzo) => ({ aina, amount, chanzo });
+
+  it('aina zote muhimu zipo', () => {
+    ['kodi','umeme','maji','mtandao','mshahara','usafiri','ada_float','vifaa',
+     'ulinzi','leseni','matengenezo','nyingine'].forEach(k => {
+      expect(isGharama(k)).toBe(true);
+      expect(GHARAMA[k].label.length).toBeGreaterThan(2);
+    });
+    expect(isGharama('hewa')).toBe(false);
+    expect(gharamaLabel('kodi')).toBe('Kodi ya ofisi');
+    expect(gharamaLabel('hewa')).toBe('hewa');
+    expect(Object.keys(CHANZO)).toEqual(['taslimu','nje']);
+  });
+
+  describe('uhakiki', () => {
+    it('gharama sahihi inapita', () => {
+      expect(validateGharama(g('kodi', 50000, 'taslimu')).ok).toBe(true);
+    });
+    it('aina isiyojulikana inakataliwa', () => {
+      expect(validateGharama(g('hewa', 5000)).ok).toBe(false);
+    });
+    it('kiasi sifuri au hasi kinakataliwa', () => {
+      expect(validateGharama(g('kodi', 0)).ok).toBe(false);
+      expect(validateGharama(g('kodi', -100)).ok).toBe(false);
+    });
+    it('chanzo batili kinakataliwa', () => {
+      expect(validateGharama(g('kodi', 5000, 'mbinguni')).ok).toBe(false);
+    });
+  });
+
+  describe('jumla', () => {
+    const list = [
+      g('kodi', 50000, 'taslimu'),
+      g('umeme', 12000, 'taslimu'),
+      g('mshahara', 120000, 'nje'),
+      g('usafiri', 3000),            // chanzo hakijawekwa = taslimu
+    ];
+    it('inatenganisha iliyotoka kasheni na ya nje', () => {
+      const t = gharamaTotals(list);
+      expect(t.jumla).toBe(185000);
+      expect(t.taslimu).toBe(65000);   // 50,000 + 12,000 + 3,000
+      expect(t.nje).toBe(120000);
+      expect(t.idadi).toBe(4);
+    });
+    it('inaonyesha aina inayoongoza', () => {
+      const t = gharamaTotals(list);
+      expect(t.kubwaAina).toBe('mshahara');
+      expect(t.kubwaKiasi).toBe(120000);
+    });
+    it('aina isiyojulikana inahesabiwa kama nyingine', () => {
+      expect(gharamaTotals([g('hewa', 7000)]).kwaAina.nyingine).toBe(7000);
+    });
+    it('orodha tupu', () => {
+      const t = gharamaTotals([]);
+      expect(t.jumla).toBe(0); expect(t.kubwaAina).toBe(null);
+    });
+    it('data batili haitoi NaN', () => {
+      expect(gharamaTotals([null, { aina: 'kodi', amount: 'abc' }]).jumla).toBe(0);
+    });
+  });
+
+  describe('faida halisi', () => {
+    it('kamisheni kasoro gharama', () => {
+      const f = faidaHalisi({ kamisheni: 150000, gharama: 110000 });
+      expect(f.faida).toBe(40000);
+      expect(f.asilimia).toBe(27);
+      expect(f.hasara).toBe(false);
+    });
+    it('gharama zikizidi kamisheni ni HASARA', () => {
+      const f = faidaHalisi({ kamisheni: 80000, gharama: 120000 });
+      expect(f.faida).toBe(-40000);
+      expect(f.hasara).toBe(true);
+    });
+    it('hakuna kamisheni — asilimia isiwe NaN wala Infinity', () => {
+      const f = faidaHalisi({ kamisheni: 0, gharama: 50000 });
+      expect(f.asilimia).toBe(0);
+      expect(f.faida).toBe(-50000);
+    });
+    it('bila gharama, faida ni kamisheni yote', () => {
+      expect(faidaHalisi({ kamisheni: 90000 }).faida).toBe(90000);
     });
   });
 });

@@ -200,3 +200,84 @@ export const wakalaAccess = ({ enabled, paidUntil, now = new Date() } = {}) => {
     warn: !expired && daysLeft <= WARN_DAYS,
   };
 };
+
+// ============================================================
+// GHARAMA ZA UWAKALA
+//
+// Kamisheni si faida. Mwenye uwakala analipa kodi, umeme, bando,
+// usafiri wa kufuata float, mshahara. Bila kuandika gharama hizi,
+// mmiliki anaona "kamisheni 150,000 mwezi huu" na kudhani amepata
+// 150,000 — wakati huenda amepata 40,000.
+//
+// ⚠️ SHERIA MUHIMU: gharama ikilipwa kwa TASLIMU ya uwakala, lazima
+//    ipunguze kasheni pia. Ukiirekodi upande mmoja tu, upatanisho wa
+//    siku utaonyesha UPUNGUFU — mfumo utamshtaki wakala kwa wizi
+//    ambao haukutokea. Kwa hiyo database inaandika gharama NA
+//    muamala wa `cash_out` kwa pamoja.
+// ============================================================
+export const GHARAMA = {
+  kodi:        { label: 'Kodi ya ofisi',   icon: '🏠' },
+  umeme:       { label: 'Umeme (LUKU)',    icon: '💡' },
+  maji:        { label: 'Maji',            icon: '🚰' },
+  mtandao:     { label: 'Bando / intaneti',icon: '📶' },
+  mshahara:    { label: 'Mshahara',        icon: '👤' },
+  usafiri:     { label: 'Usafiri',         icon: '🏍️' },
+  ada_float:   { label: 'Ada ya float',    icon: '🔋' },
+  vifaa:       { label: 'Vifaa na karatasi',icon: '📒' },
+  ulinzi:      { label: 'Ulinzi',          icon: '🛡️' },
+  leseni:      { label: 'Leseni na kodi',  icon: '🧾' },
+  matengenezo: { label: 'Matengenezo',     icon: '🔧' },
+  nyingine:    { label: 'Nyingine',        icon: '📌' },
+};
+export const gharamaLabel = k => GHARAMA[k]?.label || k || 'Nyingine';
+export const gharamaIcon  = k => GHARAMA[k]?.icon || '📌';
+export const isGharama    = k => Object.prototype.hasOwnProperty.call(GHARAMA, k);
+
+// Chanzo cha malipo:
+//   taslimu — imetoka kwenye kasheni ya uwakala (inapunguza kasheni)
+//   nje     — imetoka mfukoni mwa mmiliki, benki au simu yake
+export const CHANZO = {
+  taslimu: { label: 'Kasheni ya uwakala', sub: 'Inapunguza pesa iliyopo kasheni' },
+  nje:     { label: 'Nje ya kasheni',     sub: 'Mfukoni, benki au simu — kasheni haibadiliki' },
+};
+export const chanzoLabel = c => CHANZO[c]?.label || 'Kasheni ya uwakala';
+const fromDrawer = g => (g?.chanzo || 'taslimu') === 'taslimu';
+
+export const validateGharama = (g = {}) => {
+  const e = [];
+  if (!isGharama(g.aina)) e.push('Chagua aina ya gharama.');
+  if (num(g.amount) <= 0) e.push('Weka kiasi sahihi kinachozidi sifuri.');
+  if (g.chanzo && !CHANZO[g.chanzo]) e.push('Chanzo cha malipo si sahihi.');
+  return { ok: e.length === 0, errors: e };
+};
+
+export const gharamaTotals = (list) => {
+  const l = (list || []).filter(Boolean);
+  const kwaAina = {};
+  l.forEach(g => {
+    const k = isGharama(g.aina) ? g.aina : 'nyingine';
+    kwaAina[k] = (kwaAina[k] || 0) + num(g.amount);
+  });
+  const jumla   = l.reduce((a, g) => a + num(g.amount), 0);
+  const taslimu = l.filter(fromDrawer).reduce((a, g) => a + num(g.amount), 0);
+  // Aina inayoongoza — ndiyo mmiliki anapaswa kuiangalia kwanza
+  const kubwa = Object.entries(kwaAina).sort((a, b) => b[1] - a[1])[0] || null;
+  return {
+    jumla, taslimu, nje: jumla - taslimu,
+    idadi: l.length, kwaAina,
+    kubwaAina: kubwa ? kubwa[0] : null,
+    kubwaKiasi: kubwa ? kubwa[1] : 0,
+  };
+};
+
+// Faida halisi ya uwakala: kamisheni iliyopatikana kasoro gharama.
+// Hii ndiyo namba pekee inayomwambia mmiliki kama biashara inalipa.
+export const faidaHalisi = ({ kamisheni, gharama }) => {
+  const k = num(kamisheni), g = num(gharama);
+  const faida = k - g;
+  return {
+    kamisheni: k, gharama: g, faida,
+    asilimia: k > 0 ? Math.round((faida / k) * 100) : 0,
+    hasara: faida < 0,
+  };
+};

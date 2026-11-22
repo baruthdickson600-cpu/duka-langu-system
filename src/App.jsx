@@ -26,7 +26,7 @@ import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,Super
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
 import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
-import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage} from './pages/office/WakalaPages';
+import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage,WakalaGharamaPage} from './pages/office/WakalaPages';
 import {wakalaAccess,shellMode,doesWakala} from './utils/wakala';
 
 // ===== HUDUMA YA UWAKALA =====
@@ -37,6 +37,7 @@ const WAKALA_MENU_OFFICE=[
   {id:'wakala',icon:IC.dollar,label:'📊 Uwakala'},
   {id:'wakala_rekodi',icon:IC.plus,label:'📲 Rekodi Muamala'},
   {id:'wakala_funga',icon:IC.lock,label:'🔒 Funga Siku'},
+  {id:'wakala_gharama',icon:IC.money||IC.dollar,label:'💸 Gharama za Uwakala'},
   {id:'wakala_ripoti',icon:IC.file,label:'🧾 Ripoti ya Uwakala'},
   {id:'wakala_laini',icon:IC.gear,label:'⚙️ Laini za Float'},
 ];
@@ -374,6 +375,7 @@ export default function App(){
         case'wakala':return role==='office'?<WakalaDash/>:<WakalaRecordPage/>;
         case'wakala_rekodi':return <WakalaRecordPage/>;
         case'wakala_funga':return <WakalaClosePage/>;
+        case'wakala_gharama':return role==='office'?<WakalaGharamaPage/>:null;
         case'wakala_ripoti':return role==='office'?<WakalaReportPage/>:null;
         case'wakala_laini':return role==='office'?<WakalaLinesPage/>:null;
         default:break;

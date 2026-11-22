@@ -18,7 +18,8 @@ import useWakala from '../../hooks/useWakala';
 import { IC, Btn, Modal, Input, Sel, Area, Badge, Empty, Tabs } from '../../components/UI';
 import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
-import { TX, txLabel, varianceState, doesWakala } from '../../utils/wakala';
+import { TX, txLabel, varianceState, doesWakala,
+         GHARAMA, CHANZO, gharamaLabel, gharamaIcon } from '../../utils/wakala';
 
 const C = {
   green: '#0A6E47', dark: '#06502F', gold: '#F2B705', red: '#C2412D',
@@ -509,14 +510,30 @@ export function WakalaDash() {
     <PageHead icon="📊" title="Uwakala" sub="Kutuma na kutoa pesa — hesabu kamili" />
     <Hali wk={wk} />
 
-    <HeroCard label="KAMISHENI LEO" value={money(leo.kamisheni)} pill={`${leo.idadi} miamala`}
-      sub={`Kuweka ${money(leo.kuweka)} · Kutoa ${money(leo.kutoa)}`}>
+    <HeroCard
+      tone={mwezi.hasara ? 'red' : undefined}
+      label={mwezi.hasara ? 'HASARA MWEZI HUU' : 'FAIDA HALISI MWEZI HUU'}
+      value={money(Math.abs(mwezi.faida))}
+      pill={`${leo.idadi} miamala leo`}
+      sub={mwezi.gharama > 0
+        ? `Kamisheni ${money(mwezi.kamisheni)} kasoro gharama ${money(mwezi.gharama)}`
+        : 'Hakuna gharama iliyoandikwa — faida hii bado si kamili'}>
       <HeroStats items={[
+        { l: 'KAMISHENI LEO', v: money(leo.kamisheni) },
         { l: 'WIKI HII', v: money(wiki.kamisheni) },
-        { l: 'MWEZI HUU', v: money(mwezi.kamisheni) },
         { l: 'TASLIMU KASHENI', v: money(wk.balances.cash), c: wk.balances.cash < 0 ? '#FFD9D2' : '#fff' },
       ]} />
     </HeroCard>
+
+    {/* Gharama hazijaandikwa — faida inayoonekana si ya kweli */}
+    {mwezi.gharama === 0 && mwezi.kamisheni > 0 && <div style={{
+      background: C.warm, border: `1px solid ${C.gold}55`, borderRadius: 14,
+      padding: '12px 14px', marginBottom: 14, fontSize: 12.5, color: '#7A5B00',
+    }}>
+      <b>Hujaandika gharama yoyote mwezi huu.</b> Kamisheni si faida — kodi, umeme,
+      bando, usafiri na mshahara vinatoka hapo hapo. Nenda <b>Gharama za Uwakala</b>
+      uziandike, uone unachobakiwa nacho kweli.
+    </div>}
 
     {/* Hakuna mfanyakazi aliyepangiwa uwakala */}
     {wakalaStaff.length === 0 && (employees || []).length > 0 && <div style={{
@@ -562,17 +579,28 @@ export function WakalaDash() {
             ['Kutoa (withdraw)', 'kutoa'],
             ['Float iliyonunuliwa', 'floatNunuliwa'],
             ['Mtaji ulioingizwa', 'mtaji'],
-            ['Kamisheni', 'kamisheni'],
+            ['Kamisheni (mapato)', 'kamisheni'],
+            ['Gharama', 'gharama'],
+            ['— zilizotoka kasheni', 'gharamaTaslimu'],
             ['Idadi ya miamala', 'idadi'],
             ['Marekebisho', 'marejesho'],
           ].map(([l, k]) => <tr key={k} style={{ borderTop: `1px solid ${C.line}` }}>
             <td style={{ padding: '8px 6px', color: C.muted, fontWeight: 600, fontSize: 12 }}>{l}</td>
             {[leo, wiki, mwezi].map((p, i) => <td key={i} style={{
               padding: '8px 6px', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap',
-              color: k === 'kamisheni' ? C.gold : k === 'marejesho' && p[k] ? C.red : C.ink,
+              color: k === 'kamisheni' ? C.gold
+                   : k.startsWith('gharama') ? C.red
+                   : k === 'marejesho' && p[k] ? C.red : C.ink,
             }}>{k === 'idadi' || k === 'marejesho' ? p[k] : num0(p[k])}</td>)}
           </tr>)}
           <tr style={{ borderTop: `2px solid ${C.green}`, background: C.soft }}>
+            <td style={{ padding: '9px 6px', fontWeight: 900, color: C.dark, fontSize: 12 }}>FAIDA HALISI</td>
+            {[leo, wiki, mwezi].map((p, i) => <td key={i} style={{
+              padding: '9px 6px', textAlign: 'right', fontWeight: 900, whiteSpace: 'nowrap',
+              color: p.hasara ? C.red : C.green,
+            }}>{num0(p.faida)}</td>)}
+          </tr>
+          <tr style={{ background: C.soft }}>
             <td style={{ padding: '9px 6px', fontWeight: 900, color: C.dark, fontSize: 12 }}>Tofauti iliyokamatwa</td>
             {[leo, wiki, mwezi].map((p, i) => {
               const t = Math.abs(p.tofautiTaslimu) + Math.abs(p.tofautiFloat);
@@ -640,6 +668,9 @@ export function WakalaReportPage() {
       <SumCard label="Kamisheni" value={money(s.kamisheni)} color={C.gold} />
       <SumCard label="Kuweka" value={money(s.kuweka)} color={C.green} hint={`${s.idadiKuweka} miamala`} />
       <SumCard label="Kutoa" value={money(s.kutoa)} color={C.dark} hint={`${s.idadiKutoa} miamala`} />
+      <SumCard label="Gharama" value={money(s.gharama)} color={C.red} hint={`${s.idadiGharama} rekodi`} />
+      <SumCard label={s.hasara ? 'Hasara' : 'Faida halisi'} value={money(Math.abs(s.faida))}
+        color={s.hasara ? C.red : C.green} hint={s.kamisheni > 0 ? `${s.asilimia}% ya kamisheni` : null} />
       <SumCard label="Siku zilizofungwa" value={String(s.siku)} color={C.green} />
       <SumCard label="Tofauti" value={money(Math.abs(s.tofautiTaslimu) + Math.abs(s.tofautiFloat))}
         color={s.sikuZaTofauti ? C.red : C.green} hint={`siku ${s.sikuZaTofauti}`} />
@@ -779,3 +810,191 @@ export function WakalaLinesPage() {
 }
 
 export default WakalaDash;
+
+
+// ============================================================
+// 💸 GHARAMA ZA UWAKALA
+//
+// Kamisheni si faida. Hapa mmiliki anaandika kodi, umeme, bando,
+// mshahara, usafiri — kisha anaona FAIDA HALISI.
+//
+// Chanzo cha malipo ni muhimu kuliko inavyoonekana: gharama
+// iliyolipwa kwa kasheni ya uwakala inapunguza kasheni. Ukiichagua
+// vibaya, upatanisho wa siku utaonyesha upungufu usio wa kweli.
+// ============================================================
+export function WakalaGharamaPage() {
+  const wk = useWakala();
+  const [f, setF] = useState({ aina: 'kodi', amount: '', chanzo: 'taslimu', maelezo: '', tarehe: localDateStr(new Date()) });
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [futa, setFuta] = useState(null);
+  const [kipindi, setKipindi] = useState('mwezi');
+
+  const today = wk.today;
+  const from = kipindi === 'leo' ? today
+    : kipindi === 'wiki' ? (() => { const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - d.getDay()); return localDateStr(d); })()
+    : today.slice(0, 8) + '01';
+  const s = wk.summary(from, today);
+  const orodha = (wk.gharama || []).filter(g => String(g.tarehe) >= from && String(g.tarehe) <= today);
+
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const submit = async () => {
+    setMsg(null); setBusy(true);
+    const r = await wk.addGharama(f);
+    setBusy(false);
+    if (!r.ok) return setMsg({ bad: true, text: r.error });
+    setMsg({ bad: false, text: `${gharamaLabel(f.aina)} ${money(f.amount)} imeandikwa.` });
+    setF(p => ({ ...p, amount: '', maelezo: '' }));
+  };
+
+  if (!wk.ready || wk.access.neverPaid) return <div><PageHead icon="💸" title="Gharama za Uwakala" /><Hali wk={wk} /></div>;
+
+  const aina = Object.entries(s.gharamaKwaAina || {}).sort((a, b) => b[1] - a[1]);
+
+  return <div>
+    <PageHead icon="💸" title="Gharama za Uwakala" sub="Kodi, umeme, bando, mshahara — ndizo zinazokula kamisheni" />
+    <Hali wk={wk} />
+
+    {/* ---------- Faida halisi ---------- */}
+    <HeroCard
+      tone={s.hasara ? 'red' : undefined}
+      label={s.hasara ? 'HASARA' : 'FAIDA HALISI'}
+      value={money(Math.abs(s.faida))}
+      pill={kipindi === 'leo' ? 'Leo' : kipindi === 'wiki' ? 'Wiki hii' : 'Mwezi huu'}
+      sub={s.hasara
+        ? 'Gharama zimezidi kamisheni kipindi hiki'
+        : `Umebakiwa na ${s.asilimia}% ya kamisheni uliyopata`}
+    >
+      <HeroStats items={[
+        { l: 'KAMISHENI', v: money(s.kamisheni) },
+        { l: 'GHARAMA', v: money(s.gharama) },
+        { l: 'ZA KASHENI', v: money(s.gharamaTaslimu) },
+      ]} />
+    </HeroCard>
+
+    <Tabs active={kipindi} onChange={setKipindi} tabs={[
+      { id: 'leo', label: 'Leo' }, { id: 'wiki', label: 'Wiki hii' }, { id: 'mwezi', label: 'Mwezi huu' },
+    ]} />
+
+    {/* ---------- Andika gharama ---------- */}
+    <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 12 }}>➕ Andika gharama</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(104px,1fr))', gap: 7, marginBottom: 12 }}>
+        {Object.entries(GHARAMA).map(([k, o]) => <button key={k} onClick={() => set('aina', k)} style={{
+          padding: '9px 5px', borderRadius: 12, cursor: 'pointer', fontSize: 11.5, fontWeight: 700, lineHeight: 1.3,
+          border: f.aina === k ? `2px solid ${C.green}` : `1.5px solid ${C.line}`,
+          background: f.aina === k ? C.soft : '#fff', color: f.aina === k ? C.dark : C.muted,
+        }}><div style={{ fontSize: 17 }}>{o.icon}</div>{o.label}</button>)}
+      </div>
+
+      <Input label="Kiasi (TZS)" type="number" inputMode="numeric" value={f.amount}
+        onChange={e => set('amount', e.target.value)} placeholder="0"
+        style={{ fontSize: 21, fontWeight: 900, textAlign: 'center', padding: '13px' }} />
+
+      {/* Chanzo — hapa ndipo upatanisho unapoamuliwa */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 6 }}>Pesa imetoka wapi?</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+        {Object.entries(CHANZO).map(([k, o]) => <button key={k} onClick={() => set('chanzo', k)} style={{
+          flex: 1, padding: '11px 9px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+          border: f.chanzo === k ? `2px solid ${C.green}` : `1.5px solid ${C.line}`,
+          background: f.chanzo === k ? C.soft : '#fff',
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 12.5, color: f.chanzo === k ? C.dark : C.ink }}>
+            {k === 'taslimu' ? '💵 ' : '🏦 '}{o.label}
+          </div>
+          <div style={{ fontSize: 10.5, color: C.pale, marginTop: 2 }}>{o.sub}</div>
+        </button>)}
+      </div>
+      {f.chanzo === 'taslimu' && Number(f.amount) > 0 && <div style={{
+        background: C.warm, borderRadius: 10, padding: '8px 11px', marginBottom: 12,
+        fontSize: 11.5, color: '#7A5B00',
+      }}>
+        Kasheni itapungua kwa {money(f.amount)} — kutoka {money(wk.balances.cash)} hadi {money(wk.balances.cash - Number(f.amount))}.
+      </div>}
+
+      <Input label="Tarehe" type="date" value={f.tarehe} max={localDateStr(new Date())}
+        onChange={e => set('tarehe', e.target.value)} />
+      <Area label="Maelezo (hiari)" value={f.maelezo} onChange={e => set('maelezo', e.target.value)}
+        placeholder="Mfano: LUKU ya mwezi Novemba" />
+
+      {msg && <div style={{
+        borderRadius: 12, padding: '10px 13px', marginBottom: 12, fontSize: 13, fontWeight: 600,
+        background: msg.bad ? C.blush : C.soft, color: msg.bad ? '#7F2318' : C.dark,
+      }}>{msg.bad ? '⚠️ ' : '✅ '}{msg.text}</div>}
+
+      <Btn onClick={submit} disabled={busy || !Number(f.amount) || !wk.access.canRecord}
+        style={{ width: '100%', padding: '14px', fontSize: 15.5, borderRadius: 14 }}>
+        {busy ? 'Inaandika...' : `💸 Andika ${gharamaLabel(f.aina)}`}
+      </Btn>
+    </div>
+
+    {/* ---------- Mchanganuo kwa aina ---------- */}
+    {aina.length > 0 && <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 12 }}>📊 Gharama kwa aina</div>
+      {aina.map(([k, v]) => {
+        const pct = s.gharama > 0 ? Math.round((v / s.gharama) * 100) : 0;
+        return <div key={k} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
+            <span style={{ fontWeight: 700, color: C.ink }}>{gharamaIcon(k)} {gharamaLabel(k)}</span>
+            <span style={{ fontWeight: 800 }}>{money(v)} <span style={{ color: C.pale, fontWeight: 600 }}>{pct}%</span></span>
+          </div>
+          <div style={{ height: 7, background: C.line, borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ width: pct + '%', height: '100%', background: C.green, borderRadius: 4 }} />
+          </div>
+        </div>;
+      })}
+      <div style={{ fontSize: 11, color: C.pale, marginTop: 8 }}>
+        Aina inayoongoza ni <b>{gharamaLabel(s.gharamaKubwa)}</b>. Hapo ndipo pa kuanzia ukitaka kupunguza.
+      </div>
+    </div>}
+
+    {/* ---------- Orodha ---------- */}
+    <div className="card" style={{ padding: 16 }}>
+      <div style={{ fontWeight: 900, color: C.green, marginBottom: 10 }}>🧾 Gharama zilizoandikwa ({orodha.length})</div>
+      {orodha.length === 0 ? <Empty icon="💸" text="Hakuna gharama kipindi hiki" /> :
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {orodha.map(g => <div key={g.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+            borderRadius: 12, background: '#fff', border: `1px solid ${C.line}`,
+          }}>
+            <div style={{ fontSize: 19 }}>{gharamaIcon(g.aina)}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 13.5, color: C.ink }}>
+                {gharamaLabel(g.aina)} · {money(g.amount)}
+              </div>
+              <div style={{ fontSize: 11, color: C.pale }}>
+                {siku(g.tarehe)} · {g.chanzo === 'taslimu' ? '💵 kasheni' : '🏦 nje ya kasheni'}
+                {g.maelezo ? ' · ' + g.maelezo : ''}
+              </div>
+            </div>
+            {wk.isOwner && !wk.closedOn(g.tarehe) && <button onClick={() => setFuta(g)} title="Futa" style={{
+              background: '#fff', border: `1.5px solid ${C.line}`, borderRadius: 10,
+              padding: '6px 9px', cursor: 'pointer', fontSize: 12,
+            }}>🗑</button>}
+          </div>)}
+        </div>}
+    </div>
+
+    <Modal open={!!futa} onClose={() => setFuta(null)} title="Futa gharama">
+      {futa && <>
+        <div style={{ background: C.warm, borderRadius: 12, padding: '11px 13px', fontSize: 12.5, color: '#7A5B00', marginBottom: 14 }}>
+          {futa.chanzo === 'taslimu'
+            ? <>Gharama hii ilipunguza kasheni. Ukiifuta, <b>kasheni itarudi</b> kwa {money(futa.amount)}.</>
+            : <>Gharama hii haikugusa kasheni, kwa hiyo kufuta hakubadilishi salio.</>}
+        </div>
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 14 }}>
+          {gharamaIcon(futa.aina)} {gharamaLabel(futa.aina)} · {money(futa.amount)}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn v="ghost" onClick={() => setFuta(null)} style={{ flex: 1 }}>Acha</Btn>
+          <Btn v="danger" style={{ flex: 1 }} onClick={async () => {
+            const r = await wk.delGharama(futa.id);
+            if (!r.ok) return alert('⚠️ ' + r.error);
+            setFuta(null);
+          }}>Futa</Btn>
+        </div>
+      </>}
+    </Modal>
+  </div>;
+}

@@ -35,8 +35,11 @@ export function SumCard({label,value,color='#0A6E47',hint}){
 }
 
 // Kadi kubwa ya kijani (hero) — kwa takwimu kuu ya ukurasa
-export function HeroCard({label,value,pill,children,sub}){
-  return <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
+// `tone` ni ya hiari; bila yo ni kijani kama zamani kwenye kurasa zote.
+// Hasara haipaswi kuonekana kijani — ni ujumbe tofauti kabisa.
+export function HeroCard({label,value,pill,children,sub,tone}){
+  const red=tone==='red';
+  return <div style={{background:red?'linear-gradient(140deg,#8C2C1E,#C2412D)':'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:red?'0 14px 34px rgba(194,65,45,.28)':'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
     <div style={{position:'absolute',right:-30,top:-30,width:150,height:150,borderRadius:'50%',background:'rgba(242,183,5,.12)'}}/>
     <div style={{position:'relative'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10}}>

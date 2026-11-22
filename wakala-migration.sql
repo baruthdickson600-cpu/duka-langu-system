@@ -1,4 +1,18 @@
 -- ============================================================
+-- DukaLangu — HUDUMA YA UWAKALA (faili moja kamili)
+--
+-- Hii ni vipande vitano vilivyounganishwa. Kama kihariri chako
+-- kinakata maandishi marefu, tumia vipande kimoja kimoja badala
+-- yake: wakala-1-jedwali.sql ... wakala-5-gharama.sql
+--
+-- Salama kuendesha mara nyingi. HAIGUSI jedwali la duka.
+-- ============================================================
+
+
+
+-- ####################  SEHEMU 1 / 5  ####################
+
+-- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (jedwali + kinga)
 --
 -- HATUA 1 YA 5. Hii HAIGUSI kitu kilichopo. Haibadilishi jedwali
@@ -164,6 +178,12 @@ CREATE TABLE IF NOT EXISTS wakala_settings (
 
 
 -- ============================================================
+NOTIFY pgrst, 'reload schema';
+SELECT 'Sehemu 1/5 SAWA — jedwali yametengenezwa.' AS status;
+
+
+-- ####################  SEHEMU 2 / 5  ####################
+
 -- 6. KINGA ZA DATABASE (triggers)
 -- ============================================================
 
@@ -344,6 +364,11 @@ END $close$;
 
 
 -- ============================================================
+SELECT 'Sehemu 2/5 SAWA — kinga na hesabu zipo.' AS status;
+
+
+-- ####################  SEHEMU 3 / 5  ####################
+
 -- ============================================================
 -- 0. WASAIDIZI WA KINGA — hutengenezwa TU kama hawapo
 --
@@ -391,7 +416,6 @@ DO $g$ BEGIN
   BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_my_business(), dl_my_role() TO anon';
   EXCEPTION WHEN undefined_object THEN NULL; END;
 END $g$;
-
 -- 9. KINGA (RLS)
 --
 --    Wakala: anaona na ANDIKA pekee. HAWEZI kufuta wala
@@ -458,9 +482,17 @@ GRANT EXECUTE ON FUNCTION dl_wakala_close_day(UUID, DATE, JSONB, NUMERIC, TEXT) 
 GRANT EXECUTE ON FUNCTION dl_wakala_opening_float(UUID, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION dl_wakala_opening_cash(UUID, DATE) TO authenticated;
 
+NOTIFY pgrst, 'reload schema';
+
+SELECT 'Jedwali la uwakala limetengenezwa. Huduma imezimwa hadi admin aiwashe.' AS status;
+
+
+-- ####################  SEHEMU 4 / 5  ####################
+
+-- ============================================================
 -- DukaLangu — KAZI YA MFANYAKAZI (duka / uwakala / zote)
 --
--- Sehemu 4/4. Endesha BAADA ya sehemu 1, 2 na 3.
+-- Sehemu 4/5. Endesha BAADA ya sehemu 1, 2 na 3.
 --
 -- Maduka mengi hupenda akaunti ziwe TOFAUTI: mmoja anauza dukani,
 -- mwingine anafanya uwakala. Kuunganisha ni HIARI.
@@ -571,12 +603,8 @@ BEGIN
     RAISE EXCEPTION 'Biashara na tarehe zinahitajika.';
   END IF;
 
-  IF dl_my_role() <> 'admin' AND dl_my_business() <> p_biz THEN
-    RAISE EXCEPTION 'Hauna ruhusa kwenye biashara hii.';
-  END IF;
-
-  IF NOT dl_does_wakala() THEN
-    RAISE EXCEPTION 'Hauna kazi ya uwakala. Mwambie mmiliki akuwekee.';
+  IF NOT dl_wakala_may_close(p_biz) THEN
+    RAISE EXCEPTION 'Hauna ruhusa ya kufunga siku ya uwakala kwenye duka hili.';
   END IF;
 
   IF EXISTS (SELECT 1 FROM wakala_days WHERE business_id = p_biz AND day = p_day) THEN
@@ -625,6 +653,300 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
+SELECT 'Sehemu 4/5 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
+
+
+-- ============================================================
+-- MMILIKI HALISI DAIMA ANARUHUSIWA
+--
+-- Kinga za awali zilimtambua mtu kwa safu yake kwenye `users`.
+-- Maduka mengi yaliyosajiliwa na mawakala hayana safu hiyo
+-- iliyokamilika, kwa hiyo mmiliki alikataliwa kwenye duka LAKE
+-- MWENYEWE: "new row violates row-level security policy".
+--
+-- Sasa anayemiliki duka (businesses.owner_id) anapita bila shaka.
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_owns(p_biz UUID)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $ow$
+  SELECT EXISTS (SELECT 1 FROM businesses b
+                  WHERE b.id = p_biz AND b.owner_id = auth.uid())
+$ow$;
+
+-- Msimamizi wa uwakala: admin, au mmiliki wa duka hilo
+CREATE OR REPLACE FUNCTION dl_wakala_boss(p_biz UUID)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $bs$
+  SELECT dl_my_role() = 'admin'
+      OR dl_owns(p_biz)
+      OR (dl_my_role() = 'office' AND p_biz = dl_my_business())
+$bs$;
+
+-- Nani ameingia? Hutumika kuonyesha sababu halisi ukikataliwa.
+CREATE OR REPLACE FUNCTION dl_whoami()
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $wi$
+  SELECT jsonb_build_object(
+    'uid',        auth.uid(),
+    'safu_users', EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid()),
+    'role',       dl_my_role(),
+    'kazi',       dl_my_kazi(),
+    'business',   dl_my_business(),
+    'anamiliki',  (SELECT b.id FROM businesses b WHERE b.owner_id = auth.uid() LIMIT 1)
+  )
+$wi$;
+
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_owns(UUID), dl_wakala_boss(UUID), dl_whoami() TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
+-- ---------- Kinga zilizolegezwa kwa mmiliki ----------
+DROP POLICY IF EXISTS wakala_lines_write ON wakala_lines;
+CREATE POLICY wakala_lines_write ON wakala_lines FOR ALL TO authenticated
+  USING (dl_wakala_boss(business_id)) WITH CHECK (dl_wakala_boss(business_id));
+
+DROP POLICY IF EXISTS wakala_lines_read ON wakala_lines;
+CREATE POLICY wakala_lines_read ON wakala_lines FOR SELECT TO authenticated
+  USING (dl_wakala_boss(business_id)
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_settings_write ON wakala_settings;
+CREATE POLICY wakala_settings_write ON wakala_settings FOR ALL TO authenticated
+  USING (dl_wakala_boss(business_id)) WITH CHECK (dl_wakala_boss(business_id));
+
+DROP POLICY IF EXISTS wakala_settings_read ON wakala_settings;
+CREATE POLICY wakala_settings_read ON wakala_settings FOR SELECT TO authenticated
+  USING (dl_wakala_boss(business_id)
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_tx_read ON wakala_tx;
+CREATE POLICY wakala_tx_read ON wakala_tx FOR SELECT TO authenticated
+  USING (dl_wakala_boss(business_id)
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_tx_insert ON wakala_tx;
+CREATE POLICY wakala_tx_insert ON wakala_tx FOR INSERT TO authenticated
+  WITH CHECK (dl_wakala_boss(business_id)
+              OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_tx_update ON wakala_tx;
+CREATE POLICY wakala_tx_update ON wakala_tx FOR UPDATE TO authenticated
+  USING (dl_wakala_boss(business_id)) WITH CHECK (dl_wakala_boss(business_id));
+
+DROP POLICY IF EXISTS wakala_tx_delete ON wakala_tx;
+CREATE POLICY wakala_tx_delete ON wakala_tx FOR DELETE TO authenticated
+  USING (dl_wakala_boss(business_id));
+
+DROP POLICY IF EXISTS wakala_days_read ON wakala_days;
+CREATE POLICY wakala_days_read ON wakala_days FOR SELECT TO authenticated
+  USING (dl_wakala_boss(business_id)
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_days_owner ON wakala_days;
+CREATE POLICY wakala_days_owner ON wakala_days FOR DELETE TO authenticated
+  USING (dl_wakala_boss(business_id));
+
+-- Kufunga siku: mmiliki au mwenye kazi ya uwakala
+CREATE OR REPLACE FUNCTION dl_wakala_may_close(p_biz UUID)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $mc$
+  SELECT dl_wakala_boss(p_biz)
+      OR (p_biz = dl_my_business() AND dl_does_wakala())
+$mc$;
+
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_wakala_may_close(UUID) TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
+NOTIFY pgrst, 'reload schema';
+SELECT 'Kinga zimelegezwa: mmiliki halisi wa duka daima anaruhusiwa.' AS status;
+
+
+-- ####################  SEHEMU 5 / 5  ####################
+
+-- ============================================================
+-- DukaLangu — GHARAMA ZA UWAKALA
+--
+-- Sehemu 5/5. Endesha BAADA ya sehemu 1–4.
+--
+-- Kamisheni si faida. Mwenye uwakala analipa kodi, umeme, bando,
+-- usafiri wa kufuata float, mshahara. Bila kuandika gharama hizi
+-- mmiliki anaona "kamisheni 150,000" na kudhani amepata 150,000.
+--
+-- ⚠️ JAMBO LA MSINGI: gharama ikilipwa kwa TASLIMU ya uwakala,
+--    LAZIMA ipunguze kasheni pia. Ukiirekodi upande mmoja tu,
+--    mwisho wa siku kasheni itakuwa pungufu na mfumo utaonyesha
+--    UPUNGUFU — yaani utamshtaki wakala kwa wizi ambao haukutokea.
+--
+--    Kwa hiyo gharama na muamala wa `cash_out` vinaandikwa KWA
+--    PAMOJA, ndani ya muamala mmoja wa database. Ikishindikana
+--    kimoja, hakuna kinachoandikwa.
+--
+-- Salama kuendesha mara nyingi.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS wakala_expenses (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id  UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  tarehe       DATE NOT NULL DEFAULT (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date,
+  aina         TEXT NOT NULL,
+  amount       NUMERIC(14,2) NOT NULL,
+  chanzo       TEXT NOT NULL DEFAULT 'taslimu',
+  maelezo      TEXT,
+  -- Muamala wa kasheni unaoambatana nayo (kama imelipwa kwa taslimu)
+  tx_id        UUID REFERENCES wakala_tx(id) ON DELETE SET NULL,
+  offline_id   TEXT,
+  recorded_by  UUID,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT wakala_exp_aina_ok CHECK (aina IN (
+    'kodi','umeme','maji','mtandao','mshahara','usafiri',
+    'ada_float','vifaa','ulinzi','leseni','matengenezo','nyingine')),
+  CONSTRAINT wakala_exp_amount_ok CHECK (amount > 0),
+  CONSTRAINT wakala_exp_chanzo_ok CHECK (chanzo IN ('taslimu','nje'))
+);
+
+CREATE INDEX IF NOT EXISTS wakala_exp_biz  ON wakala_expenses (business_id, tarehe DESC);
+CREATE INDEX IF NOT EXISTS wakala_exp_aina ON wakala_expenses (business_id, aina);
+
+-- Gharama moja haiingii mara mbili (mtandao hafifu)
+CREATE UNIQUE INDEX IF NOT EXISTS wakala_exp_offline_uniq
+  ON wakala_expenses (business_id, offline_id) WHERE offline_id IS NOT NULL;
+
+
+-- ============================================================
+-- KUANDIKA GHARAMA
+--
+-- Chanzo 'taslimu' -> inaandika pia muamala wa cash_out, kwa hiyo
+--                     kasheni inapungua na upatanisho unabaki sahihi.
+-- Chanzo 'nje'     -> kasheni haibadiliki hata kidogo.
+--
+-- Vyote viwili ndani ya muamala MMOJA. Hakuna nusu-nusu.
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_wakala_add_expense(
+  p_biz UUID, p_tarehe DATE, p_aina TEXT, p_amount NUMERIC,
+  p_chanzo TEXT DEFAULT 'taslimu', p_maelezo TEXT DEFAULT NULL,
+  p_offline_id TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $exp$
+DECLARE
+  v_tx  UUID;
+  v_row wakala_expenses;
+  v_day DATE := COALESCE(p_tarehe, (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date);
+BEGIN
+  IF NOT dl_wakala_may_close(p_biz) THEN
+    RAISE EXCEPTION 'Hauna ruhusa ya kuandika gharama za uwakala kwenye duka hili.';
+  END IF;
+
+  IF COALESCE(p_amount,0) <= 0 THEN
+    RAISE EXCEPTION 'Weka kiasi sahihi kinachozidi sifuri.';
+  END IF;
+
+  -- Gharama iliyolipwa kwa taslimu LAZIMA ipunguze kasheni.
+  -- Trigger ya wakala_tx itakataa kama siku imefungwa — ni sawa:
+  -- siku iliyofungwa haipaswi kubadilika.
+  IF COALESCE(p_chanzo,'taslimu') = 'taslimu' THEN
+    INSERT INTO wakala_tx(business_id, tx_date, type, amount, note, offline_id)
+    VALUES (p_biz, v_day, 'cash_out', p_amount,
+            COALESCE(p_maelezo, 'Gharama: ' || p_aina),
+            CASE WHEN p_offline_id IS NULL THEN NULL ELSE 'exp-' || p_offline_id END)
+    RETURNING id INTO v_tx;
+  END IF;
+
+  INSERT INTO wakala_expenses(business_id, tarehe, aina, amount, chanzo,
+                              maelezo, tx_id, offline_id, recorded_by)
+  VALUES (p_biz, v_day, p_aina, p_amount, COALESCE(p_chanzo,'taslimu'),
+          p_maelezo, v_tx, p_offline_id, auth.uid())
+  RETURNING * INTO v_row;
+
+  RETURN to_jsonb(v_row);
+END $exp$;
+
+
+-- ============================================================
+-- KUFUTA GHARAMA
+-- Muamala wa kasheni unaoambatana nayo unafutwa pia — vinginevyo
+-- kasheni ingebaki pungufu milele.
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_wakala_del_expense(p_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $del$
+DECLARE v_row wakala_expenses;
+BEGIN
+  SELECT * INTO v_row FROM wakala_expenses WHERE id = p_id;
+  IF v_row.id IS NULL THEN RETURN false; END IF;
+
+  -- Mmiliki pekee anafuta. Wakala akikosea, anaandika nyingine.
+  IF NOT dl_wakala_boss(v_row.business_id) THEN
+    RAISE EXCEPTION 'Mmiliki pekee ndiye anaweza kufuta gharama.';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM wakala_days
+              WHERE business_id = v_row.business_id AND day = v_row.tarehe) THEN
+    RAISE EXCEPTION 'Siku ya % imefungwa. Fungua siku kwanza.', v_row.tarehe;
+  END IF;
+
+  DELETE FROM wakala_expenses WHERE id = p_id;
+  IF v_row.tx_id IS NOT NULL THEN
+    DELETE FROM wakala_tx WHERE id = v_row.tx_id;
+  END IF;
+  RETURN true;
+END $del$;
+
+
+-- ============================================================
+-- MUHTASARI KWA MMILIKI
+-- Kamisheni, gharama na FAIDA HALISI kwa kipindi.
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_wakala_muhtasari(p_biz UUID, p_from DATE, p_to DATE)
+RETURNS JSONB
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $mh$
+  SELECT jsonb_build_object(
+    'kamisheni', COALESCE((
+      SELECT SUM(CASE WHEN reverses IS NOT NULL THEN -1 ELSE 1 END
+                 * CASE WHEN type IN ('deposit','withdraw') THEN commission ELSE 0 END)
+        FROM wakala_tx
+       WHERE business_id = p_biz AND tx_date BETWEEN p_from AND p_to), 0),
+    'gharama', COALESCE((
+      SELECT SUM(amount) FROM wakala_expenses
+       WHERE business_id = p_biz AND tarehe BETWEEN p_from AND p_to), 0),
+    'gharamaTaslimu', COALESCE((
+      SELECT SUM(amount) FROM wakala_expenses
+       WHERE business_id = p_biz AND tarehe BETWEEN p_from AND p_to
+         AND chanzo = 'taslimu'), 0),
+    'kwaAina', COALESCE((
+      SELECT jsonb_object_agg(aina, jumla) FROM (
+        SELECT aina, SUM(amount) AS jumla FROM wakala_expenses
+         WHERE business_id = p_biz AND tarehe BETWEEN p_from AND p_to
+         GROUP BY aina) q), '{}'::jsonb)
+  )
+$mh$;
+
+
+-- ============================================================
+-- KINGA
+-- Kuona: mmiliki, au mwenye kazi ya uwakala.
+-- Kuandika/kufuta: kupitia function pekee (zina ukaguzi wake).
+-- ============================================================
+ALTER TABLE wakala_expenses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS wakala_exp_read ON wakala_expenses;
+CREATE POLICY wakala_exp_read ON wakala_expenses FOR SELECT TO authenticated
+  USING (dl_wakala_boss(business_id)
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_exp_write ON wakala_expenses;
+CREATE POLICY wakala_exp_write ON wakala_expenses FOR ALL TO authenticated
+  USING (dl_wakala_boss(business_id)) WITH CHECK (dl_wakala_boss(business_id));
+
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_wakala_add_expense(UUID,DATE,TEXT,NUMERIC,TEXT,TEXT,TEXT),
+                 dl_wakala_del_expense(UUID), dl_wakala_muhtasari(UUID,DATE,DATE) TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Jedwali la uwakala limetengenezwa. Huduma imezimwa hadi admin aiwashe.' AS status;
+SELECT 'Sehemu 5/5 SAWA — gharama za uwakala zimewekwa.' AS status;

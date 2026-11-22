@@ -5,7 +5,7 @@
 //  - ina unique index kwenye (business_id, offline_id)
 const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:[],
              stock_history:[], customers:[], expenses:[], credit_transactions:[],
-             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[] };
+             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[] };
 
 const CFG = {
   schema: {
@@ -27,6 +27,8 @@ const CFG = {
     wakala_days:['id','business_id','day','lines','counted_cash','expected_cash','variance_cash','variance_float',
                  'commission','tx_count','note','closed_by','closed_at'],
     wakala_settings:['business_id','cash_opening','threshold','alert_phone','alert_sms','updated_at'],
+    wakala_expenses:['id','business_id','tarehe','aina','amount','chanzo','maelezo','tx_id',
+                     'offline_id','recorded_by','created_at'],
   },
   rpcs: new Set(),        // tupu = SQL haijaendeshwa
   missing: new Set(),     // jedwali ambalo SQL yake haijaendeshwa
@@ -179,6 +181,36 @@ export const supabase = {
       const d = +args.p_qty || 0;
       p.quantity = name === 'dl_deduct_stock' ? Math.max(0, (+p.quantity||0) - d) : (+p.quantity||0) + d;
       return { data: p.quantity, error:null };
+    }
+    if (name === 'dl_wakala_add_expense'){
+      const biz=args.p_biz, day=args.p_tarehe, chanzo=args.p_chanzo||'taslimu';
+      if (args.p_offline_id && DB.wakala_expenses.some(x=>x.business_id===biz&&x.offline_id===args.p_offline_id))
+        return { data:null, error:{ message:'duplicate', code:'23505' } };
+      if (!(+args.p_amount>0)) return { data:null, error:{ message:'Weka kiasi sahihi kinachozidi sifuri.' } };
+      let tx=null;
+      if (chanzo==='taslimu'){
+        if (DB.wakala_days.some(d=>d.business_id===biz&&String(d.day)===String(day)))
+          return { data:null, error:{ message:`Siku ya ${day} imefungwa tayari.` } };
+        tx={ id:uuid(), business_id:biz, line_id:null, tx_date:day, type:'cash_out',
+             amount:+args.p_amount, commission:0, note:args.p_maelezo||('Gharama: '+args.p_aina),
+             recorded_by:CFG.uid, created_at:new Date().toISOString() };
+        DB.wakala_tx.push(tx);
+      }
+      const row={ id:uuid(), business_id:biz, tarehe:day, aina:args.p_aina, amount:+args.p_amount,
+                  chanzo, maelezo:args.p_maelezo||null, tx_id:tx?tx.id:null,
+                  offline_id:args.p_offline_id||null, recorded_by:CFG.uid,
+                  created_at:new Date().toISOString() };
+      DB.wakala_expenses.push(row);
+      return { data:row, error:null };
+    }
+    if (name === 'dl_wakala_del_expense'){
+      const g=DB.wakala_expenses.find(x=>x.id===args.p_id);
+      if (!g) return { data:false, error:null };
+      if (DB.wakala_days.some(d=>d.business_id===g.business_id&&String(d.day)===String(g.tarehe)))
+        return { data:null, error:{ message:`Siku ya ${g.tarehe} imefungwa. Fungua siku kwanza.` } };
+      DB.wakala_expenses=DB.wakala_expenses.filter(x=>x.id!==args.p_id);
+      if (g.tx_id) DB.wakala_tx=DB.wakala_tx.filter(t=>t.id!==g.tx_id);
+      return { data:true, error:null };
     }
     if (name === 'dl_wakala_close_day'){
       const biz = args.p_biz, day = args.p_day;
