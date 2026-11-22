@@ -4,6 +4,7 @@ import PhoneNameInput from '../../components/PhoneNameInput';
 import {PageHead,GBtn,SumCard} from '../../components/Page';
 import {buildCostMap,unitCost,itemProfit,itemRevenue,returnProfit as retProfit,netProfit as calcNetProfit,margin} from '../../utils/money';
 import {cashReport,mineOnly} from '../../utils/cash';
+import {KAZI,kaziOf} from '../../utils/wakala';
 import {getPlan} from '../../config/plans';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
@@ -2089,11 +2090,15 @@ export function ExpensesPage(){
 
 // ===== EMPLOYEES =====
 export function EmployeesPage(){
-  const{employees,addEmployee,updateEmployee,deleteEmployee,loginLogs,getBranches,canUseBranches}=useApp();
+  const{employees,addEmployee,updateEmployee,deleteEmployee,loginLogs,getBranches,canUseBranches,biz}=useApp();
   const myBranches=getBranches();
   const[modal,setModal]=useState(false);
   const[editBranchModal,setEditBranchModal]=useState({open:false,emp:null});
-  const[f,setF]=useState({name:'',email:'',phone:'',password:'1234',branch_id:''});
+  const[kaziModal,setKaziModal]=useState({open:false,emp:null});
+  const[f,setF]=useState({name:'',email:'',phone:'',password:'1234',branch_id:'',kazi:'duka'});
+  // Kipengele cha kazi kinaonekana TU kama uwakala umewashwa kwa duka hili
+  const wakalaOn=!!biz?.wakala_enabled;
+  const kaziOpts=Object.entries(KAZI).map(([v,o])=>({value:v,label:o.label}));
 
   return <div className="page-enter">
     <div style={{display:'flex',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
@@ -2125,6 +2130,17 @@ export function EmployeesPage(){
             <button onClick={()=>setEditBranchModal({open:true,emp:e})} style={{background:'#F6F8F7',border:'none',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',color:'#3B82F6'}}>Badilisha</button>
           </div>}
 
+          {/* Kazi: duka, uwakala au vyote */}
+          {wakalaOn&&(()=>{const k=kaziOf(e);return <div style={{background:k==='duka'?'#F6F8F7':'#E6F2EC',borderRadius:8,padding:'6px 10px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:'#475569'}}>Kazi:</div>
+              <div style={{fontWeight:700,fontSize:13,color:k==='duka'?'#5C6A62':'#0A6E47'}}>
+                {k==='duka'?'🛒 Duka pekee':k==='wakala'?'📲 Uwakala pekee':'🛒📲 Duka na uwakala'}
+              </div>
+            </div>
+            <button onClick={()=>setKaziModal({open:true,emp:e})} style={{background:'#F6F8F7',border:'none',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:600,cursor:'pointer',color:'#3B82F6'}}>Badilisha</button>
+          </div>})()}
+
           {e.phone&&<div style={{fontSize:12,color:'#5C6A62',marginBottom:6}}>📱 {e.phone}</div>}
 
           {logs.length>0&&<div style={{background:'#F6F8F7',borderRadius:8,padding:6}}>
@@ -2143,6 +2159,14 @@ export function EmployeesPage(){
       <Input label="Email *" type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="email@mfano.com"/>
       <Input label="Password" value={f.password} onChange={e=>setF({...f,password:e.target.value})}/>
 
+      {/* Kazi — kuunganisha duka na uwakala ni HIARI */}
+      {wakalaOn&&<>
+        <Sel label="Kazi yake" value={f.kazi} onChange={e=>setF({...f,kazi:e.target.value})} options={kaziOpts}/>
+        <div style={{background:'#E6F2EC',borderRadius:8,padding:'6px 10px',marginBottom:10,fontSize:11,color:'#15803D',lineHeight:1.5}}>
+          {KAZI[f.kazi]?.sub}
+        </div>
+      </>}
+
       {/* Branch selector */}
       {canUseBranches&&myBranches.length>0&&<>
         <Sel label="Tawi la Mfanyakazi" value={f.branch_id} onChange={e=>setF({...f,branch_id:e.target.value})} options={[
@@ -2158,11 +2182,37 @@ export function EmployeesPage(){
       <Btn onClick={async()=>{
         if(!f.name||!f.email)return alert('Jaza jina na email!');
         if(!f.password||f.password.length<4)return alert('Password lazima iwe herufi 4 au zaidi!');
-        const res=await addEmployee({...f,branch_id:f.branch_id||null});
+        const res=await addEmployee({...f,branch_id:f.branch_id||null,kazi:wakalaOn?f.kazi:'duka'});
         if(res&&res.error)return alert('❌ '+res.error);
         alert(`✅ Mfanyakazi "${f.name}" ameundwa!\n\nAtaingia na:\n📧 Email: ${f.email}\n🔑 Password: ${f.password}\n\nMpe taarifa hizi aingie nazo.${res&&res.warn?'\n\n⚠️ '+res.warn:''}`);
-        setModal(false);setF({name:'',email:'',phone:'',password:'1234',branch_id:''});
+        setModal(false);setF({name:'',email:'',phone:'',password:'1234',branch_id:'',kazi:'duka'});
       }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Sajili Mfanyakazi</Btn>
+    </Modal>
+
+    {/* CHANGE KAZI MODAL */}
+    <Modal open={kaziModal.open} onClose={()=>setKaziModal({open:false,emp:null})} title={`Kazi ya ${kaziModal.emp?.name||''}`}>
+      {kaziModal.emp&&<>
+        <div style={{background:'#FFF8E6',borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#7A5B00',lineHeight:1.55}}>
+          Si lazima mfanyakazi mmoja afanye vyote. Unaweza kuwa na akaunti ya
+          <b> duka</b> na nyingine ya <b>uwakala</b>, kila mmoja akaona kazi yake pekee.
+        </div>
+        {Object.entries(KAZI).map(([v,o])=>{
+          const on=kaziOf(kaziModal.emp)===v;
+          return <button key={v} onClick={()=>setKaziModal(m=>({...m,emp:{...m.emp,kazi:v}}))} style={{
+            width:'100%',textAlign:'left',marginBottom:8,padding:'11px 13px',borderRadius:12,cursor:'pointer',
+            border:on?'2px solid #0A6E47':'1.5px solid #D6E2DB',background:on?'#E6F2EC':'#fff'}}>
+            <div style={{fontWeight:800,fontSize:13.5,color:on?'#06502F':'#17231D'}}>
+              {v==='duka'?'🛒 ':v==='wakala'?'📲 ':'🛒📲 '}{o.label}
+            </div>
+            <div style={{fontSize:11.5,color:'#5C6A62',marginTop:2}}>{o.sub}</div>
+          </button>;
+        })}
+        <Btn onClick={async()=>{
+          const r=await updateEmployee(kaziModal.emp.id,{kazi:kaziOf(kaziModal.emp)});
+          if(r&&r.error)return alert('⚠️ '+r.error+'\n\nHakikisha umeendesha wakala-4-kazi.sql.');
+          setKaziModal({open:false,emp:null});
+        }} style={{width:'100%',justifyContent:'center',marginTop:6}}>{IC.ok} Hifadhi</Btn>
+      </>}
     </Modal>
 
     {/* CHANGE BRANCH MODAL */}
@@ -2177,7 +2227,8 @@ export function EmployeesPage(){
           ...myBranches.map(b=>({value:b.id,label:b.name}))
         ]}/>
         <Btn onClick={async()=>{
-          await updateEmployee(editBranchModal.emp.id,{branch_id:editBranchModal.emp.branch_id||null});
+          const r=await updateEmployee(editBranchModal.emp.id,{branch_id:editBranchModal.emp.branch_id||null});
+          if(r&&r.error)return alert('⚠️ '+r.error);
           setEditBranchModal({open:false,emp:null});
         }} style={{width:'100%',justifyContent:'center',marginTop:8}}>{IC.ok} Hifadhi</Btn>
       </>}

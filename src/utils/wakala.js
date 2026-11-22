@@ -135,16 +135,45 @@ export const dayTotals = txs => {
 export const GRACE_DAYS = 7;
 export const WARN_DAYS  = 5;
 
+// ===== KAZI YA MFANYAKAZI =====
+// Maduka mengi hupenda akaunti ZIWE TOFAUTI: mmoja anauza dukani,
+// mwingine anafanya uwakala. Kuunganisha ni HIARI, si lazima.
+//
+//   duka   — anaona duka pekee (hii ndiyo ya kawaida)
+//   wakala — anaona uwakala pekee, haoni bidhaa wala mauzo
+//   zote   — anaona vyote
+//
+// Mfanyakazi asiye na kazi iliyowekwa ni 'duka' — kwa hiyo wafanyakazi
+// wote waliopo sasa hawabadiliki hata kidogo.
+export const KAZI = {
+  duka:   { label: 'Duka pekee',    sub: 'Anauza bidhaa. Haoni uwakala.' },
+  wakala: { label: 'Uwakala pekee', sub: 'Anatuma na kutoa pesa. Haoni bidhaa wala mauzo.' },
+  zote:   { label: 'Duka na uwakala', sub: 'Anaona vyote kwenye akaunti moja.' },
+};
+export const kaziOf = u => (KAZI[u?.kazi] ? u.kazi : 'duka');
+export const doesWakala = u => kaziOf(u) !== 'duka';
+export const doesDuka   = u => kaziOf(u) !== 'wakala';
+
 // Usajili wa duka ni tofauti na wa uwakala. Mtu anaweza kulipa
 // uwakala pekee (13,000) bila kulipa duka (15,000), au kinyume.
 //
 // ⚠️ MUHIMU: kama uwakala HAUJAWASHWA, hii lazima itoe jibu LILE LILE
 // la mfumo wa zamani — 'duka' au 'locked'. Kitu kimoja tu kinaamua.
-export const shellMode = ({ role, shopExpired, wakala } = {}) => {
+export const shellMode = ({ role, kazi, shopExpired, wakala } = {}) => {
   // Admin, masoko, masupervaiza, mhasibu — hawahusiki na usajili
   if (role && role !== 'office' && role !== 'employee') return 'duka';
 
   const wkOn = !!(wakala && (wakala.canRecord || wakala.canClose));
+
+  // Mfanyakazi: kazi aliyopewa inatangulia
+  if (role === 'employee') {
+    const k = kaziOf({ kazi });
+    // Uwakala pekee: HAPEWI duka hata uwakala ukiwa umezimwa.
+    // Kumfungulia duka kungemwonyesha bidhaa na mauzo asiyoruhusiwa.
+    if (k === 'wakala') return wkOn ? 'wakala' : 'locked';
+    // Duka pekee: uwakala haumhusu kabisa
+    if (k === 'duka')   return shopExpired ? 'locked' : 'duka';
+  }
 
   if (!shopExpired) return wkOn ? 'both' : 'duka';
   return wkOn ? 'wakala' : 'locked';

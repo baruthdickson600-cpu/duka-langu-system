@@ -27,7 +27,7 @@ import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPa
 import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
 import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage} from './pages/office/WakalaPages';
-import {wakalaAccess,shellMode} from './utils/wakala';
+import {wakalaAccess,shellMode,doesWakala} from './utils/wakala';
 
 // ===== HUDUMA YA UWAKALA =====
 // Menyu hizi zinaongezwa PALE PEKEE admin akiwasha huduma kwa duka
@@ -273,7 +273,10 @@ export default function App(){
   // la zamani — 'duka' au 'locked'. Hakuna tabia iliyobadilika.
   const wkAccess=wakalaAccess({enabled:biz?.wakala_enabled,paidUntil:biz?.wakala_paid_until});
   const shopExpired=user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='agent'&&user.role!=='accountant'&&!!biz&&isExpired();
-  const shell=shellMode({role:user.role,shopExpired,wakala:wkAccess});
+  const shell=shellMode({role:user.role,kazi:user.kazi,shopExpired,wakala:wkAccess});
+  // Mfanyakazi aliyepewa duka pekee haoni uwakala; aliyepewa uwakala
+  // pekee haoni bidhaa wala mauzo. Mmiliki anaona kila alicholipia.
+  const wkAllowed=wkAccess.visible&&(user.role!=='employee'||doesWakala(user));
   if(shell==='locked')return <LockedPage/>;
 
   const role=user.role;
@@ -288,7 +291,7 @@ export default function App(){
   }
   // Uwakala: menyu inaongezwa tu kama huduma imewashwa kwa duka hili.
   // Usajili wa duka ukiisha lakini uwakala umelipwa, anaona uwakala PEKEE.
-  if(wkAccess.visible&&(role==='office'||role==='employee')){
+  if(wkAllowed&&(role==='office'||role==='employee')){
     const wkMenu=role==='office'?WAKALA_MENU_OFFICE:WAKALA_MENU_EMP;
     menu=shell==='wakala'?[...wkMenu]:[...menu,...wkMenu];
   }
@@ -366,7 +369,7 @@ export default function App(){
     // ===== UWAKALA =====
     // Usajili wa duka ukiisha lakini uwakala umelipwa, kurasa za duka
     // zinafungwa na uwakala pekee unafanya kazi.
-    if(wkAccess.visible){
+    if(wkAllowed){
       switch(page){
         case'wakala':return role==='office'?<WakalaDash/>:<WakalaRecordPage/>;
         case'wakala_rekodi':return <WakalaRecordPage/>;
@@ -482,7 +485,7 @@ export default function App(){
              🔒 Usajili wa <b>duka</b> umeisha.<br/>Uwakala pekee unafanya kazi.
            </div>
           :trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:8,textAlign:'center'}}>⏳ Siku {trial} zimebaki</div>}
-        {shell!=='wakala'&&wkAccess.visible&&wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'5px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Uwakala: siku {wkAccess.daysLeft}</div>}
+        {shell!=='wakala'&&wkAllowed&&wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'5px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Uwakala: siku {wkAccess.daysLeft}</div>}
         {/* Profile Card */}
         <button onClick={()=>setProfileOpen(true)} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:12,padding:'10px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:10,marginBottom:8,transition:'background 0.2s'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>
           {user.avatar_url

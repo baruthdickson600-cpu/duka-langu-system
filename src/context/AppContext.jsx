@@ -1434,7 +1434,8 @@ export function AppProvider({children}){
     if(!email||!email.includes('@'))return{error:'Weka email sahihi.'};
     if(!emp.password||emp.password.length<4)return{error:'Password lazima iwe herufi 4 au zaidi.'};
 
-    const row=(uid)=>({id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true});
+    // `kazi` ni ya hiari — safeInsert itaiondoa kama safu haipo bado
+    const row=(uid)=>({id:uid,email,name:emp.name||'',phone:emp.phone||'',role:'employee',business_id:bizId,branch_id:emp.branch_id||null,is_active:true,kazi:emp.kazi||'duka'});
     const finish=(r)=>{setEmps(prev=>[...prev.filter(e=>e.email!==email),{...r,created_at:nowISO()}]);};
 
     // ===== NJIA YA 1 (BORA): service_role API — email_confirm:true =>
@@ -1480,9 +1481,13 @@ export function AppProvider({children}){
       return{error:'Tatizo la mtandao. Jaribu tena.'};
     }
   },[bizId,employees,biz,user]);
+  // ⚠️ Zamani hii ilikuwa inabadilisha skrini hata database isipobadilika.
+  // Mmiliki angeona "Uwakala pekee" wakati mfanyakazi bado anaona duka.
   const updateEmployee=useCallback(async(eid,updates)=>{
-    await safeUpdate('users',updates,'id',eid);
+    const r=await safeUpdate('users',updates,'id',eid);
+    if(r&&r.ok===false)return{error:r.message||'Imeshindwa kubadilisha'};
     setEmps(prev=>prev.map(e=>e.id===eid?{...e,...updates}:e));
+    return{ok:true};
   },[]);
   const deleteEmployee=useCallback(async(eid)=>{
     // Ondoa kwenye orodha mara moja (UI)

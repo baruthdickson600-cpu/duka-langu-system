@@ -9,7 +9,7 @@ import {
   TX, txLabel, needsLine, isKnownType, txDeltas, validateTx,
   floatAfter, cashAfter, commissionTotal,
   reconcileLine, reconcileCash, varianceState, dayTotals, wakalaAccess,
-  shellMode,
+  shellMode, KAZI, kaziOf, doesWakala, doesDuka,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -277,9 +277,15 @@ describe('shellMode', () => {
     });
   });
 
-  it('muuzaji anafuata sheria zile zile', () => {
-    expect(shellMode({ role: 'employee', shopExpired: true, wakala: hai })).toBe('wakala');
-    expect(shellMode({ role: 'employee', shopExpired: false, wakala: hai })).toBe('both');
+  // Mfanyakazi asiyepewa kazi ya uwakala HAONI uwakala, hata ukiwa
+  // umelipwa. Kuunganisha ni hiari ya mmiliki — ona 'kazi ya mfanyakazi'.
+  it('muuzaji asiyepewa kazi ya uwakala anabaki dukani', () => {
+    expect(shellMode({ role: 'employee', shopExpired: false, wakala: hai })).toBe('duka');
+    expect(shellMode({ role: 'employee', shopExpired: true, wakala: hai })).toBe('locked');
+  });
+  it('akipewa kazi ya uwakala ndipo anaiona', () => {
+    expect(shellMode({ role: 'employee', kazi: 'zote', shopExpired: false, wakala: hai })).toBe('both');
+    expect(shellMode({ role: 'employee', kazi: 'zote', shopExpired: true, wakala: hai })).toBe('wakala');
   });
 
   it('admin na wengine hawahusiki na usajili', () => {
@@ -291,5 +297,74 @@ describe('shellMode', () => {
   it('siku za neema: anaweza kufunga tu, bado anaingia', () => {
     const neema = { canRecord: false, canClose: true };
     expect(shellMode({ role: 'office', shopExpired: true, wakala: neema })).toBe('wakala');
+  });
+});
+
+// ============================================================
+// KAZI YA MFANYAKAZI — kuunganisha duka na uwakala ni HIARI
+// ============================================================
+describe('kazi ya mfanyakazi', () => {
+  const hai  = { canRecord: true,  canClose: true  };
+  const kufa = { canRecord: false, canClose: false };
+
+  it('asiye na kazi ni wa duka — wafanyakazi waliopo hawabadiliki', () => {
+    expect(kaziOf({})).toBe('duka');
+    expect(kaziOf({ kazi: null })).toBe('duka');
+    expect(kaziOf({ kazi: 'hewa' })).toBe('duka');
+    expect(kaziOf({ kazi: 'wakala' })).toBe('wakala');
+  });
+
+  it('visaidizi', () => {
+    expect(doesWakala({ kazi: 'duka' })).toBe(false);
+    expect(doesWakala({ kazi: 'wakala' })).toBe(true);
+    expect(doesWakala({ kazi: 'zote' })).toBe(true);
+    expect(doesDuka({ kazi: 'wakala' })).toBe(false);
+    expect(doesDuka({ kazi: 'zote' })).toBe(true);
+    expect(Object.keys(KAZI)).toEqual(['duka', 'wakala', 'zote']);
+  });
+
+  describe('DUKA PEKEE', () => {
+    it('haoni uwakala hata ukiwa umelipwa', () => {
+      expect(shellMode({ role: 'employee', kazi: 'duka', shopExpired: false, wakala: hai })).toBe('duka');
+    });
+    it('usajili wa duka ukiisha -> locked, kama zamani', () => {
+      expect(shellMode({ role: 'employee', kazi: 'duka', shopExpired: true, wakala: hai })).toBe('locked');
+    });
+  });
+
+  describe('UWAKALA PEKEE', () => {
+    it('haoni bidhaa wala mauzo hata duka likiwa limelipwa', () => {
+      expect(shellMode({ role: 'employee', kazi: 'wakala', shopExpired: false, wakala: hai })).toBe('wakala');
+    });
+    it('uwakala haujalipwa -> locked, HAFUNGULIWI duka', () => {
+      expect(shellMode({ role: 'employee', kazi: 'wakala', shopExpired: false, wakala: kufa })).toBe('locked');
+    });
+    it('uwakala haujawashwa kabisa -> locked, si duka', () => {
+      expect(shellMode({ role: 'employee', kazi: 'wakala', shopExpired: false })).toBe('locked');
+    });
+  });
+
+  describe('ZOTE', () => {
+    it('vyote vimelipwa', () => {
+      expect(shellMode({ role: 'employee', kazi: 'zote', shopExpired: false, wakala: hai })).toBe('both');
+    });
+    it('duka limeisha, uwakala umelipwa', () => {
+      expect(shellMode({ role: 'employee', kazi: 'zote', shopExpired: true, wakala: hai })).toBe('wakala');
+    });
+    it('uwakala haujalipwa -> duka pekee', () => {
+      expect(shellMode({ role: 'employee', kazi: 'zote', shopExpired: false, wakala: kufa })).toBe('duka');
+    });
+  });
+
+  it('MMILIKI hahusiki na kazi — anaona kila alicholipia', () => {
+    expect(shellMode({ role: 'office', kazi: 'duka', shopExpired: false, wakala: hai })).toBe('both');
+    expect(shellMode({ role: 'office', kazi: 'wakala', shopExpired: true, wakala: hai })).toBe('wakala');
+  });
+
+  it('bila uwakala kabisa, kila kazi inatoa jibu la zamani', () => {
+    ['duka', 'zote', undefined].forEach(k => {
+      expect(shellMode({ role: 'employee', kazi: k, shopExpired: false })).toBe('duka');
+      expect(shellMode({ role: 'employee', kazi: k, shopExpired: true })).toBe('locked');
+    });
   });
 });

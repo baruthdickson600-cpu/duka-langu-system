@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS wakala_settings (
 --     na kivinjari. Wakala hawezi kuandika muamala kwa jina la
 --     mwingine, na hawezi kudanganya saa.
 CREATE OR REPLACE FUNCTION dl_wakala_stamp() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $stamp$
 BEGIN
   NEW.recorded_by := auth.uid();
   NEW.created_at  := now();
@@ -179,7 +179,7 @@ BEGIN
     NEW.tx_date := (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date;
   END IF;
   RETURN NEW;
-END $$;
+END $stamp$;
 
 DROP TRIGGER IF EXISTS wakala_tx_stamp ON wakala_tx;
 CREATE TRIGGER wakala_tx_stamp BEFORE INSERT ON wakala_tx
@@ -189,7 +189,7 @@ CREATE TRIGGER wakala_tx_stamp BEFORE INSERT ON wakala_tx
 -- 6b. Kinga #5: siku iliyofungwa haipokei muamala mpya.
 --     Pia: rejesho lazima liwe la biashara hiyo hiyo.
 CREATE OR REPLACE FUNCTION dl_wakala_guard() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $guard$
 DECLARE v_biz UUID;
 BEGIN
   IF EXISTS (SELECT 1 FROM wakala_days
@@ -214,7 +214,7 @@ BEGIN
   END IF;
 
   RETURN NEW;
-END $$;
+END $guard$;
 
 DROP TRIGGER IF EXISTS wakala_tx_guard ON wakala_tx;
 CREATE TRIGGER wakala_tx_guard BEFORE INSERT ON wakala_tx
@@ -229,7 +229,7 @@ CREATE TRIGGER wakala_tx_guard BEFORE INSERT ON wakala_tx
 
 -- Alama za taslimu na float kwa kila aina
 CREATE OR REPLACE FUNCTION dl_wakala_sign(p_type TEXT, p_what TEXT)
-RETURNS INT LANGUAGE sql IMMUTABLE AS $$
+RETURNS INT LANGUAGE sql IMMUTABLE AS $sign$
   SELECT CASE WHEN p_what = 'cash' THEN
            CASE p_type WHEN 'deposit' THEN 1 WHEN 'withdraw' THEN -1
                        WHEN 'float_buy' THEN -1 WHEN 'float_sell' THEN 1
@@ -239,13 +239,13 @@ RETURNS INT LANGUAGE sql IMMUTABLE AS $$
                        WHEN 'float_buy' THEN 1 WHEN 'float_sell' THEN -1
                        ELSE 0 END
          END;
-$$;
+$sign$;
 
 -- Float ya kuanzia siku: iliyohesabiwa HALISI siku ya mwisho
 -- kufungwa (si inayotarajiwa — ukweli ni unaoendelea mbele),
 -- au opening_float ya laini kama hakuna siku iliyofungwa.
 CREATE OR REPLACE FUNCTION dl_wakala_opening_float(p_line UUID, p_day DATE)
-RETURNS NUMERIC LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS NUMERIC LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $opfloat$
 DECLARE v_biz UUID; v_val NUMERIC;
 BEGIN
   SELECT business_id INTO v_biz FROM wakala_lines WHERE id = p_line;
@@ -259,10 +259,10 @@ BEGIN
   IF v_val IS NOT NULL THEN RETURN v_val; END IF;
   SELECT opening_float INTO v_val FROM wakala_lines WHERE id = p_line;
   RETURN COALESCE(v_val, 0);
-END $$;
+END $opfloat$;
 
 CREATE OR REPLACE FUNCTION dl_wakala_opening_cash(p_biz UUID, p_day DATE)
-RETURNS NUMERIC LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+RETURNS NUMERIC LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $opcash$
 DECLARE v_val NUMERIC;
 BEGIN
   SELECT counted_cash INTO v_val FROM wakala_days
@@ -270,7 +270,7 @@ BEGIN
   IF v_val IS NOT NULL THEN RETURN v_val; END IF;
   SELECT cash_opening INTO v_val FROM wakala_settings WHERE business_id = p_biz;
   RETURN COALESCE(v_val, 0);
-END $$;
+END $opcash$;
 
 
 -- ============================================================
@@ -285,7 +285,7 @@ END $$;
 CREATE OR REPLACE FUNCTION dl_wakala_close_day(
   p_biz UUID, p_day DATE, p_counted JSONB, p_counted_cash NUMERIC, p_note TEXT DEFAULT NULL
 ) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $close$
 DECLARE
   v_lines JSONB := '{}'::jsonb;
   v_line  RECORD;
@@ -340,10 +340,58 @@ BEGIN
   RETURNING * INTO v_row;
 
   RETURN to_jsonb(v_row);
-END $$;
+END $close$;
 
 
 -- ============================================================
+-- ============================================================
+-- 0. WASAIDIZI WA KINGA — hutengenezwa TU kama hawapo
+--
+-- Kinga zote hapa chini zinamtambua mtumiaji kwa dl_my_role() na
+-- dl_my_business(). Kama tayari unazo (rls-hatua-1-maandalizi.sql),
+-- hii HAIZIGUSI hata kidogo — zinabaki kama zilivyo.
+-- Kama hazipo, uwakala unazitengeneza zake ili ujitegemee.
+-- ============================================================
+DO $boot$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                  WHERE n.nspname='public' AND p.proname='dl_my_business') THEN
+    EXECUTE $f$
+      CREATE FUNCTION dl_my_business()
+      RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER
+      SET search_path = public AS $b$
+        SELECT COALESCE(
+          (SELECT u.business_id FROM users u
+            WHERE u.id = auth.uid() AND u.business_id IS NOT NULL LIMIT 1),
+          (SELECT b.id FROM businesses b WHERE b.owner_id = auth.uid() LIMIT 1)
+        )
+      $b$ $f$;
+    RAISE NOTICE 'dl_my_business() imetengenezwa';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                  WHERE n.nspname='public' AND p.proname='dl_my_role') THEN
+    EXECUTE $f$
+      CREATE FUNCTION dl_my_role()
+      RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER
+      SET search_path = public AS $r$
+        SELECT COALESCE(
+          (SELECT u.role FROM users u WHERE u.id = auth.uid() LIMIT 1),
+          (SELECT 'office' FROM businesses b WHERE b.owner_id = auth.uid() LIMIT 1)
+        )
+      $r$ $f$;
+    RAISE NOTICE 'dl_my_role() imetengenezwa';
+  END IF;
+END $boot$;
+
+-- Ruhusa — zikikosekana (database ya majaribio) isisimamishe script
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_my_business(), dl_my_role() TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_my_business(), dl_my_role() TO anon';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
 -- 9. KINGA (RLS)
 --
 --    Wakala: anaona na ANDIKA pekee. HAWEZI kufuta wala
@@ -409,6 +457,173 @@ CREATE POLICY wakala_settings_write ON wakala_settings FOR ALL TO authenticated
 GRANT EXECUTE ON FUNCTION dl_wakala_close_day(UUID, DATE, JSONB, NUMERIC, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION dl_wakala_opening_float(UUID, DATE) TO authenticated;
 GRANT EXECUTE ON FUNCTION dl_wakala_opening_cash(UUID, DATE) TO authenticated;
+
+-- DukaLangu — KAZI YA MFANYAKAZI (duka / uwakala / zote)
+--
+-- Sehemu 4/4. Endesha BAADA ya sehemu 1, 2 na 3.
+--
+-- Maduka mengi hupenda akaunti ziwe TOFAUTI: mmoja anauza dukani,
+-- mwingine anafanya uwakala. Kuunganisha ni HIARI.
+--
+-- ⚠️ Kuficha menyu HAKUTOSHI. Mfanyakazi wa duka pekee akitumia
+--    DevTools anaweza kuomba miamala ya uwakala moja kwa moja.
+--    Kwa hiyo kizuizi kiko hapa, kwenye database.
+--
+-- Wafanyakazi wote waliopo sasa wanakuwa 'duka' — hakuna
+-- anayebadilika, na hakuna anayepoteza kitu.
+--
+-- Salama kuendesha mara nyingi.
+-- ============================================================
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kazi TEXT NOT NULL DEFAULT 'duka';
+
+DO $k$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_kazi_ok') THEN
+    ALTER TABLE users ADD CONSTRAINT users_kazi_ok
+      CHECK (kazi IN ('duka','wakala','zote'));
+  END IF;
+END $k$;
+
+-- Rekodi za zamani zenye NULL (kama safu ilikuwepo tayari)
+UPDATE users SET kazi = 'duka' WHERE kazi IS NULL;
+
+
+-- ============================================================
+-- Kazi ya mtumiaji aliyeingia.
+-- Mmiliki na admin hawana kizuizi — wanaona kila walicholipia.
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_my_kazi()
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $kz$
+  SELECT COALESCE(
+    (SELECT CASE WHEN u.role IN ('office','admin') THEN 'zote'
+                 ELSE COALESCE(u.kazi,'duka') END
+       FROM users u WHERE u.id = auth.uid() LIMIT 1),
+    -- Mmiliki asiye na safu kwenye users
+    (SELECT 'zote' FROM businesses b WHERE b.owner_id = auth.uid() LIMIT 1),
+    'duka'
+  )
+$kz$;
+
+-- Je mtumiaji huyu anaruhusiwa kugusa uwakala?
+CREATE OR REPLACE FUNCTION dl_does_wakala()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $dw$
+  SELECT dl_my_kazi() IN ('wakala','zote')
+$dw$;
+
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_my_kazi(), dl_does_wakala() TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_my_kazi(), dl_does_wakala() TO anon';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
+
+-- ============================================================
+-- KINGA: mfanyakazi wa duka pekee HAGUSI uwakala
+--
+-- Mmiliki (office) na admin wanapita kama kawaida — dl_my_kazi()
+-- inawarudishia 'zote'.
+-- ============================================================
+DROP POLICY IF EXISTS wakala_tx_read ON wakala_tx;
+CREATE POLICY wakala_tx_read ON wakala_tx FOR SELECT TO authenticated
+  USING (dl_my_role() = 'admin'
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_tx_insert ON wakala_tx;
+CREATE POLICY wakala_tx_insert ON wakala_tx FOR INSERT TO authenticated
+  WITH CHECK (business_id = dl_my_business() AND dl_does_wakala());
+
+DROP POLICY IF EXISTS wakala_lines_read ON wakala_lines;
+CREATE POLICY wakala_lines_read ON wakala_lines FOR SELECT TO authenticated
+  USING (dl_my_role() = 'admin'
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_days_read ON wakala_days;
+CREATE POLICY wakala_days_read ON wakala_days FOR SELECT TO authenticated
+  USING (dl_my_role() = 'admin'
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+DROP POLICY IF EXISTS wakala_settings_read ON wakala_settings;
+CREATE POLICY wakala_settings_read ON wakala_settings FOR SELECT TO authenticated
+  USING (dl_my_role() = 'admin'
+         OR (business_id = dl_my_business() AND dl_does_wakala()));
+
+
+-- ============================================================
+-- Kufunga siku pia ni kazi ya uwakala
+-- ============================================================
+CREATE OR REPLACE FUNCTION dl_wakala_close_day(
+  p_biz UUID, p_day DATE, p_counted JSONB, p_counted_cash NUMERIC, p_note TEXT DEFAULT NULL
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $close$
+DECLARE
+  v_lines JSONB := '{}'::jsonb;
+  v_line  RECORD;
+  v_open NUMERIC; v_exp NUMERIC; v_cnt NUMERIC;
+  v_vfloat NUMERIC := 0;
+  v_exp_cash NUMERIC; v_comm NUMERIC; v_n INT;
+  v_row wakala_days;
+BEGIN
+  IF p_biz IS NULL OR p_day IS NULL THEN
+    RAISE EXCEPTION 'Biashara na tarehe zinahitajika.';
+  END IF;
+
+  IF dl_my_role() <> 'admin' AND dl_my_business() <> p_biz THEN
+    RAISE EXCEPTION 'Hauna ruhusa kwenye biashara hii.';
+  END IF;
+
+  IF NOT dl_does_wakala() THEN
+    RAISE EXCEPTION 'Hauna kazi ya uwakala. Mwambie mmiliki akuwekee.';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM wakala_days WHERE business_id = p_biz AND day = p_day) THEN
+    RAISE EXCEPTION 'Siku ya % imefungwa tayari.', p_day
+      USING ERRCODE = 'unique_violation';
+  END IF;
+
+  FOR v_line IN SELECT id FROM wakala_lines WHERE business_id = p_biz AND active LOOP
+    v_open := dl_wakala_opening_float(v_line.id, p_day);
+    SELECT v_open + COALESCE(SUM(
+             CASE WHEN reverses IS NOT NULL THEN -1 ELSE 1 END
+             * dl_wakala_sign(type, 'float') * amount), 0)
+      INTO v_exp
+      FROM wakala_tx
+     WHERE business_id = p_biz AND tx_date = p_day AND line_id = v_line.id;
+
+    v_cnt := COALESCE((p_counted ->> v_line.id::text)::numeric, v_exp);
+    v_vfloat := v_vfloat + (v_cnt - v_exp);
+    v_lines := v_lines || jsonb_build_object(v_line.id::text, jsonb_build_object(
+      'opening', v_open, 'expected', v_exp, 'counted', v_cnt, 'variance', v_cnt - v_exp));
+  END LOOP;
+
+  SELECT dl_wakala_opening_cash(p_biz, p_day) + COALESCE(SUM(
+           CASE WHEN reverses IS NOT NULL THEN -1 ELSE 1 END
+           * dl_wakala_sign(type, 'cash') * amount), 0),
+         COALESCE(SUM(CASE WHEN reverses IS NOT NULL THEN -1 ELSE 1 END
+                      * CASE WHEN type IN ('deposit','withdraw') THEN commission ELSE 0 END), 0),
+         COUNT(*)
+    INTO v_exp_cash, v_comm, v_n
+    FROM wakala_tx
+   WHERE business_id = p_biz AND tx_date = p_day;
+
+  INSERT INTO wakala_days (business_id, day, lines, counted_cash, expected_cash,
+                           variance_cash, variance_float, commission, tx_count, note, closed_by)
+  VALUES (p_biz, p_day, v_lines, COALESCE(p_counted_cash, 0), v_exp_cash,
+          COALESCE(p_counted_cash, 0) - v_exp_cash, v_vfloat, v_comm, v_n, p_note, auth.uid())
+  RETURNING * INTO v_row;
+
+  RETURN to_jsonb(v_row);
+END $close$;
+
+DO $g$ BEGIN
+  BEGIN EXECUTE 'GRANT EXECUTE ON FUNCTION dl_wakala_close_day(UUID, DATE, JSONB, NUMERIC, TEXT) TO authenticated';
+  EXCEPTION WHEN undefined_object THEN NULL; END;
+END $g$;
+
+NOTIFY pgrst, 'reload schema';
 
 NOTIFY pgrst, 'reload schema';
 

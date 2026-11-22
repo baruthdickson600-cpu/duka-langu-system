@@ -18,7 +18,7 @@ import useWakala from '../../hooks/useWakala';
 import { IC, Btn, Modal, Input, Sel, Area, Badge, Empty, Tabs } from '../../components/UI';
 import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
-import { TX, txLabel, varianceState } from '../../utils/wakala';
+import { TX, txLabel, varianceState, doesWakala } from '../../utils/wakala';
 
 const C = {
   green: '#0A6E47', dark: '#06502F', gold: '#F2B705', red: '#C2412D',
@@ -473,6 +473,8 @@ function Mstari({ l, v, color = C.ink, big, tag }) {
 // ============================================================
 export function WakalaDash() {
   const wk = useWakala();
+  const { employees } = useApp();
+  const wakalaStaff = (employees || []).filter(doesWakala);
   const today = wk.today;
   const monthStart = today.slice(0, 7) + '-01';
   const weekStart = useMemo(() => {
@@ -515,6 +517,17 @@ export function WakalaDash() {
         { l: 'TASLIMU KASHENI', v: money(wk.balances.cash), c: wk.balances.cash < 0 ? '#FFD9D2' : '#fff' },
       ]} />
     </HeroCard>
+
+    {/* Hakuna mfanyakazi aliyepangiwa uwakala */}
+    {wakalaStaff.length === 0 && (employees || []).length > 0 && <div style={{
+      background: C.soft, borderRadius: 14, padding: '12px 14px', marginBottom: 14,
+      fontSize: 12.5, color: C.dark,
+    }}>
+      <b>Hakuna mfanyakazi aliyepangiwa uwakala.</b> Kwa sasa wewe pekee ndiye
+      unaweza kurekodi miamala. Nenda <b>Wafanyakazi</b>, bofya <b>Badilisha</b>
+      kwenye "Kazi", umchague mtu. Si lazima afanye duka na uwakala kwa pamoja —
+      unaweza kumpa uwakala pekee.
+    </div>}
 
     {/* Onyo: siku hazijafungwa */}
     {hazijafungwa.length > 0 && <div style={{
