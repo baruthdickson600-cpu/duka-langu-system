@@ -1654,6 +1654,43 @@ export function ReportsPage({onReceipt}){
       <ResponsiveContainer width="100%" height={180}><BarChart data={trendData}><XAxis dataKey="day" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}} width={46}/><Tooltip formatter={v=>fm(v)}/><Bar dataKey="total" fill="#0A6E47" radius={[6,6,0,0]}/></BarChart></ResponsiveContainer>
     </div>}
 
+    {/* ===== ORODHA YA MAUZO =====
+        onReceipt ilikuwa inapokelewa lakini HAITUMIKI — mmiliki
+        hakuwa na njia ya kuona mauzo yenyewe, PDF tu. */}
+    {fSales.length>0&&<CollapseCard title="🧾 Orodha ya Mauzo" count={fSales.length}>
+      <div style={{fontSize:11,color:'#5C6A62',marginBottom:10}}>
+        Gusa mauzo yoyote kuona risiti yake. Yamepangwa kuanzia ya karibuni.
+      </div>
+      <div style={{maxHeight:460,overflowY:'auto',display:'flex',flexDirection:'column',gap:6}}>
+        {[...fSales]
+          .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+          .slice(0,300)
+          .map((s,i)=>{
+            const d=new Date(s.created_at);
+            const bidhaa=(s.items||[]).map(x=>`${x.name}${x.qty>1?' x'+x.qty:''}`).join(', ');
+            return <div key={s.id||i} onClick={()=>onReceipt?.(s)} className="ripple"
+              style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,
+                padding:'10px 12px',borderRadius:10,background:i%2?'#fff':'#F8FEFB',
+                border:'1px solid #ECFDF5',cursor:onReceipt?'pointer':'default'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:12.5,fontWeight:700,color:'#17231D'}}>
+                  {d.toLocaleDateString('sw-TZ',{day:'numeric',month:'short'})} · {d.toLocaleTimeString('sw-TZ',{hour:'2-digit',minute:'2-digit'})}
+                  <span style={{fontWeight:500,color:'#5C6A62'}}> · {payLabel(s.payment_method)}</span>
+                </div>
+                <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'46vw'}}>
+                  {bidhaa||'—'}
+                </div>
+                {s.seller_name&&<div style={{fontSize:9.5,color:'#9AA5A0',marginTop:1}}>Muuzaji: {s.seller_name}</div>}
+              </div>
+              <b style={{fontSize:13.5,color:'#0A6E47',whiteSpace:'nowrap'}}>{fm(s.total)}</b>
+            </div>;
+          })}
+      </div>
+      {fSales.length>300&&<div style={{fontSize:11,color:'#9AA5A0',marginTop:9,textAlign:'center'}}>
+        Zinaonyeshwa 300 za karibuni kati ya {fSales.length}. Tumia PDF au CSV kupata zote.
+      </div>}
+    </CollapseCard>}
+
     {/* ===== SEHEMU ZINAZOJIFUNUA (COLLAPSIBLE) ===== */}
     {productsSold.length>0&&<CollapseCard title="🏆 Bidhaa Zinazoingiza Faida Zaidi" count={productsSold.length}>
       <div style={{display:'flex',flexDirection:'column',gap:8}}>

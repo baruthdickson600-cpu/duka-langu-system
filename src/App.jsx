@@ -482,6 +482,24 @@ export default function App(){
               {recover.length===0
                 ? <p style={{fontSize:13,color:'#5C6A62'}}>Hakuna mauzo yaliyokwama kwenye kifaa hiki.</p>
                 : <>
+                  {/* Muhtasari kwa kila siku — kujua haraka siku zipi zina mauzo yaliyokwama */}
+                  {(()=>{
+                    const byDay={};
+                    recover.forEach(r=>{
+                      const k=new Date(r.created_at).toLocaleDateString('sw-TZ',{day:'numeric',month:'short'});
+                      if(!byDay[k])byDay[k]={n:0,t:0};
+                      byDay[k].n++; byDay[k].t+=(+r.total||0);
+                    });
+                    const days=Object.entries(byDay);
+                    if(days.length<2)return null;
+                    return <div style={{marginBottom:12,padding:'10px 12px',borderRadius:10,background:'#FFF8E6',border:'1px solid #F2D98B'}}>
+                      <div style={{fontSize:10.5,fontWeight:800,color:'#92400E',letterSpacing:.5,marginBottom:7}}>KWA SIKU</div>
+                      {days.map(([d,v])=><div key={d} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'3px 0'}}>
+                        <span style={{color:'#17231D',fontWeight:600}}>{d}</span>
+                        <span style={{color:'#5C6A62'}}>{v.n} mauzo · <b style={{color:'#92400E'}}>{v.t.toLocaleString()}</b></span>
+                      </div>)}
+                    </div>;
+                  })()}
                   <div style={{maxHeight:'45vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:7,marginBottom:14}}>
                     {recover.map((r,i)=>{
                       const d=new Date(r.created_at);
