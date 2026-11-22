@@ -2548,11 +2548,20 @@ export function AppProvider({children}){
         bizErr=result.error;
       }
       
+      // ⚠️ Safu ya uwakala ikiwa HAIPO (SQL haijaendeshwa), lazima
+      // tumwambie admin. Zamani ilikuwa inanyamaza: skrini inaonyesha
+      // IMEWASHWA wakati database haijahifadhi chochote.
+      if(bizErr&&(updates.wakala_enabled!==undefined||updates.wakala_paid_until!==undefined)
+         &&/wakala/.test(bizErr.message||'')){
+        return{success:false,error:'Safu za uwakala hazipo kwenye database. Endesha wakala-migration.sql kwanza.'};
+      }
+
       // If any other column missing, try known-safe fields only
       if(bizErr&&bizErr.message?.includes('column')){
         console.warn('[updateBiz] Column missing, trying safe fields:',bizErr.message);
         const safeFields=['name','email','phone','plan','is_suspended',
           'branch_enabled','wholesale_enabled','business_type',
+          'wakala_enabled','wakala_paid_until',
           'token_active','token_expiry','trial_end'];
         const safeUpdates={};
         safeFields.forEach(k=>{if(updates[k]!==undefined)safeUpdates[k]=updates[k];});

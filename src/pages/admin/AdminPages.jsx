@@ -353,15 +353,20 @@ export function StoresPage(){
     if(!o?.wakala_paid_until)return null;
     return Math.ceil((new Date(o.wakala_paid_until)-new Date())/86400000);
   };
+  // Kosa LAZIMA lionekane. Kimya kimya ni hatari: skrini inasema
+  // IMEWASHWA wakati database haijahifadhi chochote.
   const toggleWakala=async(bid)=>{
-    await updateBiz(bid,{wakala_enabled:!isWakalaOn(bid)});
+    const r=await updateBiz(bid,{wakala_enabled:!isWakalaOn(bid)});
+    if(r&&r.success===false)alert('⚠️ '+(r.error||'Imeshindwa kubadilisha'));
   };
   const extendWakala=async(bid,days=30)=>{
     const o=businesses.find(x=>x.id===bid);
     const base=o?.wakala_paid_until&&new Date(o.wakala_paid_until)>new Date()
       ?new Date(o.wakala_paid_until):new Date();
     base.setDate(base.getDate()+days);
-    await updateBiz(bid,{wakala_enabled:true,wakala_paid_until:base.toISOString()});
+    const r=await updateBiz(bid,{wakala_enabled:true,wakala_paid_until:base.toISOString()});
+    if(r&&r.success===false)alert('⚠️ '+(r.error||'Imeshindwa kuongeza siku'));
+    else alert(`✅ Uwakala umeongezewa siku ${days}.`);
   };
 
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
