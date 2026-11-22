@@ -344,6 +344,26 @@ export function StoresPage(){
       updateBiz(bid,{wholesale_enabled:newVal==='true'}),
     ]);
   };
+  // ===== HUDUMA YA UWAKALA =====
+  // Usajili wake ni WAKE PEKEE — TZS 13,000/mwezi, hauhusiani na
+  // 15,000 ya duka. Admin anawasha, mteja analipa, vipengele vinatokea.
+  const isWakalaOn=(bid)=>!!businesses.find(x=>x.id===bid)?.wakala_enabled;
+  const wakalaDays=(bid)=>{
+    const o=businesses.find(x=>x.id===bid);
+    if(!o?.wakala_paid_until)return null;
+    return Math.ceil((new Date(o.wakala_paid_until)-new Date())/86400000);
+  };
+  const toggleWakala=async(bid)=>{
+    await updateBiz(bid,{wakala_enabled:!isWakalaOn(bid)});
+  };
+  const extendWakala=async(bid,days=30)=>{
+    const o=businesses.find(x=>x.id===bid);
+    const base=o?.wakala_paid_until&&new Date(o.wakala_paid_until)>new Date()
+      ?new Date(o.wakala_paid_until):new Date();
+    base.setDate(base.getDate()+days);
+    await updateBiz(bid,{wakala_enabled:true,wakala_paid_until:base.toISOString()});
+  };
+
   const getDaysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 0;return Math.max(0,Math.ceil((new Date(end)-new Date())/86400000))};
   const getBizStats=(bid)=>{
     const p=products.filter(x=>x.business_id===bid).length;
@@ -446,6 +466,9 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #D6E2DB',background:isWholesaleOn(b.id)?'#FFF8E6':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#9AA5A0',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isWholesaleOn(b.id)?<>🏷️ Jumla: <span style={{color:'#16A34A'}}>ON</span></>:<>🏷️ Jumla: <span>OFF</span></>}
             </button>
+            {isWakalaOn(b.id)&&<span style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:'1.5px solid #0A6E47',background:'#E6F2EC',color:'#0A6E47',fontWeight:800}}>
+              📲 Uwakala: {wakalaDays(b.id)>0?`siku ${wakalaDays(b.id)}`:'HAJALIPA'}
+            </span>}
             <Btn v={b.is_suspended?'primary':'warning'} style={{padding:'5px 8px',fontSize:10}} onClick={()=>suspendBiz(b.id,!b.is_suspended)}>{b.is_suspended?'Fungua':'Funga'}</Btn>
           </div>
         </div>;
@@ -496,6 +519,26 @@ export function StoresPage(){
                 <button onClick={()=>toggleWholesale(detail.id)} style={{width:'100%',padding:'8px 12px',borderRadius:8,border:'none',background:isWholesaleOn(detail.id)?'#C2410C':'#0A6E47',color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'}}>
                   {isWholesaleOn(detail.id)?'✅ IMEWASHWA — Zima':'❌ IMEZIMWA — Washa'}
                 </button>
+              </div>
+              {/* Uwakala Toggle — usajili wake ni tofauti na wa duka */}
+              <div style={{background:isWakalaOn(detail.id)?'#E6F2EC':'#F6F8F7',border:isWakalaOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #D6E2DB',borderRadius:12,padding:'12px 16px',flex:1,minWidth:200}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginBottom:4}}>📲 HUDUMA YA UWAKALA</div>
+                <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>
+                  Kutuma na kutoa pesa. <b>TZS 13,000/mwezi</b> — hauhusiani na malipo ya duka.
+                </div>
+                {isWakalaOn(detail.id)&&<div style={{fontSize:11.5,fontWeight:800,marginBottom:8,color:wakalaDays(detail.id)===null?'#C2412D':wakalaDays(detail.id)<=5?'#B45309':'#0A6E47'}}>
+                  {wakalaDays(detail.id)===null?'⚠️ Hajalipa kabisa'
+                    :wakalaDays(detail.id)>0?`✅ Siku ${wakalaDays(detail.id)} zimebaki`
+                    :`⏰ Imeisha siku ${Math.abs(wakalaDays(detail.id))} zilizopita`}
+                </div>}
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  <button onClick={()=>toggleWakala(detail.id)} style={{flex:'1 1 110px',padding:'8px 10px',borderRadius:8,border:'none',background:isWakalaOn(detail.id)?'#C2412D':'#0A6E47',color:'#fff',fontWeight:800,fontSize:11.5,cursor:'pointer'}}>
+                    {isWakalaOn(detail.id)?'Zima huduma':'Washa huduma'}
+                  </button>
+                  {isWakalaOn(detail.id)&&<button onClick={()=>extendWakala(detail.id,30)} style={{flex:'1 1 100px',padding:'8px 10px',borderRadius:8,border:'1.5px solid #0A6E47',background:'#fff',color:'#0A6E47',fontWeight:800,fontSize:11.5,cursor:'pointer'}}>
+                    +30 siku (amelipa)
+                  </button>}
+                </div>
               </div>
               {/* Branch Toggle */}
               <div style={{background:isBranchOn(detail.id)?'#E6F2EC':'#F6F8F7',border:isBranchOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #D6E2DB',borderRadius:12,padding:'12px 16px',flex:1,minWidth:160}}>

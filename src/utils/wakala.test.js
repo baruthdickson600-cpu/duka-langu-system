@@ -9,6 +9,7 @@ import {
   TX, txLabel, needsLine, isKnownType, txDeltas, validateTx,
   floatAfter, cashAfter, commissionTotal,
   reconcileLine, reconcileCash, varianceState, dayTotals, wakalaAccess,
+  shellMode,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -239,5 +240,56 @@ describe('usajili wa uwakala', () => {
   });
   it('tarehe batili inahesabiwa kama hajalipa', () => {
     expect(wakalaAccess({ enabled: true, paidUntil: 'si-tarehe' }).canRecord).toBe(false);
+  });
+});
+
+// ============================================================
+// shellMode — hii inalinda mfumo wa zamani.
+// Usajili wa duka na wa uwakala ni VIWILI tofauti.
+// ============================================================
+describe('shellMode', () => {
+  const hai  = { canRecord: true,  canClose: true  };
+  const kufa = { canRecord: false, canClose: false };
+
+  describe('uwakala haujawashwa -> tabia ya ZAMANI kabisa', () => {
+    it('duka limelipwa -> duka', () => {
+      expect(shellMode({ role: 'office', shopExpired: false })).toBe('duka');
+      expect(shellMode({ role: 'office', shopExpired: false, wakala: kufa })).toBe('duka');
+    });
+    it('duka limeisha -> locked, kama zamani', () => {
+      expect(shellMode({ role: 'office', shopExpired: true })).toBe('locked');
+      expect(shellMode({ role: 'employee', shopExpired: true, wakala: kufa })).toBe('locked');
+    });
+  });
+
+  describe('hali nne za malipo', () => {
+    it('duka LIMELIPWA + uwakala UMELIPWA -> vyote', () => {
+      expect(shellMode({ role: 'office', shopExpired: false, wakala: hai })).toBe('both');
+    });
+    it('duka LIMELIPWA + uwakala HAUJALIPWA -> duka pekee', () => {
+      expect(shellMode({ role: 'office', shopExpired: false, wakala: kufa })).toBe('duka');
+    });
+    it('duka LIMEISHA + uwakala UMELIPWA -> uwakala pekee, SI locked', () => {
+      expect(shellMode({ role: 'office', shopExpired: true, wakala: hai })).toBe('wakala');
+    });
+    it('duka LIMEISHA + uwakala HAUJALIPWA -> locked', () => {
+      expect(shellMode({ role: 'office', shopExpired: true, wakala: kufa })).toBe('locked');
+    });
+  });
+
+  it('muuzaji anafuata sheria zile zile', () => {
+    expect(shellMode({ role: 'employee', shopExpired: true, wakala: hai })).toBe('wakala');
+    expect(shellMode({ role: 'employee', shopExpired: false, wakala: hai })).toBe('both');
+  });
+
+  it('admin na wengine hawahusiki na usajili', () => {
+    ['admin', 'marketing', 'supervisor', 'agent', 'accountant'].forEach(r => {
+      expect(shellMode({ role: r, shopExpired: true })).toBe('duka');
+    });
+  });
+
+  it('siku za neema: anaweza kufunga tu, bado anaingia', () => {
+    const neema = { canRecord: false, canClose: true };
+    expect(shellMode({ role: 'office', shopExpired: true, wakala: neema })).toBe('wakala');
   });
 });

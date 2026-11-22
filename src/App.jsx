@@ -26,6 +26,24 @@ import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,Super
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
 import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
+import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage} from './pages/office/WakalaPages';
+import {wakalaAccess,shellMode} from './utils/wakala';
+
+// ===== HUDUMA YA UWAKALA =====
+// Menyu hizi zinaongezwa PALE PEKEE admin akiwasha huduma kwa duka
+// hilo (businesses.wakala_enabled). Zikiwa zimezimwa, mfumo ni ule
+// ule wa zamani — hakuna kipengele kipya kinachoonekana.
+const WAKALA_MENU_OFFICE=[
+  {id:'wakala',icon:IC.dollar,label:'📊 Uwakala'},
+  {id:'wakala_rekodi',icon:IC.plus,label:'📲 Rekodi Muamala'},
+  {id:'wakala_funga',icon:IC.lock,label:'🔒 Funga Siku'},
+  {id:'wakala_ripoti',icon:IC.file,label:'🧾 Ripoti ya Uwakala'},
+  {id:'wakala_laini',icon:IC.gear,label:'⚙️ Laini za Float'},
+];
+const WAKALA_MENU_EMP=[
+  {id:'wakala_rekodi',icon:IC.plus,label:'📲 Uwakala'},
+  {id:'wakala_funga',icon:IC.lock,label:'🔒 Funga Siku'},
+];
 
 const MENUS={
   admin:[
@@ -249,7 +267,14 @@ export default function App(){
   }
 
   if(!user) return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword}/>;
-  if(user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='agent'&&user.role!=='accountant'&&biz&&isExpired())return <LockedPage/>;
+  // ===== USAJILI: DUKA NA UWAKALA NI VIWILI TOFAUTI =====
+  // Duka ni 15,000; uwakala ni 13,000. Mtu anaweza kulipa kimoja.
+  // Uwakala ukiwa haujawashwa, shellMode inarudisha jibu LILE LILE
+  // la zamani — 'duka' au 'locked'. Hakuna tabia iliyobadilika.
+  const wkAccess=wakalaAccess({enabled:biz?.wakala_enabled,paidUntil:biz?.wakala_paid_until});
+  const shopExpired=user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='agent'&&user.role!=='accountant'&&!!biz&&isExpired();
+  const shell=shellMode({role:user.role,shopExpired,wakala:wkAccess});
+  if(shell==='locked')return <LockedPage/>;
 
   const role=user.role;
   const roleLabel={'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[role]||role;
@@ -260,6 +285,12 @@ export default function App(){
   if(role==='office'&&canUseBranches){
     const branchItem={id:'branches',icon:IC.store,label:'Matawi'};
     if(!menu.find(m=>m.id==='branches')){menu.splice(1,0,branchItem)}
+  }
+  // Uwakala: menyu inaongezwa tu kama huduma imewashwa kwa duka hili.
+  // Usajili wa duka ukiisha lakini uwakala umelipwa, anaona uwakala PEKEE.
+  if(wkAccess.visible&&(role==='office'||role==='employee')){
+    const wkMenu=role==='office'?WAKALA_MENU_OFFICE:WAKALA_MENU_EMP;
+    menu=shell==='wakala'?[...wkMenu]:[...menu,...wkMenu];
   }
 
   const unread=notifications.filter(n=>!n.is_read).length;
@@ -332,6 +363,25 @@ export default function App(){
         default:return <AgentDashboard onNav={setPage}/>;
       }
     }
+    // ===== UWAKALA =====
+    // Usajili wa duka ukiisha lakini uwakala umelipwa, kurasa za duka
+    // zinafungwa na uwakala pekee unafanya kazi.
+    if(wkAccess.visible){
+      switch(page){
+        case'wakala':return role==='office'?<WakalaDash/>:<WakalaRecordPage/>;
+        case'wakala_rekodi':return <WakalaRecordPage/>;
+        case'wakala_funga':return <WakalaClosePage/>;
+        case'wakala_ripoti':return role==='office'?<WakalaReportPage/>:null;
+        case'wakala_laini':return role==='office'?<WakalaLinesPage/>:null;
+        default:break;
+      }
+    }
+    if(shell==='wakala'){
+      // Duka limefungwa — hakuna ukurasa wa duka unaofunguka
+      if(page==='notifications')return <NotifsPage/>;
+      return role==='office'?<WakalaDash/>:<WakalaRecordPage/>;
+    }
+
     switch(page){
       case'branches':return canUseBranches&&role==='office'?<BranchesPage/>:null;
       case'products':return role==='office'?<ProductsPage/>:null;
@@ -427,7 +477,12 @@ export default function App(){
       </div>
 
       <div style={{padding:'10px 10px 14px',borderTop:'1px solid rgba(255,255,255,.15)'}}>
-        {trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:8,textAlign:'center'}}>⏳ Siku {trial} zimebaki</div>}
+        {shell==='wakala'
+          ?<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
+             🔒 Usajili wa <b>duka</b> umeisha.<br/>Uwakala pekee unafanya kazi.
+           </div>
+          :trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:8,textAlign:'center'}}>⏳ Siku {trial} zimebaki</div>}
+        {shell!=='wakala'&&wkAccess.visible&&wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'5px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Uwakala: siku {wkAccess.daysLeft}</div>}
         {/* Profile Card */}
         <button onClick={()=>setProfileOpen(true)} style={{width:'100%',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.15)',borderRadius:12,padding:'10px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:10,marginBottom:8,transition:'background 0.2s'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.15)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.08)'}>
           {user.avatar_url

@@ -33,3 +33,24 @@ Inahitaji Playwright (`npm i -D playwright && npx playwright install chromium`).
 | E | Muuzaji, RLS bila RPC | stock haiwezi kuhifadhiwa — **lakini inaonya** ⚠️ |
 | F | Mmiliki baada ya muuzaji kuuza | anaona mauzo + faida 1200 ✅ |
 | G | Muuzaji anafungua | hakuna faida, gharama wala bei ya kununua ✅ |
+
+## Uwakala
+
+```bash
+node .verify/uwakala.cjs   # hali 12 za upotevu wa pesa
+```
+
+| | Hali | Inachotarajiwa |
+|---|---|---|
+| 1 | Miamala ya kawaida | taslimu na float zinabadilika KINYUME; kamisheni haigusi zote mbili |
+| 2 | Ametoa 50,000 akaandika 30,000 | ZIADA ya float inakamatwa |
+| 3 | Hakuandika kabisa | UPUNGUFU wa float unakamatwa |
+| 4 | Muuzaji anajaribu KUFUTA | RLS inakataa; rekodi inabaki |
+| 5 | Rejesho mara mbili | la pili linakataliwa (unique index) |
+| 6 | Siku iliyofungwa | muamala mpya haupokelewi |
+| 7 | Muamala umetumwa mara mbili | offline_id inazuia nakala |
+| 8 | Kamisheni > muamala, au kiasi 0 | CHECK inakataa |
+| 9 | Usajili umeisha | haandiki, LAKINI anafunga siku (siku 7) |
+| 10 | Amewashiwa hajalipa | vipengele vimefungwa, ujumbe wa malipo |
+| 11 | SQL haijaendeshwa | ukurasa hauvunjiki, unaeleza |
+| 12 | Mmiliki | anaona kamisheni, laini zote na tofauti |

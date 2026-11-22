@@ -135,6 +135,21 @@ export const dayTotals = txs => {
 export const GRACE_DAYS = 7;
 export const WARN_DAYS  = 5;
 
+// Usajili wa duka ni tofauti na wa uwakala. Mtu anaweza kulipa
+// uwakala pekee (13,000) bila kulipa duka (15,000), au kinyume.
+//
+// ⚠️ MUHIMU: kama uwakala HAUJAWASHWA, hii lazima itoe jibu LILE LILE
+// la mfumo wa zamani — 'duka' au 'locked'. Kitu kimoja tu kinaamua.
+export const shellMode = ({ role, shopExpired, wakala } = {}) => {
+  // Admin, masoko, masupervaiza, mhasibu — hawahusiki na usajili
+  if (role && role !== 'office' && role !== 'employee') return 'duka';
+
+  const wkOn = !!(wakala && (wakala.canRecord || wakala.canClose));
+
+  if (!shopExpired) return wkOn ? 'both' : 'duka';
+  return wkOn ? 'wakala' : 'locked';
+};
+
 export const wakalaAccess = ({ enabled, paidUntil, now = new Date() } = {}) => {
   if (!enabled) return { visible: false, canRecord: false, canClose: false, daysLeft: 0, expired: false };
   const until = paidUntil ? new Date(paidUntil) : null;
