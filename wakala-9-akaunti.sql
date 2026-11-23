@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — AKAUNTI YA UWAKALA PEKEE
 --
--- Sehemu 9/9. Endesha BAADA ya sehemu 1–8.
+-- Sehemu 9/10. Endesha BAADA ya sehemu 1–8.
 --
 -- Wapo watu wanaotaka kusimamia uwakala pekee, hawana duka.
 -- Hawapaswi kuona bidhaa, mauzo wala stock — hata siku ya kwanza.
@@ -47,4 +47,4 @@ UPDATE businesses SET akaunti_aina = 'zote'
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 9/9 SAWA — akaunti ya uwakala pekee imewezeshwa.' AS status;
+SELECT 'Sehemu 9/10 SAWA — akaunti ya uwakala pekee imewezeshwa.' AS status;

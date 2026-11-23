@@ -1,16 +1,16 @@
 -- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (faili moja kamili)
 --
--- Vipande tisa vilivyounganishwa. Kama kihariri chako kinakata
+-- Vipande kumi vilivyounganishwa. Kama kihariri chako kinakata
 -- maandishi marefu, tumia vipande kimoja kimoja badala yake:
--- wakala-1-jedwali.sql ... wakala-9-akaunti.sql
+-- wakala-1-jedwali.sql ... wakala-10-admin.sql
 --
 -- Salama kuendesha mara nyingi. HAIGUSI jedwali la duka.
 -- ============================================================
 
 
 
--- ####################  SEHEMU 1 / 9  ####################
+-- ####################  SEHEMU 1 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (jedwali + kinga)
@@ -179,10 +179,10 @@ CREATE TABLE IF NOT EXISTS wakala_settings (
 
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
-SELECT 'Sehemu 1/9 SAWA — jedwali yametengenezwa.' AS status;
+SELECT 'Sehemu 1/10 SAWA — jedwali yametengenezwa.' AS status;
 
 
--- ####################  SEHEMU 2 / 9  ####################
+-- ####################  SEHEMU 2 / 10  ####################
 
 -- 6. KINGA ZA DATABASE (triggers)
 -- ============================================================
@@ -364,10 +364,10 @@ END $close$;
 
 
 -- ============================================================
-SELECT 'Sehemu 2/9 SAWA — kinga na hesabu zipo.' AS status;
+SELECT 'Sehemu 2/10 SAWA — kinga na hesabu zipo.' AS status;
 
 
--- ####################  SEHEMU 3 / 9  ####################
+-- ####################  SEHEMU 3 / 10  ####################
 
 -- ============================================================
 -- 0. WASAIDIZI WA KINGA — hutengenezwa TU kama hawapo
@@ -487,7 +487,7 @@ NOTIFY pgrst, 'reload schema';
 SELECT 'Jedwali la uwakala limetengenezwa. Huduma imezimwa hadi admin aiwashe.' AS status;
 
 
--- ####################  SEHEMU 4 / 9  ####################
+-- ####################  SEHEMU 4 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — KAZI YA MFANYAKAZI (duka / uwakala / zote)
@@ -652,7 +652,7 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 4/9 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
+SELECT 'Sehemu 4/10 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
 
 
 -- ============================================================
@@ -763,7 +763,7 @@ NOTIFY pgrst, 'reload schema';
 SELECT 'Kinga zimelegezwa: mmiliki halisi wa duka daima anaruhusiwa.' AS status;
 
 
--- ####################  SEHEMU 5 / 9  ####################
+-- ####################  SEHEMU 5 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — GHARAMA ZA UWAKALA
@@ -947,10 +947,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 5/9 SAWA — gharama za uwakala zimewekwa.' AS status;
+SELECT 'Sehemu 5/10 SAWA — gharama za uwakala zimewekwa.' AS status;
 
 
--- ####################  SEHEMU 6 / 9  ####################
+-- ####################  SEHEMU 6 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — UWAKALA NA GATEWAY (Abliner, Beem, Snippe)
@@ -1095,10 +1095,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 6/9 SAWA — gateway za uwakala zimeunganishwa.' AS status;
+SELECT 'Sehemu 6/10 SAWA — gateway za uwakala zimeunganishwa.' AS status;
 
 
--- ####################  SEHEMU 7 / 9  ####################
+-- ####################  SEHEMU 7 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — UKAGUZI WA GHAFLA
@@ -1269,10 +1269,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 7/9 SAWA — ukaguzi wa ghafla umewekwa.' AS status;
+SELECT 'Sehemu 7/10 SAWA — ukaguzi wa ghafla umewekwa.' AS status;
 
 
--- ####################  SEHEMU 8 / 9  ####################
+-- ####################  SEHEMU 8 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — UCHAMBUZI WA ASUBUHI + GHARAMA ZA WAKALA
@@ -1345,10 +1345,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 8/9 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;
+SELECT 'Sehemu 8/10 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;
 
 
--- ####################  SEHEMU 9 / 9  ####################
+-- ####################  SEHEMU 9 / 10  ####################
 
 -- ============================================================
 -- DukaLangu — AKAUNTI YA UWAKALA PEKEE
@@ -1398,4 +1398,43 @@ UPDATE businesses SET akaunti_aina = 'zote'
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 9/9 SAWA — akaunti ya uwakala pekee imewezeshwa.' AS status;
+SELECT 'Sehemu 9/10 SAWA — akaunti ya uwakala pekee imewezeshwa.' AS status;
+
+
+-- ####################  SEHEMU 10 / 10  ####################
+
+-- ============================================================
+-- DukaLangu — UDHIBITI WA ADMIN KWA ARIFA ZA UWAKALA
+--
+--
+-- Admin anaweza kuzima aina yoyote ya arifa ya uwakala kwa mfumo
+-- mzima. Kizuizi kipo kwenye api/send-sms.js, kwa sababu njia zote
+-- mbili — app na cron — zinapitia hapo. Mmiliki ataendelea kuona
+-- arifa imewashwa kwake, lakini SMS haitatoka.
+--
+-- Hapa tunaweka funguo zenyewe. Zote zinaanza 'true' ili tabia
+-- isibadilike kwa mtu yeyote.
+--
+-- Salama kuendesha mara nyingi.
+-- ============================================================
+
+INSERT INTO settings(key, value) VALUES
+  ('wakala_sms_enabled',          'true'),
+  ('wakala_tofauti_enabled',      'true'),
+  ('wakala_float_enabled',        'true'),
+  ('wakala_mkubwa_enabled',       'true'),
+  ('wakala_hitimisho_enabled',    'true'),
+  ('wakala_asubuhi_enabled',      'true'),
+  ('wakala_ukaguzi_enabled',      'true')
+ON CONFLICT (key) DO NOTHING;
+
+-- Admin anahitaji kusoma mipangilio ya arifa ya kila duka ili
+-- aone nani amewasha nini. Hii ni kusoma TU — hawezi kubadilisha
+-- mipangilio ya mmiliki.
+DROP POLICY IF EXISTS wakala_settings_admin ON wakala_settings;
+CREATE POLICY wakala_settings_admin ON wakala_settings FOR SELECT TO authenticated
+  USING (dl_my_role() = 'admin');
+
+NOTIFY pgrst, 'reload schema';
+
+SELECT 'Sehemu 10/10 SAWA — admin anasimamia arifa za uwakala.' AS status;

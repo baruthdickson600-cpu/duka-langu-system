@@ -1,7 +1,7 @@
 -- ============================================================
 -- DukaLangu — UCHAMBUZI WA ASUBUHI + GHARAMA ZA WAKALA
 --
--- Sehemu 8/9. Endesha BAADA ya sehemu 1–7.
+-- Sehemu 8/10. Endesha BAADA ya sehemu 1–7.
 --
 -- 1. Arifa ya asubuhi: mmiliki anapata SMS kila siku saa 12
 --    asubuhi yenye uchambuzi wa miamala ya jana. Tofauti na
@@ -70,4 +70,4 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 8/9 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;
+SELECT 'Sehemu 8/10 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;

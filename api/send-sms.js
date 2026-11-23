@@ -61,6 +61,26 @@ export default async function handler(req, res) {
 
   const { phone, message, recipient_id = 1, business_id, customer_id, kind, sent_by } = req.body || {};
 
+  // ---- ARIFA ZA UWAKALA: UDHIBITI WA ADMIN ----
+  // Admin anaweza kuzima aina yoyote ya arifa ya uwakala kwa
+  // mfumo mzima. Kizuizi kiko HAPA, si kwenye kivinjari, kwa
+  // sababu njia zote mbili — app na cron — zinapitia hapa.
+  const sbCfg = smsDb();
+  if (kind && String(kind).startsWith('wakala_') && sbCfg) {
+    try {
+      const { data: rows } = await sbCfg.from('settings')
+        .select('key,value').in('key', ['wakala_sms_enabled', kind + '_enabled']);
+      const soma = k => (rows || []).find(r => r.key === k)?.value;
+      const zima = v => v === 'false' || v === false;
+      if (zima(soma('wakala_sms_enabled')) || zima(soma(kind + '_enabled'))) {
+        return res.status(200).json({
+          success: false, skipped: true, code: 'WAKALA_SMS_OFF',
+          error: 'Arifa hii imezimwa na msimamizi.',
+        });
+      }
+    } catch (_) { /* settings haipatikani — usizuie arifa */ }
+  }
+
   // ---- BANDO LA SMS ----
   // SMS za mfumo (bila business_id) hazipunguzi bando la duka.
   // Zenye business_id ni za mwenye duka kwenda kwa wateja wake — zinakatwa.
