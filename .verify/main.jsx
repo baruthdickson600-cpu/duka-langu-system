@@ -56,14 +56,16 @@ if(seed){
 Promise.all([
   import('../src/context/AppContext'),
   seed?.render ? import('../src/pages/office/WakalaPages') : Promise.resolve(null),
+  seed?.render==='comms' ? import('../src/pages/admin/CommsCenter') : Promise.resolve(null),
   seed?.render ? import('../src/hooks/useWakala') : Promise.resolve(null),
-]).then(([{AppProvider,useApp},WP,WH])=>{
+]).then(([{AppProvider,useApp},WP,CC,WH])=>{
   function Probe(){ const app=useApp(); window.__app=app; return <div id="ready">ready</div>; }
 
   // Kurasa halisi za uwakala — kwa jaribio la kugusa na picha
   function WakalaProbe(){
     const app=useApp(); window.__app=app;
     const wk=WH.default(); window.__wk=wk;
+    if(seed.render==='comms'){const C=CC.default; return <div id="ready" style={{padding:16,background:'#F6F8F7',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}><C/></div>;}
     const P={dash:WP.WakalaDash,rekodi:WP.WakalaRecordPage,funga:WP.WakalaClosePage,gharama:WP.WakalaGharamaPage,
              ripoti:WP.WakalaReportPage,laini:WP.WakalaLinesPage}[seed.render]||WP.WakalaDash;
     if(!app.user)return <div id="waiting">waiting</div>;

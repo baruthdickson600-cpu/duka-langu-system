@@ -11,6 +11,16 @@ import {API_BASE} from '../../config/api';
 
 const SMS_COST=25; // TZS kwa SMS (makadirio)
 
+// Arifa za uwakala zinazoweza kuzimwa na admin kwa mfumo mzima
+const ARIFA_UWAKALA=[
+  ['wakala_tofauti',  '🚨 Tofauti',             'Siku ikifungwa na pesa isilingane'],
+  ['wakala_float',    '🔋 Float inayoisha',     'Laini ikishuka chini ya kiwango'],
+  ['wakala_mkubwa',   '💰 Muamala mkubwa',      'Unaozidi kiwango alichoweka'],
+  ['wakala_hitimisho','📊 Hitimisho la siku',   'Siku ikifungwa'],
+  ['wakala_asubuhi',  '🌅 Uchambuzi wa asubuhi','Kila siku saa 1 asubuhi'],
+  ['wakala_ukaguzi',  '🔍 Ukaguzi wa ghafla',   'Mmiliki anapoomba wakala ahesabu'],
+];
+
 const DEFAULT_TEMPLATES=[
   // ===== MALIPO NA USAJILI (backup ya automatic) =====
   {id:'pay_received',cat:'Malipo',name:'Malipo Yamepokelewa',body:'Habari {{jina}},\n\nMalipo yako ya TZS {{kiasi}} yamepokelewa kikamilifu.\n\nSiku {{siku}} zimeongezwa kwenye akaunti yako.\nMfumo wako utaendelea hadi {{tarehe}}.\n\nAsante kwa kuendelea kutumia DukaLangu.\n\nDukaLangu Smart POS'},
@@ -70,6 +80,9 @@ const GROUPS=[
 export default function CommsCenterPage(){
   const{businesses,broadcastNotif,updateSetting,settings}=useApp();
   const[tab,setTab]=useState('dashboard');
+  const[wkCfg,setWkCfg]=useState({});    // mipangilio ya kila duka
+  const[wkSms,setWkSms]=useState([]);    // kutoka sms_log, SI sms_logs
+  const[wkLoading,setWkLoading]=useState(false);
   const[channel,setChannel]=useState('sms'); // sms | email | notif
   const[subject,setSubject]=useState('');
   const[notifType,setNotifType]=useState('info');
@@ -100,7 +113,7 @@ export default function CommsCenterPage(){
   const[balLoading,setBalLoading]=useState(false);
   const[balError,setBalError]=useState(null);
   // Settings (zinahifadhiwa kwenye settings table)
-  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true',email_reports_enabled:'true',staff_reports_enabled:'true'});
+  const[cfg,setCfg]=useState({sms_signature:'',sms_footer:'',auto_sms_enabled:'true',auto_reminder_7:'true',auto_reminder_3:'true',auto_reminder_1:'true',auto_expired:'true',auto_welcome:'true',auto_payment:'true',wakala_sms_enabled:'true',email_reports_enabled:'true',staff_reports_enabled:'true'});
   const[savingCfg,setSavingCfg]=useState(false);
   const PER_PAGE=15;
 
@@ -166,7 +179,7 @@ export default function CommsCenterPage(){
     try{
       const{data}=await supabase.from('settings').select('key,value');
       if(data){
-        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_')||r.key?.startsWith('email_reports')||r.key?.startsWith('staff_reports'))s[r.key]=r.value;});
+        const s={};data.forEach(r=>{if(r.key?.startsWith('sms_')||r.key?.startsWith('auto_')||r.key?.startsWith('wakala_')||r.key?.startsWith('email_reports')||r.key?.startsWith('staff_reports'))s[r.key]=r.value;});
         setCfg(p=>({...p,...s}));
       }
     }catch(e){}
@@ -184,7 +197,28 @@ export default function CommsCenterPage(){
     setSavingCfg(false);
   };
 
-  useEffect(()=>{loadHistory();loadBalance();loadSettings();loadStaff();},[]);
+  // ===== ARIFA ZA UWAKALA =====
+  const loadWakala=async()=>{
+    setWkLoading(true);
+    try{
+      const{data}=await supabase.from('wakala_settings')
+        .select('business_id,alert_phone,arifa_tofauti,arifa_float,arifa_mkubwa,arifa_hitimisho,arifa_asubuhi');
+      const m={};(data||[]).forEach(r=>{m[r.business_id]=r;});
+      setWkCfg(m);
+    }catch(e){/* SQL ya uwakala haijaendeshwa */}
+    // ⚠️ Arifa za uwakala zinaandikwa na api/send-sms.js kwenye `sms_log`
+    //    (umoja). Tabo ya Historia inasoma `sms_logs` (wingi) — jedwali
+    //    tofauti kabisa. Tukisoma pale, kila namba hapa ingekuwa sifuri.
+    try{
+      const mwanzo=new Date(); mwanzo.setDate(1); mwanzo.setHours(0,0,0,0);
+      const{data}=await supabase.from('sms_log').select('business_id,kind,status,created_at')
+        .like('kind','wakala_%').gte('created_at',mwanzo.toISOString()).limit(5000);
+      setWkSms(data||[]);
+    }catch(e){setWkSms([]);}
+    setWkLoading(false);
+  };
+
+  useEffect(()=>{loadHistory();loadBalance();loadSettings();loadStaff();loadWakala();},[]);
 
   // ===== Dashboard stats =====
   const stats=useMemo(()=>{
@@ -354,7 +388,7 @@ export default function CommsCenterPage(){
     a.href=URL.createObjectURL(b);a.download=`sms-history-${new Date().toISOString().slice(0,10)}.csv`;a.click();
   };
 
-  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['settings','⚙️ Mipangilio']];
+  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['uwakala','📲 Uwakala'],['settings','⚙️ Mipangilio']];
 
   return <div className="page-enter">
     <div style={{marginBottom:16}}>
@@ -742,6 +776,116 @@ export default function CommsCenterPage(){
     </div>}
 
     {/* ===== SETTINGS ===== */}
+    {/* ===== UWAKALA ===== */}
+    {tab==='uwakala'&&(()=>{
+      const kwaAina={}; wkSms.forEach(h=>{kwaAina[h.kind]=(kwaAina[h.kind]||0)+1;});
+      const zilizoshindwa=wkSms.filter(h=>h.status==='failed').length;
+      const maduka=(businesses||[]).filter(b=>b.wakala_enabled);
+      const zimeOn=k=>cfg[k+'_enabled']!=='false';
+      const mfumoOn=cfg.wakala_sms_enabled!=='false';
+
+      return <div>
+        {/* Swichi kuu */}
+        <div className="card" style={{marginBottom:12,background:mfumoOn?'#fff':'#FBECE9',
+          border:mfumoOn?'1px solid #D6E2DB':'2px solid #C2412D'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+            <div>
+              <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 3px'}}>📲 Arifa zote za uwakala</h3>
+              <p style={{fontSize:12,color:'#5C6A62',margin:0,maxWidth:430}}>
+                Ukizima hapa, hakuna arifa ya uwakala itakayotoka kwa duka lolote —
+                hata kama mmiliki ameziwasha. Kizuizi kiko server, si kwenye app.
+              </p>
+            </div>
+            <button onClick={()=>setCfg(p=>({...p,wakala_sms_enabled:mfumoOn?'false':'true'}))}
+              style={{padding:'11px 20px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:800,
+                fontSize:13,background:mfumoOn?'#C2412D':'#0A6E47',color:'#fff'}}>
+              {mfumoOn?'Zima zote':'Washa zote'}
+            </button>
+          </div>
+        </div>
+
+        {/* Takwimu */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:12}}>
+          {[['SMS mwezi huu',wkSms.length],
+            ['Gharama',`TZS ${(wkSms.length*SMS_COST).toLocaleString()}`],
+            ['Zilizoshindwa',zilizoshindwa],
+            ['Maduka yenye uwakala',maduka.length],
+            ['Yaliyowasha arifa',Object.values(wkCfg).filter(c=>c.arifa_tofauti||c.arifa_float||c.arifa_mkubwa||c.arifa_hitimisho||c.arifa_asubuhi).length]]
+            .map(([l,v])=><div key={l} className="card" style={{padding:'13px 10px',textAlign:'center'}}>
+              <div style={{fontSize:9.5,color:'#5C6A62',fontWeight:700,textTransform:'uppercase',letterSpacing:.5}}>{l}</div>
+              <div style={{fontSize:19,fontWeight:900,color:'#0A6E47',marginTop:3}}>{v}</div>
+            </div>)}
+        </div>
+
+        {/* Aina za arifa */}
+        <div className="card" style={{marginBottom:12}}>
+          <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 4px'}}>Aina za arifa</h3>
+          <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 12px'}}>
+            Zima aina moja kama inagharimu kuliko inavyosaidia. Mmiliki ataendelea
+            kuiona imewashwa kwake, lakini SMS haitatoka.
+          </p>
+          {ARIFA_UWAKALA.map(([k,jina,maelezo])=>{
+            const on=zimeOn(k)&&mfumoOn;
+            return <div key={k} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',
+              borderRadius:10,marginBottom:7,background:on?'#F6F8F7':'#FBECE9',opacity:mfumoOn?1:.55}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#17231D'}}>{jina}</div>
+                <div style={{fontSize:11,color:'#5C6A62'}}>{maelezo}</div>
+              </div>
+              <span style={{fontSize:12,fontWeight:800,color:'#5C6A62',whiteSpace:'nowrap'}}>
+                {kwaAina[k]||0}
+              </span>
+              <button disabled={!mfumoOn} onClick={()=>setCfg(p=>({...p,[k+'_enabled']:zimeOn(k)?'false':'true'}))}
+                style={{padding:'7px 13px',borderRadius:8,border:'none',fontSize:11.5,fontWeight:800,
+                  cursor:mfumoOn?'pointer':'not-allowed',background:on?'#E6F2EC':'#FBECE9',
+                  color:on?'#0A6E47':'#C2412D'}}>
+                {zimeOn(k)?'IMEWASHWA':'IMEZIMWA'}
+              </button>
+            </div>;
+          })}
+          <Btn onClick={saveSettings} disabled={savingCfg} style={{marginTop:6}}>
+            {savingCfg?'Inahifadhi...':'Hifadhi mipangilio'}
+          </Btn>
+        </div>
+
+        {/* Kila duka */}
+        <div className="card" style={{overflowX:'auto'}}>
+          <h3 style={{fontSize:15,fontWeight:800,margin:'0 0 12px'}}>Maduka yenye uwakala ({maduka.length})</h3>
+          {wkLoading?<div style={{fontSize:13,color:'#5C6A62'}}>Inapakia...</div>
+          :maduka.length===0?<Empty icon="📲" text="Hakuna duka lenye uwakala bado."/>
+          :<table style={{width:'100%',borderCollapse:'collapse',fontSize:12.5,minWidth:560}}>
+            <thead><tr style={{background:'#E6F2EC'}}>
+              {['Duka','Aina','Namba ya arifa','Arifa','SMS'].map((h,i)=>
+                <th key={i} style={{padding:'9px 10px',textAlign:i>2?'right':'left',fontSize:10.5,
+                  color:'#06502F',fontWeight:800}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {maduka.map(b=>{
+                const c=wkCfg[b.id]||{};
+                const on=ARIFA_UWAKALA.filter(([k])=>c['arifa_'+k.replace('wakala_','')]).length;
+                const idadi=wkSms.filter(h=>h.business_id===b.id).length;
+                return <tr key={b.id} style={{borderTop:'1px solid #D6E2DB'}}>
+                  <td style={{padding:'9px 10px',fontWeight:700}}>{b.name}</td>
+                  <td style={{padding:'9px 10px',color:'#5C6A62'}}>
+                    {b.akaunti_aina==='uwakala'?'📲 Uwakala pekee':'🏪📲 Vyote'}
+                  </td>
+                  <td style={{padding:'9px 10px',color:(c.alert_phone||b.phone)?'#17231D':'#C2412D'}}>
+                    {c.alert_phone||b.phone||'hakuna'}
+                  </td>
+                  <td style={{padding:'9px 10px',textAlign:'right',fontWeight:800,
+                    color:on?'#0A6E47':'#9AA5A0'}}>{on} / 5</td>
+                  <td style={{padding:'9px 10px',textAlign:'right',fontWeight:800}}>{idadi}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>}
+          <div style={{fontSize:11,color:'#9AA5A0',marginTop:8}}>
+            Idadi ni za mwezi huu, kutoka jedwali la sms_log.
+          </div>
+        </div>
+      </div>;
+    })()}
+
     {tab==='settings'&&<div>
       {/* Hali ya Muunganisho */}
       <div className="card" style={{marginBottom:12}}>

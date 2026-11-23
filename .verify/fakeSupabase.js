@@ -5,7 +5,8 @@
 //  - ina unique index kwenye (business_id, offline_id)
 const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:[],
              stock_history:[], customers:[], expenses:[], credit_transactions:[],
-             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[], wakala_checks:[] };
+             wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[], wakala_checks:[],
+             settings:[], sms_log:[], sms_logs:[], sms_templates:[] };
 
 const CFG = {
   schema: {
@@ -31,6 +32,10 @@ const CFG = {
     wakala_expenses:['id','business_id','tarehe','aina','amount','chanzo','maelezo','tx_id',
                      'offline_id','recorded_by','created_at'],
     wakala_alerts:['id','business_id','aina','kitu','day','ujumbe','created_at'],
+    settings:['key','value'],
+    sms_log:['id','business_id','customer_id','phone','message','kind','status','created_at'],
+    sms_logs:['id','business_id','phone','message','kind','status','created_at'],
+    sms_templates:['id','name','body','created_at'],
     wakala_checks:['id','business_id','day','requested_by','requested_at','deadline','answered_by',
                    'answered_at','lines','counted_cash','expected_cash','variance_cash',
                    'variance_float','dakika','note','status'],
@@ -128,7 +133,15 @@ function q(table){
       return { data: out, error: null, status: 201 };
     }
 
-    let res = rows().filter(r => filters.every(f => String(r[f.col]) === String(f.val)));
+    const pita = (r, f) => {
+      if (f.like !== undefined)
+        return new RegExp('^' + String(f.like).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/%/g,'.*') + '$')
+          .test(String(r[f.col] ?? ''));
+      if (f.gte !== undefined) return String(r[f.col] ?? '') >= String(f.gte);
+      if (f.in  !== undefined) return f.in.map(String).includes(String(r[f.col]));
+      return String(r[f.col]) === String(f.val);
+    };
+    let res = rows().filter(r => filters.every(f => pita(r, f)));
 
     // RLS: muuzaji hasomi products/sales moja kwa moja
     if (CFG.rls && CFG.role === 'employee' && ['products','sales','orders'].includes(table))
@@ -174,6 +187,9 @@ function q(table){
     delete(){ op='delete'; return b },
     select(){ if(!op) op='select'; return b },
     eq(col,val){ filters.push({col,val}); return b },
+    like(col,pat){ filters.push({col,like:pat}); return b },
+    gte(col,val){ filters.push({col,gte:val}); return b },
+    in(col,vals){ filters.push({col,in:vals}); return b },
     order(col,o){ _order={col,asc:o?.ascending!==false}; return b },
     limit(n){ _limit=n; return b },
     single(){ _single=true; return b },
