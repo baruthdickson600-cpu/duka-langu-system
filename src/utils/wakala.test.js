@@ -9,7 +9,7 @@ import {
   TX, txLabel, needsLine, isKnownType, txDeltas, validateTx,
   floatAfter, cashAfter, commissionTotal,
   reconcileLine, reconcileCash, varianceState, dayTotals, wakalaAccess,
-  shellMode, KAZI, kaziOf, doesWakala, doesDuka,
+  shellMode, AINA, ainaYa, KAZI, kaziOf, doesWakala, doesDuka,
   GHARAMA, CHANZO, gharamaLabel, isGharama, validateGharama,
   gharamaTotals, faidaHalisi,
   mtandaoWa, mtandaoJina, mtandaoUnalingana, safishaNamba, nambaKamili,
@@ -624,5 +624,55 @@ describe('gharama: nani ameiandika', () => {
   });
   it('orodha tupu', () => {
     expect(gharamaKwaChanzo([], OWNER).jumla).toBe(0);
+  });
+});
+
+// ============================================================
+// AKAUNTI YA UWAKALA PEKEE — hana duka la kuonyesha
+// ============================================================
+describe('aina ya akaunti', () => {
+  const hai = { canRecord: true, canClose: true };
+  const kufa = { canRecord: false, canClose: false };
+
+  it('aina isiyojulikana ni duka — maduka yaliyopo hayabadiliki', () => {
+    expect(ainaYa({})).toBe('duka');
+    expect(ainaYa({ akaunti_aina: 'hewa' })).toBe('duka');
+    expect(ainaYa({ akaunti_aina: 'uwakala' })).toBe('uwakala');
+    expect(ainaYa(null)).toBe('duka');
+  });
+
+  describe('UWAKALA PEKEE', () => {
+    it('haoni duka hata usajili wa duka ukiwa hai', () => {
+      expect(shellMode({ role: 'office', aina: AINA.uwakala, shopExpired: false, wakala: hai })).toBe('wakala');
+    });
+    it('HAJALIPA -> bado wakala (anaona ukurasa wa malipo), SI locked', () => {
+      expect(shellMode({ role: 'office', aina: AINA.uwakala, shopExpired: true, wakala: kufa })).toBe('wakala');
+      expect(shellMode({ role: 'office', aina: AINA.uwakala, shopExpired: true })).toBe('wakala');
+    });
+    it('mfanyakazi wake pia anaona uwakala pekee', () => {
+      expect(shellMode({ role: 'employee', kazi: 'duka', aina: AINA.uwakala, shopExpired: false, wakala: hai })).toBe('wakala');
+      expect(shellMode({ role: 'employee', kazi: 'wakala', aina: AINA.uwakala, shopExpired: true, wakala: kufa })).toBe('wakala');
+    });
+    it('admin hahusiki', () => {
+      expect(shellMode({ role: 'admin', aina: AINA.uwakala })).toBe('duka');
+    });
+  });
+
+  describe('AINA YA ZOTE inafuata sheria za zamani', () => {
+    it('vyote vimelipwa', () => {
+      expect(shellMode({ role: 'office', aina: AINA.zote, shopExpired: false, wakala: hai })).toBe('both');
+    });
+    it('duka limeisha', () => {
+      expect(shellMode({ role: 'office', aina: AINA.zote, shopExpired: true, wakala: hai })).toBe('wakala');
+    });
+    it('vyote vimeisha -> locked', () => {
+      expect(shellMode({ role: 'office', aina: AINA.zote, shopExpired: true, wakala: kufa })).toBe('locked');
+    });
+  });
+
+  it('aina ya duka haijabadilika kabisa', () => {
+    expect(shellMode({ role: 'office', aina: AINA.duka, shopExpired: false })).toBe('duka');
+    expect(shellMode({ role: 'office', aina: AINA.duka, shopExpired: true })).toBe('locked');
+    expect(shellMode({ role: 'office', shopExpired: true })).toBe('locked');
   });
 });

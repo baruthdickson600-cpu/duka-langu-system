@@ -10,6 +10,15 @@ const BG_COUNT=13;
 const BG_INTERVAL=10000;
 
 // ===== BUSINESS TYPES =====
+// ===== HUDUMA ANAYOICHAGUA =====
+// Wapo wanaotaka kusimamia uwakala pekee — hawana duka. Wasipewe
+// hatua ya "aina ya biashara" wala menyu za bidhaa na mauzo.
+const HUDUMA=[
+  {value:'duka',   icon:'🏪', label:'Duka',    bei:'15,000', desc:'Mauzo, stock, madeni, ripoti'},
+  {value:'uwakala',icon:'📲', label:'Uwakala', bei:'13,000', desc:'Kutuma na kutoa pesa pekee'},
+  {value:'zote',   icon:'🏪📲',label:'Vyote',  bei:'28,000', desc:'Duka na uwakala pamoja'},
+];
+
 const BUSINESS_TYPES=[
   {value:'retail',    icon:'🏪', label:'Retail Shop',    desc:'Duka la jumla/rejareja'},
   {value:'fashion',   icon:'👗', label:'Fashion',        desc:'Mavazi, viatu, accessories'},
@@ -31,7 +40,7 @@ const BUSINESS_TYPES=[
 export default function AuthPage({onLogin,onSignup,onForgotPassword}){
   const[tab,setTab]=useState('login');
   const[step,setStep]=useState(1); // signup wizard step
-  const[f,setF]=useState({name:'',email:'',password:'',business:'',phone:'',promo:'',businessType:''});
+  const[f,setF]=useState({name:'',email:'',password:'',business:'',phone:'',promo:'',businessType:'',huduma:'duka'});
   const[err,setErr]=useState('');
   const[msg,setMsg]=useState('');
   const[busy,setBusy]=useState(false);
@@ -75,7 +84,10 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     if(!f.name.trim()){setErr('Weka jina lako kamili!');return;}
     if(!f.email.trim()||!f.email.includes('@')){setErr('Weka email sahihi!');return;}
     if(!f.business.trim()){setErr('Weka jina la biashara!');return;}
-    setErr('');setStep(2);
+    setErr('');
+    // Uwakala pekee hauna "aina ya biashara" — hakuna duka
+    if(f.huduma==='uwakala'){s('businessType','other');setStep(3);return;}
+    setStep(2);
   };
   const goStep3=()=>{
     if(!f.businessType){setErr('Chagua aina ya biashara!');return;}
@@ -87,7 +99,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
     if(!agreed){setErr('Lazima ukubali masharti ya huduma!');return;}
     if(!f.password||f.password.length<6){setErr('Password lazima iwe angalau herufi 6!');return;}
     setBusy(true);
-    const result=await onSignup(f.name,f.email,f.password,f.business,f.phone,f.promo,f.businessType);
+    const result=await onSignup(f.name,f.email,f.password,f.business,f.phone,f.promo,f.businessType,f.huduma);
     if(result)setErr(result);
     setBusy(false);
   };
@@ -218,7 +230,27 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     {/* STEP 1: Taarifa za Msingi */}
                     {step===1&&(
                       <>
-                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>Hatua 1 ya 3</h3>
+                        <p style={{fontSize:13,fontWeight:700,color:'#17231D',margin:'0 0 8px'}}>Unataka huduma gani?</p>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:18}}>
+                          {HUDUMA.map(h=>(
+                            <div key={h.value} onClick={()=>s('huduma',h.value)} style={{
+                              padding:'11px 7px',borderRadius:13,cursor:'pointer',textAlign:'center',
+                              border:f.huduma===h.value?'2.5px solid #0A6E47':'2px solid #D6E2DB',
+                              background:f.huduma===h.value?'#E6F2EC':'#FAFAFA',transition:'all .18s'}}>
+                              <div style={{fontSize:19,marginBottom:3}}>{h.icon}</div>
+                              <div style={{fontSize:12.5,fontWeight:800,color:f.huduma===h.value?'#0A6E47':'#17231D'}}>{h.label}</div>
+                              <div style={{fontSize:10.5,color:'#5C6A62',marginTop:1}}>{h.bei}/mwezi</div>
+                            </div>))}
+                        </div>
+                        <p style={{fontSize:11.5,color:'#5C6A62',margin:'-10px 0 16px',lineHeight:1.5}}>
+                          {HUDUMA.find(h=>h.value===f.huduma)?.desc}
+                          {f.huduma==='uwakala'&&' — hutaona bidhaa wala mauzo.'}
+                        </p>
+                      </>
+                    )}
+                    {step===1&&(
+                      <>
+                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>{f.huduma==='uwakala'?'Hatua 1 ya 2':'Hatua 1 ya 3'}</h3>
                         <p style={{fontSize:13,color:'#5C6A62',margin:'0 0 16px'}}>Taarifa za msingi za akaunti yako</p>
                         <Input label="Jina Lako Kamili" placeholder="Mfano: Rehema Juma" value={f.name} onChange={e=>s('name',e.target.value)}/>
                         <Input label="Jina la Biashara" placeholder="Mfano: Duka la Rehema" value={f.business} onChange={e=>s('business',e.target.value)}/>
@@ -267,11 +299,26 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                     {/* STEP 3: Password + Promo + Terms */}
                     {step===3&&(
                       <>
-                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>Hatua 3 ya 3</h3>
+                        <h3 style={{fontSize:17,fontWeight:800,color:'#17231D',margin:'0 0 4px'}}>{f.huduma==='uwakala'?'Hatua 2 ya 2':'Hatua 3 ya 3'}</h3>
                         <p style={{fontSize:13,color:'#5C6A62',margin:'0 0 16px'}}>Weka password na ukamilishe usajili</p>
 
-                        {/* Summary ya biashara */}
-                        {f.businessType&&(()=>{
+                        {/* Muhtasari: uwakala pekee hauna aina ya duka */}
+                        {f.huduma==='uwakala'?(
+                          <div style={{background:'#E6F2EC',border:'1.5px solid #C2DED1',borderRadius:12,padding:'11px 14px',marginBottom:14}}>
+                            <div style={{display:'flex',alignItems:'center',gap:10}}>
+                              <span style={{fontSize:22}}>📲</span>
+                              <div>
+                                <div style={{fontSize:12.5,color:'#15803D',fontWeight:800}}>{f.business}</div>
+                                <div style={{fontSize:11,color:'#5C6A62'}}>Huduma ya uwakala · TZS 13,000/mwezi</div>
+                              </div>
+                              <button onClick={goStep1} style={{marginLeft:'auto',fontSize:11,color:'#0A6E47',background:'none',border:'none',cursor:'pointer',fontWeight:700,textDecoration:'underline'}}>Badilisha</button>
+                            </div>
+                            <div style={{fontSize:11,color:'#5C6A62',marginTop:8,lineHeight:1.5,borderTop:'1px solid #C2DED1',paddingTop:8}}>
+                              Ukimaliza kujisajili utaombwa kulipa TZS 13,000 ili kufungua huduma.
+                              Hakuna muda wa majaribio.
+                            </div>
+                          </div>
+                        ):f.businessType&&(()=>{
                           const bt=BUSINESS_TYPES.find(b=>b.value===f.businessType);
                           return bt?(
                             <div style={{background:'#E6F2EC',border:'1.5px solid #C2DED1',borderRadius:12,padding:'10px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
@@ -297,7 +344,7 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                           </label>
                         </div>
                         <div style={{display:'flex',gap:10}}>
-                          <button onClick={()=>setStep(2)} style={{flex:1,padding:13,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
+                          <button onClick={()=>setStep(f.huduma==='uwakala'?1:2)} style={{flex:1,padding:13,background:'#F6F8F7',color:'#5C6A62',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>← Rudi</button>
                           <button onClick={submitSignup} disabled={busy} style={{flex:2,padding:13,background:busy?'#86EFAC':'linear-gradient(140deg,#06502F,#0A6E47)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(11,122,59,0.3)'}}>
                             {busy?'⏳ Subiri...':'🎉 Jisajili Sasa'}
                           </button>

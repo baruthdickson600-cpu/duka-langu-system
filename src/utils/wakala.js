@@ -159,11 +159,24 @@ export const doesDuka   = u => kaziOf(u) !== 'wakala';
 //
 // ⚠️ MUHIMU: kama uwakala HAUJAWASHWA, hii lazima itoe jibu LILE LILE
 // la mfumo wa zamani — 'duka' au 'locked'. Kitu kimoja tu kinaamua.
-export const shellMode = ({ role, kazi, shopExpired, wakala } = {}) => {
+// Aina ya akaunti: huduma aliyonunua, si aina ya duka.
+//   duka    — mfumo wa zamani kabisa
+//   uwakala — hana duka. Hapaswi kuona bidhaa wala mauzo, hata
+//             siku ya kwanza, wala asipolipa.
+//   zote    — duka na uwakala
+export const AINA = { duka: 'duka', uwakala: 'uwakala', zote: 'zote' };
+export const ainaYa = b => (AINA[b?.akaunti_aina] ? b.akaunti_aina : 'duka');
+
+export const shellMode = ({ role, kazi, shopExpired, wakala, aina } = {}) => {
   // Admin, masoko, masupervaiza, mhasibu — hawahusiki na usajili
   if (role && role !== 'office' && role !== 'employee') return 'duka';
 
   const wkOn = !!(wakala && (wakala.canRecord || wakala.canClose));
+
+  // Akaunti ya uwakala pekee: hakuna duka la kuonyesha, kwa hiyo
+  // hakuna 'locked' wala 'both'. Asipolipa, anaona ukurasa wa
+  // malipo ndani ya uwakala — si skrini ya duka lililofungwa.
+  if (aina === AINA.uwakala) return 'wakala';
 
   // Mfanyakazi: kazi aliyopewa inatangulia
   if (role === 'employee') {

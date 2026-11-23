@@ -1,4 +1,4 @@
--- Sehemu 3/8 ya wakala-migration.sql — endesha kwa mpangilio
+-- Sehemu 3/9 ya wakala-migration.sql — endesha kwa mpangilio
 
 -- ============================================================
 -- 0. WASAIDIZI WA KINGA — hutengenezwa TU kama hawapo

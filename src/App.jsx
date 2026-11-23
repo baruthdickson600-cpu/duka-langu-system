@@ -27,7 +27,7 @@ import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPa
 import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
 import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage,WakalaGharamaPage} from './pages/office/WakalaPages';
-import {wakalaAccess,shellMode,doesWakala} from './utils/wakala';
+import {wakalaAccess,shellMode,doesWakala,ainaYa,AINA} from './utils/wakala';
 
 // ===== HUDUMA YA UWAKALA =====
 // Menyu hizi zinaongezwa PALE PEKEE admin akiwasha huduma kwa duka
@@ -275,10 +275,11 @@ export default function App(){
   // la zamani — 'duka' au 'locked'. Hakuna tabia iliyobadilika.
   const wkAccess=wakalaAccess({enabled:biz?.wakala_enabled,paidUntil:biz?.wakala_paid_until});
   const shopExpired=user.role!=='admin'&&user.role!=='marketing'&&user.role!=='supervisor'&&user.role!=='agent'&&user.role!=='accountant'&&!!biz&&isExpired();
-  const shell=shellMode({role:user.role,kazi:user.kazi,shopExpired,wakala:wkAccess});
+  const bizAina=ainaYa(biz);
+  const shell=shellMode({role:user.role,kazi:user.kazi,shopExpired,wakala:wkAccess,aina:bizAina});
   // Mfanyakazi aliyepewa duka pekee haoni uwakala; aliyepewa uwakala
   // pekee haoni bidhaa wala mauzo. Mmiliki anaona kila alicholipia.
-  const wkAllowed=wkAccess.visible&&(user.role!=='employee'||doesWakala(user));
+  const wkAllowed=(wkAccess.visible||bizAina===AINA.uwakala)&&(user.role!=='employee'||doesWakala(user)||bizAina===AINA.uwakala);
   if(shell==='locked')return <LockedPage/>;
 
   const role=user.role;
@@ -483,10 +484,18 @@ export default function App(){
       </div>
 
       <div style={{padding:'10px 10px 14px',borderTop:'1px solid rgba(255,255,255,.15)'}}>
+        {/* Akaunti ya uwakala pekee haikuwahi kuwa na duka — isiambiwe
+            kuwa usajili wa duka umeisha. */}
         {shell==='wakala'
-          ?<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
-             🔒 Usajili wa <b>duka</b> umeisha.<br/>Uwakala pekee unafanya kazi.
-           </div>
+          ?(bizAina===AINA.uwakala
+            ?(wkAccess.canRecord
+              ?(wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'6px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Zimebaki siku {wkAccess.daysLeft}</div>)
+              :<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
+                 💳 Lipia <b>TZS 13,000</b><br/>ili kufungua huduma.
+               </div>)
+            :<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
+               🔒 Usajili wa <b>duka</b> umeisha.<br/>Uwakala pekee unafanya kazi.
+             </div>)
           :trial!==null&&trial<=10&&<div style={{background:'rgba(255,255,255,.15)',borderRadius:8,padding:'5px 10px',fontSize:11,marginBottom:8,textAlign:'center'}}>⏳ Siku {trial} zimebaki</div>}
         {shell!=='wakala'&&wkAllowed&&wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'5px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Uwakala: siku {wkAccess.daysLeft}</div>}
         {/* Profile Card */}

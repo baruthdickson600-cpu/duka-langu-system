@@ -471,6 +471,9 @@ export function StoresPage(){
             <button onClick={(e)=>{e.stopPropagation();toggleWholesale(b.id)}} style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:isWholesaleOn(b.id)?'1.5px solid #C2410C':'1.5px solid #D6E2DB',background:isWholesaleOn(b.id)?'#FFF8E6':'#fff',color:isWholesaleOn(b.id)?'#C2410C':'#9AA5A0',fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',gap:3}}>
               {isWholesaleOn(b.id)?<>🏷️ Jumla: <span style={{color:'#16A34A'}}>ON</span></>:<>🏷️ Jumla: <span>OFF</span></>}
             </button>
+            {b.akaunti_aina==='uwakala'&&<span style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:'1.5px solid #F2B705',background:'#FFF8E6',color:'#7A5B00',fontWeight:800}}>
+              📲 UWAKALA PEKEE
+            </span>}
             {isWakalaOn(b.id)&&<span style={{padding:'5px 10px',fontSize:10,borderRadius:6,border:'1.5px solid #0A6E47',background:'#E6F2EC',color:'#0A6E47',fontWeight:800}}>
               📲 Uwakala: {wakalaDays(b.id)>0?`siku ${wakalaDays(b.id)}`:'HAJALIPA'}
             </span>}

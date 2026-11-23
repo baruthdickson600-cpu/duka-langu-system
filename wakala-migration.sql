@@ -1,16 +1,16 @@
 -- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (faili moja kamili)
 --
--- Vipande nane vilivyounganishwa. Kama kihariri chako kinakata
+-- Vipande tisa vilivyounganishwa. Kama kihariri chako kinakata
 -- maandishi marefu, tumia vipande kimoja kimoja badala yake:
--- wakala-1-jedwali.sql ... wakala-8-asubuhi.sql
+-- wakala-1-jedwali.sql ... wakala-9-akaunti.sql
 --
 -- Salama kuendesha mara nyingi. HAIGUSI jedwali la duka.
 -- ============================================================
 
 
 
--- ####################  SEHEMU 1 / 8  ####################
+-- ####################  SEHEMU 1 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — HUDUMA YA UWAKALA (jedwali + kinga)
@@ -179,10 +179,10 @@ CREATE TABLE IF NOT EXISTS wakala_settings (
 
 -- ============================================================
 NOTIFY pgrst, 'reload schema';
-SELECT 'Sehemu 1/8 SAWA — jedwali yametengenezwa.' AS status;
+SELECT 'Sehemu 1/9 SAWA — jedwali yametengenezwa.' AS status;
 
 
--- ####################  SEHEMU 2 / 8  ####################
+-- ####################  SEHEMU 2 / 9  ####################
 
 -- 6. KINGA ZA DATABASE (triggers)
 -- ============================================================
@@ -364,10 +364,10 @@ END $close$;
 
 
 -- ============================================================
-SELECT 'Sehemu 2/8 SAWA — kinga na hesabu zipo.' AS status;
+SELECT 'Sehemu 2/9 SAWA — kinga na hesabu zipo.' AS status;
 
 
--- ####################  SEHEMU 3 / 8  ####################
+-- ####################  SEHEMU 3 / 9  ####################
 
 -- ============================================================
 -- 0. WASAIDIZI WA KINGA — hutengenezwa TU kama hawapo
@@ -487,7 +487,7 @@ NOTIFY pgrst, 'reload schema';
 SELECT 'Jedwali la uwakala limetengenezwa. Huduma imezimwa hadi admin aiwashe.' AS status;
 
 
--- ####################  SEHEMU 4 / 8  ####################
+-- ####################  SEHEMU 4 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — KAZI YA MFANYAKAZI (duka / uwakala / zote)
@@ -652,7 +652,7 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 4/8 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
+SELECT 'Sehemu 4/9 SAWA — kazi ya mfanyakazi imewekwa. Wote waliopo ni wa duka.' AS status;
 
 
 -- ============================================================
@@ -763,7 +763,7 @@ NOTIFY pgrst, 'reload schema';
 SELECT 'Kinga zimelegezwa: mmiliki halisi wa duka daima anaruhusiwa.' AS status;
 
 
--- ####################  SEHEMU 5 / 8  ####################
+-- ####################  SEHEMU 5 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — GHARAMA ZA UWAKALA
@@ -947,10 +947,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 5/8 SAWA — gharama za uwakala zimewekwa.' AS status;
+SELECT 'Sehemu 5/9 SAWA — gharama za uwakala zimewekwa.' AS status;
 
 
--- ####################  SEHEMU 6 / 8  ####################
+-- ####################  SEHEMU 6 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — UWAKALA NA GATEWAY (Abliner, Beem, Snippe)
@@ -1095,10 +1095,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 6/8 SAWA — gateway za uwakala zimeunganishwa.' AS status;
+SELECT 'Sehemu 6/9 SAWA — gateway za uwakala zimeunganishwa.' AS status;
 
 
--- ####################  SEHEMU 7 / 8  ####################
+-- ####################  SEHEMU 7 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — UKAGUZI WA GHAFLA
@@ -1269,10 +1269,10 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 7/8 SAWA — ukaguzi wa ghafla umewekwa.' AS status;
+SELECT 'Sehemu 7/9 SAWA — ukaguzi wa ghafla umewekwa.' AS status;
 
 
--- ####################  SEHEMU 8 / 8  ####################
+-- ####################  SEHEMU 8 / 9  ####################
 
 -- ============================================================
 -- DukaLangu — UCHAMBUZI WA ASUBUHI + GHARAMA ZA WAKALA
@@ -1345,4 +1345,57 @@ END $g$;
 
 NOTIFY pgrst, 'reload schema';
 
-SELECT 'Sehemu 8/8 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;
+SELECT 'Sehemu 8/9 SAWA — uchambuzi wa asubuhi umewekwa.' AS status;
+
+
+-- ####################  SEHEMU 9 / 9  ####################
+
+-- ============================================================
+-- DukaLangu — AKAUNTI YA UWAKALA PEKEE
+--
+--
+-- Wapo watu wanaotaka kusimamia uwakala pekee, hawana duka.
+-- Hawapaswi kuona bidhaa, mauzo wala stock — hata siku ya kwanza.
+--
+-- `akaunti_aina` ni tofauti na `business_type`:
+--   business_type = aina ya DUKA (retail, pharmacy, hardware...)
+--   akaunti_aina  = HUDUMA aliyonunua (duka, uwakala, zote)
+--
+-- Chaguo-msingi ni 'duka', kwa hiyo maduka YOTE yaliyopo
+-- hayabadiliki hata kidogo.
+--
+-- Salama kuendesha mara nyingi.
+-- ============================================================
+
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS akaunti_aina TEXT NOT NULL DEFAULT 'duka';
+
+DO $a$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'businesses_akaunti_aina_ok') THEN
+    ALTER TABLE businesses ADD CONSTRAINT businesses_akaunti_aina_ok
+      CHECK (akaunti_aina IN ('duka','uwakala','zote'));
+  END IF;
+END $a$;
+
+-- Akaunti ya uwakala pekee LAZIMA iwe na huduma imewashwa — vinginevyo
+-- mteja aliyejisajili mwenyewe angeingia na kukuta hana chochote.
+CREATE OR REPLACE FUNCTION dl_wakala_akaunti_mpya() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $nw$
+BEGIN
+  IF NEW.akaunti_aina IN ('uwakala','zote') THEN
+    NEW.wakala_enabled := true;
+  END IF;
+  RETURN NEW;
+END $nw$;
+
+DROP TRIGGER IF EXISTS businesses_wakala_aina ON businesses;
+CREATE TRIGGER businesses_wakala_aina BEFORE INSERT OR UPDATE OF akaunti_aina ON businesses
+  FOR EACH ROW EXECUTE FUNCTION dl_wakala_akaunti_mpya();
+
+-- Maduka yaliyokwisha washiwa uwakala kabla ya safu hii kuwepo
+UPDATE businesses SET akaunti_aina = 'zote'
+ WHERE wakala_enabled AND akaunti_aina = 'duka';
+
+NOTIFY pgrst, 'reload schema';
+
+SELECT 'Sehemu 9/9 SAWA — akaunti ya uwakala pekee imewezeshwa.' AS status;

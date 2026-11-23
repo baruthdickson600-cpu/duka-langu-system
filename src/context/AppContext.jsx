@@ -590,7 +590,7 @@ export function AppProvider({children}){
     }
   },[loadData,markActivity]);
 
-  const signup=useCallback(async(name,email,password,businessName,phone,promoCode,businessType='retail')=>{
+  const signup=useCallback(async(name,email,password,businessName,phone,promoCode,businessType='retail',akauntiAina='duka')=>{
     setLoading(true);
     try{
       // Capture referral code from URL (?ref=REF-XXXXXXXX)
@@ -602,7 +602,14 @@ export function AppProvider({children}){
       const uid=authData.user?.id||genId();
       const trialEnd=new Date(Date.now()+parseInt(settings.trial_days||5)*86400000).toISOString();
       await safeInsert('users',{id:uid,email,name,phone,role:'office'});
-      const newBiz=await safeInsert('businesses',{name:businessName,email,phone,owner_id:uid,trial_end:trialEnd,promo_code:promoCode||null,referred_by_code:refCode||null,business_type:businessType||'retail'});
+      // Akaunti ya uwakala pekee: huduma inajiwasha, hakuna majaribio ya duka.
+      // safeInsert ikiondoa safu hizi (SQL ya 9 haijaendeshwa), tunagundua
+      // chini na kumwambia mtumiaji badala ya kumwachia akaunti isiyo sahihi.
+      const wakalaTu=akauntiAina==='uwakala';
+      const newBiz=await safeInsert('businesses',{name:businessName,email,phone,owner_id:uid,trial_end:trialEnd,promo_code:promoCode||null,referred_by_code:refCode||null,business_type:businessType||'retail',akaunti_aina:akauntiAina||'duka',...(wakalaTu?{wakala_enabled:true}:{})});
+      if(wakalaTu&&newBiz&&newBiz.akaunti_aina!=='uwakala'){
+        return{success:false,error:'Mfumo haujaandaliwa kwa akaunti za uwakala bado. Wasiliana na msimamizi (wakala-9-akaunti.sql).'};
+      }
       if(newBiz){
         await safeUpdate('users',{business_id:newBiz.id},'id',uid);
         await safeInsert('notifications',{target_type:'admin',type:'info',title:`🏪 Duka Jipya: ${businessName}`,message:`${name} (${email}) amesajili.${refCode?' Kupitia referral: '+refCode:''}`});
@@ -2565,7 +2572,7 @@ export function AppProvider({children}){
       if(bizErr&&bizErr.message?.includes('column')){
         console.warn('[updateBiz] Column missing, trying safe fields:',bizErr.message);
         const safeFields=['name','email','phone','plan','is_suspended',
-          'branch_enabled','wholesale_enabled','business_type',
+          'branch_enabled','wholesale_enabled','business_type','akaunti_aina',
           'wakala_enabled','wakala_paid_until',
           'token_active','token_expiry','trial_end'];
         const safeUpdates={};
