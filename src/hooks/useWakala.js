@@ -18,7 +18,7 @@ import {
   wakalaAccess, floatAfter, cashAfter, commissionTotal,
   dayTotals, validateTx, txDeltas, validateGharama, gharamaTotals, faidaHalisi,
   safishaNamba, nambaKamili, txLabel as txLabelOf, varianceState,
-  uthibitisho, uthibitishoHali,
+  uthibitisho, uthibitishoHali, ainaYa,
 } from '../utils/wakala';
 import { localDateStr, genId } from '../utils/helpers';
 
@@ -563,6 +563,7 @@ export function useWakala({ load = true } = {}) {
   return {
     // hali
     access, ready, loading, err, isOwner: user?.role === 'office',
+    aina: ainaYa(biz),
     // data
     lines, txs, days, cfg, gharama, checks, ukaguziWazi, balances, today,
     // vitendo

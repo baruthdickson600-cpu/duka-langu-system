@@ -27,7 +27,7 @@ import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPa
 import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
 import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage,WakalaGharamaPage} from './pages/office/WakalaPages';
-import {wakalaAccess,shellMode,doesWakala,ainaYa,AINA} from './utils/wakala';
+import {wakalaAccess,shellMode,doesWakala,ainaYa,AINA,beiYaUwakala,fmtBei} from './utils/wakala';
 
 // ===== HUDUMA YA UWAKALA =====
 // Menyu hizi zinaongezwa PALE PEKEE admin akiwasha huduma kwa duka
@@ -270,7 +270,7 @@ export default function App(){
 
   if(!user) return <AuthPage onLogin={login} onSignup={signup} onForgotPassword={forgotPassword}/>;
   // ===== USAJILI: DUKA NA UWAKALA NI VIWILI TOFAUTI =====
-  // Duka ni 15,000; uwakala ni 13,000. Mtu anaweza kulipa kimoja.
+  // Duka 15,000; uwakala peke yake 18,300; vyote 28,000.
   // Uwakala ukiwa haujawashwa, shellMode inarudisha jibu LILE LILE
   // la zamani — 'duka' au 'locked'. Hakuna tabia iliyobadilika.
   const wkAccess=wakalaAccess({enabled:biz?.wakala_enabled,paidUntil:biz?.wakala_paid_until});
@@ -491,7 +491,7 @@ export default function App(){
             ?(wkAccess.canRecord
               ?(wkAccess.warn&&<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'6px 10px',fontSize:10.5,marginBottom:8,textAlign:'center'}}>📲 Zimebaki siku {wkAccess.daysLeft}</div>)
               :<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
-                 💳 Lipia <b>TZS 13,000</b><br/>ili kufungua huduma.
+                 💳 Lipia <b>{fmtBei(beiYaUwakala(bizAina))}</b><br/>ili kufungua huduma.
                </div>)
             :<div style={{background:'rgba(242,183,5,.25)',borderRadius:8,padding:'7px 10px',fontSize:10.5,marginBottom:8,textAlign:'center',lineHeight:1.5}}>
                🔒 Usajili wa <b>duka</b> umeisha.<br/>Uwakala pekee unafanya kazi.

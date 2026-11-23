@@ -14,6 +14,7 @@ import {
   gharamaTotals, faidaHalisi,
   mtandaoWa, mtandaoJina, mtandaoUnalingana, safishaNamba, nambaKamili,
   uthibitisho, uthibitishoHali, gharamaChanzo, gharamaKwaChanzo, KIBANDANI, OFISINI,
+  BEI, PUNGUZO, beiYaUwakala, fmtBei,
 } from './wakala.js';
 
 const L1 = 'line-mpesa', L2 = 'line-airtel';
@@ -674,5 +675,30 @@ describe('aina ya akaunti', () => {
     expect(shellMode({ role: 'office', aina: AINA.duka, shopExpired: false })).toBe('duka');
     expect(shellMode({ role: 'office', aina: AINA.duka, shopExpired: true })).toBe('locked');
     expect(shellMode({ role: 'office', shopExpired: true })).toBe('locked');
+  });
+});
+
+describe('bei', () => {
+  it('kifurushi cha pamoja kina punguzo la kweli', () => {
+    expect(BEI.duka + BEI.uwakala).toBe(33300);
+    expect(BEI.zote).toBe(28000);
+    expect(PUNGUZO).toBe(5300);
+  });
+  it('duka + nyongeza ni sawa na kifurushi cha pamoja', () => {
+    expect(BEI.duka + BEI.nyongeza).toBe(BEI.zote);
+  });
+  it('uwakala pekee ni ghali kuliko wa nyongeza', () => {
+    expect(BEI.uwakala).toBeGreaterThan(BEI.nyongeza);
+  });
+  it('bei inategemea aina ya akaunti', () => {
+    expect(beiYaUwakala('uwakala')).toBe(18300);
+    expect(beiYaUwakala('zote')).toBe(13000);
+    expect(beiYaUwakala('duka')).toBe(13000);
+    expect(beiYaUwakala(undefined)).toBe(13000);
+    expect(beiYaUwakala('hewa')).toBe(13000);
+  });
+  it('umbizo', () => {
+    expect(fmtBei(18300)).toBe('TZS 18,300');
+    expect(fmtBei(null)).toBe('TZS 0');
   });
 });

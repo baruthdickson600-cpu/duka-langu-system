@@ -345,7 +345,7 @@ export function StoresPage(){
     ]);
   };
   // ===== HUDUMA YA UWAKALA =====
-  // Usajili wake ni WAKE PEKEE — TZS 13,000/mwezi, hauhusiani na
+  // Usajili wake ni WAKE PEKEE — 18,300 peke yake, 13,000 kwa aliye na duka; hauhusiani na
   // 15,000 ya duka. Admin anawasha, mteja analipa, vipengele vinatokea.
   const isWakalaOn=(bid)=>!!businesses.find(x=>x.id===bid)?.wakala_enabled;
   const wakalaDays=(bid)=>{
@@ -532,7 +532,7 @@ export function StoresPage(){
               <div style={{background:isWakalaOn(detail.id)?'#E6F2EC':'#F6F8F7',border:isWakalaOn(detail.id)?'1.5px solid #0A6E47':'1.5px solid #D6E2DB',borderRadius:12,padding:'12px 16px',flex:1,minWidth:200}}>
                 <div style={{fontSize:11,fontWeight:700,color:'#5C6A62',marginBottom:4}}>📲 HUDUMA YA UWAKALA</div>
                 <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>
-                  Kutuma na kutoa pesa. <b>TZS 13,000/mwezi</b> — hauhusiani na malipo ya duka.
+                  Kutuma na kutoa pesa. <b>{detail.akaunti_aina==='uwakala'?'TZS 18,300':'TZS 13,000'}/mwezi</b> — hauhusiani na malipo ya duka.
                 </div>
                 {isWakalaOn(detail.id)&&<div style={{fontSize:11.5,fontWeight:800,marginBottom:8,color:wakalaDays(detail.id)===null?'#C2412D':wakalaDays(detail.id)<=5?'#B45309':'#0A6E47'}}>
                   {wakalaDays(detail.id)===null?'⚠️ Hajalipa kabisa'

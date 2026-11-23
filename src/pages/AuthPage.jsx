@@ -15,8 +15,8 @@ const BG_INTERVAL=10000;
 // hatua ya "aina ya biashara" wala menyu za bidhaa na mauzo.
 const HUDUMA=[
   {value:'duka',   icon:'🏪', label:'Duka',    bei:'15,000', desc:'Mauzo, stock, madeni, ripoti'},
-  {value:'uwakala',icon:'📲', label:'Uwakala', bei:'13,000', desc:'Kutuma na kutoa pesa pekee'},
-  {value:'zote',   icon:'🏪📲',label:'Vyote',  bei:'28,000', desc:'Duka na uwakala pamoja'},
+  {value:'uwakala',icon:'📲', label:'Uwakala', bei:'18,300', desc:'Kutuma na kutoa pesa pekee'},
+  {value:'zote',   icon:'🏪📲',label:'Vyote',  bei:'28,000', desc:'Duka na uwakala pamoja — unaokoa 5,300'},
 ];
 
 const BUSINESS_TYPES=[
@@ -309,12 +309,12 @@ export default function AuthPage({onLogin,onSignup,onForgotPassword}){
                               <span style={{fontSize:22}}>📲</span>
                               <div>
                                 <div style={{fontSize:12.5,color:'#15803D',fontWeight:800}}>{f.business}</div>
-                                <div style={{fontSize:11,color:'#5C6A62'}}>Huduma ya uwakala · TZS 13,000/mwezi</div>
+                                <div style={{fontSize:11,color:'#5C6A62'}}>Huduma ya uwakala · TZS 18,300/mwezi</div>
                               </div>
                               <button onClick={goStep1} style={{marginLeft:'auto',fontSize:11,color:'#0A6E47',background:'none',border:'none',cursor:'pointer',fontWeight:700,textDecoration:'underline'}}>Badilisha</button>
                             </div>
                             <div style={{fontSize:11,color:'#5C6A62',marginTop:8,lineHeight:1.5,borderTop:'1px solid #C2DED1',paddingTop:8}}>
-                              Ukimaliza kujisajili utaombwa kulipa TZS 13,000 ili kufungua huduma.
+                              Ukimaliza kujisajili utaombwa kulipa TZS 18,300 ili kufungua huduma.
                               Hakuna muda wa majaribio.
                             </div>
                           </div>

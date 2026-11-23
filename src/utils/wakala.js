@@ -155,7 +155,7 @@ export const doesWakala = u => kaziOf(u) !== 'duka';
 export const doesDuka   = u => kaziOf(u) !== 'wakala';
 
 // Usajili wa duka ni tofauti na wa uwakala. Mtu anaweza kulipa
-// uwakala pekee (13,000) bila kulipa duka (15,000), au kinyume.
+// uwakala pekee (18,300) bila kulipa duka (15,000), au kinyume.
 //
 // ⚠️ MUHIMU: kama uwakala HAUJAWASHWA, hii lazima itoe jibu LILE LILE
 // la mfumo wa zamani — 'duka' au 'locked'. Kitu kimoja tu kinaamua.
@@ -410,3 +410,30 @@ export const gharamaKwaChanzo = (list, ownerId) => {
     jumla: jumla(l),
   };
 };
+
+// ============================================================
+// BEI — chanzo kimoja cha ukweli
+//
+// Bei ilikuwa imeandikwa mahali saba tofauti. Ikibadilika, moja
+// ingesahaulika, na mteja angeona bei moja kwenye usajili na
+// nyingine wakati wa kulipa.
+//
+// Uwakala peke yake ni ghali kuliko wa nyongeza kwa sababu hauna
+// usajili wa duka unaosaidia gharama. Kifurushi cha pamoja kina
+// punguzo la kweli: 15,000 + 18,300 = 33,300, lakini vyote ni
+// 28,000 — mteja anaokoa 5,300.
+// ============================================================
+export const BEI = {
+  duka:     15000,   // duka pekee
+  uwakala:  18300,   // uwakala pekee, hana duka
+  nyongeza: 13000,   // uwakala kwa aliye na duka (15,000 + 13,000 = 28,000)
+  zote:     28000,   // kifurushi cha pamoja
+};
+export const PUNGUZO = BEI.duka + BEI.uwakala - BEI.zote;   // 5,300
+
+// Bei ya uwakala kwa akaunti husika. Hii ndiyo inayotumika
+// server-side; kiasi kinachotoka kwa kivinjari hakiaminiwi.
+export const beiYaUwakala = aina =>
+  ainaYa({ akaunti_aina: aina }) === AINA.uwakala ? BEI.uwakala : BEI.nyongeza;
+
+export const fmtBei = n => 'TZS ' + (Number(n) || 0).toLocaleString('en-US');

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { beiYaUwakala } from '../src/utils/wakala.js';
 
 // ============================================================
 // DukaLangu — Mfumo wa Malipo (Auto-activation) — SNIPPE
@@ -729,18 +730,23 @@ export default async function handler(req, res) {
     }
 
     // ===== 13. ANGALIA JINA LA MMILIKI WA NAMBA =====
-    // ===== MALIPO YA UWAKALA (13,000 kwa mwezi) =====
+    // ===== MALIPO YA UWAKALA =====
+    // 18,300 kwa asiye na duka; 13,000 kwa aliye nalo (jumla 28,000).
     // Ni tofauti kabisa na malipo ya duka: jedwali lake, reference
     // yake (WK-), na haiwashi duka hata kidogo.
     if (action === 'wakala_pay' && req.method === 'POST') {
       const body = parseJSON(await readRawBody(req));
-      const { business_id, business_name, user_email, phone, amount, days } = body;
+      const { business_id, business_name, user_email, phone, days } = body;
       if (!business_id || !phone) {
         return res.status(400).json({ success: false, error: 'business_id na namba ya simu zinahitajika.' });
       }
       if (!SNIPPE_KEY) return res.status(500).json({ success: false, error: 'Snippe API key haijawekwa kwenye server.' });
 
-      const amt = Number(amount) || 13000;
+      // ⚠️ Bei HAITOKI kwa kivinjari. Mtu angeweza kutuma amount=100
+      // na kupata mwezi mzima. Inatoka kwenye aina ya akaunti yake.
+      const { data: bz } = await supabase.from('businesses')
+        .select('akaunti_aina').eq('id', business_id).maybeSingle();
+      const amt = beiYaUwakala(bz?.akaunti_aina);
       const dys = Number(days) || 30;
       const reference = 'WK-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
 
@@ -756,7 +762,8 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true, reference: gw.snippeRef || reference, payment_id: pay.id,
-        message: '📲 Angalia simu yako — weka PIN kuthibitisha malipo ya uwakala.',
+        amount: amt,
+        message: `📲 Angalia simu yako — weka PIN kuthibitisha TZS ${amt.toLocaleString('en-US')}.`,
       });
     }
 

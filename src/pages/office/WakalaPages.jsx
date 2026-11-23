@@ -21,7 +21,8 @@ import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
 import { TX, txLabel, varianceState, doesWakala,
          GHARAMA, CHANZO, gharamaLabel, gharamaIcon,
          mtandaoUnalingana, mtandaoJina, nambaKamili,
-         gharamaChanzo, gharamaKwaChanzo, KIBANDANI, OFISINI } from '../../utils/wakala';
+         gharamaChanzo, gharamaKwaChanzo, KIBANDANI, OFISINI,
+         beiYaUwakala, fmtBei, BEI, PUNGUZO, AINA, ainaYa } from '../../utils/wakala';
 
 const C = {
   green: '#0A6E47', dark: '#06502F', gold: '#F2B705', red: '#C2412D',
@@ -60,7 +61,10 @@ function LipaUwakala({ compact }) {
   const [phone, setPhone] = useState(biz?.phone || '');
   const [hali, setHali] = useState(null);
   const [busy, setBusy] = useState(false);
-  const BEI = 13000;
+  // Uwakala peke yake ni ghali kuliko wa nyongeza — hauna usajili
+  // wa duka unaosaidia gharama.
+  const aina = ainaYa(biz);
+  const bei = beiYaUwakala(aina);
 
   const lipa = async () => {
     setBusy(true); setHali(null);
@@ -69,7 +73,7 @@ function LipaUwakala({ compact }) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           business_id: biz?.id, business_name: biz?.name,
-          user_email: user?.email, phone, amount: BEI, days: 30,
+          user_email: user?.email, phone, days: 30,
         }),
       });
       const d = await r.json().catch(() => ({}));
@@ -97,13 +101,14 @@ function LipaUwakala({ compact }) {
 
   return <>
     <Btn onClick={() => setOpen(true)} style={compact ? {} : { marginTop: 4 }}>
-      💳 Lipia uwakala — TZS 13,000
+      💳 Lipia uwakala — {fmtBei(bei)}
     </Btn>
     <Modal open={open} onClose={() => setOpen(false)} title="Lipia huduma ya uwakala">
       <div style={{ background: C.soft, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 12.5, color: C.dark }}>
-        <b>TZS 13,000 kwa mwezi mmoja.</b> Hii ni ya uwakala pekee — malipo ya
-        duka (15,000) ni tofauti na hayaguswi. Siku zitaongezwa juu ya ulizonazo,
-        kwa hiyo hupotezi chochote ukilipa mapema.
+        <b>{fmtBei(bei)} kwa mwezi mmoja.</b> {aina === AINA.uwakala
+          ? <>Ukiongeza duka baadaye, vyote vinakuwa {fmtBei(BEI.zote)} — unaokoa {fmtBei(PUNGUZO)}.</>
+          : <>Hii ni ya uwakala pekee — malipo ya duka ({fmtBei(BEI.duka)}) ni tofauti na hayaguswi.</>}
+        {' '}Siku zitaongezwa juu ya ulizonazo, kwa hiyo hupotezi chochote ukilipa mapema.
       </div>
       <Input label="Namba ya kulipia (M-Pesa, Airtel, Mixx, Halopesa)" value={phone}
         onChange={e => setPhone(e.target.value)} placeholder="07.." inputMode="tel" />
@@ -112,7 +117,7 @@ function LipaUwakala({ compact }) {
         background: hali.bad ? C.blush : C.soft, color: hali.bad ? '#7F2318' : C.dark,
       }}>{hali.text}</div>}
       <Btn onClick={lipa} disabled={busy || !phone} style={{ width: '100%', padding: '14px' }}>
-        {busy ? 'Inaanzisha...' : `Lipa TZS 13,000`}
+        {busy ? 'Inaanzisha...' : `Lipa ${fmtBei(bei)}`}
       </Btn>
       <div style={{ fontSize: 11, color: C.pale, textAlign: 'center', marginTop: 8 }}>
         Utapokea ombi la PIN kwenye simu yako.
@@ -139,7 +144,7 @@ function Hali({ wk }) {
     <div style={{ fontWeight: 900, color: C.green, marginTop: 6 }}>Lipia huduma ya uwakala</div>
     <p style={{ fontSize: 13, color: C.muted, maxWidth: 430, margin: '6px auto 10px' }}>
       Huduma imewashwa kwa akaunti yako lakini malipo hayajakamilika.
-      Gharama ni <b>TZS 13,000 kwa mwezi</b>, tofauti na malipo ya duka.
+      Gharama ni <b>{fmtBei(beiYaUwakala(wk.aina))} kwa mwezi</b>.
     </p>
     <LipaUwakala compact />
   </div>;
