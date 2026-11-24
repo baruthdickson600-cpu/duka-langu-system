@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { beiYaUwakala } from '../src/utils/wakala.js';
+import { ujumbeWaRisiti, kifurushiJina, RISITI } from '../src/utils/risiti.js';
 
 // ============================================================
 // DukaLangu — Mfumo wa Malipo (Auto-activation) — SNIPPE
@@ -389,10 +390,78 @@ async function notifyStaff(supabase, tx) {
   } catch { /* usivunje activation kwa kosa la arifa */ }
 }
 
+// ============================================================
+// RISITI
+//
+// Namba ya risiti inatengenezwa na database (trigger), si hapa —
+// wateja wawili wakilipa sekunde moja wasipate namba moja.
+// Kazi yetu hapa ni kuisoma na kuituma kwa SMS.
+//
+// Kila kitu hapa ni cha HIARI: migration ya risiti isipoendeshwa,
+// malipo bado yanapita na mfumo bado unajifungua.
+// ============================================================
+async function somaRisiti(supabase, table, id) {
+  try {
+    const { data, error } = await supabase.from(table)
+      .select('risiti_no,inaisha,risiti_sms_at').eq('id', id).maybeSingle();
+    if (error) return null;   // safu za risiti hazipo bado
+    return data || null;
+  } catch { return null; }
+}
+
+async function wekaInaisha(supabase, table, id, iso) {
+  try { await supabase.from(table).update({ inaisha: iso }).eq('id', id); } catch { /* safu haipo */ }
+}
+
+// Tuma risiti kwa SMS kwa mteja aliyelipa.
+// HAKUNA business_id: risiti ni gharama ya DukaLangu, si bando la mteja.
+async function tumaRisiti(supabase, { table, id, phone, risiti_no, amount, kifurushi, days, inaisha, sms_at }) {
+  try {
+    if (!phone || !risiti_no || sms_at) return false;   // tayari imetumwa
+    const message = ujumbeWaRisiti({ no: risiti_no, kiasi: amount, kifurushi, siku: days, inaisha });
+    const r = await fetch(`${APP_URL}/api/send-sms`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, message }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!d?.success) return false;
+    try { await supabase.from(table).update({ risiti_sms_at: new Date().toISOString() }).eq('id', id); } catch { /* safu haipo */ }
+    return true;
+  } catch { return false; }   // SMS isivunje malipo
+}
+
+// Risiti ya uwakala — inaitwa baada ya dl_wakala_activate
+async function risitiYaUwakala(supabase, ref, act) {
+  try {
+    if (!act?.risiti_no) return;   // migration ya risiti haijaendeshwa
+    const { data: pay } = await supabase.from('wakala_payments')
+      .select('id,business_id,amount,days,phone,risiti_sms_at').eq('provider_ref', ref).maybeSingle();
+    if (!pay) return;
+    const { data: bz } = await supabase.from('businesses')
+      .select('akaunti_aina,phone').eq('id', pay.business_id).maybeSingle();
+    await tumaRisiti(supabase, {
+      table: 'wakala_payments', id: pay.id,
+      phone: pay.phone || bz?.phone, risiti_no: act.risiti_no,
+      amount: pay.amount, days: pay.days, inaisha: act.inaisha || act.paid_until,
+      sms_at: pay.risiti_sms_at,
+      kifurushi: kifurushiJina({ aina: RISITI.uwakala, akaunti: bz?.akaunti_aina }),
+    });
+  } catch { /* risiti isivunje malipo */ }
+}
+
 // ---- Jifungue: washa biashara baada ya malipo kuthibitika ----
 async function activateBusiness(supabase, tx) {
   const days = parseInt(tx.days) || 30;
-  const exp = new Date(Date.now() + days * 86400000).toISOString();
+
+  // Siku zisipotee: akilipa kabla hazijaisha, siku mpya zinapangwa
+  // JUU ya zilizobaki — si kuanza upya leo. (Uwakala tayari ulikuwa
+  // unafanya hivi; duka lilikuwa linapoteza siku.)
+  const { data: bz } = await supabase.from('businesses')
+    .select('token_expiry,akaunti_aina,name,phone').eq('id', tx.business_id).maybeSingle();
+  const cur = bz?.token_expiry ? new Date(bz.token_expiry).getTime() : 0;
+  const base = Math.max(Number.isFinite(cur) ? cur : 0, Date.now());
+  const exp = new Date(base + days * 86400000).toISOString();
+
   await supabase.from('businesses').update({
     token_active: true, token_expiry: exp, plan: tx.plan || 'basic', is_suspended: false,
   }).eq('id', tx.business_id);
@@ -401,9 +470,21 @@ async function activateBusiness(supabase, tx) {
     title: '🎉 Malipo Yamethibitishwa!',
     message: `Malipo yako ya TZS ${(tx.amount || 0).toLocaleString()} yamethibitishwa. Mfumo umefunguliwa kwa siku ${days}.`,
   }).then(() => {}, () => {});
+
+  // Risiti: hifadhi tarehe ya mwisho kwenye muamala ili risiti ya leo
+  // isiseme uongo baada ya mteja kuongeza siku nyingine mwezi ujao.
+  await wekaInaisha(supabase, 'payment_transactions', tx.id, exp);
+  const r = await somaRisiti(supabase, 'payment_transactions', tx.id);
+  await tumaRisiti(supabase, {
+    table: 'payment_transactions', id: tx.id,
+    phone: tx.phone || bz?.phone, risiti_no: r?.risiti_no,
+    amount: tx.amount, days, inaisha: exp, sms_at: r?.risiti_sms_at,
+    kifurushi: kifurushiJina({ aina: RISITI.duka, plan: tx.plan }),
+  });
+
   // Arifa kwa staff wa DukaLangu (SMS)
   await notifyStaff(supabase, tx);
-  return { days, exp };
+  return { days, exp, risiti_no: r?.risiti_no || null };
 }
 
 export default async function handler(req, res) {
@@ -503,6 +584,7 @@ export default async function handler(req, res) {
           await supabase.from('wakala_payments')
             .update({ external_id: data.transaction_id || pay.external_id }).eq('id', pay.id);
           const { data: act } = await supabase.rpc('dl_wakala_activate', { p_ref: ref });
+          await risitiYaUwakala(supabase, ref, act);
           return res.status(200).json({ success: true, message: 'Uwakala umeongezewa siku.', ...(act || {}) });
         }
         if (isFailed) await supabase.from('wakala_payments').update({ status: 'failed' }).eq('id', pay.id);
@@ -525,8 +607,8 @@ export default async function handler(req, res) {
 
       if (isPaid) {
         await supabase.from('payment_transactions').update({ status: 'paid', external_id: data.transaction_id || tx.external_id, paid_at: new Date().toISOString() }).eq('id', tx.id);
-        await activateBusiness(supabase, tx);
-        return res.status(200).json({ success: true, message: 'Malipo yamethibitishwa, mfumo umefunguliwa.' });
+        const act = await activateBusiness(supabase, tx);
+        return res.status(200).json({ success: true, message: 'Malipo yamethibitishwa, mfumo umefunguliwa.', risiti_no: act.risiti_no });
       } else if (isFailed) {
         await supabase.from('payment_transactions').update({ status: 'failed', external_id: data.transaction_id || tx.external_id }).eq('id', tx.id);
         return res.status(200).json({ success: true, message: 'Malipo hayakufaulu.' });
@@ -545,14 +627,20 @@ export default async function handler(req, res) {
         const gs = await snippeStatus(ref);
         if (gs?.paid) {
           await supabase.from('payment_transactions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', tx.id);
-          await activateBusiness(supabase, tx);
-          return res.status(200).json({ success: true, status: 'paid', amount: tx.amount, days: tx.days, activated: true });
+          const act = await activateBusiness(supabase, tx);
+          return res.status(200).json({ success: true, status: 'paid', amount: tx.amount, days: tx.days, activated: true, risiti_no: act.risiti_no, inaisha: act.exp });
         } else if (gs?.failed) {
           await supabase.from('payment_transactions').update({ status: 'failed' }).eq('id', tx.id);
           return res.status(200).json({ success: true, status: 'failed', amount: tx.amount, days: tx.days });
         }
       }
-      return res.status(200).json({ success: true, status: tx.status, amount: tx.amount, days: tx.days, paid_at: tx.paid_at });
+      // Webhook ikiwa imeshathibitisha kabla yetu, risiti tayari ipo
+      const rs = tx.status === 'paid' ? await somaRisiti(supabase, 'payment_transactions', tx.id) : null;
+      return res.status(200).json({
+        success: true, status: tx.status, amount: tx.amount, days: tx.days, paid_at: tx.paid_at,
+        risiti_no: rs?.risiti_no || null, inaisha: rs?.inaisha || null,
+        external_id: tx.external_id || null, channel: tx.channel || null, plan: tx.plan || null,
+      });
     }
 
     // ===== 4. PAYOUT: SALIO (balance) =====
@@ -774,12 +862,19 @@ export default async function handler(req, res) {
       const { data: pay } = await supabase.from('wakala_payments')
         .select('*').eq('provider_ref', ref).maybeSingle();
       if (!pay) return res.status(404).json({ success: false, error: 'Malipo hayajapatikana.' });
-      if (pay.status === 'paid') return res.status(200).json({ success: true, status: 'paid' });
+      if (pay.status === 'paid') {
+        const rw = await somaRisiti(supabase, 'wakala_payments', pay.id);
+        return res.status(200).json({
+          success: true, status: 'paid', amount: pay.amount, days: pay.days,
+          risiti_no: rw?.risiti_no || null, inaisha: rw?.inaisha || null,
+        });
+      }
 
       // Uliza Snippe moja kwa moja
       const st = await snippeStatus(ref);   // inarudisha null ikishindikana
       if (st && st.paid) {
         const { data: act } = await supabase.rpc('dl_wakala_activate', { p_ref: ref });
+        await risitiYaUwakala(supabase, ref, act);
         return res.status(200).json({ success: true, status: 'paid', ...(act || {}) });
       }
       return res.status(200).json({ success: true, status: pay.status });

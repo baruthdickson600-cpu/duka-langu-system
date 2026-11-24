@@ -28,6 +28,12 @@ import PayoutApprovals from './pages/shared/PayoutApprovals';
 import SmsBundlePage from './pages/office/SmsBundlePage';
 import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage,WakalaGharamaPage} from './pages/office/WakalaPages';
 import {wakalaAccess,shellMode,doesWakala,ainaYa,AINA,beiYaUwakala,fmtBei} from './utils/wakala';
+import RisitiPage,{nambaKutokaUrl} from './pages/RisitiPage';
+
+// Ukurasa wa risiti ni wa HADHARA: dukalangu.com/r/DL-2026-000418
+// Mwenye namba anaithibitisha bila kuingia mfumoni — ndiyo maana
+// ya risiti. Tunaisoma mara moja, URL haibadiliki bila kupakia upya.
+const RISITI_NO=nambaKutokaUrl(window.location.href);
 
 // ===== HUDUMA YA UWAKALA =====
 // Menyu hizi zinaongezwa PALE PEKEE admin akiwasha huduma kwa duka
@@ -247,6 +253,10 @@ export default function App(){
 
   // If user is logged in, skip landing
   if(user&&showLanding)setShowLanding(false);
+
+  // Risiti ya hadhara — kabla ya kila kitu kingine, hata kabla ya
+  // kurudisha session. Mteja aliyepokea SMS hahitaji akaunti.
+  if(RISITI_NO)return <RisitiPage no={RISITI_NO}/>;
 
   // Wakati wa kurudisha session (refresh) — onyesha splash ya logo ya DukaLangu
   if(restoring&&!user){

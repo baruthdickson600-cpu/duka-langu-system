@@ -53,6 +53,18 @@ if(seed){
   if(seed.dropWakala)['wakala_lines','wakala_tx','wakala_days','wakala_settings'].forEach(t=>__cfg.missing.add(t));
   __cfg.rls=!!seed.rls; __cfg.views=!!seed.views; __cfg.role=seed.role||'office'; __cfg.uid=seed.uid||null;
 }
+// Risiti haitegemei AppContext — inapokea data tu, kwa hiyo
+// tunaiangalia peke yake (ndivyo mtu asiyeingia mfumoni anavyoiona).
+if(seed?.render==='risiti'){
+  Promise.all([import('../src/components/Risiti'),import('../src/utils/risiti')])
+    .then(([R,U])=>{
+      const r=U.risitiKutoka(seed.row||{},seed.biz||{});
+      createRoot(document.getElementById('root')).render(
+        <div id="ready" style={{padding:24,background:'linear-gradient(170deg,#F6F8F7,#EAF3ED)',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}>
+          <R.default r={r} hadhara={!!seed.hadhara}/>
+        </div>);
+    });
+}else
 Promise.all([
   import('../src/context/AppContext'),
   seed?.render ? import('../src/pages/office/WakalaPages') : Promise.resolve(null),

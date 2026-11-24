@@ -6,6 +6,8 @@ import {buildCostMap,unitCost,itemProfit,itemRevenue,returnProfit as retProfit,n
 import {cashReport,mineOnly} from '../../utils/cash';
 import {KAZI,kaziOf} from '../../utils/wakala';
 import {getPlan} from '../../config/plans';
+import Risiti from '../../components/Risiti';
+import {risitiKutoka,RISITI} from '../../utils/risiti';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,exportStatementPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange,dateRangeList} from '../../utils/helpers';
@@ -23,6 +25,7 @@ function SubscriptionMiniBar(){
   const[done,setDone]=React.useState(false);
   const[msg,setMsg]=React.useState('');
   const[errMsg,setErrMsg]=React.useState('');
+  const[risiti,setRisiti]=React.useState(null);
   // Kuongeza siku kunabaki kwenye kifurushi cha duka — hakishushi kwenda Basic
   const myPlan=getPlan(biz?.plan);
   const price=myPlan.id==='basic'?parseInt(settings?.system_price||myPlan.price):myPlan.price;
@@ -43,7 +46,16 @@ function SubscriptionMiniBar(){
         const timer=setInterval(async()=>{
           tries++;
           const st=await checkPaymentStatus(ref);
-          if(st?.status==='paid'){clearInterval(timer);setDone(true);setMsg('');setTimeout(()=>window.location.reload(),1800);}
+          if(st?.status==='paid'){
+            clearInterval(timer);setDone(true);setMsg('');
+            if(!st.risiti_no){setTimeout(()=>window.location.reload(),1800);return}
+            setRisiti(risitiKutoka({
+              risiti_no:st.risiti_no,amount:price,days:30,plan:myPlan.id,status:'paid',
+              paid_at:st.paid_at||new Date().toISOString(),inaisha:st.inaisha,
+              phone:ph,business_name:biz?.name,provider:'snippe',
+              channel:st.channel,external_id:st.external_id,provider_ref:ref,aina:RISITI.duka,
+            },biz||{}));
+          }
           else if(st?.status==='failed'){clearInterval(timer);setErrMsg('❌ Malipo hayakufaulu. Jaribu tena.');setMsg('');}
           else if(tries>=36){clearInterval(timer);setMsg('⏳ Bado tunasubiri uthibitisho. Ukishamaliza kulipa, mfumo utajifungua wenyewe.');}
         },5000);
@@ -83,7 +95,15 @@ function SubscriptionMiniBar(){
     {/* Modal ya Malipo — Snippe auto (weka namba -> push -> jifungua) */}
     <Modal open={modal} onClose={closeAll} title="🔄 Ongeza Muda wa Usajili">
       {done?(
-        <div style={{background:'#E6F2EC',border:'1.5px solid #C2DED1',borderRadius:14,padding:24,textAlign:'center'}}>
+        risiti?<div>
+          <Risiti r={risiti}/>
+          <div className="dlr-hide" style={{maxWidth:680,margin:'16px auto 0'}}>
+            <button onClick={()=>window.location.reload()} style={{width:'100%',padding:14,borderRadius:13,border:'none',background:'linear-gradient(135deg,#1E7A3C,#0E5E2A)',color:'#fff',fontWeight:800,fontSize:14,cursor:'pointer'}}>
+              Endelea →
+            </button>
+            <div style={{textAlign:'center',fontSize:12,color:'#5B6B61',marginTop:9}}>Risiti hii imetumwa pia kwa SMS.</div>
+          </div>
+        </div>:<div style={{background:'#E6F2EC',border:'1.5px solid #C2DED1',borderRadius:14,padding:24,textAlign:'center'}}>
           <div style={{fontSize:44,marginBottom:10}}>🎉</div>
           <div style={{fontSize:16,fontWeight:800,color:'#15803D',marginBottom:8}}>Malipo Yamethibitishwa!</div>
           <div style={{fontSize:13,color:'#475569',lineHeight:1.6}}>Mfumo unafunguka wenyewe...</div>

@@ -18,6 +18,8 @@ import useWakala from '../../hooks/useWakala';
 import { IC, Btn, Modal, Input, Sel, Area, Badge, Empty, Tabs } from '../../components/UI';
 import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
+import Risiti from '../../components/Risiti';
+import { risitiKutoka, RISITI } from '../../utils/risiti';
 import { TX, txLabel, varianceState, doesWakala,
          GHARAMA, CHANZO, gharamaLabel, gharamaIcon,
          mtandaoUnalingana, mtandaoJina, nambaKamili,
@@ -61,6 +63,7 @@ function LipaUwakala({ compact }) {
   const [phone, setPhone] = useState(biz?.phone || '');
   const [hali, setHali] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [risiti, setRisiti] = useState(null);
   // Uwakala peke yake ni ghali kuliko wa nyongeza — hauna usajili
   // wa duka unaosaidia gharama.
   const aina = ainaYa(biz);
@@ -88,8 +91,18 @@ function LipaUwakala({ compact }) {
           const s2 = await q.json().catch(() => ({}));
           if (s2?.status === 'paid') {
             clearInterval(piga);
-            setHali({ bad: false, text: '✅ Malipo yamethibitishwa. Fungua upya ukurasa.' });
-            setTimeout(() => window.location.reload(), 1800);
+            if (!s2.risiti_no) {
+              setHali({ bad: false, text: '✅ Malipo yamethibitishwa. Fungua upya ukurasa.' });
+              setTimeout(() => window.location.reload(), 1800);
+              return;
+            }
+            setHali(null);
+            setRisiti(risitiKutoka({
+              risiti_no: s2.risiti_no, amount: s2.amount ?? bei, days: s2.days ?? 30,
+              status: 'paid', paid_at: new Date().toISOString(), inaisha: s2.inaisha,
+              phone, business_name: biz?.name, provider: 'snippe',
+              provider_ref: d.reference, aina: RISITI.uwakala,
+            }, biz || {}));
           }
         } catch (_) {}
         if (n > 40) clearInterval(piga);
@@ -103,7 +116,14 @@ function LipaUwakala({ compact }) {
     <Btn onClick={() => setOpen(true)} style={compact ? {} : { marginTop: 4 }}>
       💳 Lipia uwakala — {fmtBei(bei)}
     </Btn>
-    <Modal open={open} onClose={() => setOpen(false)} title="Lipia huduma ya uwakala">
+    <Modal open={open} onClose={() => { setOpen(false); if (risiti) window.location.reload(); }} title={risiti ? 'Risiti ya malipo' : 'Lipia huduma ya uwakala'}>
+      {risiti ? <div>
+        <Risiti r={risiti} />
+        <div className="dlr-hide" style={{ maxWidth: 680, margin: '16px auto 0' }}>
+          <Btn onClick={() => window.location.reload()} style={{ width: '100%', padding: 14 }}>Endelea →</Btn>
+          <div style={{ textAlign: 'center', fontSize: 12, color: C.pale, marginTop: 9 }}>Risiti hii imetumwa pia kwa SMS.</div>
+        </div>
+      </div> : <>
       <div style={{ background: C.soft, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 12.5, color: C.dark }}>
         <b>{fmtBei(bei)} kwa mwezi mmoja.</b> {aina === AINA.uwakala
           ? <>Ukiongeza duka baadaye, vyote vinakuwa {fmtBei(BEI.zote)} — unaokoa {fmtBei(PUNGUZO)}.</>
@@ -122,6 +142,7 @@ function LipaUwakala({ compact }) {
       <div style={{ fontSize: 11, color: C.pale, textAlign: 'center', marginTop: 8 }}>
         Utapokea ombi la PIN kwenye simu yako.
       </div>
+      </>}
     </Modal>
   </>;
 }

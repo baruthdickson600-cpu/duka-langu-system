@@ -2,6 +2,8 @@ import React,{useState,useEffect,useRef} from 'react';
 import {PLAN_LIST,getPlan} from '../config/plans';
 import {useApp} from '../context/AppContext';
 import {Input} from '../components/UI';
+import Risiti from '../components/Risiti';
+import {risitiKutoka,RISITI} from '../utils/risiti';
 
 const BG_COUNT=13;
 const BG_INTERVAL=10000;
@@ -40,6 +42,7 @@ export default function LockedPage(){
   const[autoMsg,setAutoMsg]=useState('');
   const[autoRef,setAutoRef]=useState('');
   const[polling,setPolling]=useState(false);
+  const[risiti,setRisiti]=useState(null);
   const handleAutoPay=async()=>{
     const ph=phone.trim();
     if(!ph||ph.replace(/\D/g,'').length<9)return setErr('Weka namba sahihi ya simu (mf. 0712345678)!');
@@ -58,9 +61,23 @@ export default function LockedPage(){
           tries++;
           const st=await checkPaymentStatus(ref);
           if(st?.status==='paid'){
-            clearInterval(timer);
-            setAutoMsg('🎉 Malipo yamethibitishwa! Mfumo unafunguka...');
-            setTimeout(()=>window.location.reload(),1800);
+            clearInterval(timer);setPolling(false);
+            // Risiti badala ya kupakia upya mara moja — mteja aione,
+            // aichapishe, kisha aingie mwenyewe. Bila namba ya risiti
+            // (migration haijaendeshwa) tunarudi njia ya zamani.
+            if(!st.risiti_no){
+              setAutoMsg('🎉 Malipo yamethibitishwa! Mfumo unafunguka...');
+              setTimeout(()=>window.location.reload(),1800);
+              return;
+            }
+            setAutoMsg('');
+            setRisiti(risitiKutoka({
+              risiti_no:st.risiti_no,amount:price,days:30,plan:planId,status:'paid',
+              paid_at:st.paid_at||new Date().toISOString(),inaisha:st.inaisha,
+              phone:ph,business_name:biz?.name,provider:'snippe',
+              channel:st.channel,external_id:st.external_id,provider_ref:ref,
+              aina:RISITI.duka,
+            },biz||{}));
           }else if(st?.status==='failed'){
             clearInterval(timer);setPolling(false);
             setErr('❌ Malipo hayakufaulu. Tafadhali jaribu tena.');
@@ -75,6 +92,19 @@ export default function LockedPage(){
     setAutoLoading(false);
   };
 
+
+  // Malipo yamefanikiwa — risiti kwanza, mfumo baadaye
+  if(risiti)return <div style={{minHeight:'100vh',background:'linear-gradient(170deg,#F6F8F7,#EAF3ED)',padding:'26px 16px 40px'}}>
+    <Risiti r={risiti}/>
+    <div className="dlr-hide" style={{maxWidth:680,margin:'18px auto 0'}}>
+      <button onClick={()=>window.location.reload()} style={{width:'100%',padding:15,borderRadius:14,border:'none',background:'linear-gradient(135deg,#1E7A3C,#0E5E2A)',color:'#fff',fontWeight:800,fontSize:14.5,cursor:'pointer',boxShadow:'0 10px 22px rgba(14,94,42,.25)'}}>
+        Ingia kwenye mfumo →
+      </button>
+      <div style={{textAlign:'center',fontSize:12,color:'#5B6B61',marginTop:10}}>
+        Risiti hii imetumwa pia kwa SMS kwenye namba uliyolipia.
+      </div>
+    </div>
+  </div>;
 
   const bgStyle=(img,visible)=>({
     position:'fixed',inset:0,zIndex:0,
