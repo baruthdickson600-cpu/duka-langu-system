@@ -205,28 +205,47 @@ function Mfano({jina,m}){
 
 // Cheo kwenye mfumo -> wajibu wa arifa. Kisichojulikana kinaachwa
 // kwa msimamizi kuchagua, badala ya kubahatisha.
-const WAJIBU_YA_CHEO={admin:'admin',marketing:'masoko',supervisor:'wakala',agent:'wakala'};
-const CHEO_LAB={admin:'Admin',marketing:'Masoko',supervisor:'Supervisor',agent:'Wakala',accountant:'Mhasibu'};
+const WAJIBU_YA_CHEO={admin:'admin',marketing:'masoko',supervisor:'wakala',agent:'wakala',accountant:'admin'};
+const CHEO_LAB={admin:'Admin',marketing:'Afisa Masoko',supervisor:'Supervisor',agent:'Wakala',accountant:'Mhasibu'};
+const CHEO_ZA_KAZI=Object.keys(CHEO_LAB);
+const cheoCha=u=>String(u?.role||'').trim().toLowerCase();
 
 function HaririMpokeaji({row,onClose,onSave,onDel,tayariWapo=[]}){
   const[f,setF]=useState(row||{});
   const[watu,setWatu]=useState([]);
   const[inasoma,setInasoma]=useState(true);
+  const[kosaWatu,setKosaWatu]=useState('');
   useEffect(()=>{setF(row||{})},[row]);
 
   // Wafanyakazi wa DukaLangu wapo kwenye `users` — hakuna sababu ya
   // kuandika jina na namba tena kwa mkono. Kuandika kwa mkono
   // kunaleta namba zenye makosa ambazo hakuna anayezigundua
   // mpaka siku arifa muhimu inaposhindwa kufika.
+  //
+  // `select('*')` si uvivu: kutaja safu kwa majina kunafanya query
+  // nzima ife kama safu moja (mfano promo_code) haipo kwenye
+  // jedwali lako. Na cheo kinalinganishwa bila kujali herufi
+  // kubwa au ndogo, kwa sababu 'Admin' na 'admin' ni mtu yuleyule.
   useEffect(()=>{(async()=>{
-    setInasoma(true);
+    setInasoma(true);setKosaWatu('');
+    const niKazi=u=>CHEO_ZA_KAZI.includes(String(u?.role||'').trim().toLowerCase());
     try{
-      const{data}=await supabase.from('users')
-        .select('id,name,email,phone,role,promo_code,is_active')
-        .in('role',['admin','marketing','supervisor','agent','accountant'])
-        .order('role');
-      setWatu((data||[]).filter(u=>u.is_active!==false));
-    }catch{setWatu([])}
+      const{data,error}=await supabase.from('users').select('*');
+      if(error){
+        setKosaWatu(error.message||'Imeshindikana kusoma wafanyakazi.');
+        setWatu([]);
+      }else{
+        const wote=data||[];
+        const kazi=wote.filter(niKazi).filter(u=>u.is_active!==false);
+        setWatu(kazi);
+        if(!kazi.length){
+          const vyeo=[...new Set(wote.map(u=>u.role).filter(Boolean))];
+          setKosaWatu(wote.length
+            ?`Nimesoma watumiaji ${wote.length}, lakini hakuna mwenye cheo cha kazi. Vyeo vilivyopo: ${vyeo.join(', ')||'(hakuna)'}`
+            :'Hakuna mtumiaji hata mmoja aliyerudishwa — inawezekana kinga (RLS) ya jedwali la users inakuzuia.');
+        }
+      }
+    }catch(e){setKosaWatu(e.message||'Tatizo la mtandao.');setWatu([])}
     setInasoma(false);
   })()},[]);
 
@@ -238,8 +257,8 @@ function HaririMpokeaji({row,onClose,onSave,onDel,tayariWapo=[]}){
   const chagua=id=>{
     const u=watu.find(x=>x.id===id);
     if(!u)return setF({...f,user_id:null});
-    setF({...f,user_id:u.id,jina:u.name||u.email||'',simu:(u.phone||'').replace(/\s/g,''),
-      wajibu:WAJIBU_YA_CHEO[u.role]||f.wajibu||'masoko',
+    setF({...f,user_id:u.id,jina:u.name||u.email||'',simu:String(u.phone||'').replace(/\s/g,''),
+      wajibu:WAJIBU_YA_CHEO[cheoCha(u)]||f.wajibu||'masoko',
       promo_code:u.promo_code||f.promo_code||''});
   };
 
@@ -254,11 +273,13 @@ function HaririMpokeaji({row,onClose,onSave,onDel,tayariWapo=[]}){
       options={[
         {value:'',label:inasoma?'Inasoma wafanyakazi…':'— Chagua mfanyakazi —'},
         ...watu.map(u=>({value:u.id,
-          label:`${u.name||u.email||'Bila jina'} · ${CHEO_LAB[u.role]||u.role}${u.phone?'':' · HANA SIMU'}${tayari(u.id)?' · ameshaongezwa':''}`})),
+          label:`${u.name||u.email||'Bila jina'} · ${CHEO_LAB[cheoCha(u)]||u.role}${u.phone?'':' · HANA SIMU'}${tayari(u.id)?' · ameshaongezwa':''}`})),
       ]}/>
 
-    {!inasoma&&!watu.length&&<div style={{fontSize:11.5,color:'#C2412D',marginTop:-6,marginBottom:10,lineHeight:1.6}}>
-      Hakuna mfanyakazi aliyepatikana. Hakikisha wana akaunti kwenye mfumo na cheo chao si cha mteja.
+    {!inasoma&&!watu.length&&<div style={{background:'#FBECE9',borderRadius:10,padding:'9px 12px',
+      fontSize:11.5,color:'#B91C1C',marginTop:-4,marginBottom:10,lineHeight:1.6}}>
+      <b>Hakuna mfanyakazi aliyepatikana.</b>
+      {kosaWatu&&<div style={{marginTop:4,fontFamily:'ui-monospace,Menlo,monospace',fontSize:10.5,wordBreak:'break-word'}}>{kosaWatu}</div>}
     </div>}
 
     {aliyechaguliwa&&!aliyechaguliwa.phone&&<div style={{background:'#FFF8E6',color:'#92400E',fontSize:11.5,
