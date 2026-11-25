@@ -29,6 +29,7 @@ import SmsBundlePage from './pages/office/SmsBundlePage';
 import {WakalaDash,WakalaRecordPage,WakalaClosePage,WakalaReportPage,WakalaLinesPage,WakalaGharamaPage} from './pages/office/WakalaPages';
 import {wakalaAccess,shellMode,doesWakala,ainaYa,AINA,beiYaUwakala,fmtBei} from './utils/wakala';
 import RisitiPage,{nambaKutokaUrl} from './pages/RisitiPage';
+import TiketiPage from './pages/shared/TiketiPage';
 
 // Ukurasa wa risiti ni wa HADHARA: dukalangu.com/r/DL-2026-000418
 // Mwenye namba anaithibitisha bila kuingia mfumoni — ndiyo maana
@@ -72,7 +73,7 @@ const MENUS={
       {id:'comms_center',icon:IC.send,label:'💬 Kituo cha Mawasiliano'},
       {id:'messaging',icon:IC.send,label:'Ujumbe'},
       {id:'templates',icon:IC.file,label:'Email Templates'},
-      {id:'tickets',icon:IC.bell,label:'Tickets'},
+      {id:'tickets',icon:IC.bell,label:'🎫 Tiketi za Wateja'},
       {id:'faq',icon:IC.file,label:'❓ Maswali (FAQ)'},
     ]},
     {group:'ripoti',label:'📊 Ripoti & Uchambuzi',icon:IC.chart,items:[
@@ -106,6 +107,7 @@ const MENUS={
   ],
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'tickets',icon:IC.bell,label:'🎫 Tiketi za Wateja'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'supervisors',icon:IC.users,label:'Mawakala'},
     {id:'payout_approvals',icon:IC.shield,label:'✅ Idhini ya Kutoa Pesa'},
@@ -149,6 +151,7 @@ const MENUS={
   ],
   supervisor:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'tickets',icon:IC.bell,label:'🎫 Tiketi za Wateja'},
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
@@ -325,7 +328,7 @@ export default function App(){
         case'security':return <SecurityPage/>;
         case'backup':return <BackupPage/>;
         case'settings':return <SettingsPage/>;
-        case'tickets':return <TicketsPage/>;case'partners':return <PartnersPage/>;
+        case'tickets':return <TiketiPage/>;case'partners':return <PartnersPage/>;
         case'info_requests':return <InfoRequestsPage/>;
         case'referrals':return <ReferralManagementPage/>;
         case'activity':return <ActivityFeedPage/>;case'usage':return <SystemUsagePage/>;
@@ -341,6 +344,7 @@ export default function App(){
     }
     if(role==='marketing'){
       switch(page){
+        case'tickets':return <TiketiPage/>;
         case'pipeline':return <PipelinePage/>;case'supervisors':return <MktAgentsPage/>;
         case'payout_approvals':return <PayoutApprovals/>;
         case'campaigns':return <CampaignPage/>;case'followups':return <FollowupPage/>;
@@ -370,6 +374,7 @@ export default function App(){
     }
     if((role==='supervisor'||role==='agent')){
       switch(page){
+        case'tickets':return <TiketiPage/>;
         case'register':return <AgentRegisterPage/>;
         case'mycustomers':return <AgentCustomersPage/>;
         case'visits':return <SupervisorVisitsPage/>;

@@ -20,6 +20,7 @@ import { PageHead, SumCard, HeroCard, HeroStats } from '../../components/Page';
 import { fmtMoney, localDateStr, fmtDate } from '../../utils/helpers';
 import Risiti from '../../components/Risiti';
 import { risitiKutoka, RISITI } from '../../utils/risiti';
+import { TiketiBar } from '../../components/Tiketi';
 import { TX, txLabel, varianceState, doesWakala,
          GHARAMA, CHANZO, gharamaLabel, gharamaIcon,
          mtandaoUnalingana, mtandaoJina, nambaKamili,
@@ -739,7 +740,7 @@ function Mstari({ l, v, color = C.ink, big, tag }) {
 // ============================================================
 export function WakalaDash() {
   const wk = useWakala();
-  const { employees } = useApp();
+  const { employees, user } = useApp();
   const wakalaStaff = (employees || []).filter(doesWakala);
   const [ukaguziMsg, setUkaguziMsg] = useState(null);
   const [ukaguziBusy, setUkaguziBusy] = useState(false);
@@ -776,6 +777,7 @@ export function WakalaDash() {
   return <div>
     <PageHead icon="📊" title="Uwakala" sub="Kutuma na kutoa pesa — hesabu kamili" />
     <Hali wk={wk} />
+    {user?.role === 'office' && <TiketiBar />}
 
     <HeroCard
       tone={mwezi.hasara ? 'red' : undefined}

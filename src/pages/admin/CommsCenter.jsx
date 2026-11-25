@@ -3,6 +3,7 @@ import {useApp} from '../../context/AppContext';
 import {supabase} from '../../config/supabase';
 import {Input,Area,Btn,Badge,Empty,IC} from '../../components/UI';
 import {API_BASE} from '../../config/api';
+import MgawanyoArifa from './MgawanyoArifa';
 
 // ============================================================
 // SMS CENTER V2 — Kituo cha Mawasiliano cha Kibiashara
@@ -388,7 +389,7 @@ export default function CommsCenterPage(){
     a.href=URL.createObjectURL(b);a.download=`sms-history-${new Date().toISOString().slice(0,10)}.csv`;a.click();
   };
 
-  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['uwakala','📲 Uwakala'],['settings','⚙️ Mipangilio']];
+  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['uwakala','📲 Uwakala'],['mgawanyo','👥 Mgawanyo wa Arifa'],['settings','⚙️ Mipangilio']];
 
   return <div className="page-enter">
     <div style={{marginBottom:16}}>
@@ -774,6 +775,9 @@ export default function CommsCenterPage(){
         </div>}
        </>}
     </div>}
+
+    {/* ===== MGAWANYO WA ARIFA ===== */}
+    {tab==='mgawanyo'&&<MgawanyoArifa/>}
 
     {/* ===== SETTINGS ===== */}
     {/* ===== UWAKALA ===== */}

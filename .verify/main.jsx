@@ -51,6 +51,7 @@ if(seed){
   if(seed.schemaAdd)seed.schemaAdd.forEach(([t,c])=>{if(!__cfg.schema[t].includes(c))__cfg.schema[t].push(c)});
   if(seed.rpcs)seed.rpcs.forEach(r=>__cfg.rpcs.add(r));
   if(seed.dropWakala)['wakala_lines','wakala_tx','wakala_days','wakala_settings'].forEach(t=>__cfg.missing.add(t));
+  if(seed.dropTiketi)['support_tickets','ticket_messages','arifa_wapokeaji'].forEach(t=>__cfg.missing.add(t));
   __cfg.rls=!!seed.rls; __cfg.views=!!seed.views; __cfg.role=seed.role||'office'; __cfg.uid=seed.uid||null;
 }
 // Risiti haitegemei AppContext — inapokea data tu, kwa hiyo
@@ -64,6 +65,34 @@ if(seed?.render==='risiti'){
           <R.default r={r} hadhara={!!seed.hadhara}/>
         </div>);
     });
+}else if(seed?.render==='tiketibar'){
+  Promise.all([import('../src/context/AppContext'),import('../src/components/Tiketi')])
+    .then(([{AppProvider,useApp},T])=>{
+      function Probe(){
+        const app=useApp(); window.__app=app;
+        if(!app.user)return <div id="waiting">waiting</div>;
+        return <div style={{padding:16,maxWidth:900,margin:'0 auto',background:'#F6F8F7',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}>
+          <div id="ready">ready</div><T.TiketiBar/>
+        </div>;
+      }
+      createRoot(document.getElementById('root')).render(<AppProvider><Probe/></AppProvider>);
+    });
+}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'){
+  // Kurasa za tiketi — zinahitaji AppContext halisi
+  Promise.all([
+    import('../src/context/AppContext'),
+    seed.render==='tiketi'?import('../src/pages/shared/TiketiPage'):import('../src/pages/admin/MgawanyoArifa'),
+  ]).then(([{AppProvider,useApp},P])=>{
+    function Probe(){
+      const app=useApp(); window.__app=app;
+      if(!app.user)return <div id="waiting">waiting</div>;
+      const C=P.default;
+      return <div style={{padding:16,maxWidth:980,margin:'0 auto',background:'#F6F8F7',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}>
+        <div id="ready">ready</div><C/>
+      </div>;
+    }
+    createRoot(document.getElementById('root')).render(<AppProvider><Probe/></AppProvider>);
+  });
 }else
 Promise.all([
   import('../src/context/AppContext'),

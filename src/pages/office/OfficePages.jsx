@@ -8,6 +8,7 @@ import {KAZI,kaziOf} from '../../utils/wakala';
 import {getPlan} from '../../config/plans';
 import Risiti from '../../components/Risiti';
 import {risitiKutoka,RISITI} from '../../utils/risiti';
+import {TiketiBar} from '../../components/Tiketi';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,EMOJIS,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF,exportToCSV,exportReceiptPDF,exportStatementPDF,shareWhatsApp,todayStr,payLabel,computePeriodFinance,localDateStr,inDateRange,dateRangeList} from '../../utils/helpers';
@@ -280,6 +281,9 @@ export function OfficeDash({onReceipt,onNav}){
 
     {/* ===== SUBSCRIPTION MINI-BAR ===== */}
     {user?.role==='office'&&<SubscriptionMiniBar/>}
+
+    {/* ===== TIKETI — juu kabisa, si kwenye side bar ===== */}
+    {user?.role==='office'&&<TiketiBar/>}
 
     {/* ===== HERO: PESA MKONONI (muonekano mpya) ===== */}
     <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'20px 22px',marginBottom:14,color:'#fff',position:'relative',overflow:'hidden',boxShadow:'0 14px 34px rgba(10,110,71,.28)'}}>

@@ -6,6 +6,7 @@ import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/p
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,getStuckSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
+import {smsTiketiMpya,smsTiketiHali,smsTiketiKazi,wapokeajiWaTiketi} from '../utils/tiketi';
 import {computePeriodFinance,localDateStr} from '../utils/helpers';
 
 const Ctx=createContext(null);
@@ -370,6 +371,8 @@ export function AppProvider({children}){
         const se=await safeSelect('system_expenses',{order:{col:'created_at'}});setSystemExpenses(se);
       }
       if(role==='marketing'){
+        // Tiketi: masoko wanazifuatilia kama admin
+        const tkM=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tkM);
         const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
         const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
         const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
@@ -380,6 +383,8 @@ export function AppProvider({children}){
         // Supervisor: load businesses WOTE (kwa form ya ziara)
         const bAll=await safeSelect('businesses',{order:{col:'name'}});
         if(bAll.length)setBiz(bAll);
+        // Tiketi: ukurasa unachuja za wateja WAKE kwa promo_code
+        const tkA=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tkA);
       }
       if(role==='accountant'){
         // Accountant loads SAME data as admin (read-only)
@@ -1603,19 +1608,159 @@ export function AppProvider({children}){
     return getPlan(myBiz?.plan)?.limits?.branches||1;
   },[biz,bizId]);
 
-  // ===== SUPPORT TICKETS =====
-  const createTicket=useCallback(async(subject,message,priority='normal')=>{
-    const tk={business_id:bizId,user_id:user?.id,user_email:user?.email,business_name:biz?.name,subject,message,priority,status:'open'};
-    const d=await safeInsert('support_tickets',tk);const f=d||{...tk,id:genId(),created_at:nowISO()};
+  // ============================================================
+  // TIKETI
+  //
+  // Namba ya tiketi inatoka DATABASE (trigger), si hapa — ndiyo
+  // maana tunasoma safu iliyorudishwa badala ya kujitengenezea.
+  // Migration isipoendeshwa, tiketi bado inafanya kazi; namba na
+  // SMS pekee ndizo hazitakuwepo.
+  // ============================================================
+  const[arifaWapokeaji,setArifaWapokeaji]=useState([]);
+  const[ticketMsgs,setTicketMsgs]=useState({});   // {ticket_id:[ujumbe]}
+
+  const loadArifaWapokeaji=useCallback(async()=>{
+    try{
+      const{data,error}=await supabase.from('arifa_wapokeaji').select('*').order('wajibu');
+      if(error)return[];
+      const rows=(data||[]).map(r=>({...r,aina:Array.isArray(r.aina)?r.aina:(()=>{try{const v=JSON.parse(r.aina);return Array.isArray(v)?v:[]}catch{return[]}})()}));
+      setArifaWapokeaji(rows);return rows;
+    }catch{return[]}
+  },[]);
+
+  // Arifa kwa wafanyakazi. Haitegemei kurasa zilizopakiwa — inasoma
+  // wapokeaji wakati huu, kwa sababu mteja anayetuma tiketi hana
+  // ruhusa ya kuwasoma (RLS), kwa hiyo orodha huwa tupu kwake.
+  const arifuKaziTiketi=useCallback(async(t)=>{
+    try{
+      const{data:cfg}=await supabase.from('settings').select('key,value').in('key',['arifa_kazi_enabled','arifa_tiketi_enabled']);
+      const c={};(cfg||[]).forEach(r=>{c[r.key]=r.value});
+      if(c.arifa_kazi_enabled==='false'||c.arifa_tiketi_enabled==='false')return;
+      const{data,error}=await supabase.from('arifa_wapokeaji').select('*').eq('active',true);
+      if(error||!data?.length)return;
+      const rows=data.map(r=>({...r,aina:Array.isArray(r.aina)?r.aina:(()=>{try{return JSON.parse(r.aina)||[]}catch{return[]}})()}));
+      const ujumbe=smsTiketiKazi({no:t.ticket_no,biashara:t.business_name,kitengo:t.kitengo,priority:t.priority,simu:t.phone});
+      wapokeajiWaTiketi(rows,t).forEach(m=>sendSMS(m.simu,ujumbe));
+    }catch(e){console.warn('[arifa tiketi]',e.message)}
+  },[]);
+
+  const createTicket=useCallback(async(subject,message,priority='normal',kitengo='nyingine')=>{
+    const tk={business_id:bizId,user_id:user?.id,user_email:user?.email,business_name:biz?.name,
+              subject,message,priority,status:'open',kitengo,phone:biz?.phone||user?.phone||''};
+    let d=null;
+    try{
+      const{data}=await supabase.from('support_tickets').insert(tk).select().maybeSingle();
+      d=data;
+    }catch{/* safu mpya hazipo bado */}
+    if(!d)d=await safeInsert('support_tickets',{...tk,kitengo:undefined,phone:undefined});
+    const f=d||{...tk,id:genId(),created_at:nowISO()};
     setTickets(prev=>[f,...prev]);
-    await safeInsert('notifications',{target_type:'admin',type:'warning',title:`🎫 Ticket: ${subject}`,message:`${biz?.name||user?.email}: ${message.slice(0,100)}`});
+
+    await safeInsert('notifications',{target_type:'admin',type:'warning',
+      title:`🎫 ${f.ticket_no||'Tiketi'}: ${subject}`,
+      message:`${biz?.name||user?.email}: ${message.slice(0,100)}`});
+
+    if(f.ticket_no){
+      // Mteja anapata namba yake papo hapo — ndiyo uthibitisho
+      // kwamba ombi lake limefika, si ahadi ya mdomo.
+      const simu=tk.phone;
+      if(simu)sendSMS(simu,smsTiketiMpya({no:f.ticket_no,kitengo}));
+      await arifuKaziTiketi({...f,promo_code:biz?.promo_code});
+    }
     return f;
-  },[bizId,user,biz]);
+  },[bizId,user,biz,arifuKaziTiketi]);
+
+  // Mabadiliko ya hali — mteja anaarifiwa kila hatua
+  const setTicketStatus=useCallback(async(tid,status,jina)=>{
+    const t=tickets.find(x=>x.id===tid);
+    const patch={status};
+    if(status!=='open'&&!t?.first_response_at)patch.first_response_at=nowISO();
+    await safeUpdate('support_tickets',patch,'id',tid);
+    setTickets(prev=>prev.map(x=>x.id===tid?{...x,...patch}:x));
+    const simu=t?.phone;
+    if(simu&&t?.ticket_no)sendSMS(simu,smsTiketiHali({no:t.ticket_no,status,jina}));
+  },[tickets]);
+
+  const assignTicket=useCallback(async(tid,role,uid,jina)=>{
+    const patch={assigned_role:role||null,assigned_to:uid||null,assigned_name:jina||null,status:'assigned'};
+    const t=tickets.find(x=>x.id===tid);
+    if(!t?.first_response_at)patch.first_response_at=nowISO();
+    await safeUpdate('support_tickets',patch,'id',tid);
+    setTickets(prev=>prev.map(x=>x.id===tid?{...x,...patch}:x));
+    if(t?.phone&&t?.ticket_no)sendSMS(t.phone,smsTiketiHali({no:t.ticket_no,status:'assigned',jina}));
+  },[tickets]);
+
+  // ===== Mazungumzo ya tiketi =====
+  const loadTicketMsgs=useCallback(async(tid)=>{
+    if(!tid)return[];
+    try{
+      const{data,error}=await supabase.from('ticket_messages').select('*').eq('ticket_id',tid).order('created_at');
+      if(error)return[];
+      setTicketMsgs(p=>({...p,[tid]:data||[]}));
+      return data||[];
+    }catch{return[]}
+  },[]);
+
+  const addTicketMsg=useCallback(async(tid,body,niNdani=false)=>{
+    if(!body?.trim())return{error:'Ujumbe hauwezi kuwa tupu.'};
+    const row={ticket_id:tid,sender_id:user?.id,sender_role:user?.role||'office',
+               sender_name:user?.name||user?.email,body:body.trim(),ni_ndani:!!niNdani};
+    try{
+      const{data,error}=await supabase.from('ticket_messages').insert(row).select().maybeSingle();
+      if(error)return{error:error.message};
+      setTicketMsgs(p=>({...p,[tid]:[...(p[tid]||[]),data||{...row,id:genId(),created_at:nowISO()}]}));
+      // Jibu la wazi kutoka kwa mfanyakazi linamfikia mteja kwa SMS
+      const t=tickets.find(x=>x.id===tid);
+      const niKazi=['admin','marketing','supervisor','agent','accountant'].includes(user?.role);
+      if(niKazi&&!niNdani&&t?.phone&&t?.ticket_no){
+        sendSMS(t.phone,smsTiketiHali({no:t.ticket_no,status:'replied'}));
+        if(t.status!=='replied'&&t.status!=='closed'){
+          await safeUpdate('support_tickets',{status:'replied',first_response_at:t.first_response_at||nowISO()},'id',tid);
+          setTickets(prev=>prev.map(x=>x.id===tid?{...x,status:'replied'}:x));
+        }
+      }
+      return{ok:true};
+    }catch(e){return{error:e.message}}
+  },[user,tickets]);
+
   const replyTicket=useCallback(async(tid,reply,status)=>{
     await safeUpdate('support_tickets',{reply,status:status||'replied',replied_at:nowISO(),replied_by:user?.id},'id',tid);
     setTickets(prev=>prev.map(t=>t.id===tid?{...t,reply,status:status||'replied',replied_at:nowISO()}:t));
-  },[user]);
-  const closeTicket=useCallback(async(tid)=>{await safeUpdate('support_tickets',{status:'closed'},'id',tid);setTickets(prev=>prev.map(t=>t.id===tid?{...t,status:'closed'}:t))},[]);
+    const t=tickets.find(x=>x.id===tid);
+    if(t?.phone&&t?.ticket_no)sendSMS(t.phone,smsTiketiHali({no:t.ticket_no,status:status||'replied'}));
+  },[user,tickets]);
+
+  const closeTicket=useCallback(async(tid)=>{
+    await safeUpdate('support_tickets',{status:'closed'},'id',tid);
+    setTickets(prev=>prev.map(t=>t.id===tid?{...t,status:'closed'}:t));
+    const t=tickets.find(x=>x.id===tid);
+    if(t?.phone&&t?.ticket_no)sendSMS(t.phone,smsTiketiHali({no:t.ticket_no,status:'closed'}));
+  },[tickets]);
+
+  // ===== Wapokeaji wa arifa (admin pekee anabadilisha) =====
+  const saveArifaMpokeaji=useCallback(async(row)=>{
+    try{
+      const payload={jina:row.jina,simu:row.simu,wajibu:row.wajibu,
+                     promo_code:row.promo_code||null,user_id:row.user_id||null,
+                     aina:row.aina||[],active:row.active!==false};
+      const q=row.id
+        ?supabase.from('arifa_wapokeaji').update(payload).eq('id',row.id).select().maybeSingle()
+        :supabase.from('arifa_wapokeaji').insert(payload).select().maybeSingle();
+      const{data,error}=await q;
+      if(error)return{error:error.message};
+      await loadArifaWapokeaji();
+      return{ok:true,data};
+    }catch(e){return{error:e.message}}
+  },[loadArifaWapokeaji]);
+
+  const delArifaMpokeaji=useCallback(async(id)=>{
+    try{
+      const{error}=await supabase.from('arifa_wapokeaji').delete().eq('id',id);
+      if(error)return{error:error.message};
+      setArifaWapokeaji(p=>p.filter(x=>x.id!==id));
+      return{ok:true};
+    }catch(e){return{error:e.message}}
+  },[]);
 
   // ===== LIVE CHAT (Need help, ask me) =====
   const[chatMessages,setChatMessages]=useState([]);
@@ -3124,7 +3269,9 @@ export function AppProvider({children}){
     // Orders (Pending + Partial Payments)
     orders:_visibleOrders,loadOrders,createOrder,addOrderPayment,recordOrderAsSale,cancelOrder,getOrderPayments,
     // Tickets
-    createTicket,replyTicket,closeTicket,
+    createTicket,replyTicket,closeTicket,setTicketStatus,assignTicket,
+    ticketMsgs,loadTicketMsgs,addTicketMsg,
+    arifaWapokeaji,loadArifaWapokeaji,saveArifaMpokeaji,delArifaMpokeaji,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
     genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,initiatePayment,checkPaymentStatus,testPayment,systemExpenses,

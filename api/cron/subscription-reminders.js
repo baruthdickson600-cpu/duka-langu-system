@@ -6,6 +6,9 @@
 // ============================================================
 
 import { createClient } from '@supabase/supabase-js';
+import {
+  smsAfya, smsWasiolipa, orodhaYaWasiolipa, anapokea, imechelewa,
+} from '../../src/utils/tiketi.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -32,6 +35,131 @@ async function sendSMS(baseUrl, phone, message) {
   } catch (e) {
     return { ok: false, error: e.message };
   }
+}
+
+// ============================================================
+// ARIFA ZA WAFANYAKAZI — mgawanyo wa kazi
+//
+// Zinapanda juu ya cron hii badala ya kuwa function yake,
+// kwa sababu kikomo cha Vercel ni 12 na tupo 11.
+//
+// Kila kitu hapa ni cha HIARI: jedwali la arifa_wapokeaji
+// lisipokuwepo, ukumbusho wa wateja bado unatoka kama kawaida.
+// ============================================================
+const salamaArr = v => {
+  if (Array.isArray(v)) return v;
+  try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; }
+};
+
+// Arifa moja ya aina moja kwa siku moja, kwa kila namba.
+// Cron ikiendeshwa mara mbili, SMS hairudiwi.
+async function tayariImetumwa(supabase, aina, simu, kitu, today) {
+  try {
+    const { data } = await supabase.from('arifa_kazi_log')
+      .select('id').eq('aina', aina).eq('simu', simu)
+      .eq('kitu', kitu || '').eq('day', today).maybeSingle();
+    return !!data;
+  } catch { return false; }
+}
+
+async function andikaArifa(supabase, aina, simu, kitu, ujumbe) {
+  try {
+    await supabase.from('arifa_kazi_log').insert({ aina, simu, kitu: kitu || '', ujumbe: String(ujumbe).slice(0, 400) });
+  } catch { /* jedwali halipo */ }
+}
+
+// Hesabu za afya ya mfumo. Kila swali limefungwa peke yake:
+// jedwali moja likikosekana, lingine bado linahesabiwa.
+async function hesabuAfya(supabase, baseUrl, biashara, wasiolipaIdadi, today) {
+  const h = {
+    makaziHai: (biashara || []).filter(b => b.token_active && !b.is_suspended).length,
+    wasiolipa: wasiolipaIdadi,
+  };
+
+  try {
+    const { data } = await supabase.from('support_tickets')
+      .select('id,status,priority,created_at,first_response_at').neq('status', 'closed');
+    const t = data || [];
+    h.tiketiWazi = t.length;
+    h.tiketiDharura = t.filter(x => x.priority === 'urgent').length;
+    h.tiketiZimechelewa = t.filter(x => imechelewa(x)).length;
+  } catch { /* jedwali halipo */ }
+
+  // Malipo yaliyoanzishwa lakini hayajakamilika zaidi ya saa moja —
+  // hapa ndipo mteja anapolipa lakini mfumo haufunguki.
+  try {
+    const saaMoja = new Date(Date.now() - 3600000).toISOString();
+    const { data } = await supabase.from('payment_transactions')
+      .select('id').eq('status', 'pending').lt('created_at', saaMoja)
+      .gt('created_at', new Date(Date.now() - 3 * 86400000).toISOString());
+    h.malipoYamekwama = (data || []).length;
+  } catch { /* jedwali halipo */ }
+
+  try {
+    const { data } = await supabase.from('sms_logs')
+      .select('id').eq('status', 'failed').gte('created_at', today + 'T00:00:00');
+    h.smsZimeshindwa = (data || []).length;
+  } catch { /* jedwali halipo */ }
+
+  // Salio la Beem: likiisha, risiti na arifa zote zinakufa kimya kimya
+  try {
+    const r = await fetch(`${baseUrl}/api/sms-balance`);
+    const d = await r.json().catch(() => ({}));
+    const s = d?.balance ?? d?.credit_balance ?? d?.data?.credit_balance;
+    if (s != null && !isNaN(Number(s))) h.salioSms = Number(s);
+  } catch { /* si lazima */ }
+
+  return h;
+}
+
+export async function arifaZaKazi(supabase, baseUrl, cfg, biashara, today) {
+  const out = { afya: 0, wasiolipa: 0, skipped: 0, failed: 0 };
+  if (cfg.arifa_kazi_enabled === 'false') return { ...out, disabled: true };
+
+  let watu = [];
+  try {
+    const { data, error } = await supabase.from('arifa_wapokeaji').select('*').eq('active', true);
+    if (error) return { ...out, hakuna_jedwali: true };
+    watu = (data || []).map(r => ({ ...r, aina: salamaArr(r.aina) }));
+  } catch { return { ...out, hakuna_jedwali: true }; }
+  if (!watu.length) return { ...out, hakuna_wapokeaji: true };
+
+  const wasio = orodhaYaWasiolipa(biashara || []);
+
+  // ---- 1. Afya ya mfumo (msimamizi) ----
+  if (cfg.arifa_afya_enabled !== 'false') {
+    const wapokeaji = watu.filter(m => anapokea(m, 'afya'));
+    if (wapokeaji.length) {
+      const h = await hesabuAfya(supabase, baseUrl, biashara, wasio.length, today);
+      const ujumbe = smsAfya(h);
+      for (const m of wapokeaji) {
+        if (await tayariImetumwa(supabase, 'afya', m.simu, null, today)) { out.skipped++; continue; }
+        const r = await sendSMS(baseUrl, m.simu, ujumbe);
+        if (r.ok) { out.afya++; await andikaArifa(supabase, 'afya', m.simu, null, ujumbe); }
+        else out.failed++;
+        await new Promise(x => setTimeout(x, 250));
+      }
+    }
+  }
+
+  // ---- 2. Wateja wasiolipa (masoko na wakala) ----
+  if (cfg.arifa_wasiolipa_enabled !== 'false') {
+    for (const m of watu.filter(x => anapokea(x, 'wasiolipa'))) {
+      // Wakala anaona wateja WAKE pekee. Bila promo code, hakuna.
+      const wangu = m.wajibu === 'wakala'
+        ? (m.promo_code ? wasio.filter(w => w.promo_code === m.promo_code) : [])
+        : wasio;
+      const ujumbe = smsWasiolipa({ idadi: wangu.length, orodha: wangu });
+      if (!ujumbe) continue;   // hakuna wa kufuatilia — hakuna SMS ya bure
+      if (await tayariImetumwa(supabase, 'wasiolipa', m.simu, null, today)) { out.skipped++; continue; }
+      const r = await sendSMS(baseUrl, m.simu, ujumbe);
+      if (r.ok) { out.wasiolipa++; await andikaArifa(supabase, 'wasiolipa', m.simu, null, ujumbe); }
+      else out.failed++;
+      await new Promise(x => setTimeout(x, 250));
+    }
+  }
+
+  return out;
 }
 
 export default async function handler(req, res) {
@@ -72,7 +200,7 @@ export default async function handler(req, res) {
     // Chukua biashara zote zenye simu
     const { data: businesses, error } = await supabase
       .from('businesses')
-      .select('id, name, phone, token_active, token_expiry, trial_end, is_suspended');
+      .select('id, name, phone, token_active, token_expiry, trial_end, is_suspended, promo_code');
 
     if (error) throw error;
 
@@ -138,8 +266,18 @@ export default async function handler(req, res) {
       await new Promise(res => setTimeout(res, 300));
     }
 
-    console.log('[CRON reminders]', JSON.stringify(results));
-    return res.status(200).json({ success: true, ...results });
+    // Arifa za wafanyakazi. Zinaendeshwa baada ya za wateja ili
+    // tatizo lolote hapa lisizuie ukumbusho wa mteja kutoka.
+    let kazi = null;
+    try {
+      kazi = await arifaZaKazi(supabase, baseUrl, cfg, businesses || [], today);
+    } catch (e) {
+      console.warn('[CRON arifa za kazi]', e.message);
+      kazi = { error: e.message };
+    }
+
+    console.log('[CRON reminders]', JSON.stringify({ ...results, kazi }));
+    return res.status(200).json({ success: true, ...results, kazi });
 
   } catch (err) {
     console.error('[CRON reminders] Error:', err.message);

@@ -41,6 +41,13 @@ const CFG = {
                    'variance_float','dakika','note','status'],
     wakala_payments:['id','business_id','amount','days','phone','provider','provider_ref',
                      'external_id','status','paid_at','created_at'],
+    support_tickets:['id','business_id','user_id','user_email','business_name','subject','message',
+                     'priority','status','reply','replied_at','replied_by','created_at','ticket_no',
+                     'kitengo','phone','assigned_role','assigned_to','assigned_name',
+                     'first_response_at','closed_at','updated_at'],
+    ticket_messages:['id','ticket_id','sender_id','sender_role','sender_name','body','ni_ndani','created_at'],
+    arifa_wapokeaji:['id','jina','simu','wajibu','user_id','promo_code','aina','active','created_at'],
+    arifa_kazi_log:['id','aina','simu','kitu','day','ujumbe','created_at'],
   },
   rpcs: new Set(),        // tupu = SQL haijaendeshwa
   missing: new Set(),     // jedwali ambalo SQL yake haijaendeshwa

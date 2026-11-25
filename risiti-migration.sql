@@ -153,35 +153,46 @@ END $act$;
 -- ndiyo maana ya risiti. Lakini hapati jedwali: anapata safu MOJA,
 -- bila barua pepe, bila business_id, na namba ya simu imefichwa
 -- katikati. Kukisia namba ni kazi bure: zipo milioni.
+--
+-- Biashara inasomwa kwa to_jsonb(): safu isiyokuwepo kwenye
+-- jedwali lako (district, region...) inarudi NULL badala ya kosa.
 -- ============================================================
 CREATE OR REPLACE FUNCTION dl_risiti(p_no TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $rd$
-DECLARE v JSONB; v_no TEXT; v_ina BOOLEAN;
+DECLARE
+  v_no   TEXT;
+  v_t    payment_transactions;
+  v_b    JSONB;
+  v      JSONB;
+  v_ina  BOOLEAN;
+  v_w    JSONB;
 BEGIN
   v_no := upper(regexp_replace(COALESCE(p_no, ''), '\s', '', 'g'));
   IF v_no !~ '^DL-\d{4}-\d{6}$' THEN
     RETURN jsonb_build_object('ok', false, 'error', 'Namba ya risiti si sahihi.');
   END IF;
 
-  SELECT jsonb_build_object(
-    'ok', true, 'aina', 'duka',
-    'risiti_no', t.risiti_no, 'amount', t.amount, 'days', t.days,
-    'plan', t.plan, 'status', t.status,
-    'paid_at', t.paid_at, 'created_at', t.created_at, 'inaisha', t.inaisha,
-    'business_name', COALESCE(t.business_name, b.name),
-    'region', b.region, 'district', b.district,
-    'akaunti_aina', b.akaunti_aina,
-    'channel', t.channel, 'provider', t.provider,
-    'external_id', t.external_id, 'provider_ref', t.provider_ref,
-    'phone', regexp_replace(COALESCE(t.phone, ''), '^(\d{4})\d+(\d{2})$', '\1****\2')
-  ) INTO v
-  FROM payment_transactions t
-  LEFT JOIN businesses b ON b.id = t.business_id
-  WHERE t.risiti_no = v_no;
+  -- ---- Malipo ya duka ----
+  SELECT * INTO v_t FROM payment_transactions WHERE risiti_no = v_no;
+  IF v_t.id IS NOT NULL THEN
+    SELECT to_jsonb(b) INTO v_b FROM businesses b WHERE b.id = v_t.business_id;
+    v_b := COALESCE(v_b, '{}'::jsonb);
+    RETURN jsonb_build_object(
+      'ok', true, 'aina', 'duka',
+      'risiti_no', v_t.risiti_no, 'amount', v_t.amount, 'days', v_t.days,
+      'plan', v_t.plan, 'status', v_t.status,
+      'paid_at', v_t.paid_at, 'created_at', v_t.created_at, 'inaisha', v_t.inaisha,
+      'business_name', COALESCE(v_t.business_name, v_b->>'name'),
+      'region', v_b->>'region', 'district', v_b->>'district',
+      'akaunti_aina', COALESCE(v_b->>'akaunti_aina', 'duka'),
+      'channel', v_t.channel, 'provider', v_t.provider,
+      'external_id', v_t.external_id, 'provider_ref', v_t.provider_ref,
+      'phone', regexp_replace(COALESCE(v_t.phone, ''), '^(\d{4})\d+(\d{2})$', '\1****\2')
+    );
+  END IF;
 
-  IF v IS NOT NULL THEN RETURN v; END IF;
-
+  -- ---- Malipo ya uwakala (kama jedwali lipo) ----
   SELECT EXISTS (SELECT 1 FROM information_schema.tables
                   WHERE table_schema = 'public' AND table_name = 'wakala_payments') INTO v_ina;
   IF v_ina THEN
@@ -191,16 +202,21 @@ BEGIN
         'risiti_no', w.risiti_no, 'amount', w.amount, 'days', w.days,
         'status', w.status,
         'paid_at', w.paid_at, 'created_at', w.created_at, 'inaisha', w.inaisha,
-        'business_name', b.name, 'region', b.region, 'district', b.district,
-        'akaunti_aina', b.akaunti_aina,
         'provider', w.provider, 'external_id', w.external_id, 'provider_ref', w.provider_ref,
-        'phone', regexp_replace(COALESCE(w.phone, ''), '^(\d{4})\d+(\d{2})$', '\1****\2')
+        'phone', regexp_replace(COALESCE(w.phone, ''), '^(\d{4})\d+(\d{2})$', '\1****\2'),
+        'biz', (SELECT to_jsonb(b) FROM businesses b WHERE b.id = w.business_id)
       )
-      FROM wakala_payments w
-      LEFT JOIN businesses b ON b.id = w.business_id
-      WHERE w.risiti_no = $1
-    $q$ INTO v USING v_no;
-    IF v IS NOT NULL THEN RETURN v; END IF;
+      FROM wakala_payments w WHERE w.risiti_no = $1
+    $q$ INTO v_w USING v_no;
+
+    IF v_w IS NOT NULL THEN
+      v_b := COALESCE(v_w->'biz', '{}'::jsonb);
+      RETURN (v_w - 'biz') || jsonb_build_object(
+        'business_name', v_b->>'name',
+        'region', v_b->>'region', 'district', v_b->>'district',
+        'akaunti_aina', COALESCE(v_b->>'akaunti_aina', 'duka')
+      );
+    END IF;
   END IF;
 
   RETURN jsonb_build_object('ok', false, 'error', 'Risiti haijapatikana.');
