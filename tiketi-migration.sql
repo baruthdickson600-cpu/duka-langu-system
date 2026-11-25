@@ -186,13 +186,16 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $nk$
   SELECT EXISTS (
     SELECT 1 FROM users
      WHERE id = auth.uid()
-       AND role IN ('admin','marketing','supervisor','agent','accountant')
+       -- lower/btrim: 'Admin' na 'admin ' ni mtu yuleyule.
+       -- Bila hivi, msimamizi anazuiwa na kinga yake mwenyewe.
+       AND lower(btrim(COALESCE(role,''))) IN ('admin','marketing','supervisor','agent','accountant')
   )
 $nk$;
 
 CREATE OR REPLACE FUNCTION dl_ni_admin() RETURNS BOOLEAN
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $na$
-  SELECT EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+  SELECT EXISTS (SELECT 1 FROM users
+                  WHERE id = auth.uid() AND lower(btrim(COALESCE(role,''))) = 'admin')
 $na$;
 
 -- Biashara ya mtumiaji. Ni SECURITY DEFINER kwa makusudi: policy
