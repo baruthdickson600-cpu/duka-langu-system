@@ -53,14 +53,35 @@ CREATE INDEX IF NOT EXISTS idx_payouts_status ON payouts(status);
 CREATE INDEX IF NOT EXISTS idx_payouts_ref ON payouts(provider_ref);
 CREATE INDEX IF NOT EXISTS idx_payouts_created ON payouts(created_at);
 
+-- ============================================================
+-- KINGA
+--
+-- Jedwali hili linadhibiti pesa zinazotoka kwenye akaunti.
+-- Kivinjari HAKIGUSI jedwali hili hata kidogo — kila kitu
+-- kinapita kwenye /api/payments, ambayo inatumia service_role.
+-- Kwa hiyo tunafunga kabisa: hakuna anon, hakuna authenticated.
+--
+-- (Toleo la zamani lilikuwa na `TO anon ... USING (true)` —
+--  yaani mtu yeyote mtandaoni angeweza kusoma na kuandika
+--  maombi ya kutoa pesa.)
+-- ============================================================
 ALTER TABLE payouts ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "payouts_all" ON payouts;
 DROP POLICY IF EXISTS "payouts_public" ON payouts;
-CREATE POLICY "payouts_public" ON payouts
-  FOR ALL
-  TO anon, authenticated
-  USING (true)
-  WITH CHECK (true);
+DROP POLICY IF EXISTS "payouts_service" ON payouts;
+
+DO $r$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON payouts FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON payouts FROM authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    EXECUTE 'GRANT ALL ON payouts TO service_role';
+  END IF;
+END $r$;
 
 NOTIFY pgrst, 'reload schema';
 SELECT 'payouts table ready!' AS status;

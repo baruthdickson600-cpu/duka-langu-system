@@ -127,26 +127,29 @@ function verifyWebhook(req, rawBody) {
 // Salio la akaunti ya Snippe
 // Salio halisi la akaunti ya Snippe (pale pesa za wateja zinapoingia).
 // Tunajaribu njia kadhaa kwa sababu jina la endpoint linaweza kutofautiana.
+// Snippe hurudisha pesa kama { value, currency }. Hapa tunachukua
+// `available` (inayotumika) kabla ya `balance` (jumla) — ni yale
+// yanayoweza kutoka sasa hivi, si yale yaliyopo kwenye karatasi.
 function pickBalance(obj) {
   if (!obj || typeof obj !== 'object') return null;
   const d = obj.data || obj;
+  const num = v => {
+    if (v == null) return null;
+    const n = Number(typeof v === 'object' ? (v.value ?? v.amount) : v);
+    return Number.isFinite(n) ? n : null;
+  };
   const cands = [
-    d.available_minor, d.balance_minor, d.amount_minor,
-    d.available, d.balance, d.amount, d.current_balance,
-    d.wallet?.balance, d.wallet?.available, d.balance?.available,
+    d.available, d.available_balance, d.balance, d.current_balance,
+    d.amount, d.wallet?.available, d.wallet?.balance,
   ];
-  for (let i = 0; i < cands.length; i++) {
-    const v = cands[i];
-    if (v == null) continue;
-    const n = Number(typeof v === 'object' ? (v.amount ?? v.value) : v);
-    if (!Number.isFinite(n)) continue;
-    return i < 3 ? n / 100 : n; // tatu za kwanza ni "minor units" (senti)
-  }
+  for (const v of cands) { const n = num(v); if (n != null) return n; }
   return null;
 }
 
 async function snippeBalance() {
-  const paths = ['/v1/balance', '/v1/payouts/balance', '/v1/wallet', '/v1/account/balance'];
+  // /v1/payments/balance ndiyo rasmi (SDK za Snippe zinaitumia).
+  // Zingine ni za kurudi nyuma endapo watabadilisha.
+  const paths = ['/v1/payments/balance', '/v1/balance', '/v1/account/balance', '/v1/wallet'];
   let lastErr = 'Salio halikupatikana kutoka Snippe.';
   for (const path of paths) {
     try {
@@ -171,16 +174,32 @@ async function snippeFee(amount) {
     });
     const d = await r.json().catch(() => ({}));
     const data = d.data || d;
-    const fee = data.fee_minor != null ? Number(data.fee_minor) / 100 : Number(data.fee || 0);
-    return { ok: r.ok, fee, raw: data };
+    // Snippe: { amount, fee_amount, total_amount, currency }
+    const fee = Number(data.fee_amount ?? data.fee ?? 0);
+    const total = Number(data.total_amount ?? (Number(data.amount || amount) + fee));
+    return { ok: r.ok, fee: Number.isFinite(fee) ? fee : 0, total, raw: data };
   } catch { return { ok: false, fee: 0 }; }
 }
 
 // Tuma pesa (payout)
-async function snippeSendPayout({ amount, method, channel, recipientNumber, recipientName, bankCode, reference }) {
-  const body = method === 'bank'
-    ? { payout_type: 'bank', details: { amount: Math.round(amount), currency: 'TZS' }, bank_code: bankCode, account_number: recipientNumber, account_name: recipientName }
-    : { payout_type: 'mobile', details: { amount: Math.round(amount), currency: 'TZS' }, phone_number: toMsisdn(recipientNumber), channel, recipient_name: recipientName };
+// Muundo huu unatoka kwenye nyaraka rasmi za Snippe (disbursements).
+// Ule wa zamani (payout_type + details{}) haukuwa wa Snippe kabisa,
+// ndiyo maana kutoa pesa hakukuwahi kufanya kazi.
+export function payoutBody({ amount, method, recipientNumber, recipientName, bankCode, reference, narration, webhookUrl }) {
+  const pamoja = {
+    amount: Math.round(Number(amount) || 0),
+    recipient_name: String(recipientName || '').trim() || 'DukaLangu',
+    narration: String(narration || 'DukaLangu payout').slice(0, 100),
+    webhook_url: webhookUrl || `${APP_URL}/api/payments?action=webhook`,
+    metadata: { reference },
+  };
+  return method === 'bank'
+    ? { ...pamoja, channel: 'bank', recipient_bank: String(bankCode || '').trim().toUpperCase(), recipient_account: String(recipientNumber || '').trim() }
+    : { ...pamoja, channel: 'mobile', recipient_phone: toMsisdn(recipientNumber) };
+}
+
+async function snippeSendPayout({ amount, method, recipientNumber, recipientName, bankCode, reference, narration }) {
+  const body = payoutBody({ amount, method, recipientNumber, recipientName, bankCode, reference, narration });
   const r = await fetch(`${SNIPPE_BASE}/v1/payouts/send`, {
     method: 'POST',
     headers: {
@@ -248,9 +267,9 @@ async function notifyApprovers(supabase, po) {
 async function executePayout(supabase, po) {
   const reference = po.provider_ref || ('PO-' + Date.now().toString(36).toUpperCase());
   const gw = await snippeSendPayout({
-    amount: po.amount, method: po.method, channel: po.channel,
+    amount: po.amount, method: po.method,
     recipientNumber: po.recipient_number, recipientName: po.recipient_name,
-    bankCode: po.bank_code, reference,
+    bankCode: po.bank_code, reference, narration: po.reason,
   });
   await supabase.from('payouts').update({
     status: gw.ok ? (gw.status || 'pending') : 'failed',
@@ -655,7 +674,9 @@ export default async function handler(req, res) {
       const amount = parseFloat(req.query?.amount || '0');
       if (!amount) return res.status(400).json({ success: false, error: 'amount inahitajika.' });
       const f = await snippeFee(amount);
-      return res.status(200).json({ success: true, fee: f.fee || 0 });
+      // `raw` inarudishwa ili mhasibu aone Snippe wenyewe walisemaje —
+      // kiasi, ada na jumla — badala ya kuamini hesabu yetu tu.
+      return res.status(200).json({ success: true, fee: f.fee || 0, total: f.total || 0, raw: f.raw || null });
     }
 
     // ===== 6. PAYOUT: ANZISHA OMBI (request) — mhasibu, hakuna pesa inayotoka bado =====

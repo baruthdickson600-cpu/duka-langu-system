@@ -731,6 +731,10 @@ export function AccPayoutPage(){
         <div style={{display:'flex',justifyContent:'space-between',color:'#5C6A62',marginBottom:4}}><span>Kiasi</span><span>{fm(parseFloat(amount)||0)}</span></div>
         <div style={{display:'flex',justifyContent:'space-between',color:'#5C6A62',marginBottom:4}}><span>Ada</span><span>{fm(fee)}</span></div>
         <div style={{display:'flex',justifyContent:'space-between',fontWeight:800,color:'#0A6E47',paddingTop:6,borderTop:'1px solid #D6E2DB'}}><span>JUMLA</span><span>{fm(total)}</span></div>
+        <div style={{fontSize:10.5,color:'#9AA5A0',marginTop:7,lineHeight:1.5}}>
+          Ada imetolewa na Snippe wenyewe kwa kiasi hiki. Isipoonekana au ikionekana ya ajabu,
+          <b> usiendelee</b> — jaribu kiasi kidogo kwanza.
+        </div>
       </div>}
 
       <button onClick={()=>{const amt=parseFloat(amount)||0;if(amt<=0)return setErr('Weka kiasi sahihi.');if(!recipient.trim())return setErr('Weka namba ya kupokea.');if(!reason.trim())return setErr('Andika sababu ya matumizi.');setErr('');setConfirm(true);}} disabled={sending} style={{width:'100%',padding:14,background:sending?'#86EFAC':'linear-gradient(135deg,#0A6E47,#06502F)',color:'#fff',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:sending?'wait':'pointer',boxShadow:'0 8px 20px rgba(10,110,71,.3)'}}>
