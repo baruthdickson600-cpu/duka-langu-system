@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import {
   smsAfya, smsWasiolipa, orodhaYaWasiolipa, anapokea, imechelewa,
+  wapokeajiWa, watejaWake,
 } from '../../src/utils/tiketi.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -43,14 +44,9 @@ async function sendSMS(baseUrl, phone, message) {
 // Zinapanda juu ya cron hii badala ya kuwa function yake,
 // kwa sababu kikomo cha Vercel ni 12 na tupo 11.
 //
-// Kila kitu hapa ni cha HIARI: jedwali la arifa_wapokeaji
-// lisipokuwepo, ukumbusho wa wateja bado unatoka kama kawaida.
+// Kila kitu hapa ni cha HIARI: kikishindikana, ukumbusho wa
+// wateja bado unatoka kama kawaida.
 // ============================================================
-const salamaArr = v => {
-  if (Array.isArray(v)) return v;
-  try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; }
-};
-
 // Arifa moja ya aina moja kwa siku moja, kwa kila namba.
 // Cron ikiendeshwa mara mbili, SMS hairudiwi.
 async function tayariImetumwa(supabase, aina, simu, kitu, today) {
@@ -116,26 +112,28 @@ export async function arifaZaKazi(supabase, baseUrl, cfg, biashara, today) {
   const out = { afya: 0, wasiolipa: 0, skipped: 0, failed: 0 };
   if (cfg.arifa_kazi_enabled === 'false') return { ...out, disabled: true };
 
+  // Wapokeaji ni wafanyakazi walioko kwenye `users`. Cheo chao
+  // ndicho kinachoamua arifa — hakuna orodha nyingine ya kutunza.
   let watu = [];
   try {
-    const { data, error } = await supabase.from('arifa_wapokeaji').select('*').eq('active', true);
-    if (error) return { ...out, hakuna_jedwali: true };
-    watu = (data || []).map(r => ({ ...r, aina: salamaArr(r.aina) }));
-  } catch { return { ...out, hakuna_jedwali: true }; }
-  if (!watu.length) return { ...out, hakuna_wapokeaji: true };
+    const { data, error } = await supabase.from('users').select('*');
+    if (error) return { ...out, hakuna_watu: true };
+    watu = data || [];
+  } catch { return { ...out, hakuna_watu: true }; }
+  if (!watu.length) return { ...out, hakuna_watu: true };
 
   const wasio = orodhaYaWasiolipa(biashara || []);
 
   // ---- 1. Afya ya mfumo (msimamizi) ----
   if (cfg.arifa_afya_enabled !== 'false') {
-    const wapokeaji = watu.filter(m => anapokea(m, 'afya'));
+    const wapokeaji = wapokeajiWa(watu, 'afya');
     if (wapokeaji.length) {
       const h = await hesabuAfya(supabase, baseUrl, biashara, wasio.length, today);
       const ujumbe = smsAfya(h);
       for (const m of wapokeaji) {
-        if (await tayariImetumwa(supabase, 'afya', m.simu, null, today)) { out.skipped++; continue; }
-        const r = await sendSMS(baseUrl, m.simu, ujumbe);
-        if (r.ok) { out.afya++; await andikaArifa(supabase, 'afya', m.simu, null, ujumbe); }
+        if (await tayariImetumwa(supabase, 'afya', m.phone, null, today)) { out.skipped++; continue; }
+        const r = await sendSMS(baseUrl, m.phone, ujumbe);
+        if (r.ok) { out.afya++; await andikaArifa(supabase, 'afya', m.phone, null, ujumbe); }
         else out.failed++;
         await new Promise(x => setTimeout(x, 250));
       }
@@ -144,16 +142,14 @@ export async function arifaZaKazi(supabase, baseUrl, cfg, biashara, today) {
 
   // ---- 2. Wateja wasiolipa (masoko na wakala) ----
   if (cfg.arifa_wasiolipa_enabled !== 'false') {
-    for (const m of watu.filter(x => anapokea(x, 'wasiolipa'))) {
+    for (const m of wapokeajiWa(watu, 'wasiolipa')) {
       // Wakala anaona wateja WAKE pekee. Bila promo code, hakuna.
-      const wangu = m.wajibu === 'wakala'
-        ? (m.promo_code ? wasio.filter(w => w.promo_code === m.promo_code) : [])
-        : wasio;
+      const wangu = watejaWake(m, wasio);
       const ujumbe = smsWasiolipa({ idadi: wangu.length, orodha: wangu });
       if (!ujumbe) continue;   // hakuna wa kufuatilia — hakuna SMS ya bure
-      if (await tayariImetumwa(supabase, 'wasiolipa', m.simu, null, today)) { out.skipped++; continue; }
-      const r = await sendSMS(baseUrl, m.simu, ujumbe);
-      if (r.ok) { out.wasiolipa++; await andikaArifa(supabase, 'wasiolipa', m.simu, null, ujumbe); }
+      if (await tayariImetumwa(supabase, 'wasiolipa', m.phone, null, today)) { out.skipped++; continue; }
+      const r = await sendSMS(baseUrl, m.phone, ujumbe);
+      if (r.ok) { out.wasiolipa++; await andikaArifa(supabase, 'wasiolipa', m.phone, null, ujumbe); }
       else out.failed++;
       await new Promise(x => setTimeout(x, 250));
     }

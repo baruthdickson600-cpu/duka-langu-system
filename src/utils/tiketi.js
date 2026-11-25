@@ -187,16 +187,13 @@ export const smsWasiolipa = ({ idadi, orodha = [], jumla } = {}) => {
 
 // ============================================================
 // MGAWANYO — nani anapokea arifa gani
+//
+// Hakuna orodha ya kuandika wala mtu wa kuongeza. Wafanyakazi
+// tayari wako kwenye `users` na kila mmoja ana cheo chake —
+// cheo hicho ndicho kinachoamua arifa anazozipata, kama ilivyo
+// kwa arifa za malipo. Mtu akiajiriwa au kuondoka, hakuna
+// mahali pengine pa kwenda kubadilisha.
 // ============================================================
-export const WAJIBU = {
-  admin:  { lab: 'Msimamizi',      maelezo: 'Afya na usalama wa mfumo' },
-  masoko: { lab: 'Afisa Masoko',   maelezo: 'Wateja wote wa kufuatilia' },
-  wakala: { lab: 'Wakala',         maelezo: 'Wateja wake pekee (kwa promo code)' },
-  ufundi: { lab: 'Fundi',          maelezo: 'Matatizo ya kiufundi' },
-};
-export const WAJIBU_ZOTE = Object.keys(WAJIBU);
-export const wajibuLab = w => WAJIBU[w]?.lab || w;
-
 export const AINA_ARIFA = {
   afya:           { lab: 'Afya ya mfumo',    maelezo: 'Kila siku: tiketi, malipo yaliyokwama, SMS zilizoshindwa' },
   wasiolipa:      { lab: 'Wateja wasiolipa', maelezo: 'Kila siku: orodha ya wanaotakiwa kufuatiliwa' },
@@ -206,33 +203,48 @@ export const AINA_ARIFA = {
 export const AINA_ZOTE = Object.keys(AINA_ARIFA);
 export const ainaLab = a => AINA_ARIFA[a]?.lab || a;
 
-// Je mpokeaji huyu anapaswa kupata arifa hii?
-export const anapokea = (mpokeaji, aina) => {
-  if (!mpokeaji || !mpokeaji.active) return false;
-  const list = Array.isArray(mpokeaji.aina) ? mpokeaji.aina
-    : (typeof mpokeaji.aina === 'string' ? safeJson(mpokeaji.aina) : []);
-  if (aina === 'tiketi' && list.includes('tiketi_dharura') && !list.includes('tiketi')) return false;
-  return list.includes(aina);
+// Cheo -> arifa anazozipata
+export const ARIFA_ZA_CHEO = {
+  admin:      ['afya', 'tiketi', 'tiketi_dharura'],
+  marketing:  ['wasiolipa', 'tiketi'],
+  supervisor: ['wasiolipa', 'tiketi'],
+  agent:      ['wasiolipa', 'tiketi'],
+  accountant: [],
+};
+export const CHEO_LAB = {
+  admin: 'Msimamizi', marketing: 'Afisa Masoko',
+  supervisor: 'Supervisor', agent: 'Wakala', accountant: 'Mhasibu',
+};
+export const CHEO_ZA_KAZI = Object.keys(ARIFA_ZA_CHEO);
+export const cheoCha = u => String(u?.role || '').trim().toLowerCase();
+export const cheoLab = c => CHEO_LAB[String(c || '').toLowerCase()] || c;
+// Wakala anaona wateja WAKE pekee — kwa promo code yake
+export const niWakala = u => ['agent', 'supervisor'].includes(cheoCha(u));
+
+export const arifaZake = u => ARIFA_ZA_CHEO[cheoCha(u)] || [];
+export const anapokea = (u, aina) => {
+  if (!u || u.is_active === false || !u.phone) return false;
+  return arifaZake(u).includes(aina);
 };
 
-const safeJson = s => { try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; } };
+// Wafanyakazi wanaopaswa kupata arifa hii
+export const wapokeajiWa = (users = [], aina) => (users || []).filter(u => anapokea(u, aina));
 
-// Wapokeaji wa tiketi fulani: masoko wote, pamoja na wakala WAKE pekee.
-// Wakala wa duka lingine hapokei tiketi ya mteja asiyekuwa wake.
-export const wapokeajiWaTiketi = (wote = [], tiketi = {}) => {
+// Wapokeaji wa tiketi fulani: wote wanaopata 'tiketi', pamoja na
+// wakala WAKE pekee. Wakala wa duka lingine hapokei.
+export const wapokeajiWaTiketi = (users = [], tiketi = {}) => {
   const dharura = niDharura(tiketi.priority);
-  return wote.filter(m => {
-    if (!anapokea(m, 'tiketi') && !(dharura && anapokea(m, 'tiketi_dharura'))) return false;
-    if (m.wajibu === 'wakala') return !!m.promo_code && m.promo_code === tiketi.promo_code;
+  return (users || []).filter(u => {
+    const ok = anapokea(u, 'tiketi') || (dharura && anapokea(u, 'tiketi_dharura'));
+    if (!ok) return false;
+    if (niWakala(u)) return !!u.promo_code && u.promo_code === tiketi.promo_code;
     return true;
   });
 };
 
-// Wateja wa mpokeaji: masoko anaona wote, wakala anaona wake.
-export const watejaWake = (mpokeaji, biashara = []) =>
-  mpokeaji?.wajibu === 'wakala'
-    ? biashara.filter(b => b.promo_code && b.promo_code === mpokeaji.promo_code)
-    : biashara;
+// Wateja wa mfanyakazi: masoko na admin wanaona wote, wakala wake.
+export const watejaWake = (u, biashara = []) =>
+  niWakala(u) ? (biashara || []).filter(b => b.promo_code && b.promo_code === u.promo_code) : (biashara || []);
 
 // ============================================================
 // Wateja wasiolipa — chujio moja linalotumika kila mahali

@@ -1616,17 +1616,7 @@ export function AppProvider({children}){
   // Migration isipoendeshwa, tiketi bado inafanya kazi; namba na
   // SMS pekee ndizo hazitakuwepo.
   // ============================================================
-  const[arifaWapokeaji,setArifaWapokeaji]=useState([]);
   const[ticketMsgs,setTicketMsgs]=useState({});   // {ticket_id:[ujumbe]}
-
-  const loadArifaWapokeaji=useCallback(async()=>{
-    try{
-      const{data,error}=await supabase.from('arifa_wapokeaji').select('*').order('wajibu');
-      if(error)return[];
-      const rows=(data||[]).map(r=>({...r,aina:Array.isArray(r.aina)?r.aina:(()=>{try{const v=JSON.parse(r.aina);return Array.isArray(v)?v:[]}catch{return[]}})()}));
-      setArifaWapokeaji(rows);return rows;
-    }catch{return[]}
-  },[]);
 
   // Arifa kwa wafanyakazi. Haitegemei kurasa zilizopakiwa — inasoma
   // wapokeaji wakati huu, kwa sababu mteja anayetuma tiketi hana
@@ -1741,30 +1731,6 @@ export function AppProvider({children}){
     if(t?.phone&&t?.ticket_no)sendSMS(t.phone,smsTiketiHali({no:t.ticket_no,status:'closed'}));
   },[tickets]);
 
-  // ===== Wapokeaji wa arifa (admin pekee anabadilisha) =====
-  const saveArifaMpokeaji=useCallback(async(row)=>{
-    try{
-      const payload={jina:row.jina,simu:row.simu,wajibu:row.wajibu,
-                     promo_code:row.promo_code||null,user_id:row.user_id||null,
-                     aina:row.aina||[],active:row.active!==false};
-      const q=row.id
-        ?supabase.from('arifa_wapokeaji').update(payload).eq('id',row.id).select().maybeSingle()
-        :supabase.from('arifa_wapokeaji').insert(payload).select().maybeSingle();
-      const{data,error}=await q;
-      if(error)return{error:error.message};
-      await loadArifaWapokeaji();
-      return{ok:true,data};
-    }catch(e){return{error:e.message}}
-  },[loadArifaWapokeaji]);
-
-  const delArifaMpokeaji=useCallback(async(id)=>{
-    try{
-      const{error}=await supabase.from('arifa_wapokeaji').delete().eq('id',id);
-      if(error)return{error:error.message};
-      setArifaWapokeaji(p=>p.filter(x=>x.id!==id));
-      return{ok:true};
-    }catch(e){return{error:e.message}}
-  },[]);
 
   // ===== LIVE CHAT (Need help, ask me) =====
   const[chatMessages,setChatMessages]=useState([]);
@@ -3275,7 +3241,6 @@ export function AppProvider({children}){
     // Tickets
     createTicket,replyTicket,closeTicket,setTicketStatus,assignTicket,
     ticketMsgs,loadTicketMsgs,addTicketMsg,
-    arifaWapokeaji,loadArifaWapokeaji,saveArifaMpokeaji,delArifaMpokeaji,
     chatMessages,loadingChat,loadChatMessages,sendChatMessage,markChatRead,unreadChatCount,
     // Tokens & Promo & Payments
     genToken,activateToken,addPromo,deletePromo,createAgent,registerCustomerByAgent,submitPayment,approvePayment,rejectPayment,initiatePayment,checkPaymentStatus,testPayment,systemExpenses,

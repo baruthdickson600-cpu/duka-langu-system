@@ -389,7 +389,7 @@ export default function CommsCenterPage(){
     a.href=URL.createObjectURL(b);a.download=`sms-history-${new Date().toISOString().slice(0,10)}.csv`;a.click();
   };
 
-  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['uwakala','📲 Uwakala'],['mgawanyo','👥 Mgawanyo wa Arifa'],['settings','⚙️ Mipangilio']];
+  const TABS=[['dashboard','📊 Dashibodi'],['send','📤 Tuma SMS'],['templates','📝 Templates'],['history','📋 Historia'],['uwakala','📲 Uwakala'],['mgawanyo','📣 Arifa za Wafanyakazi'],['settings','⚙️ Mipangilio']];
 
   return <div className="page-enter">
     <div style={{marginBottom:16}}>

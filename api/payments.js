@@ -707,11 +707,14 @@ export default async function handler(req, res) {
       if (c.arifa_kazi_enabled === 'false' || c.arifa_tiketi_enabled === 'false')
         return res.status(200).json({ success: true, skipped: true, reason: 'Arifa za tiketi zimezimwa.' });
 
+      // Wapokeaji wanatoka kwenye `users` kwa cheo chao — hakuna
+      // orodha nyingine ya kutunza. Mtu akiajiriwa au kuondoka,
+      // arifa zinafuata mara moja.
       let watu = [];
       try {
-        const { data, error } = await supabase.from('arifa_wapokeaji').select('*').eq('active', true);
-        if (error) return res.status(200).json({ success: true, sent: 0, reason: 'Jedwali la wapokeaji halipo.' });
-        watu = (data || []).map(r => ({ ...r, aina: Array.isArray(r.aina) ? r.aina : (() => { try { const v = JSON.parse(r.aina); return Array.isArray(v) ? v : []; } catch { return []; } })() }));
+        const { data, error } = await supabase.from('users').select('*');
+        if (error) return res.status(200).json({ success: true, sent: 0, reason: 'Imeshindikana kusoma wafanyakazi.' });
+        watu = data || [];
       } catch { return res.status(200).json({ success: true, sent: 0 }); }
 
       // Wakala apate za wateja WAKE pekee — promo code inatoka
@@ -730,12 +733,12 @@ export default async function handler(req, res) {
 
       let sent = 0;
       for (const m of wapokeaji) {
-        if (!m.simu) continue;
+        if (!m.phone) continue;
         try {
           // Hakuna business_id: arifa ni gharama ya DukaLangu
           const r = await fetch(`${APP_URL}/api/send-sms`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: m.simu, message: ujumbe }),
+            body: JSON.stringify({ phone: m.phone, message: ujumbe }),
           });
           const d = await r.json().catch(() => ({}));
           if (d?.success) sent++;

@@ -8,8 +8,8 @@ import {
   niTiketiHalali, safishaTiketi,
   tanguLini, imechelewa,
   smsTiketiMpya, smsTiketiHali, smsTiketiKazi, smsAfya, smsWasiolipa,
-  WAJIBU_ZOTE, wajibuLab, AINA_ZOTE, ainaLab,
-  anapokea, wapokeajiWaTiketi, watejaWake,
+  AINA_ZOTE, ainaLab, ARIFA_ZA_CHEO, CHEO_ZA_KAZI, cheoCha, cheoLab,
+  arifaZake, anapokea, wapokeajiWa, wapokeajiWaTiketi, watejaWake,
   siraZaMteja, anahitajiKufuatiliwa, orodhaYaWasiolipa,
   niGsm7, sehemuZaSms, urefuWaSms,
 } from './tiketi';
@@ -264,57 +264,92 @@ describe('SMS — zote ni SMS MOJA ya GSM-7', () => {
   });
 });
 
-describe('mgawanyo wa arifa', () => {
-  const masoko = { jina: 'Afisa', simu: '0713000000', wajibu: 'masoko', active: true, aina: ['wasiolipa', 'tiketi'] };
-  const wakala1 = { jina: 'W1', simu: '0714000000', wajibu: 'wakala', active: true, aina: ['tiketi'], promo_code: 'WK01' };
-  const wakala2 = { jina: 'W2', simu: '0715000000', wajibu: 'wakala', active: true, aina: ['tiketi'], promo_code: 'WK02' };
-  const adminD = { jina: 'B', simu: '0617288752', wajibu: 'admin', active: true, aina: ['afya', 'tiketi_dharura'] };
-  const amezimwa = { ...masoko, simu: '0716000000', active: false };
+describe('mgawanyo wa arifa — kwa cheo, si kwa orodha', () => {
+  const admin  = { id:'1', name:'Baruth', role:'admin',      phone:'0617288752' };
+  const masoko = { id:'2', name:'Asha',   role:'marketing',  phone:'0713000000' };
+  const wakala1= { id:'3', name:'Juma',   role:'agent',      phone:'0714000000', promo_code:'WK01' };
+  const wakala2= { id:'4', name:'Neema',  role:'supervisor', phone:'0715000000', promo_code:'WK02' };
+  const mhasibu= { id:'5', name:'Damas',  role:'accountant', phone:'0786000000' };
+  const wote = [admin, masoko, wakala1, wakala2, mhasibu];
 
-  it('anapokea', () => {
-    expect(anapokea(masoko, 'tiketi')).toBe(true);
-    expect(anapokea(masoko, 'afya')).toBe(false);
-    expect(anapokea(amezimwa, 'tiketi')).toBe(false);
-    expect(anapokea(null, 'tiketi')).toBe(false);
+  it('cheo kinaamua arifa — hakuna orodha ya kuandika', () => {
+    expect(arifaZake(admin)).toContain('afya');
+    expect(arifaZake(masoko)).toContain('wasiolipa');
+    expect(arifaZake(masoko)).not.toContain('afya');
+    expect(arifaZake(mhasibu)).toEqual([]);
   });
 
-  it('aina kama JSON text (kutoka database) inasomwa', () => {
-    expect(anapokea({ ...masoko, aina: '["tiketi"]' }, 'tiketi')).toBe(true);
-    expect(anapokea({ ...masoko, aina: 'si-json' }, 'tiketi')).toBe(false);
+  it('cheo cha herufi kubwa au chenye nafasi bado kinatambulika', () => {
+    expect(anapokea({ ...admin, role:' Admin ' }, 'afya')).toBe(true);
+    expect(anapokea({ ...masoko, role:'MARKETING' }, 'tiketi')).toBe(true);
+    expect(cheoCha({ role:'  Agent ' })).toBe('agent');
   });
 
-  it('mwenye dharura pekee hapati tiketi za kawaida', () => {
-    expect(anapokea(adminD, 'tiketi')).toBe(false);
-    expect(anapokea(adminD, 'tiketi_dharura')).toBe(true);
+  it('asiye na namba ya simu hapokei chochote', () => {
+    expect(anapokea({ ...admin, phone:'' }, 'afya')).toBe(false);
+    expect(anapokea({ ...admin, phone:null }, 'afya')).toBe(false);
+  });
+
+  it('aliyezimwa hapokei', () => {
+    expect(anapokea({ ...admin, is_active:false }, 'afya')).toBe(false);
+  });
+
+  it('mteja wa kawaida hapokei arifa za mfumo', () => {
+    expect(anapokea({ role:'office', phone:'0755000000' }, 'tiketi')).toBe(false);
+    expect(anapokea({ role:'employee', phone:'0755000000' }, 'tiketi')).toBe(false);
+  });
+
+  it('wapokeajiWa inachuja kwa aina', () => {
+    expect(wapokeajiWa(wote, 'afya').map(u => u.name)).toEqual(['Baruth']);
+    expect(wapokeajiWa(wote, 'wasiolipa').map(u => u.name)).toEqual(['Asha', 'Juma', 'Neema']);
+    expect(wapokeajiWa([], 'afya')).toEqual([]);
   });
 
   it('wakala anapata tiketi za wateja WAKE pekee', () => {
-    const wote = [masoko, wakala1, wakala2];
-    const got = wapokeajiWaTiketi(wote, { priority: 'normal', promo_code: 'WK01' }).map(x => x.jina);
-    expect(got).toContain('Afisa');
-    expect(got).toContain('W1');
-    expect(got).not.toContain('W2');
+    const got = wapokeajiWaTiketi(wote, { priority:'normal', promo_code:'WK01' }).map(u => u.name);
+    expect(got).toContain('Asha');
+    expect(got).toContain('Juma');
+    expect(got).not.toContain('Neema');
+  });
+
+  it('admin anapata kila tiketi, hata ya duka lisilo na wakala', () => {
+    expect(wapokeajiWaTiketi(wote, { priority:'normal' }).map(u => u.name)).toContain('Baruth');
   });
 
   it('tiketi bila promo_code haimfikii wakala yeyote', () => {
-    const got = wapokeajiWaTiketi([masoko, wakala1], { priority: 'normal' }).map(x => x.jina);
-    expect(got).toEqual(['Afisa']);
+    const got = wapokeajiWaTiketi([wakala1, wakala2], { priority:'normal' });
+    expect(got).toEqual([]);
   });
 
-  it('tiketi ya dharura inamfikia admin aliyechagua dharura pekee', () => {
-    const got = wapokeajiWaTiketi([masoko, adminD], { priority: 'urgent', promo_code: 'WK01' }).map(x => x.jina);
-    expect(got).toContain('B');
-    expect(got).toContain('Afisa');
+  it('tiketi ya dharura inamfikia admin', () => {
+    expect(wapokeajiWaTiketi(wote, { priority:'urgent', promo_code:'WK01' }).map(u => u.name)).toContain('Baruth');
   });
 
-  it('watejaWake: masoko anaona wote, wakala anaona wake', () => {
-    const biz = [{ id: 1, promo_code: 'WK01' }, { id: 2, promo_code: 'WK02' }, { id: 3 }];
+  it('mhasibu hapokei tiketi', () => {
+    expect(wapokeajiWaTiketi(wote, { priority:'urgent', promo_code:'WK01' }).map(u => u.name)).not.toContain('Damas');
+  });
+
+  it('watejaWake: masoko na admin wanaona wote, wakala wake', () => {
+    const biz = [{ id:1, promo_code:'WK01' }, { id:2, promo_code:'WK02' }, { id:3 }];
     expect(watejaWake(masoko, biz)).toHaveLength(3);
+    expect(watejaWake(admin, biz)).toHaveLength(3);
     expect(watejaWake(wakala1, biz).map(b => b.id)).toEqual([1]);
+    expect(watejaWake(wakala2, biz).map(b => b.id)).toEqual([2]);
   });
 
-  it('wajibu na aina zote zina majina', () => {
-    WAJIBU_ZOTE.forEach(w => expect(wajibuLab(w)).toBeTruthy());
+  it('wakala asiye na promo code haoni mteja yeyote', () => {
+    expect(watejaWake({ ...wakala1, promo_code:null }, [{ id:1, promo_code:'WK01' }])).toEqual([]);
+  });
+
+  it('vyeo vyote vina jina na orodha ya arifa', () => {
+    CHEO_ZA_KAZI.forEach(c => {
+      expect(cheoLab(c)).toBeTruthy();
+      expect(Array.isArray(ARIFA_ZA_CHEO[c])).toBe(true);
+      ARIFA_ZA_CHEO[c].forEach(a => expect(AINA_ZOTE).toContain(a));
+    });
+  });
+
+  it('aina zote zina majina', () => {
     AINA_ZOTE.forEach(a => expect(ainaLab(a)).toBeTruthy());
   });
 });
