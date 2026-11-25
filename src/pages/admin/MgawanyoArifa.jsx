@@ -175,7 +175,7 @@ export default function MgawanyoArifa(){
         m={smsTiketiMpya({no:'TK-2026-000123',kitengo:'kiufundi'})}/>
     </div>
 
-    <HaririMpokeaji row={hariri} onClose={()=>setHariri(null)}
+    <HaririMpokeaji row={hariri} tayariWapo={arifaWapokeaji} onClose={()=>setHariri(null)}
       onSave={async r=>{
         const res=await saveArifaMpokeaji(r);
         setJibu(res?.error?{ok:false,text:res.error}:{ok:true,text:'Imehifadhiwa.'});
@@ -203,28 +203,90 @@ function Mfano({jina,m}){
   </div>;
 }
 
-function HaririMpokeaji({row,onClose,onSave,onDel}){
+// Cheo kwenye mfumo -> wajibu wa arifa. Kisichojulikana kinaachwa
+// kwa msimamizi kuchagua, badala ya kubahatisha.
+const WAJIBU_YA_CHEO={admin:'admin',marketing:'masoko',supervisor:'wakala',agent:'wakala'};
+const CHEO_LAB={admin:'Admin',marketing:'Masoko',supervisor:'Supervisor',agent:'Wakala',accountant:'Mhasibu'};
+
+function HaririMpokeaji({row,onClose,onSave,onDel,tayariWapo=[]}){
   const[f,setF]=useState(row||{});
+  const[watu,setWatu]=useState([]);
+  const[inasoma,setInasoma]=useState(true);
   useEffect(()=>{setF(row||{})},[row]);
+
+  // Wafanyakazi wa DukaLangu wapo kwenye `users` — hakuna sababu ya
+  // kuandika jina na namba tena kwa mkono. Kuandika kwa mkono
+  // kunaleta namba zenye makosa ambazo hakuna anayezigundua
+  // mpaka siku arifa muhimu inaposhindwa kufika.
+  useEffect(()=>{(async()=>{
+    setInasoma(true);
+    try{
+      const{data}=await supabase.from('users')
+        .select('id,name,email,phone,role,promo_code,is_active')
+        .in('role',['admin','marketing','supervisor','agent','accountant'])
+        .order('role');
+      setWatu((data||[]).filter(u=>u.is_active!==false));
+    }catch{setWatu([])}
+    setInasoma(false);
+  })()},[]);
+
   if(!row)return null;
 
   const geuza=a=>setF(p=>({...p,aina:(p.aina||[]).includes(a)
     ?(p.aina||[]).filter(x=>x!==a):[...(p.aina||[]),a]}));
 
-  const simuSahihi=/^0\d{9}$|^255\d{9}$|^\+255\d{9}$/.test(String(f.simu||'').replace(/\s/g,''));
+  const chagua=id=>{
+    const u=watu.find(x=>x.id===id);
+    if(!u)return setF({...f,user_id:null});
+    setF({...f,user_id:u.id,jina:u.name||u.email||'',simu:(u.phone||'').replace(/\s/g,''),
+      wajibu:WAJIBU_YA_CHEO[u.role]||f.wajibu||'masoko',
+      promo_code:u.promo_code||f.promo_code||''});
+  };
+
+  const simu=String(f.simu||'').replace(/\s/g,'');
+  const simuSahihi=/^0\d{9}$|^255\d{9}$|^\+255\d{9}$/.test(simu);
+  const aliyechaguliwa=watu.find(x=>x.id===f.user_id);
+  // Mtu aliyekwisha ongezwa kwa wajibu huohuo asirudiwe
+  const tayari=id=>tayariWapo.some(m=>m.user_id===id&&m.id!==row.id);
 
   return <Modal open onClose={onClose} title={row.id?'Hariri mpokeaji':'Ongeza mpokeaji'}>
-    <Input label="Jina" value={f.jina||''} onChange={e=>setF({...f,jina:e.target.value})} placeholder="Mfano: Asha Mwinyi"/>
+    <Sel label="Mfanyakazi" value={f.user_id||''} onChange={e=>chagua(e.target.value)}
+      options={[
+        {value:'',label:inasoma?'Inasoma wafanyakazi…':'— Chagua mfanyakazi —'},
+        ...watu.map(u=>({value:u.id,
+          label:`${u.name||u.email||'Bila jina'} · ${CHEO_LAB[u.role]||u.role}${u.phone?'':' · HANA SIMU'}${tayari(u.id)?' · ameshaongezwa':''}`})),
+      ]}/>
+
+    {!inasoma&&!watu.length&&<div style={{fontSize:11.5,color:'#C2412D',marginTop:-6,marginBottom:10,lineHeight:1.6}}>
+      Hakuna mfanyakazi aliyepatikana. Hakikisha wana akaunti kwenye mfumo na cheo chao si cha mteja.
+    </div>}
+
+    {aliyechaguliwa&&!aliyechaguliwa.phone&&<div style={{background:'#FFF8E6',color:'#92400E',fontSize:11.5,
+      padding:'9px 12px',borderRadius:10,marginBottom:10,lineHeight:1.6}}>
+      <b>{aliyechaguliwa.name||aliyechaguliwa.email}</b> hana namba ya simu kwenye akaunti yake.
+      Iandike hapa chini — kisha mwambie aiweke kwenye wasifu wake ili zote zilingane.
+    </div>}
+
+    {tayari(f.user_id)&&<div style={{background:'#FFF8E6',color:'#92400E',fontSize:11.5,
+      padding:'9px 12px',borderRadius:10,marginBottom:10}}>
+      Mtu huyu ameshaongezwa. Hariri ile iliyopo badala ya kuongeza nyingine.
+    </div>}
+
     <Input label="Namba ya simu" value={f.simu||''} onChange={e=>setF({...f,simu:e.target.value.replace(/\s/g,'')})} placeholder="0713000000"/>
     {f.simu&&!simuSahihi&&<div style={{fontSize:11,color:'#C2412D',marginTop:-6,marginBottom:8}}>Namba si sahihi — tumia 0713000000 au 255713000000</div>}
 
     <Sel label="Wajibu" value={f.wajibu||'masoko'} onChange={e=>setF({...f,wajibu:e.target.value})}
       options={WAJIBU_ZOTE.map(w=>({value:w,label:wajibuLab(w)}))}/>
+    <div style={{fontSize:10.5,color:MUT,marginTop:-6,marginBottom:10,lineHeight:1.6}}>
+      Kimejazwa kutokana na cheo chake mfumoni. Unaweza kukibadilisha — mfano mhasibu akataka kupokea afya ya mfumo.
+    </div>
 
     {f.wajibu==='wakala'&&<>
       <Input label="Promo code yake" value={f.promo_code||''} onChange={e=>setF({...f,promo_code:e.target.value.toUpperCase()})} placeholder="WK01"/>
-      <div style={{fontSize:11,color:MUT,marginTop:-6,marginBottom:10,lineHeight:1.6}}>
-        Hii ndiyo inayoamua wateja wake. Bila promo code, hatapokea arifa yoyote ya mteja.
+      <div style={{fontSize:11,color:f.promo_code?MUT:'#C2412D',marginTop:-6,marginBottom:10,lineHeight:1.6}}>
+        {f.promo_code
+          ?'Hii ndiyo inayoamua wateja wake.'
+          :'Hana promo code mfumoni. Bila hiyo hatapokea arifa yoyote ya mteja — mwekee kwanza kwenye akaunti yake.'}
       </div>
     </>}
 
@@ -249,7 +311,7 @@ function HaririMpokeaji({row,onClose,onSave,onDel}){
     <div style={{display:'flex',gap:8}}>
       {row.id&&<Btn v="ghost" style={{flex:1,color:'#C2412D'}} onClick={()=>onDel(row.id)}>Ondoa</Btn>}
       <Btn v="ghost" style={{flex:1}} onClick={onClose}>Acha</Btn>
-      <Btn style={{flex:2}} disabled={!f.jina?.trim()||!simuSahihi} onClick={()=>onSave(f)}>Hifadhi</Btn>
+      <Btn style={{flex:2}} disabled={!f.jina?.trim()||!simuSahihi||!(f.aina||[]).length} onClick={()=>onSave(f)}>Hifadhi</Btn>
     </div>
   </Modal>;
 }

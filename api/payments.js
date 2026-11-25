@@ -23,6 +23,22 @@ import { ujumbeWaRisiti, kifurushiJina, RISITI } from '../src/utils/risiti.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY;
+
+// Je tunatumia ufunguo wa service_role kweli, au tumeshuka kwenye
+// ufunguo wa anon? Tofauti hii ni kubwa: service_role inapita RLS
+// zote, anon inazuiwa nazo. Ikiwa haijawekwa, API inajiona kuwa na
+// mamlaka wakati haina — na kinga yoyote tunayoandika haifanyi kazi.
+const NI_SERVICE = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ONYO_UFUNGUO = 'SUPABASE_SERVICE_ROLE_KEY haijawekwa kwenye Vercel — API inafanya kazi kama anon. Weka ufunguo huo kisha deploy upya.';
+
+// Kosa la RLS lisionekane kama tatizo la jedwali wakati ni la ufunguo
+function kosaLaDb(e) {
+  const m = e?.message || String(e || '');
+  if (/permission denied|row-level security|42501/i.test(m) && !NI_SERVICE) {
+    return `${m} — ${ONYO_UFUNGUO}`;
+  }
+  return m;
+}
 const SNIPPE_KEY = process.env.SNIPPE_API_KEY || process.env.PAYMENT_API_KEY || '';
 const WEBHOOK_SECRET = process.env.SNIPPE_WEBHOOK_SECRET || process.env.PAYMENT_WEBHOOK_SECRET || '';
 const APP_URL = process.env.APP_URL || process.env.VITE_APP_URL || 'https://dukalangu.com';
@@ -536,7 +552,7 @@ export default async function handler(req, res) {
         channel: channel || null, provider: 'snippe',
         provider_ref: gw.snippeRef, external_id: gw.snippeRef || null, status: 'pending',
       }).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
 
       return res.status(200).json({
         success: true, reference: gw.snippeRef, transaction_id: tx.id, mode: 'gateway',
@@ -556,7 +572,7 @@ export default async function handler(req, res) {
         phone: phone || null, amount: amount || 0, plan: plan || 'basic', days: days || 30,
         provider: 'test', provider_ref: reference, status: 'paid', paid_at: new Date().toISOString(),
       }).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
       // Washa biashara + tuma SMS kwa staff (kama malipo halisi)
       const act = await activateBusiness(supabase, tx);
       return res.status(200).json({ success: true, test: true, reference, message: '✅ JARIBIO: Malipo yameigwa, mfumo umejifungua, SMS zimetumwa kwa staff.', ...act });
@@ -707,7 +723,7 @@ export default async function handler(req, res) {
         status: 'pending_approval', admin_approved: false, marketing_approved: false,
         requested_by: requested_by || null, requested_by_id: requested_by_id || null,
       }).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
 
       // Arifa Admin + Marketing waidhinishe
       await notifyApprovers(supabase, po);
@@ -744,7 +760,7 @@ export default async function handler(req, res) {
       upd.status = bothApproved ? 'approved' : 'pending_approval';
 
       const { data: updated, error: ue } = await supabase.from('payouts').update(upd).eq('id', payout_id).select().single();
-      if (ue) return res.status(400).json({ success: false, error: 'DB: ' + ue.message });
+      if (ue) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(ue) });
 
       // Idhini zote mbili zikiisha → tuma pesa otomatiki
       if (bothApproved) {
@@ -766,7 +782,7 @@ export default async function handler(req, res) {
       const { data: updated, error } = await supabase.from('payouts').update({
         status: 'rejected', rejected_by: approver_name || role, rejected_reason: reason || null,
       }).eq('id', payout_id).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
       await supabase.from('notifications').insert({
         target_type: 'role', target_id: 'accountant', type: 'error',
         title: '❌ Ombi la Kutoa Pesa Limekataliwa',
@@ -781,7 +797,7 @@ export default async function handler(req, res) {
       let q = supabase.from('payouts').select('*').order('created_at', { ascending: false }).limit(50);
       if (status) q = q.eq('status', status);
       const { data, error } = await q;
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
       return res.status(200).json({ success: true, payouts: data || [] });
     }
 
@@ -810,7 +826,7 @@ export default async function handler(req, res) {
         business_id, bundle_id: bundle_id || null, sms_count, amount,
         provider: 'snippe', provider_ref: gw.snippeRef, status: 'pending',
       }).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
 
       return res.status(200).json({
         success: true, reference: gw.snippeRef, purchase_id: buy.id,
@@ -867,7 +883,7 @@ export default async function handler(req, res) {
         provider: 'snippe', provider_ref: gw.snippeRef || reference,
         external_id: gw.snippeRef || null, status: 'pending',
       }).select().single();
-      if (error) return res.status(400).json({ success: false, error: 'DB: ' + error.message });
+      if (error) return res.status(400).json({ success: false, error: 'DB: ' + kosaLaDb(error) });
 
       return res.status(200).json({
         success: true, reference: gw.snippeRef || reference, payment_id: pay.id,
