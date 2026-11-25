@@ -22,6 +22,12 @@ window.fetch = async (url, opt = {}) => {
     try { window.__api.sms.push(JSON.parse(opt.body || '{}')); } catch (_) {}
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
+  // Arifa ya tiketi kwa wafanyakazi — sasa inafanywa na server
+  if (u.includes('action=tiketi_arifa')) {
+    window.__api.tiketiArifa = window.__api.tiketiArifa || [];
+    try { window.__api.tiketiArifa.push(JSON.parse(opt.body || '{}')); } catch (_) {}
+    return new Response(JSON.stringify({ success: true, sent: 1 }), { status: 200 });
+  }
 
   if (u.includes('/rest/v1/sales') && (opt.method || 'GET').toUpperCase() === 'POST') {
     let row = {}; try { row = JSON.parse(opt.body || '{}') } catch (_) {}

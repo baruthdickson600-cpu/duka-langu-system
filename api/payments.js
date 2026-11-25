@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { beiYaUwakala } from '../src/utils/wakala.js';
 import { ujumbeWaRisiti, kifurushiJina, RISITI } from '../src/utils/risiti.js';
+import { smsTiketiKazi, wapokeajiWaTiketi } from '../src/utils/tiketi.js';
 
 // ============================================================
 // DukaLangu — Mfumo wa Malipo (Auto-activation) — SNIPPE
@@ -676,6 +677,73 @@ export default async function handler(req, res) {
         risiti_no: rs?.risiti_no || null, inaisha: rs?.inaisha || null,
         external_id: tx.external_id || null, channel: tx.channel || null, plan: tx.plan || null,
       });
+    }
+
+    // ============================================================
+    // TIKETI: ARIFA KWA WAFANYAKAZI
+    //
+    // Hii lazima iwe hapa, si kwenye kivinjari. Mteja anayetuma
+    // tiketi hana ruhusa ya kusoma orodha ya wapokeaji (RLS
+    // inamzuia, kwa usahihi) — kwa hiyo kivinjari chake kiliona
+    // orodha tupu na hakuna SMS iliyowahi kutoka.
+    //
+    // Pia: namba za simu za wafanyakazi hazipaswi kushuka
+    // kwenye kivinjari cha mteja hata kidogo.
+    //
+    // Kurudiwa kunazuiwa na `sms_kazi_at`: tiketi moja, arifa moja.
+    // ============================================================
+    if (action === 'tiketi_arifa' && req.method === 'POST') {
+      const body = parseJSON(await readRawBody(req));
+      const id = body?.ticket_id;
+      if (!id) return res.status(400).json({ success: false, error: 'ticket_id inahitajika.' });
+
+      const { data: t, error: te } = await supabase.from('support_tickets').select('*').eq('id', id).maybeSingle();
+      if (te || !t) return res.status(404).json({ success: false, error: 'Tiketi haijapatikana.' });
+      if (t.sms_kazi_at) return res.status(200).json({ success: true, skipped: true, reason: 'Arifa tayari imetumwa.' });
+
+      const { data: cfgRows } = await supabase.from('settings').select('key,value')
+        .in('key', ['arifa_kazi_enabled', 'arifa_tiketi_enabled']);
+      const c = {}; (cfgRows || []).forEach(r => { c[r.key] = r.value; });
+      if (c.arifa_kazi_enabled === 'false' || c.arifa_tiketi_enabled === 'false')
+        return res.status(200).json({ success: true, skipped: true, reason: 'Arifa za tiketi zimezimwa.' });
+
+      let watu = [];
+      try {
+        const { data, error } = await supabase.from('arifa_wapokeaji').select('*').eq('active', true);
+        if (error) return res.status(200).json({ success: true, sent: 0, reason: 'Jedwali la wapokeaji halipo.' });
+        watu = (data || []).map(r => ({ ...r, aina: Array.isArray(r.aina) ? r.aina : (() => { try { const v = JSON.parse(r.aina); return Array.isArray(v) ? v : []; } catch { return []; } })() }));
+      } catch { return res.status(200).json({ success: true, sent: 0 }); }
+
+      // Wakala apate za wateja WAKE pekee — promo code inatoka
+      // kwenye biashara yenyewe, si kwenye ombi la kivinjari.
+      let promo = null;
+      if (t.business_id) {
+        const { data: bz } = await supabase.from('businesses').select('promo_code').eq('id', t.business_id).maybeSingle();
+        promo = bz?.promo_code || null;
+      }
+
+      const wapokeaji = wapokeajiWaTiketi(watu, { priority: t.priority, promo_code: promo });
+      const ujumbe = smsTiketiKazi({
+        no: t.ticket_no, biashara: t.business_name, kitengo: t.kitengo,
+        priority: t.priority, simu: t.phone,
+      });
+
+      let sent = 0;
+      for (const m of wapokeaji) {
+        if (!m.simu) continue;
+        try {
+          // Hakuna business_id: arifa ni gharama ya DukaLangu
+          const r = await fetch(`${APP_URL}/api/send-sms`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: m.simu, message: ujumbe }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (d?.success) sent++;
+        } catch { /* mmoja akishindikana, wengine waendelee */ }
+      }
+
+      try { await supabase.from('support_tickets').update({ sms_kazi_at: new Date().toISOString() }).eq('id', id); } catch { /* safu haipo */ }
+      return res.status(200).json({ success: true, sent, waliopangwa: wapokeaji.length });
     }
 
     // ===== 4. PAYOUT: SALIO (balance) =====

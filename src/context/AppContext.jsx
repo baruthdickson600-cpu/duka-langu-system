@@ -6,7 +6,7 @@ import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/p
 import { API_BASE } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,getStuckSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
-import {smsTiketiMpya,smsTiketiHali,smsTiketiKazi,wapokeajiWaTiketi} from '../utils/tiketi';
+import {smsTiketiMpya,smsTiketiHali} from '../utils/tiketi';
 import {computePeriodFinance,localDateStr} from '../utils/helpers';
 
 const Ctx=createContext(null);
@@ -1631,16 +1631,20 @@ export function AppProvider({children}){
   // Arifa kwa wafanyakazi. Haitegemei kurasa zilizopakiwa — inasoma
   // wapokeaji wakati huu, kwa sababu mteja anayetuma tiketi hana
   // ruhusa ya kuwasoma (RLS), kwa hiyo orodha huwa tupu kwake.
-  const arifuKaziTiketi=useCallback(async(t)=>{
+  // Arifa kwa wafanyakazi inafanywa na SERVER, si hapa.
+  //
+  // Mteja anayetuma tiketi hana ruhusa ya kusoma orodha ya
+  // wapokeaji — RLS inamzuia, na hiyo ni sahihi. Tukijaribu
+  // kuisoma hapa tunapata orodha tupu na hakuna SMS inayotoka.
+  // Pia namba za simu za wafanyakazi hazipaswi kushuka kwenye
+  // kivinjari cha mteja hata kidogo.
+  const arifuKaziTiketi=useCallback(async(ticketId)=>{
+    if(!ticketId)return;
     try{
-      const{data:cfg}=await supabase.from('settings').select('key,value').in('key',['arifa_kazi_enabled','arifa_tiketi_enabled']);
-      const c={};(cfg||[]).forEach(r=>{c[r.key]=r.value});
-      if(c.arifa_kazi_enabled==='false'||c.arifa_tiketi_enabled==='false')return;
-      const{data,error}=await supabase.from('arifa_wapokeaji').select('*').eq('active',true);
-      if(error||!data?.length)return;
-      const rows=data.map(r=>({...r,aina:Array.isArray(r.aina)?r.aina:(()=>{try{return JSON.parse(r.aina)||[]}catch{return[]}})()}));
-      const ujumbe=smsTiketiKazi({no:t.ticket_no,biashara:t.business_name,kitengo:t.kitengo,priority:t.priority,simu:t.phone});
-      wapokeajiWaTiketi(rows,t).forEach(m=>sendSMS(m.simu,ujumbe));
+      await fetch(`${API_BASE}/api/payments?action=tiketi_arifa`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ticket_id:ticketId}),
+      });
     }catch(e){console.warn('[arifa tiketi]',e.message)}
   },[]);
 
@@ -1665,7 +1669,7 @@ export function AppProvider({children}){
       // kwamba ombi lake limefika, si ahadi ya mdomo.
       const simu=tk.phone;
       if(simu)sendSMS(simu,smsTiketiMpya({no:f.ticket_no,kitengo}));
-      await arifuKaziTiketi({...f,promo_code:biz?.promo_code});
+      await arifuKaziTiketi(f.id);
     }
     return f;
   },[bizId,user,biz,arifuKaziTiketi]);

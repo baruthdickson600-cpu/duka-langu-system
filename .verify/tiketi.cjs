@@ -87,6 +87,30 @@ async function run(name,seed,fn){
       return {};
     }));
 
+  // ---- 1b. Arifa kwa wafanyakazi inafanywa na SERVER, si kivinjari ----
+  // (Mteja hana ruhusa ya kusoma wapokeaji; ikifanywa hapa, hakuna
+  //  SMS inayotoka na tiketi zinaingia kimya kimya.)
+  matokeo.push(await run('1b. arifa ya wafanyakazi inaombwa kwa server',
+    {db:baseDB(),uid:OWNER,role:'office',render:'tiketi'},
+    async p=>{
+      const r=await p.evaluate(async()=>{
+        window.__api.tiketiArifa=[];
+        const t=await window.__app.createTicket('Mfumo umesimama','Haufunguki kabisa','urgent','kiufundi');
+        await new Promise(x=>setTimeout(x,300));
+        return {id:t?.id,no:t?.ticket_no,
+          arifa:window.__api.tiketiArifa,
+          smsZaMteja:window.__api.sms.map(s=>s.message)};
+      });
+      // Bila namba ya tiketi (fake haina trigger), arifa hairuki
+      if(!r.no)return {};
+      if(!r.arifa.length)return{bad:'server haikuombwa kutuma arifa'};
+      if(r.arifa[0].ticket_id!==r.id)return{bad:'ticket_id si sahihi kwenye ombi'};
+      // Namba za wafanyakazi zisishuke kwenye kivinjari cha mteja
+      const vujo=JSON.stringify(r.arifa).match(/07\d{8}/g);
+      if(vujo)return{bad:'namba za simu zimevuja kwa mteja: '+vujo[0]};
+      return {};
+    }));
+
   // ---- 2. Maelezo ya ndani hayamfikii mteja ----
   matokeo.push(await run('2. maelezo ya ndani hayaonekani kwa mteja',
     {db:baseDB({tickets:tiketiZaMfano,msgs:[
