@@ -32,13 +32,15 @@ const SWICHI=[
 ];
 
 export default function MgawanyoArifa(){
-  const{businesses=[],tickets=[]}=useApp();
+  const{businesses=[],tickets=[],user}=useApp();
   const[cfg,setCfg]=useState({});
   const[watu,setWatu]=useState([]);
   const[kosa,setKosa]=useState('');
   const[jibu,setJibu]=useState(null);
   const[saving,setSaving]=useState(false);
   const[inasoma,setInasoma]=useState(true);
+  const[onyeshaWalioacha,setOnyeshaWalioacha]=useState(false);
+  const[walioacha,setWalioacha]=useState([]);
 
   useEffect(()=>{(async()=>{
     setInasoma(true);
@@ -53,8 +55,10 @@ export default function MgawanyoArifa(){
       if(error){setKosa(error.message);setWatu([])}
       else{
         const wote=data||[];
-        const kazi=wote.filter(u=>CHEO_ZA_KAZI.includes(cheoCha(u))).filter(u=>u.is_active!==false);
+        const zaKazi=wote.filter(u=>CHEO_ZA_KAZI.includes(cheoCha(u)));
+        const kazi=zaKazi.filter(u=>u.is_active!==false);
         setWatu(kazi);
+        setWalioacha(zaKazi.filter(u=>u.is_active===false));
         if(!kazi.length){
           const vyeo=[...new Set(wote.map(u=>u.role).filter(Boolean))];
           setKosa(wote.length
@@ -76,6 +80,25 @@ export default function MgawanyoArifa(){
       setCfg(p=>({...p,[k]:v?'false':'true'}));
       setJibu({ok:false,text:'Imeshindikana kuhifadhi: '+e.message});
     }
+    setSaving(false);
+  };
+
+  // Aliyeacha kazi: hazimwi kutoka kwenye orodha ya arifa tu —
+  // pia hawezi kuingia mfumoni. Hatufuti safu yake, kwa sababu
+  // historia ya tiketi alizozishughulikia inambeba jina lake.
+  const badiliHali=async(u,hai)=>{
+    const swali=hai
+      ?`Mrudishe ${u.name||u.email} kazini? Ataanza kupokea arifa na ataweza kuingia mfumoni tena.`
+      :`${u.name||u.email} ameacha kazi?\n\nAtaacha kupokea SMS zote za mfumo, NA hataweza kuingia mfumoni.\nHistoria ya kazi zake inabaki.`;
+    if(!window.confirm(swali))return;
+    setSaving(true);
+    try{
+      const{error}=await supabase.from('users').update({is_active:hai}).eq('id',u.id);
+      if(error)throw error;
+      if(hai){setWalioacha(p=>p.filter(x=>x.id!==u.id));setWatu(p=>[...p,{...u,is_active:true}])}
+      else{setWatu(p=>p.filter(x=>x.id!==u.id));setWalioacha(p=>[...p,{...u,is_active:false}])}
+      setJibu({ok:true,text:hai?'Amerudishwa kazini.':'Ameondolewa — hatapokea arifa tena.'});
+    }catch(e){setJibu({ok:false,text:'Imeshindikana: '+e.message})}
     setSaving(false);
   };
 
@@ -126,15 +149,20 @@ export default function MgawanyoArifa(){
                 :<span style={{fontSize:11,color:MUT}}>Hapokei arifa za mfumo</span>}
             </div>
           </div>
-          {wao.length>0&&<div style={{fontSize:11.5,color:MUT,marginTop:5,lineHeight:1.7}}>
+          {wao.length>0&&<div style={{marginTop:6}}>
             {wao.map(u=>(
-              <span key={u.id} style={{marginRight:12,whiteSpace:'nowrap'}}>
-                {u.name||u.email}
-                <span style={{fontFamily:'ui-monospace,Menlo,monospace',color:u.phone?MUT:'#C2412D'}}>
-                  {' '}{u.phone||'(hana simu)'}
+              <div key={u.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',flexWrap:'wrap'}}>
+                <span style={{fontSize:12,color:INK,fontWeight:600}}>{u.name||u.email}</span>
+                <span style={{fontSize:11.5,fontFamily:'ui-monospace,Menlo,monospace',color:u.phone?MUT:'#C2412D'}}>
+                  {u.phone||'(hana simu)'}
                 </span>
-                {niWakala(u)&&<span style={{color:u.promo_code?MUT:'#C2412D'}}> · {u.promo_code||'hana promo code'}</span>}
-              </span>
+                {niWakala(u)&&<span style={{fontSize:11,color:u.promo_code?MUT:'#C2412D'}}>· {u.promo_code||'hana promo code'}</span>}
+                {u.id===user?.id
+                  ?<span style={{marginLeft:'auto',fontSize:10.5,color:MUT,fontWeight:700}}>wewe</span>
+                  :<button onClick={()=>badiliHali(u,false)} disabled={saving} style={{
+                      marginLeft:'auto',padding:'3px 10px',borderRadius:8,cursor:'pointer',fontSize:10.5,fontWeight:700,
+                      border:`1px solid ${LINE}`,background:'#fff',color:'#C2412D'}}>Ameacha kazi</button>}
+              </div>
             ))}
           </div>}
           {cheo==='agent'||cheo==='supervisor'
@@ -156,6 +184,24 @@ export default function MgawanyoArifa(){
         padding:'9px 12px',borderRadius:10,marginTop:8,lineHeight:1.6}}>
         <b>Mawakala hawa hawana promo code:</b> {wakalaBilaCode.map(u=>u.name||u.email).join(', ')}.
         Bila hiyo hawatambuliwi wateja wao, kwa hiyo hawapokei arifa yoyote ya mteja.
+      </div>}
+
+      {walioacha.length>0&&<div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${LINE}`}}>
+        <button onClick={()=>setOnyeshaWalioacha(v=>!v)} style={{background:'none',border:'none',cursor:'pointer',
+          padding:0,fontSize:11.5,fontWeight:700,color:MUT}}>
+          {onyeshaWalioacha?'▾':'▸'} Walioacha kazi ({walioacha.length}) — hawapokei chochote
+        </button>
+        {onyeshaWalioacha&&<div style={{marginTop:7}}>
+          {walioacha.map(u=>(
+            <div key={u.id} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',flexWrap:'wrap',opacity:.7}}>
+              <span style={{fontSize:12,color:INK,textDecoration:'line-through'}}>{u.name||u.email}</span>
+              <span style={{fontSize:11,color:MUT}}>{cheoLab(cheoCha(u))}</span>
+              <button onClick={()=>badiliHali(u,true)} disabled={saving} style={{
+                marginLeft:'auto',padding:'3px 10px',borderRadius:8,cursor:'pointer',fontSize:10.5,fontWeight:700,
+                border:`1px solid ${LINE}`,background:'#fff',color:G1}}>Mrudishe</button>
+            </div>
+          ))}
+        </div>}
       </div>}
     </div>
 
