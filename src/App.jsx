@@ -22,6 +22,7 @@ import CommsCenterPage from './pages/admin/CommsCenter';
 import AccountCleanupPage from './pages/admin/AccountCleanup';
 import RevenuePage from './pages/admin/RevenuePage';
 import WafanyakaziPage from './pages/admin/WafanyakaziPage';
+import WatejaWotePage from './pages/supervisor/WatejaWotePage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
@@ -170,7 +171,7 @@ const MENUS={
   supervisor:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
     {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
-    {id:'pipeline',icon:IC.store,label:'👥 Wateja Wote'},
+    {id:'pipeline',icon:IC.store,label:'👥 Wateja & Ufuatiliaji'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji wa Mawakala'},
     {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
@@ -393,7 +394,7 @@ export default function App(){
     if(role==='supervisor'){
       switch(page){
         case'tickets':return <TiketiPage/>;
-        case'pipeline':return <PipelinePage/>;
+        case'pipeline':return <WatejaWotePage/>;
         case'visits':return <SupervisorVisitsPage/>;
         case'tools':return <AgentToolsPage/>;
         case'notifications':return <NotifsPage/>;
