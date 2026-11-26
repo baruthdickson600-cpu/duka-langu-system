@@ -120,11 +120,23 @@ export const smsTiketiMpya = ({ no, kitengo } = {}) => smsMoja([
 // 2. Kwa MTEJA — tiketi inafanyiwa kazi / imejibiwa / imefungwa
 export const smsTiketiHali = ({ no, status, jina } = {}) => {
   const n = safishaTiketi(no);
+  // Tiketi ikifungwa, mteja anastahili zaidi ya "imekamilika":
+  // anataka kujua tatizo lake LIMETATULIWA, na kwamba mlango
+  // uko wazi likijirudia.
+  if (status === 'closed') {
+    return smsMoja([
+      'DUKALANGU',
+      'Tatizo lako limetatuliwa.',
+      'Tiketi ' + n,
+      'Likijirudia, tujulishe tena.',
+      'Asante kwa subira yako.',
+      'Msaada: 0617288752',
+    ], 3);
+  }
   const mstari = {
     assigned: 'Tiketi ' + n + ' imepokelewa' + (jina ? ' na ' + jina : '') + '.',
     working:  'Tiketi ' + n + ' inafanyiwa kazi sasa.',
     replied:  'Tiketi ' + n + ' imejibiwa. Ingia mfumoni kusoma jibu.',
-    closed:   'Tiketi ' + n + ' imekamilika. Asante kwa subira.',
   }[status] || ('Tiketi ' + n + ' imebadilika hali.');
   return smsMoja(['DUKALANGU', mstari, TOVUTI], 2);
 };

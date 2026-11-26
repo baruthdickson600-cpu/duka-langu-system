@@ -171,6 +171,50 @@ function TiketiZangu({open,onClose,tiketi,zote=[],onChagua}){
 // ============================================================
 // 4. MAZUNGUMZO — inatumika pande zote mbili
 // ============================================================
+// Hatua za tiketi kama mstari — mteja anaona iko wapi bila
+// kusoma neno. Hali tano zinarudishwa kuwa hatua tatu, kwa
+// sababu "imepokelewa" na "inafanyiwa kazi" ni jambo moja machoni
+// pa mteja: mtu amelishika.
+const HATUA=[
+  {id:'imefika',lab:'Imefika',hali:['open','assigned','working','replied','closed']},
+  {id:'kazini', lab:'Inafanyiwa kazi',hali:['assigned','working','replied','closed']},
+  {id:'kwisha', lab:'Imekamilika',hali:['closed']},
+];
+
+function Mstari({status}){
+  const hadi=HATUA.reduce((n,h,i)=>h.hali.includes(status)?i:n,0);
+  return <div style={{display:'flex',alignItems:'center',gap:0,margin:'0 0 14px'}}>
+    {HATUA.map((h,i)=>{
+      const imefika=h.hali.includes(status),sasa=i===hadi&&status!=='closed';
+      return <React.Fragment key={h.id}>
+        {i>0&&<div style={{flex:1,height:2,background:imefika?G1:LINE,minWidth:14}}/>}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,flex:'none'}}>
+          <div style={{width:20,height:20,borderRadius:'50%',flex:'none',display:'flex',
+            alignItems:'center',justifyContent:'center',
+            background:imefika?G1:'#fff',border:imefika?'none':`2px solid ${LINE}`,
+            boxShadow:sasa?`0 0 0 4px ${SOFT}`:'none'}}>
+            {imefika&&<Ikoni d={<path d="M20 6L9 17l-5-5"/>} s={11} c="#fff" w={3.2}/>}
+          </div>
+          <span style={{fontSize:9.5,fontWeight:700,color:imefika?G2:MUT,whiteSpace:'nowrap',letterSpacing:'.02em'}}>{h.lab}</span>
+        </div>
+      </React.Fragment>;
+    })}
+  </div>;
+}
+
+const herufiZa=n=>String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'?';
+
+function Chembe({jina,kazi,ndani}){
+  return <div style={{width:28,height:28,borderRadius:'50%',flex:'none',display:'flex',
+    alignItems:'center',justifyContent:'center',fontSize:10.5,fontWeight:800,color:'#fff',
+    background:ndani?'#B45309':kazi?`linear-gradient(135deg,${G1},${G2})`:'#9AA5A0'}}>
+    {herufiZa(jina)}
+  </div>;
+}
+
+// ============================================================
+// 4. MAZUNGUMZO — inatumika pande zote mbili
+// ============================================================
 export function TiketiMazungumzo({t,niMteja=false}){
   const{ticketMsgs,loadTicketMsgs,addTicketMsg,user}=useApp();
   const[andika,setAndika]=useState('');
@@ -190,64 +234,90 @@ export function TiketiMazungumzo({t,niMteja=false}){
   };
 
   return <div>
-    <div style={{background:SOFT,borderRadius:13,padding:'12px 14px',marginBottom:12}}>
-      <div style={{display:'flex',gap:7,flexWrap:'wrap',alignItems:'center',marginBottom:6}}>
+    <Mstari status={t.status}/>
+
+    {/* ===== OMBI LA MTEJA ===== */}
+    <div style={{border:`1px solid ${LINE}`,borderRadius:16,overflow:'hidden',marginBottom:14}}>
+      <div style={{background:SOFT,padding:'10px 14px',display:'flex',gap:7,flexWrap:'wrap',alignItems:'center'}}>
         <Badge color={haliRangi(t.status)}>{niMteja?haliMteja(t.status):haliLab(t.status)}</Badge>
-        <Badge color={kipaumbeleRangi(t.priority)}>{kipaumbeleLab(t.priority)}</Badge>
+        {t.priority==='urgent'&&<Badge color="#C2412D">DHARURA</Badge>}
         <Badge color={MUT}>{kitengoLab(t.kitengo)}</Badge>
-        {!niMteja&&t.business_name&&<span style={{fontSize:11.5,color:MUT,fontWeight:700}}>{t.business_name}</span>}
+        <span style={{marginLeft:'auto',fontSize:10.5,color:MUT,fontWeight:600}}>{tanguLini(t.created_at)}</span>
       </div>
-      <div style={{fontSize:14,fontWeight:800,color:INK}}>{t.subject}</div>
-      <div style={{fontSize:12.5,color:'#334',marginTop:6,whiteSpace:'pre-wrap',lineHeight:1.6}}>{t.message}</div>
-      <div style={{fontSize:10.5,color:MUT,marginTop:7}}>
-        {tanguLini(t.created_at)} iliyopita
-        {t.assigned_name&&<> · anashughulikiwa na <b>{t.assigned_name}</b></>}
+      <div style={{padding:'13px 15px'}}>
+        {!niMteja&&t.business_name&&<div style={{fontSize:11.5,color:G1,fontWeight:800,marginBottom:4}}>
+          {t.business_name}{t.phone?<span style={{color:MUT,fontWeight:600}}> · {t.phone}</span>:null}
+        </div>}
+        <div style={{fontSize:15,fontWeight:800,color:INK,lineHeight:1.35}}>{t.subject}</div>
+        <div style={{fontSize:13,color:'#3A4A42',marginTop:7,whiteSpace:'pre-wrap',lineHeight:1.65}}>{t.message}</div>
+        {t.assigned_name&&<div style={{fontSize:11,color:MUT,marginTop:9,display:'flex',alignItems:'center',gap:6}}>
+          <Chembe jina={t.assigned_name} kazi/>
+          <span>anashughulikiwa na <b style={{color:INK}}>{t.assigned_name}</b></span>
+        </div>}
       </div>
     </div>
 
     {/* Jibu la zamani (kabla ya mazungumzo) halipotei */}
-    {t.reply&&<div style={{background:'#F6F8F7',borderLeft:`3px solid ${G1}`,borderRadius:'0 10px 10px 0',padding:'9px 12px',marginBottom:10}}>
-      <div style={{fontSize:10.5,fontWeight:800,color:G1,letterSpacing:'.05em'}}>JIBU</div>
-      <div style={{fontSize:12.5,color:INK,marginTop:3,whiteSpace:'pre-wrap'}}>{t.reply}</div>
+    {t.reply&&<div style={{background:'#F6F8F7',borderLeft:`3px solid ${G1}`,borderRadius:'0 12px 12px 0',padding:'10px 13px',marginBottom:12}}>
+      <div style={{fontSize:10,fontWeight:800,color:G1,letterSpacing:'.08em'}}>JIBU</div>
+      <div style={{fontSize:12.5,color:INK,marginTop:3,whiteSpace:'pre-wrap',lineHeight:1.6}}>{t.reply}</div>
     </div>}
 
-    <div style={{maxHeight:300,overflowY:'auto',marginBottom:12}}>
+    {/* ===== MAZUNGUMZO ===== */}
+    <div style={{maxHeight:320,overflowY:'auto',marginBottom:14,paddingRight:2}}>
       {msgs.map(m=>{
         const wangu=m.sender_id===user?.id;
         const kazi=['admin','marketing','supervisor','agent','accountant'].includes(m.sender_role);
-        return <div key={m.id} style={{display:'flex',justifyContent:wangu?'flex-end':'flex-start',marginBottom:8}}>
-          <div style={{maxWidth:'82%',background:m.ni_ndani?'#FFF8E6':wangu?SOFT:'#F6F8F7',
-            border:m.ni_ndani?'1px dashed #E0B646':'none',borderRadius:13,padding:'9px 12px'}}>
-            <div style={{fontSize:10.5,fontWeight:800,color:m.ni_ndani?'#92400E':kazi?G1:MUT,marginBottom:3}}>
-              {m.ni_ndani?'MAELEZO YA NDANI · ':''}{m.sender_name||(kazi?'DukaLangu':'Mteja')}
+        return <div key={m.id} style={{display:'flex',gap:8,marginBottom:10,
+          flexDirection:wangu?'row-reverse':'row'}}>
+          <Chembe jina={m.sender_name} kazi={kazi} ndani={m.ni_ndani}/>
+          <div style={{maxWidth:'80%'}}>
+            <div style={{display:'flex',gap:6,alignItems:'baseline',marginBottom:3,
+              flexDirection:wangu?'row-reverse':'row'}}>
+              <span style={{fontSize:10.5,fontWeight:800,color:m.ni_ndani?'#92400E':kazi?G1:MUT}}>
+                {m.sender_name||(kazi?'DukaLangu':'Mteja')}
+              </span>
+              <span style={{fontSize:9.5,color:'#9AA5A0'}}>{tanguLini(m.created_at)}</span>
             </div>
-            <div style={{fontSize:12.5,color:INK,whiteSpace:'pre-wrap',lineHeight:1.55}}>{m.body}</div>
-            <div style={{fontSize:10,color:MUT,marginTop:4}}>{tanguLini(m.created_at)}</div>
+            <div style={{background:m.ni_ndani?'#FFF8E6':wangu?SOFT:'#F4F7F5',
+              border:m.ni_ndani?'1px dashed #E0B646':'none',
+              borderRadius:wangu?'14px 4px 14px 14px':'4px 14px 14px 14px',padding:'9px 13px'}}>
+              {m.ni_ndani&&<div style={{fontSize:9.5,fontWeight:800,color:'#92400E',letterSpacing:'.06em',marginBottom:3}}>
+                MAELEZO YA NDANI
+              </div>}
+              <div style={{fontSize:13,color:INK,whiteSpace:'pre-wrap',lineHeight:1.6}}>{m.body}</div>
+            </div>
           </div>
         </div>;
       })}
-      {!msgs.length&&<div style={{fontSize:12,color:MUT,textAlign:'center',padding:'14px 0'}}>
+      {!msgs.length&&<div style={{fontSize:12,color:MUT,textAlign:'center',padding:'16px 0'}}>
         {niMteja?'Bado hakuna jibu. Tutakujulisha kwa SMS.':'Hakuna mazungumzo bado.'}
       </div>}
     </div>
 
-    {t.status!=='closed'&&<div>
-      {!niMteja&&<label style={{display:'flex',alignItems:'center',gap:7,fontSize:11.5,color:MUT,marginBottom:7,cursor:'pointer',fontWeight:600}}>
-        <input type="checkbox" checked={ndani} onChange={e=>setNdani(e.target.checked)}/>
-        Maelezo ya ndani — mteja HAONI, wala hapati SMS
-      </label>}
-      {kosa&&<div style={{background:'#FBECE9',color:'#C2412D',fontSize:12,padding:'7px 10px',borderRadius:9,marginBottom:7}}>{kosa}</div>}
-      <div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
-        <div style={{flex:1}}>
-          <Input placeholder={niMteja?'Ongeza maelezo…':ndani?'Maelezo ya ndani…':'Andika jibu kwa mteja…'}
-            value={andika} onChange={e=>setAndika(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();tuma()}}}/>
+    {t.status==='closed'
+      ?<div style={{background:SOFT,borderRadius:12,padding:'11px 14px',fontSize:12.5,color:G2,fontWeight:600,textAlign:'center'}}>
+         {niMteja?'Tiketi hii imekamilika. Likijirudia, tuma tiketi mpya.':'Tiketi imefungwa.'}
+       </div>
+      :<div>
+        {!niMteja&&<label style={{display:'flex',alignItems:'center',gap:8,fontSize:11.5,color:ndani?'#92400E':MUT,
+          marginBottom:8,cursor:'pointer',fontWeight:700,background:ndani?'#FFF8E6':'transparent',
+          padding:ndani?'7px 10px':'0',borderRadius:9,transition:'background .15s'}}>
+          <input type="checkbox" checked={ndani} onChange={e=>setNdani(e.target.checked)}/>
+          Maelezo ya ndani — mteja HAONI, wala hapati SMS
+        </label>}
+        {kosa&&<div style={{background:'#FBECE9',color:'#C2412D',fontSize:12,padding:'8px 11px',borderRadius:9,marginBottom:8,lineHeight:1.5}}>{kosa}</div>}
+        <div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
+          <div style={{flex:1}}>
+            <Input placeholder={niMteja?'Ongeza maelezo…':ndani?'Maelezo ya ndani…':'Andika jibu kwa mteja…'}
+              value={andika} onChange={e=>setAndika(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();tuma()}}}/>
+          </div>
+          <Btn style={{padding:'11px 18px',flex:'none'}} disabled={busy||!andika.trim()} onClick={tuma}>
+            {busy?'…':'Tuma'}
+          </Btn>
         </div>
-        <Btn style={{padding:'11px 16px',flex:'none'}} disabled={busy||!andika.trim()} onClick={tuma}>
-          {busy?'…':'Tuma'}
-        </Btn>
-      </div>
-    </div>}
+      </div>}
   </div>;
 }
 

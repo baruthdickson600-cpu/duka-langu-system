@@ -99,11 +99,11 @@ export default function TiketiPage(){
       </p>
     </div>
 
-    <div className="flex-wrap" style={{marginBottom:14}}>
-      <Stat icon={IC.bell} label="Wazi" value={wazi.length} color={wazi.length?'#C2412D':'#9AA5A0'}/>
-      <Stat icon={IC.bell} label="Dharura" value={dharura.length} color={dharura.length?'#C2412D':'#9AA5A0'}/>
-      <Stat icon={IC.clock} label="Zimechelewa" value={chelewa.length} color={chelewa.length?'#F2B705':'#9AA5A0'}/>
-      <Stat icon={IC.ok} label="Zimefungwa leo" value={leo.length} color={G1}/>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:10,marginBottom:14}}>
+      <Kadi lab="Wazi" n={wazi.length} rangi={wazi.length?'#C2412D':'#9AA5A0'}/>
+      <Kadi lab="Dharura" n={dharura.length} rangi={dharura.length?'#C2412D':'#9AA5A0'} nyekundu={!!dharura.length}/>
+      <Kadi lab="Zimechelewa" n={chelewa.length} rangi={chelewa.length?'#B45309':'#9AA5A0'}/>
+      <Kadi lab="Zimefungwa leo" n={leo.length} rangi={G1}/>
     </div>
 
     <div className="card" style={{marginBottom:12,padding:'12px 14px'}}>
@@ -133,31 +133,33 @@ export default function TiketiPage(){
     <div className="card" style={{padding:0,overflow:'hidden'}}>
       {orodha.map(t=>{
         const marehemu=imechelewa(t);
-        return <div key={t.id} onClick={()=>setSel(t)} style={{
-          padding:'12px 14px',borderBottom:`1px solid #F1F6F3`,cursor:'pointer',
-          borderLeft:`3px solid ${niDharura(t.priority)&&niWazi(t.status)?'#C2412D':marehemu?'#F2B705':'transparent'}`,
-          background:niDharura(t.priority)&&niWazi(t.status)?'#FFFBFA':'#fff'}}>
-          <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'center'}}>
-            <div style={{minWidth:0,flex:'1 1 240px'}}>
-              <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap',marginBottom:3}}>
-                <span style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:11.5,fontWeight:800,color:G1}}>{t.ticket_no||'—'}</span>
-                <Badge color={haliRangi(t.status)}>{haliLab(t.status)}</Badge>
-                {niDharura(t.priority)&&<Badge color="#C2412D">DHARURA</Badge>}
-                {marehemu&&<Badge color="#F2B705">Imechelewa</Badge>}
-                <Badge color={MUT}>{kitengoLab(t.kitengo)}</Badge>
-              </div>
-              <div style={{fontSize:13.5,fontWeight:700,color:INK,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.subject}</div>
-              <div style={{fontSize:11,color:MUT,marginTop:2}}>
-                {t.business_name||t.user_email||'—'}
-                {t.phone?' · '+t.phone:''} · {tanguLini(t.created_at)}
-                {t.assigned_name?` · ${t.assigned_name}`:''}
-              </div>
+        const dhrr=niDharura(t.priority)&&niWazi(t.status);
+        return <div key={t.id} onClick={()=>setSel(t)} className="tk-row" style={{
+          padding:'13px 15px',borderBottom:`1px solid #F1F6F3`,cursor:'pointer',
+          borderLeft:`3px solid ${dhrr?'#C2412D':marehemu?'#F2B705':'transparent'}`,
+          background:dhrr?'#FFFBFA':'#fff',display:'flex',gap:12,alignItems:'flex-start'}}>
+          <div style={{width:34,height:34,borderRadius:11,flex:'none',display:'flex',alignItems:'center',
+            justifyContent:'center',fontSize:15,background:dhrr?'#FBECE9':SOFT}}>
+            {KITENGO[t.kitengo||'nyingine']?.ikoni||'📝'}
+          </div>
+          <div style={{minWidth:0,flex:1}}>
+            <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginBottom:3}}>
+              <span style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:11,fontWeight:800,color:G1}}>{t.ticket_no||'—'}</span>
+              <Badge color={haliRangi(t.status)}>{haliLab(t.status)}</Badge>
+              {dhrr&&<Badge color="#C2412D">DHARURA</Badge>}
+              {marehemu&&<Badge color="#B45309">Imechelewa</Badge>}
             </div>
-            <div style={{display:'flex',gap:6,flex:'none'}}>
-              {niWazi(t.status)&&!t.assigned_to&&
-                <Btn v="ghost" style={{padding:'6px 12px',fontSize:11.5}} onClick={e=>{e.stopPropagation();chukua(t)}}>Chukua</Btn>}
-              <Btn v="ghost" style={{padding:'6px 12px',fontSize:11.5}} onClick={e=>{e.stopPropagation();setSel(t)}}>Fungua</Btn>
+            <div style={{fontSize:13.5,fontWeight:700,color:INK,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.subject}</div>
+            <div style={{fontSize:11,color:MUT,marginTop:3}}>
+              <b style={{color:'#3A4A42',fontWeight:600}}>{t.business_name||t.user_email||'—'}</b>
+              {t.phone?' · '+t.phone:''} · {tanguLini(t.created_at)}
+              {t.assigned_name?<> · <span style={{color:G1,fontWeight:700}}>{t.assigned_name}</span></>:''}
             </div>
+          </div>
+          <div style={{display:'flex',gap:6,flex:'none',alignItems:'center'}}>
+            {niWazi(t.status)&&!t.assigned_to&&
+              <Btn style={{padding:'6px 13px',fontSize:11.5}} onClick={e=>{e.stopPropagation();chukua(t)}}>Chukua</Btn>}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA5A0" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           </div>
         </div>;
       })}
@@ -173,19 +175,28 @@ export default function TiketiPage(){
         <TiketiMazungumzo t={sel}/>
         <div style={{borderTop:`1px solid ${LINE}`,marginTop:14,paddingTop:12,display:'flex',gap:7,flexWrap:'wrap'}}>
           {!sel.assigned_to&&niWazi(sel.status)&&
-            <Btn style={{padding:'8px 14px',fontSize:12}} onClick={()=>chukua(sel)}>Chukua tiketi hii</Btn>}
+            <Btn style={{padding:'9px 15px',fontSize:12.5}} onClick={()=>chukua(sel)}>Chukua tiketi hii</Btn>}
           {niWazi(sel.status)&&sel.status!=='working'&&
-            <Btn v="ghost" style={{padding:'8px 14px',fontSize:12}} onClick={()=>badili(sel,'working')}>Ninaifanyia kazi</Btn>}
+            <Btn v="ghost" style={{padding:'9px 15px',fontSize:12.5}} onClick={()=>badili(sel,'working')}>Ninaifanyia kazi</Btn>}
           {niWazi(sel.status)&&
-            <Btn v="ghost" style={{padding:'8px 14px',fontSize:12}} onClick={async()=>{await closeTicket(sel.id);setSel({...sel,status:'closed'})}}>Funga tiketi</Btn>}
+            <Btn style={{padding:'9px 15px',fontSize:12.5,marginLeft:'auto'}}
+              onClick={async()=>{await closeTicket(sel.id);setSel({...sel,status:'closed'})}}>✓ Nimetatua — funga</Btn>}
           {sel.status==='closed'&&niAdmin&&
-            <Btn v="ghost" style={{padding:'8px 14px',fontSize:12}} onClick={()=>badili(sel,'open')}>Fungua tena</Btn>}
+            <Btn v="ghost" style={{padding:'9px 15px',fontSize:12.5}} onClick={()=>badili(sel,'open')}>Fungua tena</Btn>}
         </div>
         <div style={{fontSize:10.5,color:MUT,marginTop:9,lineHeight:1.6}}>
-          Kila hatua hapa inamfikia mteja kwa SMS. Maelezo ya ndani hayamfikii.
+          Ukifunga, mteja anapata SMS: <i>"Tatizo lako limetatuliwa."</i> Maelezo ya ndani hayamfikii.
         </div>
       </>}
     </Modal>
+  </div>;
+}
+
+function Kadi({lab,n,rangi,nyekundu}){
+  return <div style={{background:'#fff',border:`1px solid ${nyekundu?'#F3CFC8':LINE}`,borderRadius:14,
+    padding:'12px 14px',boxShadow:'0 1px 3px rgba(10,110,71,.04)'}}>
+    <div style={{fontSize:10,fontWeight:800,color:MUT,letterSpacing:'.1em',textTransform:'uppercase'}}>{lab}</div>
+    <div style={{fontSize:26,fontWeight:900,color:rangi,lineHeight:1.15,marginTop:3}}>{n}</div>
   </div>;
 }
 
