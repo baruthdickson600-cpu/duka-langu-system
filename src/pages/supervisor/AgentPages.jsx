@@ -3,17 +3,32 @@ import PhoneNameInput from '../../components/PhoneNameInput';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Btn,Stat,Modal,Badge,Empty} from '../../components/UI';
 import {fmtMoney,fmtDate,exportToPDF} from '../../utils/helpers';
+import {cheoCha,watejaWake} from '../../utils/tiketi';
 
 const fm=n=>fmtMoney(n);
+
+// ============================================================
+// SUPEVAIZA vs WAKALA
+//
+// Wakala ana promo code; wateja wake ni walioisajili nayo, na
+// analipwa kamisheni kwao.
+//
+// Supevaiza HANA promo code. Kazi yake ni kusimamia wateja WOTE
+// na mawakala wote — si kuuza. Kwa hiyo haoni kamisheni wala
+// madaraja; anaona hali ya wateja wote na mchanganuo wa wakala.
+// ============================================================
+const niSupervisor = u => cheoCha(u) === 'supervisor';
 
 // Siku zilizobaki kwa duka (active=token_expiry, trial=trial_end)
 const daysLeft=(b)=>{const end=b.token_active?b.token_expiry:b.trial_end;if(!end)return 999;return Math.ceil((new Date(end)-new Date())/86400000);};
 
 // ===== AGENT DASHBOARD =====
 export function AgentDashboard({onNav}){
-  const{user,businesses,AGENT_TIERS,settings}=useApp();
+  const{user,businesses,AGENT_TIERS,settings,agentLeaderboard}=useApp();
+  const niSup=niSupervisor(user);
   const myCode=user?.promo_code;
-  const myBiz=useMemo(()=>businesses.filter(b=>b.promo_code===myCode),[businesses,myCode]);
+  // Supevaiza: wateja wote. Wakala: wa code yake pekee.
+  const myBiz=useMemo(()=>watejaWake(user,businesses),[user,businesses]);
   const active=myBiz.filter(b=>b.token_active&&!b.is_suspended);
   const trial=myBiz.filter(b=>!b.token_active&&!b.is_suspended);
   const expired=myBiz.filter(b=>b.is_suspended||(!b.token_active&&b.trial_end&&new Date(b.trial_end)<new Date()));
@@ -30,14 +45,39 @@ export function AgentDashboard({onNav}){
   const commission=revenue*(user?.commission_rate||10)/100;
   const hour=new Date().getHours();
   const greet=hour<12?'Habari za asubuhi':hour<16?'Habari za mchana':hour<19?'Habari za jioni':'Habari za usiku';
-  const QA=[{p:'register',i:'➕',l:'Sajili'},{p:'mycustomers',i:'🏪',l:'Wateja'},{p:'visits',i:'📋',l:'Ufuatiliaji'},{p:'tiers',i:'🏆',l:'Madaraja'}];
+  const QA=niSup
+    ?[{p:'pipeline',i:'👥',l:'Wateja'},{p:'visits',i:'📋',l:'Ufuatiliaji'},{p:'tickets',i:'🎧',l:'Tiketi'},{p:'tools',i:'🧰',l:'Ripoti'}]
+    :[{p:'register',i:'➕',l:'Sajili'},{p:'mycustomers',i:'🏪',l:'Wateja'},{p:'visits',i:'📋',l:'Ufuatiliaji'},{p:'tiers',i:'🏆',l:'Madaraja'}];
+
+  // Mchanganuo wa wakala — supevaiza pekee
+  const mawakala=useMemo(()=>niSup?(agentLeaderboard||[]).slice(0,8):[],[niSup,agentLeaderboard]);
+  const wasioFuatiliwa=useMemo(()=>niSup
+    ?(agentLeaderboard||[]).filter(a=>a.activeClients===0).length:0,[niSup,agentLeaderboard]);
 
   return <div className="page-enter">
-    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>🤝 WAKALA — Dashboard</h3>
+    <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>
+      {niSup?'🛡️ SUPEVAIZA — Dashboard':'🤝 WAKALA — Dashboard'}</h3>
     <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>{greet}, {user?.name} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long'})}</p>
 
-    {/* Hero — daraja na maendeleo */}
-    <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
+    {niSup
+    /* ===== HERO YA SUPEVAIZA — usimamizi, si mauzo ===== */
+    ?<div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',right:-30,top:-30,width:150,height:150,borderRadius:'50%',background:'rgba(242,183,5,.12)'}}/>
+      <div style={{position:'relative'}}>
+        <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>WATEJA WOTE UNAOWASIMAMIA</div>
+        <div style={{fontSize:38,fontWeight:900,letterSpacing:'-1.5px',lineHeight:1.15,margin:'2px 0 2px'}}>{myBiz.length}</div>
+        <div style={{fontSize:11.5,opacity:.85}}>Si wa code yako — ni wa mfumo mzima</div>
+        <div style={{display:'flex',gap:10,marginTop:16,paddingTop:14,borderTop:'1px solid rgba(255,255,255,.18)',flexWrap:'wrap'}}>
+          <div style={{flex:'1 1 70px',minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>WANAOLIPA</div><div style={{fontSize:15.5,fontWeight:800}}>{active.length}</div></div>
+          <div style={{flex:'1 1 70px',minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>TRIAL</div><div style={{fontSize:15.5,fontWeight:800,color:'#FDE68A'}}>{trial.length}</div></div>
+          <div style={{flex:'1 1 70px',minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>WAMEISHIWA</div><div style={{fontSize:15.5,fontWeight:800,color:'#FCA5A5'}}>{expired.length}</div></div>
+          <div style={{flex:'1 1 70px',minWidth:0}}><div style={{fontSize:9.5,opacity:.8,fontWeight:700}}>MAWAKALA</div><div style={{fontSize:15.5,fontWeight:800}}>{(agentLeaderboard||[]).length}</div></div>
+        </div>
+      </div>
+    </div>
+
+    /* ===== HERO YA WAKALA — daraja na kamisheni ===== */
+    :<div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',right:-30,top:-30,width:150,height:150,borderRadius:'50%',background:'rgba(242,183,5,.12)'}}/>
       <div style={{position:'relative'}}>
         <div style={{fontSize:11,fontWeight:700,opacity:.85,letterSpacing:1}}>WATEJA WANAOLIPA</div>
@@ -63,7 +103,7 @@ export function AgentDashboard({onNav}){
         </div>
         <div style={{fontSize:9.5,opacity:.7,marginTop:6}}>*makadirio: wateja wanaolipa × bei × {user?.commission_rate||10}%</div>
       </div>
-    </div>
+    </div>}
 
     {/* Vitendo vya haraka */}
     <div className="stagger" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
@@ -105,8 +145,34 @@ export function AgentDashboard({onNav}){
     })()}
 
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-      {/* Promo Code */}
-      <div className="card" style={{textAlign:'center'}}>
+      {/* ===== SUPEVAIZA: mchanganuo wa mawakala ===== */}
+      {niSup&&<div className="card">
+        <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 4px'}}>🤝 Mawakala</h3>
+        <div style={{fontSize:11,color:'#5C6A62',marginBottom:10}}>
+          Kila wakala na wateja wake. Kamisheni ni yao — wewe unasimamia.
+        </div>
+        {mawakala.map((a,i)=>(
+          <div key={a.id||a.code} style={{display:'flex',alignItems:'center',gap:9,padding:'8px 0',borderBottom:'1px solid #F6F8F7'}}>
+            <span style={{fontSize:11,fontWeight:800,color:'#9AA5A0',width:16}}>{i+1}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:12.5,color:'#17231D',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                {a.agent_name||a.code}</div>
+              <div style={{fontSize:10.5,color:'#9AA5A0',fontFamily:'ui-monospace,Menlo,monospace'}}>{a.code}</div>
+            </div>
+            <Badge color={a.activeClients?'#0A6E47':'#C2412D'}>
+              {a.activeClients}/{a.clients}
+            </Badge>
+          </div>
+        ))}
+        {!mawakala.length&&<Empty icon="🤝" text="Hakuna wakala bado"/>}
+        {wasioFuatiliwa>0&&<div style={{background:'#FFF8E6',color:'#92400E',fontSize:11,
+          padding:'8px 11px',borderRadius:9,marginTop:10,lineHeight:1.6}}>
+          Mawakala <b>{wasioFuatiliwa}</b> hawana mteja hata mmoja anayelipa. Wafuatilie.
+        </div>}
+      </div>}
+
+      {/* Promo Code — ya wakala pekee */}
+      {!niSup&&<div className="card" style={{textAlign:'center'}}>
         <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🔗 Promo Code Yako</h3>
         <div style={{fontSize:28,fontWeight:900,fontFamily:'monospace',color:'#8B5CF6',background:'#F5F3FF',borderRadius:12,padding:14,marginBottom:10}}>{myCode||'—'}</div>
         <div style={{fontSize:12,color:'#5C6A62',marginBottom:8}}>Mteja akisajili na code hii, unapata credit</div>
@@ -114,10 +180,10 @@ export function AgentDashboard({onNav}){
           🔗 <code>duka-langu-system.vercel.app</code>
         </div>
         <button onClick={()=>{navigator.clipboard.writeText(`https://duka-langu-system.vercel.app`);alert('Link imecopy! Mtumie mteja akisajili atumie promo code: '+myCode)}} style={{width:'100%',padding:'10px',background:'#0A6E47',color:'#fff',border:'none',borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer'}}>📋 Copy Link</button>
-      </div>
+      </div>}
 
-      {/* Current Tier Detail */}
-      <div className="card">
+      {/* Daraja — la wakala pekee */}
+      {!niSup&&<div className="card">
         <h3 style={{fontSize:14,fontWeight:700,margin:'0 0 12px'}}>🏆 Daraja Lako</h3>
         <div style={{background:currentTier.color+'15',borderRadius:12,padding:16,textAlign:'center',border:`2px solid ${currentTier.color}33`,marginBottom:10}}>
           <div style={{fontSize:36}}>{currentTier.emoji}</div>
@@ -134,7 +200,7 @@ export function AgentDashboard({onNav}){
             <div style={{fontWeight:800,fontSize:16,color:'#0A6E47'}}>{fm(revenue)}</div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Recent Customers */}
       <div className="card">
@@ -148,7 +214,7 @@ export function AgentDashboard({onNav}){
             <Badge color={b.token_active?'#0A6E47':b.is_suspended?'#C2412D':'#F2B705'}>{b.token_active?'Active':'Trial'}</Badge>
           </div>
         ))}
-        {!myBiz.length&&<Empty icon="👥" text="Sajili mteja wako wa kwanza!"/>}
+        {!myBiz.length&&<Empty icon="👥" text={niSup?'Hakuna mteja mfumoni bado':'Sajili mteja wako wa kwanza!'}/>}
       </div>
     </div>
   </div>;
@@ -219,15 +285,15 @@ export function AgentCustomersPage(){
   const[search,setSearch]=useState('');
 
   const myBiz=useMemo(()=>{
-    let list=businesses.filter(b=>b.promo_code===myCode);
+    let list=watejaWake(user,businesses);
     if(search){list=list.filter(b=>b.name?.toLowerCase().includes(search.toLowerCase())||b.email?.toLowerCase().includes(search.toLowerCase())||b.phone?.includes(search))}
     if(filter==='active')list=list.filter(b=>b.token_active&&!b.is_suspended);
     if(filter==='trial')list=list.filter(b=>!b.token_active&&!b.is_suspended);
     if(filter==='expired')list=list.filter(b=>b.is_suspended||(!b.token_active&&b.trial_end&&new Date(b.trial_end)<new Date()));
     return list.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  },[businesses,myCode,filter,search]);
+  },[user,businesses,filter,search]);
 
-  const all=businesses.filter(b=>b.promo_code===myCode);
+  const all=watejaWake(user,businesses);
   const activeCount=all.filter(b=>b.token_active).length;
   const trialCount=all.filter(b=>!b.token_active&&!b.is_suspended).length;
 
@@ -341,13 +407,14 @@ export function AgentTiersPage(){
 // ===== ZANA & RIPOTI YA WAKALA =====
 export function AgentToolsPage(){
   const{user,businesses,settings}=useApp();
-  const myCode=user?.promo_code;
-  const myBiz=useMemo(()=>businesses.filter(b=>b.promo_code===myCode),[businesses,myCode]);
+  const niSup=niSupervisor(user);
+  const myBiz=useMemo(()=>watejaWake(user,businesses),[user,businesses]);
   const active=myBiz.filter(b=>b.token_active&&!b.is_suspended);
   const trial=myBiz.filter(b=>!b.token_active&&!b.is_suspended);
   const expired=myBiz.filter(b=>b.is_suspended);
   const price=parseInt(settings?.system_price||15000);
-  const commission=active.length*price*(user?.commission_rate||10)/100;
+  // Supevaiza hana kamisheni — hasajili wateja
+  const commission=niSup?0:active.length*price*(user?.commission_rate||10)/100;
 
   // Pakua ripoti kamili ya PDF
   const downloadReport=()=>{
@@ -390,7 +457,9 @@ export function AgentToolsPage(){
         <div><div style={{fontSize:10.5,opacity:0.8}}>Wateja Jumla</div><div style={{fontSize:22,fontWeight:900}}>{myBiz.length}</div></div>
         <div><div style={{fontSize:10.5,opacity:0.8}}>Wanaolipa</div><div style={{fontSize:22,fontWeight:900}}>{active.length}</div></div>
         <div><div style={{fontSize:10.5,opacity:0.8}}>Trial</div><div style={{fontSize:22,fontWeight:900}}>{trial.length}</div></div>
-        <div><div style={{fontSize:10.5,opacity:0.8}}>Kamisheni</div><div style={{fontSize:22,fontWeight:900}}>{fm(commission)}</div></div>
+        {niSup
+          ?<div><div style={{fontSize:10.5,opacity:0.8}}>Wameishiwa</div><div style={{fontSize:22,fontWeight:900}}>{expired.length}</div></div>
+          :<div><div style={{fontSize:10.5,opacity:0.8}}>Kamisheni</div><div style={{fontSize:22,fontWeight:900}}>{fm(commission)}</div></div>}
       </div>
       <button onClick={downloadReport} style={{width:'100%',padding:13,background:'#fff',color:'#0A6E47',border:'none',borderRadius:12,fontWeight:800,fontSize:14,cursor:'pointer'}}>📄 Pakua Ripoti Kamili (PDF)</button>
     </div>

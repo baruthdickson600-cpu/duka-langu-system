@@ -230,8 +230,21 @@ export const CHEO_LAB = {
 export const CHEO_ZA_KAZI = Object.keys(ARIFA_ZA_CHEO);
 export const cheoCha = u => String(u?.role || '').trim().toLowerCase();
 export const cheoLab = c => CHEO_LAB[String(c || '').toLowerCase()] || c;
-// Wakala anaona wateja WAKE pekee — kwa promo code yake
-export const niWakala = u => ['agent', 'supervisor'].includes(cheoCha(u));
+// ============================================================
+// NANI ANAFUNGIWA KWA PROMO CODE
+//
+// WAKALA pekee. Promo code ni ya kuunganisha wakala na wateja
+// alioleta — ni chombo cha kazi yake, si cheo.
+//
+// SUPERVISOR HANA promo code kwa makusudi: kazi yake ni
+// KUSIMAMIA, si kuleta wateja. Akifungiwa kwa code, angeona
+// wateja wa code yake pekee — hilo lingemfanya wakala mwingine,
+// si msimamizi. Kwa hiyo anaona wateja WOTE na tiketi ZOTE,
+// kama afisa masoko.
+// ============================================================
+export const niWakala = u => cheoCha(u) === 'agent';
+// Anayesimamia wateja wote bila kufungiwa na code
+export const niMsimamiziWaWateja = u => ['admin', 'marketing', 'supervisor'].includes(cheoCha(u));
 
 export const arifaZake = u => ARIFA_ZA_CHEO[cheoCha(u)] || [];
 export const anapokea = (u, aina) => {
@@ -254,7 +267,8 @@ export const wapokeajiWaTiketi = (users = [], tiketi = {}) => {
   });
 };
 
-// Wateja wa mfanyakazi: masoko na admin wanaona wote, wakala wake.
+// Wateja wa mfanyakazi: admin, masoko na supervisor wanaona wote;
+// wakala anaona alioleta mwenyewe.
 export const watejaWake = (u, biashara = []) =>
   niWakala(u) ? (biashara || []).filter(b => b.promo_code && b.promo_code === u.promo_code) : (biashara || []);
 

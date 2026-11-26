@@ -151,14 +151,28 @@ const MENUS={
     {id:'expenses',icon:IC.wallet,label:'Matumizi'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
-  supervisor:[
+  // WAKALA — anafanya kazi kwa promo code yake: analeta wateja,
+  // anawafuatilia, analipwa kamisheni.
+  agent:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
+    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja Wangu'},
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
     {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},
     {id:'tiers',icon:IC.chart,label:'Madaraja'},
+    {id:'notifications',icon:IC.bell,label:'Arifa'},
+  ],
+  // SUPERVISOR — HANA promo code. Kazi yake ni kusimamia wateja
+  // WOTE na kazi ya mawakala, si kuleta wateja wake mwenyewe.
+  // Ndiyo maana hana "Sajili Mteja", "Wateja Wangu" wala "Madaraja" —
+  // vyote hivyo hutegemea promo code.
+  supervisor:[
+    {id:'dashboard',icon:IC.home,label:'Dashboard'},
+    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
+    {id:'pipeline',icon:IC.store,label:'👥 Wateja Wote'},
+    {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji wa Mawakala'},
+    {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},
     {id:'notifications',icon:IC.bell,label:'Arifa'},
   ],
 };
@@ -301,8 +315,7 @@ export default function App(){
   const roleLabel={'admin':'Admin','marketing':'Marketing','supervisor':'Supervisor','agent':'Supervisor','office':'Ofisi','accountant':'Akaunti'}[role]||role;
   const roleColor={'admin':'#F2B705','marketing':'#8B5CF6','supervisor':'#10B981','agent':'#10B981','office':'#3B82F6','accountant':'#EC4899'}[role]||'#9AA5A0';
   // Add branches menu ONLY if canUseBranches
-  const effectiveRole=(role==='agent')?'supervisor':role;
-  let menu=[...MENUS[effectiveRole]||MENUS.employee];
+  let menu=[...MENUS[role]||MENUS.employee];
   if(role==='office'&&canUseBranches){
     const branchItem={id:'branches',icon:IC.store,label:'Matawi'};
     if(!menu.find(m=>m.id==='branches')){menu.splice(1,0,branchItem)}
@@ -375,7 +388,19 @@ export default function App(){
         default:return <AccountantDashboard onNav={setPage}/>;
       }
     }
-    if((role==='supervisor'||role==='agent')){
+    // SUPERVISOR — anasimamia wateja wote. Hana kurasa za promo code
+    // (kusajili, wateja wake, madaraja) kwa sababu hana code.
+    if(role==='supervisor'){
+      switch(page){
+        case'tickets':return <TiketiPage/>;
+        case'pipeline':return <PipelinePage/>;
+        case'visits':return <SupervisorVisitsPage/>;
+        case'tools':return <AgentToolsPage/>;
+        case'notifications':return <NotifsPage/>;
+        default:return <AgentDashboard onNav={setPage}/>;
+      }
+    }
+    if(role==='agent'){
       switch(page){
         case'tickets':return <TiketiPage/>;
         case'register':return <AgentRegisterPage/>;

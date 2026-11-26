@@ -30,7 +30,9 @@ export default function TiketiPage(){
   const[tafuta,setTafuta]=useState('');
   const[sel,setSel]=useState(null);
 
-  const niWakala=user?.role==='agent'||user?.role==='supervisor';
+  // Wakala PEKEE anafungiwa kwa promo code. Supervisor anasimamia
+  // wateja wote, kwa hiyo anaona tiketi zote kama afisa masoko.
+  const niWakala=user?.role==='agent';
   const niAdmin=user?.role==='admin';
 
   // Ramani ya business_id -> promo_code, ili wakala aone zake tu

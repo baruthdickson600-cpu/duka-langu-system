@@ -95,18 +95,19 @@ if(seed?.render==='risiti'){
       }
       createRoot(document.getElementById('root')).render(<AppProvider><Probe/></AppProvider>);
     });
-}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'||seed?.render==='wafanyakazi'){
+}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'||seed?.render==='wafanyakazi'||seed?.render==='wakaladash'){
   // Kurasa za tiketi/wafanyakazi — zinahitaji AppContext halisi
   Promise.all([
     import('../src/context/AppContext'),
     seed.render==='tiketi'?import('../src/pages/shared/TiketiPage')
       :seed.render==='wafanyakazi'?import('../src/pages/admin/WafanyakaziPage')
+      :seed.render==='wakaladash'?import('../src/pages/supervisor/AgentPages')
       :import('../src/pages/admin/MgawanyoArifa'),
   ]).then(([{AppProvider,useApp},P])=>{
     function Probe(){
       const app=useApp(); window.__app=app;
       if(!app.user)return <div id="waiting">waiting</div>;
-      const C=P.default;
+      const C=seed.render==='wakaladash'?P.AgentDashboard:P.default;
       return <div style={{padding:16,maxWidth:980,margin:'0 auto',background:'#F6F8F7',minHeight:'100vh',fontFamily:"'Inter',system-ui,sans-serif"}}>
         <div id="ready">ready</div><C/>
       </div>;

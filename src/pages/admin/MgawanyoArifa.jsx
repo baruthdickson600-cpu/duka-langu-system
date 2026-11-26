@@ -99,6 +99,10 @@ export default function MgawanyoArifa(){
   // halionekani popote pengine mpaka siku arifa inaposhindwa.
   const hawanaSimu=watu.filter(u=>!u.phone&&arifaZake(u).length);
   const wakalaBilaCode=watu.filter(u=>niWakala(u)&&u.phone&&!u.promo_code);
+  // Supervisor hapaswi kuwa na promo code: kazi yake ni kusimamia,
+  // si kuleta wateja. Akiwa nayo, kuna wateja walioshikamana naye —
+  // inabidi uamue kama ni wakala au wateja wahamie kwa wakala.
+  const msimamiziNaCode=watu.filter(u=>cheoCha(u)==='supervisor'&&u.promo_code);
 
   return <div>
     {jibu&&<div style={{background:jibu.ok?SOFT:'#FBECE9',color:jibu.ok?'#15803D':'#B91C1C',
@@ -143,8 +147,10 @@ export default function MgawanyoArifa(){
               </div>
             ))}
           </div>}
-          {cheo==='agent'||cheo==='supervisor'
+          {cheo==='agent'
             ?<div style={{fontSize:10.5,color:MUT,marginTop:4,fontStyle:'italic'}}>Wateja wake pekee, kwa promo code yake</div>
+            :cheo==='supervisor'
+            ?<div style={{fontSize:10.5,color:MUT,marginTop:4,fontStyle:'italic'}}>Wateja WOTE — anasimamia, hana promo code</div>
             :null}
         </div>;
       })}
@@ -162,6 +168,12 @@ export default function MgawanyoArifa(){
         padding:'9px 12px',borderRadius:10,marginTop:8,lineHeight:1.6}}>
         <b>Mawakala hawa hawana promo code:</b> {wakalaBilaCode.map(u=>u.name||u.email).join(', ')}.
         Bila hiyo hawatambuliwi wateja wao, kwa hiyo hawapokei arifa yoyote ya mteja.
+      </div>}
+      {msimamiziNaCode.length>0&&<div style={{background:'#FFF8E6',color:'#92400E',fontSize:11.5,
+        padding:'9px 12px',borderRadius:10,marginTop:8,lineHeight:1.6}}>
+        <b>Supervisor hawa bado wana promo code:</b> {msimamiziNaCode.map(u=>`${u.name||u.email} (${u.promo_code})`).join(', ')}.
+        Code haitumiki tena kwa supervisor — anaona wateja wote. Kama aliwahi kuleta wateja kwa code hiyo,
+        amua: mbadilishie cheo kuwa <b>Wakala</b>, au hamishia wateja wake kwa wakala mwingine.
       </div>}
 
       <div style={{marginTop:12,paddingTop:10,borderTop:`1px solid ${LINE}`,fontSize:11.5,color:MUT,lineHeight:1.7}}>
