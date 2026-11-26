@@ -1148,7 +1148,7 @@ function CollapseCard({title,count,children,open:openDefault=false}){
 }
 
 export function ReportsPage({onReceipt}){
-  const{biz,sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch}=useApp();
+  const{biz,sales,returns,products,expenses,purchases=[],currency,creditHistory=[],allSales,allExpenses,branches,canUseBranches,getBranches,activeBranch,historiaImekatwa}=useApp();
   const fm=n=>fmtMoney(n,currency||'TZS');
   const[tab,setTab]=useState('day');
   const myBranches=canUseBranches?getBranches():[];
@@ -1527,6 +1527,15 @@ export function ReportsPage({onReceipt}){
         {canUseBranches&&activeBranch?`Tawi: ${myBranches.find(b=>b.id===activeBranch)?.name||''}`:canUseBranches?'Matawi Yote (Pamoja)':'Angalia mauzo yako kwa undani — kila tarehe inaonekana'}
       </p>
     </div>
+
+    {/* Historia ndefu kupita kiasi. Ni heri kusema kuliko kuonyesha
+        jumla pungufu kama kwamba ni kamili. */}
+    {historiaImekatwa&&<div style={{background:'#FFF8E6',border:'1px solid #F2D98B',borderRadius:12,
+      padding:'11px 14px',marginBottom:14,fontSize:12.5,color:'#92400E',lineHeight:1.7}}>
+      <b>Historia yako ni ndefu sana kuonyeshwa yote hapa.</b> Ripoti hii inatumia
+      mauzo ya karibuni pekee, kwa hiyo jumla ya miezi ya zamani inaweza kuwa pungufu.
+      Tuma tiketi tukupe ripoti kamili ya kipindi unachotaka.
+    </div>}
 
     {/* ===== CHUJIO (TABS) ===== */}
     <div style={{display:'flex',gap:7,overflowX:'auto',paddingBottom:6,marginBottom:14}}>

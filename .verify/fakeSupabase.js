@@ -3,6 +3,11 @@
 //  - inakataa RPC zisizopo
 //  - inaweza kuwasha RLS (muuzaji hasomi products/sales)
 //  - ina unique index kwenye (business_id, offline_id)
+//  - INAKATA safu 1000 kimyakimya, kama Supabase halisi
+
+// Supabase inarudisha safu 1000 pekee kwa kila ombi, bila kosa.
+export const MAX_ROWS = 1000;
+
 const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:[],
              stock_history:[], customers:[], expenses:[], credit_transactions:[],
              wakala_lines:[], wakala_tx:[], wakala_days:[], wakala_settings:[], wakala_expenses:[], wakala_alerts:[], wakala_payments:[], wakala_checks:[],
@@ -92,7 +97,7 @@ function q(table){
     if (CFG.missing.has(table)) return null;
     return DB[table] || (DB[table] = []);
   };
-  const filters = []; let _order = null, _limit = null, _single = false, _count = null, _conflict = 'id';
+  const filters = []; const _orders = []; let _order = null, _limit = null, _single = false, _count = null, _conflict = 'id', _range = null;
   let op = null, payload = null;
 
   const run = () => {
@@ -181,11 +186,28 @@ function q(table){
       DB[table] = rows().filter(r => !res.includes(r));
       return { data: res, error: null, status: 200 };
     }
-    if (_order) res = [...res].sort((a,b) =>
-      _order.asc ? String(a[_order.col]||'').localeCompare(String(b[_order.col]||''))
-                 : String(b[_order.col]||'').localeCompare(String(a[_order.col]||'')));
+    if (_orders.length) res = [...res].sort((a,b) => {
+      for (const o of _orders) {
+        const x = String(a[o.col]||''), y = String(b[o.col]||'');
+        const c = o.asc ? x.localeCompare(y) : y.localeCompare(x);
+        if (c) return c;
+      }
+      return 0;
+    });
     if (_limit) res = res.slice(0, _limit);
     if (_single) return { data: res[0] || null, error: res.length ? null : { message:'no rows' }, status:200 };
+
+    // ========================================================
+    // KIKOMO CHA PostgREST — 1000 kimyakimya
+    //
+    // Supabase inarudisha safu 1000 PEKEE bila kosa lolote.
+    // Ombi linafanikiwa; linadanganya tu. Bila kuiga hili hapa,
+    // jaribio lolote la mfumo lingepita wakati mteja anaona
+    // historia ikipotea siku baada ya siku.
+    // ========================================================
+    const juu = _range ? Math.min(_range.hadi - _range.kutoka + 1, MAX_ROWS) : MAX_ROWS;
+    const anza = _range ? _range.kutoka : 0;
+    res = res.slice(anza, anza + juu);
     return { data: res, error: null, status: 200 };
   };
 
@@ -199,8 +221,12 @@ function q(table){
     like(col,pat){ filters.push({col,like:pat}); return b },
     gte(col,val){ filters.push({col,gte:val}); return b },
     in(col,vals){ filters.push({col,in:vals}); return b },
-    order(col,o){ _order={col,asc:o?.ascending!==false}; return b },
+    // PostgREST inakusanya mipangilio: .order(a).order(b) ni
+    // "panga kwa a, kisha b". Kuiweka ya pili peke yake
+    // kungeficha hitilafu za kurasa zinazorudia safu.
+    order(col,o){ _orders.push({col,asc:o?.ascending!==false}); if(!_order)_order=_orders[0]; return b },
     limit(n){ _limit=n; return b },
+    range(kutoka,hadi){ _range={kutoka,hadi}; return b },
     single(){ _single=true; return b },
     maybeSingle(){ _single=true; return b },
     then(res,rej){ return Promise.resolve(run()).then(res,rej) },

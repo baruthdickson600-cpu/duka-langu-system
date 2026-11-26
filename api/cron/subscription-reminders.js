@@ -193,12 +193,23 @@ export default async function handler(req, res) {
     };
 
     const footer = cfg.sms_footer || '';
-    // Chukua biashara zote zenye simu
-    const { data: businesses, error } = await supabase
-      .from('businesses')
-      .select('id, name, phone, token_active, token_expiry, trial_end, is_suspended, promo_code');
-
-    if (error) throw error;
+    // Chukua biashara ZOTE zenye simu.
+    //
+    // Kwa kurasa kwa makusudi: PostgREST inarudisha safu 1000
+    // pekee bila kosa. Bila hii, duka la 1001 na kuendelea
+    // halingepata ukumbusho KAMWE, na hakuna angejua.
+    const businesses = [];
+    for (let anza = 0; ; anza += 1000) {
+      const { data, error } = await supabase
+        .from('businesses')
+        .select('id, name, phone, token_active, token_expiry, trial_end, is_suspended, promo_code')
+        .order('id', { ascending: true })
+        .range(anza, anza + 999);
+      if (error) throw error;
+      const safu = data || [];
+      businesses.push(...safu);
+      if (safu.length < 1000 || anza > 100000) break;
+    }
 
     for (const biz of businesses || []) {
       if (!biz.phone || !biz.phone.trim()) continue;

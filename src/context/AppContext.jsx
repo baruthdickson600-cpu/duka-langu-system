@@ -79,12 +79,18 @@ async function safeUpsert(t,d,c){try{const r=await supabase.from(t).upsert(d,{on
 // Soma view kwanza; ikikosekana (SQL ya RLS haijaendeshwa bado), rudi
 // kwenye jedwali. Bila hii, mpangilio mbaya wa kupeleka ulifanya
 // bidhaa ZITOWEKE kabisa kwa muuzaji, kimya kimya.
-async function trySelect(t,q={}){
+async function trySelect(t,q={},ukurasa=null){
   try{
     let s=supabase.from(t).select('*');
     if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);
+    if(q.gte)for(const[k,v]of Object.entries(q.gte))s=s.gte(k,v);
     if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});
-    if(q.limit)s=s.limit(q.limit);
+    if(ukurasa){
+      // Mpangilio wa pili: safu mbili zenye created_at moja
+      // zisibadilishane nafasi kati ya ukurasa na ukurasa, kwa
+      // sababu hilo lingesababisha safu kurudiwa au kurukwa.
+      s=s.order('id',{ascending:false}).range(ukurasa.anza,ukurasa.mwisho);
+    }else if(q.limit)s=s.limit(q.limit);
     const r=await s;
     if(r.error)return{error:r.error};
     return{data:r.data||[]};
@@ -98,6 +104,59 @@ async function safeSelectPref(view,table,q={}){
   return b.error?[]:b.data;
 }
 async function safeSelect(t,q={}){try{let s=supabase.from(t).select('*');if(q.eq)for(const[k,v]of Object.entries(q.eq))s=s.eq(k,v);if(q.order)s=s.order(q.order.col,{ascending:q.order.asc??false});if(q.limit)s=s.limit(q.limit);const r=await s;if(r.error){console.warn('Select:',t,r.error.message);return[]}return r.data||[]}catch(e){console.warn('DB:',t,e);return[]}}
+
+// ============================================================
+// KUSOMA HISTORIA YOTE — safeSelectYote
+//
+// Supabase inarudisha safu 1000 PEKEE kwa kila ombi, na HAITOI
+// kosa lolote. Ombi linafanikiwa; linadanganya tu.
+//
+// Kwa mauzo yaliyopangwa mapya-kwanza, maana yake ni hii: duka
+// linapovuka mauzo 1000, siku za zamani zinaanza kutoweka moja
+// baada ya nyingine. Mteja anayeomba "tangu tarehe 1" anaonyeshwa
+// "tangu tarehe 4", na kesho "tangu tarehe 5" — na jumla ya
+// mwezi inakuwa pungufu bila mtu kujua.
+//
+// Hapa tunasoma ukurasa baada ya ukurasa mpaka historia iishe.
+// KIKOMO kipo ili duka kubwa lisisimamishe kivinjari; kikifikiwa,
+// tunaweka alama ili mfumo useme wazi badala ya kudanganya.
+// ============================================================
+const UKURASA=1000;          // kikomo cha Supabase kwa ombi moja
+const KIKOMO=50000;          // kinga ya kumbukumbu ya kivinjari
+
+// Soma kurasa zote. `soma` ni (q, ukurasa) => {data} au {error}.
+async function somaKurasaZote(soma,q){
+  const zote=[];
+  const zilizoonekana=new Set();
+  for(let anza=0; anza<KIKOMO; anza+=UKURASA){
+    const r=await soma(q,{anza,mwisho:anza+UKURASA-1});
+    if(r.error){
+      console.warn('[kurasa]',r.error?.message||r.error);
+      return{data:zote,imekatwa:false,kosa:r.error};
+    }
+    const data=r.data||[];
+    // Kinga: safu ile ile isihesabiwe mara mbili kama mpangilio
+    // utabadilika kati ya maombi — ingeongeza jumla ya mauzo.
+    for(const x of data){
+      const k=x?.id??JSON.stringify(x);
+      if(!zilizoonekana.has(k)){zilizoonekana.add(k);zote.push(x)}
+    }
+    if(data.length<UKURASA)return{data:zote,imekatwa:false};
+  }
+  return{data:zote,imekatwa:true};   // tumefika KIKOMO, bado kuna zaidi
+}
+
+const safeSelectYote=(t,q={})=>
+  somaKurasaZote((qq,uk)=>trySelect(t,qq,uk),q);
+
+// Kama safeSelectPref: jaribu view kwanza (muuzaji), rudi kwenye
+// jedwali kama view haipo.
+async function safeSelectYotePref(view,table,q={}){
+  const a=await somaKurasaZote((qq,uk)=>trySelect(view,qq,uk),q);
+  if(!a.kosa)return a;
+  console.warn('[view]',view,'haipatikani — natumia',table);
+  return somaKurasaZote((qq,uk)=>trySelect(table,qq,uk),q);
+}
 
 
 // Email helper (calls API directly - no imports needed)
@@ -131,6 +190,9 @@ export function AppProvider({children}){
   const[products,setProds]=useState([]);
   const[orders,setOrders]=useState([]);
   const[sales,setSales]=useState([]);
+  // Historia ndefu kupita kiasi: tumesoma sehemu tu. Mfumo
+  // unaseme wazi badala ya kuonyesha jumla pungufu kimyakimya.
+  const[historiaImekatwa,setHistoriaImekatwa]=useState(false);
 
   // ===== FAIDA YA MAUZO YA MUUZAJI =====
   // Muuzaji hatumi faida (hana bei ya kununua). Kwa hiyo mauzo yake
@@ -331,8 +393,8 @@ export function AppProvider({children}){
     try{
       const sData=await safeSelect('system_settings');
       if(sData.length){const s={};sData.forEach(r=>{s[r.key]=r.value});setSettings(prev=>({...prev,...s}))}
-      const bData=await safeSelect('businesses',{order:{col:'created_at'}});if(bData.length)setBiz(bData);
-      const tData=await safeSelect('tokens',{order:{col:'created_at'}});if(tData.length)setTokens(tData);
+      const bData=(await safeSelectYote('businesses',{order:{col:'created_at'}})).data;if(bData.length)setBiz(bData);
+      const tData=(await safeSelectYote('tokens',{order:{col:'created_at'}})).data;if(tData.length)setTokens(tData);
       const pData=await safeSelect('promo_codes');if(pData.length)setPromos(pData);
       const nData=await safeSelect('notifications',{order:{col:'created_at'},limit:100});if(nData.length)setNotifs(nData);
       const ll=await safeSelect('login_logs',{order:{col:'created_at'},limit:200});if(ll.length)setLogs(ll);
@@ -343,26 +405,30 @@ export function AppProvider({children}){
           role==='employee'
             ?safeSelectPref('products_pub','products',{eq:{business_id:bid}})
             :safeSelect('products',{eq:{business_id:bid}}),
+          // Historia inasomwa kwa kurasa: bila hivyo Supabase
+          // inarudisha 1000 za mwisho tu, na siku za zamani
+          // zinatoweka kimyakimya (ona safeSelectYote).
           role==='employee'
-            ?safeSelectPref('sales_pub','sales',{eq:{business_id:bid},order:{col:'created_at'}})
-            :safeSelect('sales',{eq:{business_id:bid},order:{col:'created_at'}}),
-          safeSelect('expenses',{eq:{business_id:bid},order:{col:'created_at'}}),safeSelect('customers',{eq:{business_id:bid}}),
+            ?safeSelectYotePref('sales_pub','sales',{eq:{business_id:bid},order:{col:'created_at'}})
+            :safeSelectYote('sales',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelectYote('expenses',{eq:{business_id:bid},order:{col:'created_at'}}),safeSelect('customers',{eq:{business_id:bid}}),
           safeSelect('users',{eq:{business_id:bid,role:'employee'}}),safeSelect('stock_history',{eq:{business_id:bid},order:{col:'created_at'},limit:200}),
           safeSelect('branches',{eq:{business_id:bid}}),safeSelect('support_tickets',{eq:{business_id:bid},order:{col:'created_at'}}),
-          safeSelect('returns',{eq:{business_id:bid},order:{col:'created_at'}}),
-          safeSelect('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelectYote('returns',{eq:{business_id:bid},order:{col:'created_at'}}),
+          safeSelectYote('credit_transactions',{eq:{business_id:bid},order:{col:'created_at'}}),
         ]);
-        setProds(sortProducts(pr));setSales(sl);setExp(ex);setCust(cu);setEmps((em||[]).filter(e=>e.is_active!==false));setSH(sh);setBranches(br);setTickets(tk);setReturns(rt);setCreditHist(cr);
+        setHistoriaImekatwa(!!(sl.imekatwa||ex.imekatwa||rt.imekatwa||cr.imekatwa));
+        setProds(sortProducts(pr));setSales(sl.data);setExp(ex.data);setCust(cu);setEmps((em||[]).filter(e=>e.is_active!==false));setSH(sh);setBranches(br);setTickets(tk);setReturns(rt.data);setCreditHist(cr.data);
         // Manunuzi ya stock (purchases) — salama hata kama jedwali halipo
-        try{const pu=await safeSelect('purchases',{eq:{business_id:bid},order:{col:'created_at'}});setPurchases(Array.isArray(pu)?pu:[]);}catch(_){setPurchases([]);}
+        try{const pu=await safeSelectYote('purchases',{eq:{business_id:bid},order:{col:'created_at'}});setPurchases(Array.isArray(pu.data)?pu.data:[]);}catch(_){setPurchases([]);}
         // Load payment requests for this business
-        const pyReqs=await safeSelect('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}});
+        const pyReqs=(await safeSelectYote('payment_requests',{eq:{business_id:bid},order:{col:'created_at'}})).data;
         setPayReqs(pyReqs);
       }
       if(role==='admin'){
         const sl=await safeSelect('system_logs',{order:{col:'created_at'},limit:200});setSysLogs(sl);
         const tk=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tk);
-        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const pyAll=(await safeSelectYote('payment_requests',{order:{col:'created_at'}})).data;setPayReqs(pyAll);
         const pt=await safeSelect('marketing_partners');setPartners(pt);
         const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
         const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
@@ -373,7 +439,7 @@ export function AppProvider({children}){
       if(role==='marketing'){
         // Tiketi: masoko wanazifuatilia kama admin
         const tkM=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tkM);
-        const pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});setPayReqs(pyAll);
+        const pyAll=(await safeSelectYote('payment_requests',{order:{col:'created_at'}})).data;setPayReqs(pyAll);
         const cp=await safeSelect('campaigns',{order:{col:'created_at'}});setCampaigns(cp);
         const ms=await safeSelect('internal_messages',{order:{col:'created_at'}});setMsgs(ms);
         const fl=await safeSelect('followups',{order:{col:'created_at'}});setFollowups(fl);
@@ -381,7 +447,7 @@ export function AppProvider({children}){
       }
       if((role==='supervisor'||role==='agent')){
         // Supervisor: load businesses WOTE (kwa form ya ziara)
-        const bAll=await safeSelect('businesses',{order:{col:'name'}});
+        const bAll=(await safeSelectYote('businesses',{order:{col:'name'}})).data;
         if(bAll.length)setBiz(bAll);
         // Tiketi: ukurasa unachuja za wateja WAKE kwa promo_code
         const tkA=await safeSelect('support_tickets',{order:{col:'created_at'},limit:200});setTickets(tkA);
@@ -389,7 +455,7 @@ export function AppProvider({children}){
       if(role==='accountant'){
         // Accountant loads SAME data as admin (read-only)
         // Try loading payment_requests
-        let pyAll=await safeSelect('payment_requests',{order:{col:'created_at'}});
+        let pyAll=(await safeSelectYote('payment_requests',{order:{col:'created_at'}})).data;
         if(!pyAll.length){
           // Fallback: direct query without ordering
           const{data:pyDirect}=await supabase.from('payment_requests').select('*');
@@ -506,7 +572,7 @@ export function AppProvider({children}){
             await setStock(pid,prod?Math.max(0,+prod.quantity||0):0,-out);
           }
         }catch(e){console.warn('[Sync stock]',e?.message||e)}
-        if(bizId){const q={eq:{business_id:bizId},order:{col:'created_at'}};const freshSales=_isSellerRef.current?await safeSelectPref('sales_pub','sales',q):await safeSelect('sales',q);if(freshSales.length)setSales(freshSales);}
+        if(bizId){const q={eq:{business_id:bizId},order:{col:'created_at'}};const fresh=_isSellerRef.current?await safeSelectYotePref('sales_pub','sales',q):await safeSelectYote('sales',q);if(fresh.data.length){setSales(fresh.data);setHistoriaImekatwa(fresh.imekatwa)}}
         window.dispatchEvent(new CustomEvent('offline-sync-complete',{detail:result}));
       }
       const newCount=await getPendingCount();
@@ -3261,7 +3327,7 @@ export function AppProvider({children}){
     retryFailedSales:async()=>{const n=await retryFailedSales();setFailedSyncCount(await getFailedCount().catch(()=>0));setPendingSyncCount(await getPendingCount().catch(()=>0));await triggerSync();return n},
     getDailyReport,getWeeklyReport,getMonthlyReport,churnRisk,expiringBiz,agentLeaderboard,canUseBranches,isEmployeeLocked,maxBranches,AGENT_TIERS,
     PLANS,currentPlan,isPremium,isEnterprise,isBasic,canUseFeature,planLimit,canAddMore,SMS_BUNDLES,hasWholesale,
-    saveGoal,getGoal,goalProgress,aiInsights:_visibleInsights,
+    saveGoal,getGoal,goalProgress,aiInsights:_visibleInsights,historiaImekatwa,
   }}>{children}</Ctx.Provider>;
 }
 
