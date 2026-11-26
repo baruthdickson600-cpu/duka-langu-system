@@ -236,9 +236,11 @@ async function snippeSendPayout({ amount, method, recipientNumber, recipientName
 // ---- Arifa kwa waidhinishaji (Admin + Marketing) kuhusu ombi la kutoa pesa ----
 async function notifyApprovers(supabase, po) {
   try {
-    const { data: staff } = await supabase.from('users')
-      .select('name,phone,email,role').in('role', ['admin', 'marketing']);
-    if (!staff || !staff.length) return;
+    const { data: wote } = await supabase.from('users')
+      .select('name,phone,email,role,is_active').in('role', ['admin', 'marketing']);
+    // Aliyeacha kazi haendelei kupokea arifa za pesa
+    const staff = (wote || []).filter(s => s.is_active !== false);
+    if (!staff.length) return;
     const amount = (po.amount || 0).toLocaleString();
     const by = po.requested_by || 'Mhasibu';
     const reason = po.reason || '—';
@@ -374,10 +376,12 @@ async function grantMonthlyQuota(supabase, businessId) {
 // ---- Tuma SMS + Email kwa staff wa DukaLangu (admin, marketing, accountant) ----
 async function notifyStaff(supabase, tx) {
   try {
-    const { data: staff } = await supabase.from('users')
-      .select('name,phone,email,role')
+    const { data: wote } = await supabase.from('users')
+      .select('name,phone,email,role,is_active')
       .in('role', ['admin', 'marketing', 'accountant']);
-    if (!staff || !staff.length) return;
+    // Aliyeacha kazi haendelei kupokea arifa za malipo
+    const staff = (wote || []).filter(s => s.is_active !== false);
+    if (!staff.length) return;
 
     const amount = (tx.amount || 0).toLocaleString();
     const biz = tx.business_name || '—';
