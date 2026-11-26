@@ -4,6 +4,7 @@ import {useApp} from '../../context/AppContext';
 import {IC,Input,Btn,Stat,Modal,Badge,Empty} from '../../components/UI';
 import {fmtMoney,fmtDate,exportToPDF} from '../../utils/helpers';
 import {cheoCha,watejaWake} from '../../utils/tiketi';
+import TiketiKaziBar from '../../components/TiketiKaziBar';
 
 const fm=n=>fmtMoney(n);
 
@@ -58,6 +59,9 @@ export function AgentDashboard({onNav}){
     <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>
       {niSup?'🛡️ SUPEVAIZA — Dashboard':'🤝 WAKALA — Dashboard'}</h3>
     <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>{greet}, {user?.name} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long'})}</p>
+
+    {/* Tiketi za wateja — juu, si kwenye side bar */}
+    <TiketiKaziBar onNav={onNav}/>
 
     {niSup
     /* ===== HERO YA SUPEVAIZA — usimamizi, si mauzo ===== */

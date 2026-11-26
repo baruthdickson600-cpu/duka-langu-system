@@ -95,7 +95,7 @@ if(seed?.render==='risiti'){
       }
       createRoot(document.getElementById('root')).render(<AppProvider><Probe/></AppProvider>);
     });
-}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'||seed?.render==='wafanyakazi'||seed?.render==='wakaladash'||seed?.render==='watejawote'){
+}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'||seed?.render==='wafanyakazi'||seed?.render==='wakaladash'||seed?.render==='watejawote'||seed?.render==='tiketibar2'){
   // Kurasa za tiketi/wafanyakazi — zinahitaji AppContext halisi
   Promise.all([
     import('../src/context/AppContext'),
@@ -103,6 +103,7 @@ if(seed?.render==='risiti'){
       :seed.render==='wafanyakazi'?import('../src/pages/admin/WafanyakaziPage')
       :seed.render==='wakaladash'?import('../src/pages/supervisor/AgentPages')
       :seed.render==='watejawote'?import('../src/pages/supervisor/WatejaWotePage')
+      :seed.render==='tiketibar2'?import('../src/components/TiketiKaziBar')
       :import('../src/pages/admin/MgawanyoArifa'),
   ]).then(([{AppProvider,useApp},P])=>{
     function Probe(){

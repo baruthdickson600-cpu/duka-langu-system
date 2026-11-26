@@ -1,6 +1,7 @@
 import React,{useState,useEffect} from 'react';
 import { API_BASE, ombiLaAdmin } from '../../config/api';
 import { supabase } from '../../config/supabase';
+import TiketiKaziBar from '../../components/TiketiKaziBar';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
@@ -55,6 +56,9 @@ export function AdminDashboard({onNav}){
   return <div className="page-enter">
     <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>🛡️ ADMIN — Dashboard</h3>
     <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>{greet} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+
+    {/* Tiketi za wateja — kitu cha kwanza, si kwenye side bar */}
+    <TiketiKaziBar onNav={onNav}/>
 
     {/* Announcement Banner */}
     {settings.announcement&&<div style={{background:settings.announcement_type==='warning'?'#FFF8E6':settings.announcement_type==='danger'?'#FBECE9':'#E6F2EC',border:`1px solid ${settings.announcement_type==='warning'?'#F2D98B':settings.announcement_type==='danger'?'#F0D9D4':'#C2DED1'}`,borderRadius:12,padding:'10px 16px',marginBottom:16,fontSize:13,fontWeight:600,color:settings.announcement_type==='warning'?'#92400E':settings.announcement_type==='danger'?'#B91C1C':'#15803D'}}>📢 {settings.announcement}</div>}

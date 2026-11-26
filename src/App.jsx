@@ -75,7 +75,6 @@ const MENUS={
       {id:'comms_center',icon:IC.send,label:'💬 Kituo cha Mawasiliano'},
       {id:'messaging',icon:IC.send,label:'Ujumbe'},
       {id:'templates',icon:IC.file,label:'Email Templates'},
-      {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
       {id:'faq',icon:IC.file,label:'❓ Maswali (FAQ)'},
     ]},
     {group:'ripoti',label:'📊 Ripoti & Uchambuzi',icon:IC.chart,items:[
@@ -110,7 +109,6 @@ const MENUS={
   ],
   marketing:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
     {id:'pipeline',icon:IC.store,label:'Wateja'},
     {id:'supervisors',icon:IC.users,label:'Mawakala'},
     {id:'payout_approvals',icon:IC.shield,label:'✅ Idhini ya Kutoa Pesa'},
@@ -156,7 +154,6 @@ const MENUS={
   // anawafuatilia, analipwa kamisheni.
   agent:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja Wangu'},
     {id:'register',icon:IC.plus,label:'Sajili Mteja'},
     {id:'mycustomers',icon:IC.store,label:'Wateja Wangu'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji'},
@@ -170,7 +167,6 @@ const MENUS={
   // vyote hivyo hutegemea promo code.
   supervisor:[
     {id:'dashboard',icon:IC.home,label:'Dashboard'},
-    {id:'tickets',icon:IC.bell,label:'🎧 Tiketi za Wateja'},
     {id:'pipeline',icon:IC.store,label:'👥 Wateja & Ufuatiliaji'},
     {id:'visits',icon:IC.file,label:'📋 Ufuatiliaji wa Mawakala'},
     {id:'tools',icon:IC.file,label:'🧰 Zana & Ripoti'},

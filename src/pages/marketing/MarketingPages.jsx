@@ -7,6 +7,7 @@ import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,todayStr} from '../../ut
 import {BarChart,Bar,XAxis,YAxis,Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 import {usePaidTx,sumTx,txAmt,txMonth} from '../../hooks/usePaidTx';
 import {PageHead,GBtn,SumCard} from '../../components/Page';
+import TiketiKaziBar from '../../components/TiketiKaziBar';
 const CL=['#0A6E47','#3B82F6','#F2B705','#C2412D','#8B5CF6','#EC4899'];
 const fm=n=>fmtMoney(n);
 
@@ -27,6 +28,9 @@ export function MarketingDash({onNav}){
   return <div className="page-enter">
     <h3 style={{fontSize:20,fontWeight:900,margin:'0 0 4px',color:'#0A6E47'}}>📣 MARKETING — Dashboard</h3>
     <p style={{fontSize:12,color:'#5C6A62',margin:'0 0 16px'}}>{greet} • {new Date().toLocaleDateString('sw-TZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+
+    {/* Tiketi za wateja — juu, si kwenye side bar */}
+    <TiketiKaziBar onNav={onNav}/>
 
     {/* Hero */}
     <div style={{background:'linear-gradient(140deg,#06502F,#0A6E47)',borderRadius:22,padding:'22px',marginBottom:14,color:'#fff',boxShadow:'0 14px 34px rgba(10,110,71,.28)',position:'relative',overflow:'hidden'}}>

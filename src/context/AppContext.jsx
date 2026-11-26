@@ -2305,6 +2305,30 @@ export function AppProvider({children}){
     return()=>{supabase.removeChannel(ch1);supabase.removeChannel(ch2)};
   },[user]);
 
+  // ============================================================
+  // TIKETI MPYA — arifa ya papo hapo
+  //
+  // SMS inakuja, lakini mtu aliyeko mfumoni asisubiri simu yake
+  // ili ajue mteja analalamika. Tiketi ikiingia, inaonekana
+  // SASA HIVI kwenye skrini aliyopo.
+  // ============================================================
+  useEffect(()=>{
+    const cheo=String(user?.role||'').trim().toLowerCase();
+    if(!['admin','marketing','supervisor','agent'].includes(cheo))return;
+    const ch=supabase.channel('tiketi-mpya-'+cheo)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'support_tickets'},(payload)=>{
+        const t=payload.new;if(!t)return;
+        // Wakala anapokea za wateja wake pekee (business_id ya duka lake)
+        setTickets(prev=>prev.some(x=>x.id===t.id)?prev:[t,...prev]);
+        const dharura=t.priority==='urgent';
+        setPopups(prev=>[{id:genId(),type:dharura?'danger':'warning',
+          title:dharura?'🚨 Tiketi ya DHARURA!':'🎧 Tiketi Mpya',
+          message:`${t.business_name||'Mteja'}: ${t.subject||'ana tatizo'}${t.ticket_no?' ('+t.ticket_no+')':''}`,
+        },...prev]);
+      }).subscribe();
+    return()=>{supabase.removeChannel(ch)};
+  },[user]);
+
   // ===== SMART ALERT ENGINE =====
   // Runs once on load — generates auto-notifications for important events
   useEffect(()=>{
