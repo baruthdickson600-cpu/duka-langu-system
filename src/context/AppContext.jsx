@@ -3,7 +3,7 @@ import {buildCostMap,withProfit,saleProfit} from '../utils/money';
 import {changeStock} from '../utils/stock';
 import {validateReturn,returnableUnits,fullyReturned} from '../utils/returns';
 import {PLANS,getPlan,resolvePlanId,FEATURE_PLANS,SMS_BUNDLES} from '../config/plans';
-import { API_BASE } from '../config/api';
+import { API_BASE, ombiLaAdmin } from '../config/api';
 import {saveSaleOffline,getPendingSales,markSaleSynced,markSaleFailed,saveStockSnapshot,deductStockOffline,getPendingCount,getFailedCount,getFailedSales,getStuckSales,retryFailedSales,syncPendingSales} from '../utils/offlineDB';
 import {supabase,supabaseSignup} from '../config/supabase';
 import {smsTiketiMpya,smsTiketiHali} from '../utils/tiketi';
@@ -1453,11 +1453,7 @@ export function AppProvider({children}){
     // ===== NJIA YA 1 (BORA): service_role API — email_confirm:true =>
     //        mfanyakazi anaingia MARA MOJA bila kuthibitisha email =====
     try{
-      const res=await fetch(API_BASE+'/api/admin/change-email',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'create_employee',emp_email:email,emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null}),
-      });
-      const d=await res.json().catch(()=>({}));
+      const{d}=await ombiLaAdmin(supabase,{action:'create_employee',emp_email:email,emp_password:emp.password,emp_name:emp.name,emp_phone:emp.phone,business_id:bizId,branch_id:emp.branch_id||null});
       if(d&&d.success){
         finish(d.user||row(genId()));
         return{ok:true};

@@ -1,5 +1,6 @@
 import React,{useState,useEffect} from 'react';
-import { API_BASE } from '../../config/api';
+import { API_BASE, ombiLaAdmin } from '../../config/api';
+import { supabase } from '../../config/supabase';
 import {useApp} from '../../context/AppContext';
 import {IC,Input,Sel,Btn,Stat,Modal,Badge,Tabs,Empty,Area} from '../../components/UI';
 import {fmtMoney,fmtDate,isToday,isThisWeek,isThisMonth,exportToPDF} from '../../utils/helpers';
@@ -317,8 +318,7 @@ export function StoresPage(){
     if(!resetPass||resetPass.length<6){setResetMsg({ok:false,msg:'Password lazima iwe herufi 6 au zaidi.'});return;}
     setResetBusy(true);setResetMsg(null);
     try{
-      const r=await fetch(API_BASE+'/api/admin/change-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_password',target_email:(biz.email||'').trim().toLowerCase(),new_password:resetPass,business_id:biz.id})});
-      const d=await r.json().catch(()=>({}));
+      const{d}=await ombiLaAdmin(supabase,{action:'set_password',target_email:(biz.email||'').trim().toLowerCase(),new_password:resetPass,business_id:biz.id});
       if(d.success)setResetMsg({ok:true,msg:`✅ Password imewekwa: "${resetPass}". Mpe mteja aingie nayo, kisha aibadilishe.`});
       else setResetMsg({ok:false,msg:'❌ '+(d.error||'Tatizo')});
     }catch(e){setResetMsg({ok:false,msg:'❌ Tatizo la mtandao.'});}
@@ -699,11 +699,7 @@ export function StoresPage(){
         const oldEmail=(actionModal.biz?.email||'').trim().toLowerCase();
         if(newEmailClean&&newEmailClean!==oldEmail){
           try{
-            const r=await fetch(API_BASE+'/api/admin/change-email',{
-              method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({old_email:oldEmail,new_email:newEmailClean,business_id:actionModal.biz.id}),
-            });
-            const d=await r.json().catch(()=>({}));
+            const{d}=await ombiLaAdmin(supabase,{old_email:oldEmail,new_email:newEmailClean,business_id:actionModal.biz.id});
             if(!d.success){
               setEditMsg({ok:false,msg:'❌ Email haikubadilishwa: '+(d.error||'Tatizo')});
               setEditBusy(false);return;
@@ -2354,11 +2350,7 @@ export function InfoRequestsPage(){
     // ===== EMAIL: badilisha kwenye Supabase Auth kwanza (ili aweze kuingia) =====
     if(req.new_email){
       try{
-        const r=await fetch(API_BASE+'/api/admin/change-email',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({old_email:req.old_email||req.current_email,new_email:req.new_email,business_id:req.business_id}),
-        });
-        const d=await r.json().catch(()=>({}));
+        const{d}=await ombiLaAdmin(supabase,{old_email:req.old_email||req.current_email,new_email:req.new_email,business_id:req.business_id});
         if(!d.success){
           alert('❌ Email haikubadilishwa: '+(d.error||'Tatizo')+'\n\nMabadiliko mengine hayajafanyika. Rekebisha kisha jaribu tena.');
           setProcessing(null);return;

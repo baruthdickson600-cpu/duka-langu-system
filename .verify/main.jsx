@@ -22,6 +22,18 @@ window.fetch = async (url, opt = {}) => {
     try { window.__api.sms.push(JSON.parse(opt.body || '{}')); } catch (_) {}
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   }
+  // /api/admin/* — service_role. Tunaiga server ikikagua token.
+  if (u.includes('/api/admin/change-email')) {
+    window.__api.admin = window.__api.admin || [];
+    let body = {}; try { body = JSON.parse(opt.body || '{}') } catch (_) {}
+    const h = (opt.headers || {}).Authorization || (opt.headers || {}).authorization || '';
+    window.__api.admin.push({ body, auth: h });
+    // Bila token, server halisi inarudisha 401 — tuige hivyo
+    if (!h) return new Response(JSON.stringify({ success: false,
+      error: 'Hauruhusiwi kufanya kitendo hiki. Ingia kama msimamizi.' }), { status: 401 });
+    const jibu = (window.__seed && window.__seed.adminJibu) || { success: true, message: 'Amefutwa kabisa.' };
+    return new Response(JSON.stringify(jibu), { status: jibu.success ? 200 : 400 });
+  }
   // Arifa ya tiketi kwa wafanyakazi — sasa inafanywa na server
   if (u.includes('action=tiketi_arifa')) {
     window.__api.tiketiArifa = window.__api.tiketiArifa || [];
@@ -83,11 +95,13 @@ if(seed?.render==='risiti'){
       }
       createRoot(document.getElementById('root')).render(<AppProvider><Probe/></AppProvider>);
     });
-}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'){
-  // Kurasa za tiketi — zinahitaji AppContext halisi
+}else if(seed?.render==='tiketi'||seed?.render==='mgawanyo'||seed?.render==='wafanyakazi'){
+  // Kurasa za tiketi/wafanyakazi — zinahitaji AppContext halisi
   Promise.all([
     import('../src/context/AppContext'),
-    seed.render==='tiketi'?import('../src/pages/shared/TiketiPage'):import('../src/pages/admin/MgawanyoArifa'),
+    seed.render==='tiketi'?import('../src/pages/shared/TiketiPage')
+      :seed.render==='wafanyakazi'?import('../src/pages/admin/WafanyakaziPage')
+      :import('../src/pages/admin/MgawanyoArifa'),
   ]).then(([{AppProvider,useApp},P])=>{
     function Probe(){
       const app=useApp(); window.__app=app;

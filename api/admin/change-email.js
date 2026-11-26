@@ -10,6 +10,40 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const ADMIN_EMAIL = (process.env.VITE_ADMIN_EMAIL || process.env.ADMIN_EMAIL || '').toLowerCase().trim();
+
+// ============================================================
+// NANI ANARUHUSIWA
+//
+// API hii inatumia service_role — inapita kinga zote za database.
+// Bila ukaguzi huu, mtu YEYOTE duniani angeweza kutuma POST moja
+// na kubadilisha password ya msimamizi, au kufuta akaunti yoyote.
+// Kwa hiyo kila kitendo kinathibitishwa kwa token ya mtumiaji
+// aliyeingia, NA cheo chake kinasomwa kutoka database — si kutoka
+// kwenye ombi lenyewe, kwa sababu ombi linaweza kudanganya.
+// ============================================================
+async function mwombaji(admin, req) {
+  const h = req.headers?.authorization || req.headers?.Authorization || '';
+  const token = String(h).replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data?.user) return null;
+  const au = data.user;
+  const { data: row } = await admin.from('users').select('id,email,role,business_id,is_active')
+    .eq('id', au.id).maybeSingle();
+  const email = (au.email || row?.email || '').toLowerCase().trim();
+  const cheo = String(row?.role || '').trim().toLowerCase();
+  return {
+    id: au.id,
+    email,
+    role: (ADMIN_EMAIL && email === ADMIN_EMAIL) ? 'admin' : cheo,
+    business_id: row?.business_id || null,
+    hai: row ? row.is_active !== false : false,
+  };
+}
+
+const KATAA = { success: false, error: 'Hauruhusiwi kufanya kitendo hiki. Ingia kama msimamizi.' };
+
 async function findAuthUserByEmail(admin, email) {
   const target = (email || '').toLowerCase().trim();
   if (!target) return null;
@@ -38,11 +72,19 @@ export default async function handler(req, res) {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
+    // ===== Thibitisha mwombaji kabla ya kitendo chochote =====
+    const mimi = await mwombaji(admin, req);
+    if (!mimi) return res.status(401).json(KATAA);
+    const niAdmin = mimi.role === 'admin';
+    // Mmiliki wa duka anaruhusiwa kugusa wafanyakazi wa duka lake pekee
+    const niMmilikiWa = (bid) => mimi.role === 'office' && mimi.hai && !!bid && mimi.business_id === bid;
+
     // ============================================================
     // ACTION: set_password — Admin anaweka password mpya kwa mteja
     // (mteja aliyesahau password). Inahitaji target_email + new_password.
     // ============================================================
     if (action === 'set_password') {
+      if (!niAdmin) return res.status(403).json(KATAA);
       if (!target_email || !target_email.includes('@')) {
         return res.status(400).json({ success: false, error: 'Email ya mteja si sahihi.' });
       }
@@ -75,6 +117,7 @@ export default async function handler(req, res) {
       if (!emp_email || !emp_email.includes('@')) return res.status(400).json({ success: false, error: 'Email ya mfanyakazi si sahihi.' });
       if (!emp_password || emp_password.length < 4) return res.status(400).json({ success: false, error: 'Password lazima iwe herufi 4 au zaidi.' });
       if (!bid) return res.status(400).json({ success: false, error: 'business_id inahitajika.' });
+      if (!niAdmin && !niMmilikiWa(bid)) return res.status(403).json(KATAA);
 
       // Je auth user tayari ipo?
       let au = await findAuthUserByEmail(admin, emp_email);
@@ -106,25 +149,59 @@ export default async function handler(req, res) {
     // ============================================================
     // ACTION: delete_employee — Futa mfanyakazi kabisa (Auth + users)
     // ============================================================
+    // ============================================================
+    // ACTION: delete_employee — Futa mtumiaji KABISA (users + Auth)
+    //
+    // Safu ya users PEKEE haitoshi: akaunti ya kuingia (Supabase
+    // Auth) ingebaki, na mtu aliyefutwa angeweza kuingia tena na
+    // kuanzisha duka jipya. Kwa hiyo tunafuta zote mbili.
+    //
+    // Makosa HAYAFICHWI: kitendo kisichoweza kurudishwa lazima
+    // kiseme ukweli kama hakufanikiwa.
+    // ============================================================
     if (action === 'delete_employee') {
       const { emp_id, emp_email } = req.body || {};
       if (!emp_id && !emp_email) return res.status(400).json({ success: false, error: 'emp_id au emp_email inahitajika.' });
-      let authId = emp_id;
-      // Futa users row
-      if (emp_id) await admin.from('users').delete().eq('id', emp_id).then(() => {}, () => {});
-      else if (emp_email) {
-        const { data: u } = await admin.from('users').select('id').eq('email', emp_email).maybeSingle();
-        authId = u?.id;
-        await admin.from('users').delete().eq('email', emp_email).then(() => {}, () => {});
-      }
-      // Futa auth user
-      if (!authId && emp_email) { const found = await findAuthUserByEmail(admin, emp_email); authId = found?.id; }
-      if (authId) await admin.auth.admin.deleteUser(authId).then(() => {}, () => {});
 
-      return res.status(200).json({ success: true, message: 'Mfanyakazi amefutwa kabisa.' });
+      // Tafuta safu kwanza — tunahitaji kujua cheo chake kabla ya kufuta
+      const q = admin.from('users').select('id,email,role,business_id');
+      const { data: lengwa } = emp_id
+        ? await q.eq('id', emp_id).maybeSingle()
+        : await q.eq('email', String(emp_email).trim().toLowerCase()).maybeSingle();
+
+      const chLengwa = String(lengwa?.role || '').trim().toLowerCase();
+      const ruhusa = niAdmin
+        || (chLengwa === 'employee' && niMmilikiWa(lengwa?.business_id));
+      if (!ruhusa) return res.status(403).json(KATAA);
+
+      const authId = lengwa?.id || emp_id || (await findAuthUserByEmail(admin, emp_email))?.id;
+      if (!authId) return res.status(404).json({ success: false, error: 'Mtumiaji huyu hajapatikana.' });
+      if (authId === mimi.id) return res.status(400).json({ success: false, error: 'Hauwezi kujifuta mwenyewe.' });
+
+      // 1. Safu ya users
+      if (lengwa?.id) {
+        const { error: dErr } = await admin.from('users').delete().eq('id', lengwa.id);
+        if (dErr) return res.status(400).json({ success: false, error: 'DB: ' + dErr.message });
+      }
+
+      // 2. Akaunti ya kuingia. Ikigoma, safu imeenda — semea wazi.
+      const { error: aErr } = await admin.auth.admin.deleteUser(authId);
+      if (aErr) {
+        const m = (aErr.message || '').toLowerCase();
+        if (!m.includes('not found') && !m.includes('does not exist')) {
+          return res.status(207).json({
+            success: false,
+            error: 'Safu yake imefutwa, LAKINI akaunti ya kuingia imegoma kufutwa: ' + aErr.message
+              + ' — ifute kwa mkono kwenye Supabase → Authentication → Users.',
+          });
+        }
+      }
+
+      return res.status(200).json({ success: true, message: 'Amefutwa kabisa — safu na akaunti ya kuingia.' });
     }
 
     // ===== Default action: change email =====
+    if (!niAdmin && !niMmilikiWa(business_id)) return res.status(403).json(KATAA);
     if (!new_email || !new_email.includes('@')) {
       return res.status(400).json({ success: false, error: 'Email mpya si sahihi.' });
     }

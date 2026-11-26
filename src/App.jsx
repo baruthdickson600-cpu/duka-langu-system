@@ -21,6 +21,7 @@ import SMSCenterPage from './pages/admin/SMSCenter';
 import CommsCenterPage from './pages/admin/CommsCenter';
 import AccountCleanupPage from './pages/admin/AccountCleanup';
 import RevenuePage from './pages/admin/RevenuePage';
+import WafanyakaziPage from './pages/admin/WafanyakaziPage';
 import {MarketingDash,MktAgentsPage,PipelinePage,MktReportsPage,MktBroadcastPage,CampaignPage,FollowupPage,TestimonialsPage,MessagingPage,EmailCampaignPage,DemoPage} from './pages/marketing/MarketingPages';
 import {AgentDashboard,AgentRegisterPage,AgentCustomersPage,AgentTiersPage,SupervisorVisitsPage,AgentToolsPage} from './pages/supervisor/AgentPages';
 import {AccountantDashboard,AccBudgetPage,AccPayrollPage,AccDebtsPage,AccAuditPage,AccPaymentsPage,AccExpensesPage,AccRevenuePage,AccCustomersPage,AccReportsPage,AccPayoutPage} from './pages/accountant/AccountantPages';
@@ -83,6 +84,7 @@ const MENUS={
       {id:'activity',icon:IC.clock,label:'Activity'},
     ]},
     {group:'mfumo',label:'⚙️ Mfumo',icon:IC.gear,items:[
+      {id:'wafanyakazi',icon:IC.people,label:'👤 Wafanyakazi'},
       {id:'tokens',icon:IC.key,label:'🔑 Tokens'},
       {id:'security',icon:IC.shield,label:'Security'},
       {id:'backup',icon:IC.dl,label:'💾 Backup'},
@@ -339,6 +341,7 @@ export default function App(){
         case'comms_center':return <CommsCenterPage/>;
         case'cleanup':return <AccountCleanupPage/>;
         case'revenue':return <RevenuePage/>;
+        case'wafanyakazi':return <WafanyakaziPage/>;
         default:return <AdminDashboard onNav={setPage}/>;
       }
     }

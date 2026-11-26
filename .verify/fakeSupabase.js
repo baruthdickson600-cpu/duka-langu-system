@@ -11,7 +11,9 @@ const DB = { businesses:[], users:[], products:[], sales:[], orders:[], returns:
 const CFG = {
   schema: {
     businesses:['id','name','owner_id','plan','token_active','wakala_enabled','wakala_paid_until'],
-    users:['id','business_id','role','name','email','branch_id','is_active'],
+    users:['id','business_id','role','name','email','branch_id','is_active','phone','promo_code',
+           'nida','tarehe_kuzaliwa','jinsia','anwani','cheo_kazi','tarehe_kuanza',
+           'ndugu_jina','ndugu_simu','maelezo'],
     products:['id','business_id','branch_id','name','buy_price','sell_price','quantity','unit','min_stock','category','updated_at'],
     sales:['id','business_id','branch_id','seller_id','seller_name','items','subtotal','discount','total','profit',
            'payment_method','payment_details','customer_id','customer_name','is_synced','created_at'],
